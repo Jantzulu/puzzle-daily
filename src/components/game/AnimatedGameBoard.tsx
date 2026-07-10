@@ -654,17 +654,88 @@ interface SpawnAnimationState {
 // Cadence rides the spawn-animation lifecycle exactly: once per board mount,
 // again after a page refresh, not on re-runs. Purely visual — the entity
 // logically occupies its tile the whole time; engine untouched.
-const FLY_IN_MS_PER_TILE = 110;
+const FLY_IN_MS_PER_TILE_ENEMY = 160; // ambient theater — a touch leisurely
+const FLY_IN_MS_PER_TILE_HERO = 110;  // interactive feedback — stays snappy
 const FLY_IN_MIN_MS = 500;
 const FLY_IN_MAX_MS = 1600; // ≈ one spawn sheet's worth of theater, no more
 const FLY_IN_OFFSCREEN_TILES = 2.5; // how far beyond the board edge flights start
+
+// Flight styles (CustomSprite.spawnFlyInStyle): 'straight' is the default
+// beeline; 'swoop' banks along a random arc, facing following the curve;
+// 'flutter' wobbles erratically like a bat, settling before it lands.
+type FlyInStyle = 'straight' | 'swoop' | 'flutter';
 
 interface FlyInState {
   startTime: number;
   durationMs: number;
   fromX: number; // logical tile coords, off the board
   fromY: number;
-  facing: Direction; // dominant travel direction (drives the moving sheet)
+  facing: Direction; // travel direction at launch (straight/flutter hold it)
+  style: FlyInStyle;
+  // Per-flight personality, rolled at creation — every entrance is its own.
+  arcSide: 1 | -1;    // swoop: which side the arc bows toward
+  arcMag: number;     // swoop: bow depth in tiles
+  wobbleFreq: number; // flutter: wobble cycles across the flight
+  wobblePhase: number;
+  wobbleAmp: number;  // flutter: wobble amplitude in tiles
+}
+
+function rollFlyInPersonality(): Pick<FlyInState, 'arcSide' | 'arcMag' | 'wobbleFreq' | 'wobblePhase' | 'wobbleAmp'> {
+  return {
+    arcSide: Math.random() < 0.5 ? 1 : -1,
+    arcMag: 1 + Math.random() * 1.5,
+    wobbleFreq: 2.5 + Math.random() * 1.5,
+    wobblePhase: Math.random() * Math.PI * 2,
+    wobbleAmp: 0.3 + Math.random() * 0.3,
+  };
+}
+
+/** Position (and travel direction, for banking) along a flight at t ∈ [0,1]. */
+function flyInPointAt(
+  flyIn: FlyInState,
+  toX: number,
+  toY: number,
+  t: number,
+): { x: number; y: number; dx: number; dy: number } {
+  const { fromX, fromY } = flyIn;
+  const dx0 = toX - fromX;
+  const dy0 = toY - fromY;
+  const len = Math.hypot(dx0, dy0) || 1;
+  const px = -dy0 / len; // unit perpendicular to the base path
+  const py = dx0 / len;
+
+  switch (flyIn.style) {
+    case 'swoop': {
+      // Quadratic bezier bowing arcMag tiles to one side at the midpoint.
+      const cx = fromX + dx0 * 0.5 + px * flyIn.arcMag * flyIn.arcSide;
+      const cy = fromY + dy0 * 0.5 + py * flyIn.arcMag * flyIn.arcSide;
+      const u = 1 - t;
+      return {
+        x: u * u * fromX + 2 * u * t * cx + t * t * toX,
+        y: u * u * fromY + 2 * u * t * cy + t * t * toY,
+        // Bezier derivative — the bank: facing follows the curve.
+        dx: 2 * u * (cx - fromX) + 2 * t * (toX - cx),
+        dy: 2 * u * (cy - fromY) + 2 * t * (toY - cy),
+      };
+    }
+    case 'flutter': {
+      // Straight base path + two incommensurate sines under a sin(πt)
+      // envelope — erratic mid-flight, but it launches and LANDS clean.
+      const envelope = Math.sin(Math.PI * t);
+      const wobble =
+        Math.sin(t * flyIn.wobbleFreq * Math.PI * 2 + flyIn.wobblePhase) * 0.7 +
+        Math.sin(t * flyIn.wobbleFreq * Math.PI * 4.7 + flyIn.wobblePhase * 1.3) * 0.3;
+      const offset = wobble * flyIn.wobbleAmp * envelope;
+      return {
+        x: fromX + dx0 * t + px * offset,
+        y: fromY + dy0 * t + py * offset,
+        dx: dx0, // hold the base heading — the wobble is too fast to steer by
+        dy: dy0,
+      };
+    }
+    default:
+      return { x: fromX + dx0 * t, y: fromY + dy0 * t, dx: dx0, dy: dy0 };
+  }
 }
 
 // Genuinely random: a fresh edge + position every board load and every hero
@@ -817,16 +888,19 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       if (!spawnedEnemiesRef.current.has(index) && !enemy.dead) {
         // Fly-in pre-phase: delay the spawn sheet until the flight lands.
         let spawnStart = now;
-        if (getEnemy(enemy.enemyId)?.customSprite?.spawnFlyIn) {
+        const enemySprite = getEnemy(enemy.enemyId)?.customSprite;
+        if (enemySprite?.spawnFlyIn) {
           const { fromX, fromY } = computeFlyInOrigin(gameState.puzzle.width, gameState.puzzle.height);
           const distTiles = Math.hypot(enemy.x - fromX, enemy.y - fromY);
-          const durationMs = Math.min(FLY_IN_MAX_MS, Math.max(FLY_IN_MIN_MS, Math.round(distTiles * FLY_IN_MS_PER_TILE)));
+          const durationMs = Math.min(FLY_IN_MAX_MS, Math.max(FLY_IN_MIN_MS, Math.round(distTiles * FLY_IN_MS_PER_TILE_ENEMY)));
           enemyFlyInsRef.current.set(index, {
             startTime: now,
             durationMs,
             fromX,
             fromY,
             facing: directionFromTravel(enemy.x - fromX, enemy.y - fromY),
+            style: enemySprite.spawnFlyInStyle ?? 'straight',
+            ...rollFlyInPersonality(),
           });
           spawnStart = now + durationMs;
         }
@@ -1025,16 +1099,19 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
         // Fly-in pre-phase (replaces the drop-in): the hero swoops to its
         // placement tile; the spawn sheet starts when the flight lands.
         let spawnStart = now;
-        if (getCharacter(char.characterId)?.customSprite?.spawnFlyIn) {
+        const charSprite = getCharacter(char.characterId)?.customSprite;
+        if (charSprite?.spawnFlyIn) {
           const { fromX, fromY } = computeFlyInOrigin(gameState.puzzle.width, gameState.puzzle.height);
           const distTiles = Math.hypot(char.x - fromX, char.y - fromY);
-          const durationMs = Math.min(FLY_IN_MAX_MS, Math.max(FLY_IN_MIN_MS, Math.round(distTiles * FLY_IN_MS_PER_TILE)));
+          const durationMs = Math.min(FLY_IN_MAX_MS, Math.max(FLY_IN_MIN_MS, Math.round(distTiles * FLY_IN_MS_PER_TILE_HERO)));
           characterFlyInsRef.current.set(spawnKey, {
             startTime: now,
             durationMs,
             fromX,
             fromY,
             facing: directionFromTravel(char.x - fromX, char.y - fromY),
+            style: charSprite.spawnFlyInStyle ?? 'straight',
+            ...rollFlyInPersonality(),
           });
           spawnStart = now + durationMs;
         }
@@ -1528,10 +1605,11 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
           // its tile (gameStarted bail).
           const flyIn = enemyFlyInsRef.current.get(index);
           if (flyIn && !gameStarted && !enemy.dead && now - flyIn.startTime < flyIn.durationMs) {
-            const t = (now - flyIn.startTime) / flyIn.durationMs; // linear by design
-            const renderX = flyIn.fromX + (enemy.x - flyIn.fromX) * t;
-            const renderY = flyIn.fromY + (enemy.y - flyIn.fromY) * t;
-            drawEnemy(ctx, enemy, renderX, renderY, true, flyIn.facing, gameStarted, undefined, now, undefined, enemyGlow, index);
+            const t = (now - flyIn.startTime) / flyIn.durationMs;
+            const p = flyInPointAt(flyIn, enemy.x, enemy.y, t);
+            // Swoops bank: facing follows the curve. Other styles hold the launch heading.
+            const flightFacing = flyIn.style === 'swoop' ? directionFromTravel(p.dx, p.dy) : flyIn.facing;
+            drawEnemy(ctx, enemy, p.x, p.y, true, flightFacing, gameStarted, undefined, now, undefined, enemyGlow, index);
             return;
           }
           // Walk for the whole turn if this enemy changed tiles this turn
@@ -1621,10 +1699,11 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
           // Snaps to its tile if the game starts mid-flight.
           const charFlyIn = characterFlyInsRef.current.get(spawnKey);
           if (charFlyIn && !gameStarted && !character.dead && now - charFlyIn.startTime < charFlyIn.durationMs) {
-            const t = (now - charFlyIn.startTime) / charFlyIn.durationMs; // linear by design
-            const renderX = charFlyIn.fromX + (character.x - charFlyIn.fromX) * t;
-            const renderY = charFlyIn.fromY + (character.y - charFlyIn.fromY) * t;
-            drawCharacter(ctx, character, renderX, renderY, true, charFlyIn.facing, gameStarted, undefined, now, undefined, charGlow, index);
+            const t = (now - charFlyIn.startTime) / charFlyIn.durationMs;
+            const p = flyInPointAt(charFlyIn, character.x, character.y, t);
+            // Swoops bank: facing follows the curve. Other styles hold the launch heading.
+            const flightFacing = charFlyIn.style === 'swoop' ? directionFromTravel(p.dx, p.dy) : charFlyIn.facing;
+            drawCharacter(ctx, character, p.x, p.y, true, flightFacing, gameStarted, undefined, now, undefined, charGlow, index);
             return;
           }
           // Walk for the whole turn if this character changed tiles this turn

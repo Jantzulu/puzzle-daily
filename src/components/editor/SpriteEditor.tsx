@@ -3735,6 +3735,27 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, sh
           load. Enemies fly in when the board loads; heroes fly in when placed (replacing the
           drop-in). The spawn animation above plays on landing — or idle if none is set.
         </p>
+        {sprite.spawnFlyIn && (
+          <div className="mb-3">
+            <div className="flex items-center gap-2">
+              <label className="text-xs font-bold">Flight path</label>
+              <select
+                value={sprite.spawnFlyInStyle ?? 'straight'}
+                onChange={(e) => onChange({ ...sprite, spawnFlyInStyle: e.target.value === 'straight' ? undefined : e.target.value as 'swoop' | 'flutter' })}
+                className="px-2 py-1 bg-stone-700 rounded text-xs"
+              >
+                <option value="straight">Straight</option>
+                <option value="swoop">Swooping arc</option>
+                <option value="flutter">Flutter (erratic)</option>
+              </select>
+            </div>
+            <p className="text-[10px] text-stone-500 mt-1">
+              Swoop banks along a random arc, turning to face along the curve. Flutter wobbles
+              like a bat mid-flight and settles just before landing. Every flight rolls its own
+              arc and rhythm.
+            </p>
+          </div>
+        )}
 
         {/* Spawn Sprite Sheet Upload */}
         <div className="mb-4">

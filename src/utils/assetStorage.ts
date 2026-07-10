@@ -308,6 +308,10 @@ export interface CustomSprite {
   // spawn animations. Random is safe here: pre-game theater, render-only,
   // never enters game state — see the fly-in helpers in AnimatedGameBoard.
   spawnFlyIn?: boolean;
+  // Flight path: 'straight' beeline (default), 'swoop' banks along a random
+  // arc with facing following the curve, 'flutter' wobbles erratically like
+  // a bat and settles before landing. Each flight rolls its own arc/wobble.
+  spawnFlyInStyle?: 'straight' | 'swoop' | 'flutter';
 
   // Simple rendering (single sprite for all directions)
   shape?: 'circle' | 'square' | 'triangle' | 'star' | 'diamond' | 'hexagon';
