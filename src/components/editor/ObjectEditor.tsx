@@ -1,12 +1,12 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { toast } from '../shared/Toast';
 import { findAssetUsages, formatUsageWarning } from '../../utils/assetDependencies';
 import { scaledNameClass } from '../../utils/textScale';
 import type { CustomObject, CustomSprite, ObjectEffectConfig, ObjectAnchorPoint } from '../../utils/assetStorage';
-import { saveObject, getCustomObjects, deleteObject, getFolders } from '../../utils/assetStorage';
-import { subscribeToImageLoads } from '../../utils/imageLoader';
+import { saveObject, getCustomObjects, deleteObject, getFolders, getPuzzleSkins, loadPuzzleSkin } from '../../utils/assetStorage';
+import { subscribeToImageLoads, loadImage } from '../../utils/imageLoader';
 import { StaticSpriteEditor } from './StaticSpriteEditor';
-import { getSpriteDrawHeight } from './SpriteEditor';
+import { getSpriteDrawHeight, ART_TILE_PX } from './SpriteEditor';
 import { SpriteThumbnail } from './SpriteThumbnail';
 import { drawSprite } from './SpriteEditor';
 import { FolderDropdown, useFilteredAssets, InlineFolderPicker } from './FolderDropdown';
@@ -43,15 +43,25 @@ const getEffectIcon = (type: ObjectEffectConfig['type']): string => {
   }
 };
 
-// Live preview tile that mirrors the renderer math from drawPlacedObject /
-// drawObject so the user sees scale/offset/anchor changes immediately.
-const PREVIEW_TILE_SIZE = 120;
-const PREVIEW_PADDING = 32; // headroom around the tile so overflow is visible
-const PREVIEW_CANVAS = PREVIEW_TILE_SIZE + PREVIEW_PADDING * 2;
+// Demo board: a small grid of skinned floor tiles with the object placed on
+// it, mirroring drawPlacedObject / drawObject exactly (native art size,
+// art-pixel offsets, anchor math). Click a tile to move the object around;
+// pick a skin to see it against different floor art.
+const DEMO_ZOOM = 4; // integer zoom, like the board (24 art px → 96 px tiles)
+const DEMO_TILE = ART_TILE_PX * DEMO_ZOOM;
+const DEMO_COLS = 3;
+const DEMO_ROWS = 3;
+const DEMO_PAD = 40; // headroom so tall/offset sprites can overflow visibly
 
-const ObjectTransformPreview: React.FC<{ obj: CustomObject }> = ({ obj }) => {
+const ObjectBoardPreview: React.FC<{ obj: CustomObject }> = ({ obj }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [imageTick, setImageTick] = useState(0);
+  const [skinId, setSkinId] = useState('builtin_dungeon');
+  const [objPos, setObjPos] = useState({ x: 1, y: 1 }); // center tile
+  const skins = useMemo(() => getPuzzleSkins(), []);
+
+  const canvasW = DEMO_COLS * DEMO_TILE + DEMO_PAD * 2;
+  const canvasH = DEMO_ROWS * DEMO_TILE + DEMO_PAD * 2;
 
   // Re-render whenever any image finishes loading so async sprites appear.
   useEffect(() => subscribeToImageLoads(() => setImageTick(t => t + 1)), []);
@@ -62,51 +72,102 @@ const ObjectTransformPreview: React.FC<{ obj: CustomObject }> = ({ obj }) => {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    ctx.clearRect(0, 0, PREVIEW_CANVAS, PREVIEW_CANVAS);
+    ctx.imageSmoothingEnabled = false;
+    ctx.clearRect(0, 0, canvasW, canvasH);
 
-    // Draw a single tile so users can see how the sprite sits inside (or
-    // overflows) tile bounds.
-    const tileX = PREVIEW_PADDING;
-    const tileY = PREVIEW_PADDING;
-    ctx.fillStyle = '#3a342c';
-    ctx.fillRect(tileX, tileY, PREVIEW_TILE_SIZE, PREVIEW_TILE_SIZE);
-    ctx.strokeStyle = '#6b5d44';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(tileX + 0.5, tileY + 0.5, PREVIEW_TILE_SIZE - 1, PREVIEW_TILE_SIZE - 1);
+    // Floor tiles from the selected skin (fallback: flat board color).
+    const skin = skinId ? loadPuzzleSkin(skinId) : null;
+    const floorSrc = skin?.tileSprites?.empty;
+    const floorImg = floorSrc ? loadImage(floorSrc) : null;
+    const floorReady = !!(floorImg && floorImg.complete && floorImg.naturalWidth > 0);
 
-    // Mirror drawObject / drawPlacedObject transform math.
-    const scale = obj.scale ?? 1;
-    const offsetX = (obj.offsetX ?? 0) * PREVIEW_TILE_SIZE;
-    const offsetY = (obj.offsetY ?? 0) * PREVIEW_TILE_SIZE;
-    const renderTileSize = PREVIEW_TILE_SIZE * scale;
+    for (let ty = 0; ty < DEMO_ROWS; ty++) {
+      for (let tx = 0; tx < DEMO_COLS; tx++) {
+        const px = DEMO_PAD + tx * DEMO_TILE;
+        const py = DEMO_PAD + ty * DEMO_TILE;
+        if (floorReady) {
+          ctx.drawImage(floorImg!, px, py, DEMO_TILE, DEMO_TILE);
+        } else {
+          ctx.fillStyle = '#3a342c';
+          ctx.fillRect(px, py, DEMO_TILE, DEMO_TILE);
+          ctx.strokeStyle = '#6b5d44';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(px + 0.5, py + 0.5, DEMO_TILE - 1, DEMO_TILE - 1);
+        }
+      }
+    }
 
-    let centerX = tileX + PREVIEW_TILE_SIZE / 2;
-    let centerY = tileY + PREVIEW_TILE_SIZE / 2;
+    // Dashed outline on the object's tile so its bounds stay readable over art.
+    const tileX = DEMO_PAD + objPos.x * DEMO_TILE;
+    const tileY = DEMO_PAD + objPos.y * DEMO_TILE;
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+    ctx.setLineDash([4, 4]);
+    ctx.strokeRect(tileX + 0.5, tileY + 0.5, DEMO_TILE - 1, DEMO_TILE - 1);
+    ctx.setLineDash([]);
+
+    // Object — exact drawPlacedObject math: native size, art-px offsets.
+    const offsetX = (obj.offsetX ?? 0) * DEMO_ZOOM;
+    const offsetY = (obj.offsetY ?? 0) * DEMO_ZOOM;
+
+    let centerX = tileX + DEMO_TILE / 2;
+    let centerY = tileY + DEMO_TILE / 2;
     if (obj.anchorPoint === 'bottom_center' && obj.customSprite) {
-      const spriteHeight = getSpriteDrawHeight(obj.customSprite, renderTileSize);
-      centerY = tileY + PREVIEW_TILE_SIZE / 2 - spriteHeight / 2;
+      const spriteHeight = getSpriteDrawHeight(obj.customSprite, DEMO_TILE);
+      centerY = tileY + DEMO_TILE / 2 - spriteHeight / 2;
     }
     centerX += offsetX;
     centerY += offsetY;
 
     if (obj.customSprite) {
-      drawSprite(ctx, obj.customSprite, centerX, centerY, renderTileSize);
+      drawSprite(ctx, obj.customSprite, centerX, centerY, DEMO_TILE);
     } else {
-      const fallback = (PREVIEW_TILE_SIZE / 2) * scale;
+      const fallback = DEMO_TILE / 2;
       ctx.fillStyle = '#8b4513';
       ctx.fillRect(centerX - fallback / 2, centerY - fallback / 2, fallback, fallback);
     }
-  }, [obj.scale, obj.offsetX, obj.offsetY, obj.anchorPoint, obj.customSprite, imageTick]);
+  }, [obj.offsetX, obj.offsetY, obj.anchorPoint, obj.customSprite, skinId, objPos, imageTick, canvasW, canvasH]);
+
+  const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    // The canvas renders 1:1 with its CSS size unless the layout shrinks it.
+    const scaleX = canvasW / rect.width;
+    const scaleY = canvasH / rect.height;
+    const x = Math.floor(((e.clientX - rect.left) * scaleX - DEMO_PAD) / DEMO_TILE);
+    const y = Math.floor(((e.clientY - rect.top) * scaleY - DEMO_PAD) / DEMO_TILE);
+    if (x >= 0 && x < DEMO_COLS && y >= 0 && y < DEMO_ROWS) {
+      setObjPos({ x, y });
+    }
+  };
 
   return (
-    <div className="flex justify-center">
-      <canvas
-        ref={canvasRef}
-        width={PREVIEW_CANVAS}
-        height={PREVIEW_CANVAS}
-        className="rounded border border-stone-700"
-        style={{ imageRendering: 'pixelated' }}
-      />
+    <div className="space-y-2">
+      <div className="flex justify-center">
+        <canvas
+          ref={canvasRef}
+          width={canvasW}
+          height={canvasH}
+          onClick={handleCanvasClick}
+          className="rounded border border-stone-700 cursor-pointer max-w-full"
+          style={{ imageRendering: 'pixelated' }}
+          title="Click a tile to move the object"
+        />
+      </div>
+      <div className="flex items-center justify-center gap-2">
+        <label className="text-xs text-stone-400">Demo skin</label>
+        <select
+          value={skinId}
+          onChange={(e) => setSkinId(e.target.value)}
+          className="px-2 py-1 bg-stone-700 rounded text-xs"
+        >
+          <option value="builtin_dungeon">Dungeon (built-in)</option>
+          {skins.map(s => (
+            <option key={s.id} value={s.id}>{s.name}</option>
+          ))}
+          <option value="">None (flat)</option>
+        </select>
+      </div>
     </div>
   );
 };
@@ -510,7 +571,7 @@ export const ObjectEditor: React.FC<{ initialSelectedId?: string }> = ({ initial
 
           {/* Positioning */}
           <CollapsiblePanel title="Positioning" className="space-y-3">
-            <ObjectTransformPreview obj={editing} />
+            <ObjectBoardPreview obj={editing} />
             <div>
               <label className="block text-sm mb-1">Anchor Point</label>
               <select
@@ -537,60 +598,41 @@ export const ObjectEditor: React.FC<{ initialSelectedId?: string }> = ({ initial
                 <option value="above_entities">Above Entities</option>
               </select>
             </div>
-            <div>
-              <div className="flex items-baseline justify-between mb-1">
-                <label className="text-sm">Scale</label>
-                <span className="text-xs text-stone-400">{(editing.scale ?? 1).toFixed(2)}×</span>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm mb-1">Offset X (art px)</label>
+                <input
+                  type="number"
+                  step={1}
+                  value={editing.offsetX ?? ''}
+                  placeholder="0"
+                  onChange={(e) => setEditing({ ...editing, offsetX: e.target.value === '' ? undefined : Math.round(Number(e.target.value)) })}
+                  className="w-full px-3 py-2 bg-stone-700 rounded"
+                />
               </div>
-              <input
-                type="range"
-                min="0.25"
-                max="2"
-                step="0.05"
-                value={editing.scale ?? 1}
-                onChange={(e) => setEditing({ ...editing, scale: parseFloat(e.target.value) })}
-                className="w-full"
-              />
-              <p className="text-xs text-stone-400 mt-1">Multiplies the rendered sprite size on top of the sprite&apos;s own size.</p>
-            </div>
-            <div>
-              <div className="flex items-baseline justify-between mb-1">
-                <label className="text-sm">Offset X</label>
-                <span className="text-xs text-stone-400">{(editing.offsetX ?? 0).toFixed(2)}</span>
+              <div>
+                <label className="block text-sm mb-1">Offset Y (art px)</label>
+                <input
+                  type="number"
+                  step={1}
+                  value={editing.offsetY ?? ''}
+                  placeholder="0"
+                  onChange={(e) => setEditing({ ...editing, offsetY: e.target.value === '' ? undefined : Math.round(Number(e.target.value)) })}
+                  className="w-full px-3 py-2 bg-stone-700 rounded"
+                />
               </div>
-              <input
-                type="range"
-                min="-0.5"
-                max="0.5"
-                step="0.05"
-                value={editing.offsetX ?? 0}
-                onChange={(e) => setEditing({ ...editing, offsetX: parseFloat(e.target.value) })}
-                className="w-full"
-              />
             </div>
-            <div>
-              <div className="flex items-baseline justify-between mb-1">
-                <label className="text-sm">Offset Y</label>
-                <span className="text-xs text-stone-400">{(editing.offsetY ?? 0).toFixed(2)}</span>
-              </div>
-              <input
-                type="range"
-                min="-0.5"
-                max="0.5"
-                step="0.05"
-                value={editing.offsetY ?? 0}
-                onChange={(e) => setEditing({ ...editing, offsetY: parseFloat(e.target.value) })}
-                className="w-full"
-              />
-              <p className="text-xs text-stone-400 mt-1">Offsets are in tile-fraction units. Negative Y shifts up.</p>
-            </div>
-            {((editing.scale ?? 1) !== 1 || (editing.offsetX ?? 0) !== 0 || (editing.offsetY ?? 0) !== 0) && (
+            <p className="text-xs text-stone-400">
+              Whole art pixels (a tile is 24). Negative Y shifts up. The sprite renders at
+              native art size — to change how big an object is, resize its art.
+            </p>
+            {((editing.offsetX ?? 0) !== 0 || (editing.offsetY ?? 0) !== 0) && (
               <button
                 type="button"
-                onClick={() => setEditing({ ...editing, scale: 1, offsetX: 0, offsetY: 0 })}
+                onClick={() => setEditing({ ...editing, offsetX: undefined, offsetY: undefined })}
                 className="text-xs text-stone-400 hover:text-stone-200 underline"
               >
-                Reset transform
+                Reset offsets
               </button>
             )}
           </CollapsiblePanel>

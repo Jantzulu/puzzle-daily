@@ -473,9 +473,11 @@ export interface CustomObject {
 
   // Positioning
   anchorPoint: ObjectAnchorPoint; // Where sprite is anchored to tile
-  // Fine-grained transform applied on top of customSprite.size and anchorPoint.
-  // scale multiplies the rendered size (default 1.0); offsetX/Y shift the
-  // sprite within its tile in tile-fraction units (e.g. 0.25 = 1/4 tile).
+  // Whole ART-PIXEL offsets from the anchor position (a tile is 24×24 art
+  // px), matching the native-size rule every other sprite follows. Legacy
+  // tile-fraction offsets and the old scale knob are migrated/dropped on
+  // read (see migrateObjectTransform) — art renders at native resolution.
+  /** @deprecated ignored since the native-size migration; resize the art */
   scale?: number;
   offsetX?: number;
   offsetY?: number;
@@ -1040,6 +1042,38 @@ export const saveObject = (object: CustomObject): boolean => {
   return success;
 };
 
+// Native-size migration (2026-07): object offsets moved from tile-fraction
+// units to whole ART PIXELS, and the legacy scale knob is ignored — objects
+// now render at native art resolution like every other sprite. Legacy
+// fractions are recognizable as non-integers within [-0.5, 0.5] and convert
+// in place (0.25 tile → 6 art px); the result persists on next save.
+const OBJECT_ART_TILE_PX = 24;
+const warnedLegacyScaleObjects = new Set<string>();
+
+const migrateObjectTransform = (obj: CustomObject): CustomObject => {
+  const isLegacyFraction = (v: number | undefined): v is number =>
+    typeof v === 'number' && v !== 0 && !Number.isInteger(v) && Math.abs(v) <= 0.5;
+
+  let migrated = obj;
+  if (isLegacyFraction(obj.offsetX) || isLegacyFraction(obj.offsetY)) {
+    migrated = {
+      ...migrated,
+      offsetX: isLegacyFraction(obj.offsetX) ? Math.round(obj.offsetX * OBJECT_ART_TILE_PX) : obj.offsetX,
+      offsetY: isLegacyFraction(obj.offsetY) ? Math.round(obj.offsetY * OBJECT_ART_TILE_PX) : obj.offsetY,
+    };
+  }
+  if (migrated.scale !== undefined) {
+    if (migrated.scale !== 1 && !warnedLegacyScaleObjects.has(obj.id)) {
+      warnedLegacyScaleObjects.add(obj.id);
+      console.warn(
+        `Object "${obj.name}" had legacy scale ${migrated.scale}× — scale knobs were removed by the native-size rule; it now renders at native art size. Resize the art if it should be bigger.`,
+      );
+    }
+    migrated = { ...migrated, scale: undefined };
+  }
+  return migrated;
+};
+
 export const getCustomObjects = (): CustomObject[] => {
   if (objectsCache !== null) return objectsCache.slice();
   const stored = localStorage.getItem(OBJECT_STORAGE_KEY);
@@ -1048,7 +1082,7 @@ export const getCustomObjects = (): CustomObject[] => {
     return [];
   }
   try {
-    objectsCache = JSON.parse(stored);
+    objectsCache = (JSON.parse(stored) as CustomObject[]).map(migrateObjectTransform);
     return objectsCache!.slice();
   } catch (e) {
     console.error('Failed to parse custom objects:', e);

@@ -5,7 +5,7 @@ import type { Puzzle, TileOrNull, PlacedEnemy, PlacedCollectible, PlacedObject, 
 import { TileType, Direction, ActionType } from '../../types/game';
 import { getAllCharacters, getCharacter } from '../../data/characters';
 import { getAllEnemies, getEnemy } from '../../data/enemies';
-import { drawSprite, getSpriteDrawHeight } from './SpriteEditor';
+import { drawSprite, getSpriteDrawHeight, ART_TILE_PX } from './SpriteEditor';
 import { playBackgroundMusic, stopMusic } from '../../utils/gameSounds';
 import { savePuzzle, getSavedPuzzles, deletePuzzle, loadPuzzle, type SavedPuzzle } from '../../utils/puzzleStorage';
 import { cacheEditorState, getCachedEditorState, clearCachedEditorState } from '../../utils/editorState';
@@ -4275,10 +4275,11 @@ function drawObject(ctx: CanvasRenderingContext2D, x: number, y: number, objectI
   const px = x * TILE_SIZE;
   const py = y * TILE_SIZE;
 
-  const scale = objectData.scale ?? 1;
-  const offsetX = (objectData.offsetX ?? 0) * TILE_SIZE;
-  const offsetY = (objectData.offsetY ?? 0) * TILE_SIZE;
-  const renderTileSize = TILE_SIZE * scale;
+  // Offsets are whole art pixels (native-size rule); legacy tile-fraction
+  // offsets and the old scale knob are migrated away in assetStorage.
+  const zoom = TILE_SIZE / ART_TILE_PX;
+  const offsetX = (objectData.offsetX ?? 0) * zoom;
+  const offsetY = (objectData.offsetY ?? 0) * zoom;
 
   // Calculate center position based on anchor point, then apply offsets.
   let centerX = px + TILE_SIZE / 2;
@@ -4287,7 +4288,7 @@ function drawObject(ctx: CanvasRenderingContext2D, x: number, y: number, objectI
   if (objectData.anchorPoint === 'bottom_center' && objectData.customSprite) {
     // For bottom_center: sprite's bottom edge aligns with tile's center
     // So sprite center is offset upward by half the sprite height
-    const spriteHeight = getSpriteDrawHeight(objectData.customSprite, renderTileSize);
+    const spriteHeight = getSpriteDrawHeight(objectData.customSprite, TILE_SIZE);
     centerY = py + TILE_SIZE / 2 - spriteHeight / 2;
   }
 
@@ -4297,10 +4298,10 @@ function drawObject(ctx: CanvasRenderingContext2D, x: number, y: number, objectI
   // Draw custom sprite if available
   if (objectData.customSprite) {
     // Use drawSprite which handles images, spritesheets, and shape fallbacks
-    drawSprite(ctx, objectData.customSprite, centerX, centerY, renderTileSize);
+    drawSprite(ctx, objectData.customSprite, centerX, centerY, TILE_SIZE);
   } else {
-    // Fallback: draw a simple brown square (scaled, centered, with offsets applied)
-    const fallback = (TILE_SIZE / 2) * scale;
+    // Fallback: draw a simple brown square (centered, with offsets applied)
+    const fallback = TILE_SIZE / 2;
     ctx.fillStyle = '#8b4513';
     ctx.fillRect(centerX - fallback / 2, centerY - fallback / 2, fallback, fallback);
   }
