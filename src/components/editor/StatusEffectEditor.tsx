@@ -531,12 +531,14 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
 
               {/* Borrowed hit visual — a spell's landed-hit presentation */}
               <div className="pt-2 border-t border-stone-600">
-                <div className="text-sm text-stone-300 mb-1">Hit visual (optional)</div>
+                <div className="text-sm text-stone-300 mb-1">Default hit visual (optional)</div>
                 <p className="text-xs text-stone-400 mb-2">
-                  Borrow a spell&apos;s successful-hit visuals when the contact fires: its melee
-                  attack sprite plays toward the attacker and its damage effect lands on them.
-                  Visuals only — the spell&apos;s damage and mechanics are not used, and there&apos;s
-                  no projectile flight (contact damage always lands).
+                  Borrow a spell&apos;s successful-hit visuals when the contact fires: its
+                  projectile hops to the attacker, then its melee attack sprite and damage
+                  effect land on them. Visuals only — the spell&apos;s damage and mechanics are
+                  not used. This is the DEFAULT for every holder of this effect; each entity
+                  can override it with its own &quot;Contact hit visual&quot; in the Enemy/Hero
+                  editor (a golem punches, an imp fireballs, one shared effect).
                 </p>
                 <div className="flex items-center gap-2">
                   <button

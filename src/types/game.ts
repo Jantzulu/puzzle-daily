@@ -247,6 +247,12 @@ export interface Character {
   // Death drop configuration
   droppedCollectibleId?: string; // CustomCollectible ID to spawn on death
 
+  // Contact-damage hit visual — THIS entity's strike presentation. When its
+  // contact damage fires (however acquired: innate starting effect or one
+  // applied mid-game by a spell), borrow the named spell's landed-hit
+  // visuals. Overrides the status effect asset's own default visual.
+  contactHitSpellVisualId?: string;
+
   // Initial status effects — applied when the entity is placed/spawned
   initialStatusEffects?: Array<{
     statusAssetId: string;   // Reference to a StatusEffectAsset
@@ -289,6 +295,12 @@ export interface Enemy {
 
   // Death drop configuration
   droppedCollectibleId?: string; // CustomCollectible ID to spawn on death
+
+  // Contact-damage hit visual — THIS entity's strike presentation. When its
+  // contact damage fires (however acquired: innate starting effect or one
+  // applied mid-game by a spell), borrow the named spell's landed-hit
+  // visuals. Overrides the status effect asset's own default visual.
+  contactHitSpellVisualId?: string;
 
   // Initial status effects — applied when the entity is placed/spawned
   initialStatusEffects?: Array<{

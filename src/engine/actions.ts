@@ -779,15 +779,20 @@ function applyContactDamageReaction(
     }
   }
 
-  // Borrowed hit presentation: the effect can name a spell whose LANDED-HIT
-  // visuals play when the contact fires — the melee-attack sprite on the
-  // attacker's tile oriented toward them (it's the holder striking whoever
-  // walked in), plus the spell's damage effect there. Visuals only: no
-  // damage, cooldowns, or mechanics are inherited, and since contact damage
-  // always lands, only the successful-hit presentation is used — no
-  // projectile flight even for projectile spells.
-  if (asset.contactDamageSpellVisualId) {
-    const spell = loadSpellAsset(asset.contactDamageSpellVisualId);
+  // Borrowed hit presentation: play a spell's LANDED-HIT visuals when the
+  // contact fires — the melee-attack sprite on the attacker's tile oriented
+  // toward them (it's the holder striking whoever walked in), plus the
+  // spell's damage effect there. Visuals only: no damage, cooldowns, or
+  // mechanics are inherited.
+  //
+  // Resolution: the HOLDER's own visual identity wins (a golem punches, an
+  // imp fireballs — even while sharing one reusable contact-damage effect,
+  // or gaining contact damage mid-game from a spell); the effect asset's
+  // visual is the fallback default for inherently-themed effects.
+  const holderData = 'enemyId' in holder ? getEnemy(holder.enemyId) : getCharacter(holder.characterId);
+  const visualSpellId = holderData?.contactHitSpellVisualId ?? asset.contactDamageSpellVisualId;
+  if (visualSpellId) {
+    const spell = loadSpellAsset(visualSpellId);
     if (spell) {
       const toward = calculateDirectionTo(holder.x, holder.y, attacker.x, attacker.y);
       // The bolt itself: a one-tile flight from the holder to the attacker,

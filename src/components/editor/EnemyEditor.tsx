@@ -5,7 +5,7 @@ import { scaledNameClass } from '../../utils/textScale';
 import { Direction } from '../../types/game';
 import type { CharacterAction, EnemyBehavior } from '../../types/game';
 import type { CustomEnemy, CustomSprite } from '../../utils/assetStorage';
-import { saveEnemy, deleteEnemy, getFolders, getSoundAssets, getAllCollectibles, loadStatusEffectAsset } from '../../utils/assetStorage';
+import { saveEnemy, deleteEnemy, getFolders, getSoundAssets, getAllCollectibles, loadStatusEffectAsset, loadSpellAsset } from '../../utils/assetStorage';
 import { getAllEnemies } from '../../data/enemies';
 import { SpriteEditor } from './SpriteEditor';
 import { SpriteThumbnail } from './SpriteThumbnail';
@@ -36,6 +36,7 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
   const [_isCreating, setIsCreating] = useState(false);
   const [showSpellPicker, setShowSpellPicker] = useState<number | null>(null);
   const [showStatusEffectPicker, setShowStatusEffectPicker] = useState(false);
+  const [showContactVisualPicker, setShowContactVisualPicker] = useState(false);
   const [activeTab, setActiveTab] = useState<'details' | 'behavior' | 'sprite'>('details');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
@@ -755,6 +756,35 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
                     >
                       + Add Status Effect
                     </button>
+
+                    {/* Contact hit visual — THIS enemy's strike presentation */}
+                    <div className="mt-3 pt-3 border-t border-stone-700">
+                      <div className="text-sm text-stone-300 mb-1">Contact hit visual</div>
+                      <p className="text-xs text-stone-400 mb-2">
+                        When this enemy&apos;s contact damage fires — from a starting effect above
+                        or one gained mid-game — show the chosen spell&apos;s landed-hit visuals
+                        (projectile hop, melee sprite, damage effect). Overrides the status
+                        effect&apos;s own default visual. Visuals only; no damage inherited.
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => setShowContactVisualPicker(true)}
+                          className="px-2 py-1 bg-arcane-700 rounded text-xs hover:bg-arcane-600"
+                        >
+                          {editing.contactHitSpellVisualId
+                            ? `Spell: ${loadSpellAsset(editing.contactHitSpellVisualId)?.name ?? 'missing spell'}`
+                            : 'Choose spell…'}
+                        </button>
+                        {editing.contactHitSpellVisualId && (
+                          <button
+                            onClick={() => updateEnemy({ contactHitSpellVisualId: undefined })}
+                            className="px-2 py-1 bg-red-600 rounded text-xs hover:bg-red-700"
+                          >
+                            Clear
+                          </button>
+                        )}
+                      </div>
+                    </div>
                   </CollapsiblePanel>
                 </div>
               )}
@@ -883,6 +913,17 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
             setShowStatusEffectPicker(false);
           }}
           onCancel={() => setShowStatusEffectPicker(false)}
+        />
+      )}
+
+      {/* Contact Hit Visual Picker Modal */}
+      {showContactVisualPicker && editing && (
+        <SpellPicker
+          onSelect={(spell) => {
+            updateEnemy({ contactHitSpellVisualId: spell.id });
+            setShowContactVisualPicker(false);
+          }}
+          onCancel={() => setShowContactVisualPicker(false)}
         />
       )}
     </>
