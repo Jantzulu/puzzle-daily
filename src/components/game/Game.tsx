@@ -2388,8 +2388,9 @@ export const Game: React.FC<GameProps> = ({
                         >
                           {/* Emerald stone — supersedes the legacy flat theme
                               colors for this button (custom theme IMAGES still
-                              win via the branch above) */}
-                          <GemMesh tone="emerald" phase={0} />
+                              win via the branch above). A lost daily cracks
+                              the stone until local midnight heals it. */}
+                          <GemMesh tone="emerald" phase={0} cracked={dailyLockStatus === 'lost'} />
                           <span>Play</span>
                         </button>
                       )
