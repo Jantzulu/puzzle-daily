@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from '../shared/Toast';
+import { PortcullisMesh } from '../game/PortcullisMesh';
+import { GemMesh } from '../game/GemMesh';
 
 // ============================================================================
 // PANEL FORGE — nine-slice / tiling-piece spec + template exporter (Phase 1)
@@ -89,36 +91,34 @@ const DEFAULT_KITS: KitSpec[] = [
     id: 'portcullis-gate',
     name: 'Portcullis Gate (bars)',
     builtIn: true,
-    description: 'The gate bars rising above the control rail (currently PortcullisMesh SVG). Bars repeat vertically; slats repeat across.',
+    description: 'The gate bars rising above the control rail (currently the top zone of PortcullisMesh). Proportions derived from the live mesh: bars are narrow — about 5 art px on a 144 art px rail.',
     pieces: [
-      { id: 'bar-segment', label: 'Gate Bar Segment', w: 8, h: 24, repeat: 'tile-y', notes: 'One bar, lit left edge / shaded right. Repeats upward behind the board.' },
-      { id: 'bar-top-cap', label: 'Bar Top Cap', w: 8, h: 8, repeat: 'fixed', notes: 'Optional finial where a bar ends.' },
-      { id: 'cross-slat', label: 'Cross Slat', w: 24, h: 8, repeat: 'tile-x', notes: 'Horizontal lattice member across the bars.' },
-      { id: 'gate-spike', label: 'Gate Spike Tip', w: 12, h: 12, repeat: 'fixed', notes: 'Hangs from the bottom of a bar; anchors at its root (top edge).' },
+      { id: 'bar-segment', label: 'Gate Bar Segment', w: 5, h: 16, repeat: 'tile-y', notes: 'One bar: lit left edge, shaded right. Repeats upward behind the board.' },
+      { id: 'bar-top-cap', label: 'Bar Top Cap', w: 5, h: 4, repeat: 'fixed', notes: 'Optional finial where a bar ends.' },
     ],
   },
   {
     id: 'control-rail',
     name: 'Control Rail',
     builtIn: true,
-    description: 'The iron rail the game controls sit on — independent from the gate bars so it can be forged differently.',
+    description: 'The iron rail the game controls sit on, with its forge plates and hanging spikes — independent from the gate bars so it can be forged differently. Proportions derived from the live mesh.',
     pieces: [
       { id: 'rail-face', label: 'Rail Face', w: 24, h: 16, repeat: 'tile-x', notes: 'The flat band the DOM controls sit on. Lit top edge, dark bottom lip.' },
-      { id: 'rail-cap-l', label: 'Rail Cap L', w: 12, h: 16, repeat: 'fixed' },
-      { id: 'rail-cap-r', label: 'Rail Cap R', w: 12, h: 16, repeat: 'fixed' },
-      { id: 'forge-plate', label: 'Forge Plate', w: 8, h: 8, repeat: 'fixed', notes: 'Square bolt plate where a gate bar meets the rail.' },
-      { id: 'rail-spike', label: 'Rail Spike', w: 12, h: 12, repeat: 'fixed', notes: 'Hangs below the rail; anchors at its root (top edge).' },
+      { id: 'rail-cap-l', label: 'Rail Cap L', w: 8, h: 16, repeat: 'fixed' },
+      { id: 'rail-cap-r', label: 'Rail Cap R', w: 8, h: 16, repeat: 'fixed' },
+      { id: 'forge-plate', label: 'Forge Plate', w: 4, h: 4, repeat: 'fixed', notes: 'Square bolt plate where a gate bar meets the rail, just below its lit top edge.' },
+      { id: 'rail-spike', label: 'Rail Spike', w: 7, h: 7, repeat: 'fixed', notes: 'Hangs below the rail; anchors at its root (top edge).' },
     ],
   },
   {
     id: 'play-gem',
     name: 'Play Gem',
     builtIn: true,
-    description: 'The play button gem, one slot per interaction state. Anchors CENTER — paint larger than nominal and it stays centered on the same point.',
+    description: 'The action-button gem — a WIDE table-cut stone (the live mesh is 200×70, ≈2.9:1), not a square. One slot per interaction state; anchors CENTER, so painting larger keeps it centered.',
     pieces: [
-      { id: 'gem-normal', label: 'Gem · Normal', w: 24, h: 24, repeat: 'fixed' },
-      { id: 'gem-hover', label: 'Gem · Hover', w: 24, h: 24, repeat: 'fixed' },
-      { id: 'gem-pressed', label: 'Gem · Pressed', w: 24, h: 24, repeat: 'fixed' },
+      { id: 'gem-normal', label: 'Gem · Normal', w: 64, h: 22, repeat: 'fixed' },
+      { id: 'gem-hover', label: 'Gem · Hover', w: 64, h: 22, repeat: 'fixed' },
+      { id: 'gem-pressed', label: 'Gem · Pressed', w: 64, h: 22, repeat: 'fixed' },
     ],
   },
   {
@@ -132,13 +132,22 @@ const DEFAULT_KITS: KitSpec[] = [
 
 // ─── Persistence ────────────────────────────────────────────────────────────
 const STORAGE_KEY = 'panel_forge_kits_v1';
+// Bump when DEFAULT_KITS change shape/sizes: stored BUILT-IN kits are then
+// replaced with the fresh defaults (mesh-derived proportions); user variants
+// are kept as-is.
+const DEFAULTS_VERSION = 2;
 
 function loadKits(): KitSpec[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return DEFAULT_KITS;
-    const stored = JSON.parse(raw) as KitSpec[];
-    // New built-in kits added after the user first saved must still appear.
+    const parsed = JSON.parse(raw) as KitSpec[] | { v: number; kits: KitSpec[] };
+    const stored = Array.isArray(parsed) ? parsed : parsed.kits;
+    const version = Array.isArray(parsed) ? 1 : parsed.v;
+    if (version < DEFAULTS_VERSION) {
+      const customs = stored.filter(k => !k.builtIn);
+      return [...DEFAULT_KITS, ...customs];
+    }
     const missing = DEFAULT_KITS.filter(d => !stored.some(s => s.id === d.id));
     return [...stored, ...missing];
   } catch {
@@ -148,8 +157,93 @@ function loadKits(): KitSpec[] {
 
 function saveKits(kits: KitSpec[]): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(kits));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ v: DEFAULTS_VERSION, kits }));
   } catch { /* quota — edits stay in memory for the session */ }
+}
+
+// ─── Current-game reference (the mesh under the texture map) ────────────────
+// The live SVG meshes are rasterized and mapped under the assembled view so
+// the artist draws on top of what the game currently renders. Crops are in
+// each mesh's viewBox units.
+
+interface RefCrop { src: 'portcullis' | 'gem'; x: number; y: number; w: number; h: number }
+
+// PortcullisMesh viewBox 1000×64: bars zone y 0–20, rail 20–52, spikes 52–64;
+// bars centered at x=100..900 (half-width 15), spikes half-width 22, plates
+// 22×7 at y=31. GemMesh viewBox 200×70.
+const REF_CROPS: Record<string, RefCrop> = {
+  'bar-segment': { src: 'portcullis', x: 85, y: 0, w: 30, h: 20 },
+  'bar-top-cap': { src: 'portcullis', x: 85, y: 0, w: 30, h: 6 },
+  'rail-face': { src: 'portcullis', x: 360, y: 20, w: 80, h: 32 },
+  'rail-cap-l': { src: 'portcullis', x: 0, y: 20, w: 40, h: 32 },
+  'rail-cap-r': { src: 'portcullis', x: 960, y: 20, w: 40, h: 32 },
+  'forge-plate': { src: 'portcullis', x: 87, y: 30, w: 26, h: 9 },
+  'rail-spike': { src: 'portcullis', x: 78, y: 52, w: 44, h: 12 },
+  'gem-normal': { src: 'gem', x: 0, y: 0, w: 200, h: 70 },
+  'gem-hover': { src: 'gem', x: 0, y: 0, w: 200, h: 70 },
+  'gem-pressed': { src: 'gem', x: 0, y: 0, w: 200, h: 70 },
+};
+
+const REF_VIEWBOX: Record<RefCrop['src'], { w: number; h: number }> = {
+  portcullis: { w: 1000, h: 64 },
+  gem: { w: 200, h: 70 },
+};
+
+type RefSources = Partial<Record<RefCrop['src'], HTMLCanvasElement>>;
+
+type Underlay =
+  | { mode: 'crops'; sources: RefSources }
+  | { mode: 'stretch'; image: HTMLImageElement };
+
+async function rasterizeSvg(svg: SVGSVGElement, w: number, h: number): Promise<HTMLCanvasElement> {
+  const clone = svg.cloneNode(true) as SVGSVGElement;
+  clone.setAttribute('width', String(w));
+  clone.setAttribute('height', String(h));
+  const xml = new XMLSerializer().serializeToString(clone);
+  const url = URL.createObjectURL(new Blob([xml], { type: 'image/svg+xml' }));
+  try {
+    const img = new Image();
+    await new Promise<void>((resolve, reject) => {
+      img.onload = () => resolve();
+      img.onerror = () => reject(new Error('svg rasterize failed'));
+      img.src = url;
+    });
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    canvas.getContext('2d')?.drawImage(img, 0, 0, w, h);
+    return canvas;
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+/** Draw the current-game reference under the assembly regions. */
+function drawUnderlay(
+  ctx: CanvasRenderingContext2D,
+  assembly: Assembly,
+  underlay: Underlay,
+  zoom: number,
+): void {
+  ctx.save();
+  ctx.imageSmoothingEnabled = true; // reference is a guide, not pixel art
+  if (underlay.mode === 'stretch') {
+    ctx.drawImage(underlay.image, 0, 0, assembly.width * zoom, assembly.height * zoom);
+  } else {
+    for (const r of assembly.regions) {
+      const crop = REF_CROPS[r.pieceId];
+      const source = crop && underlay.sources[crop.src];
+      if (!crop || !source) continue;
+      const s = source.width / REF_VIEWBOX[crop.src].w;
+      const sv = source.height / REF_VIEWBOX[crop.src].h;
+      ctx.drawImage(
+        source,
+        crop.x * s, crop.y * sv, crop.w * s, crop.h * sv,
+        r.x * zoom, r.y * zoom, r.w * zoom, r.h * zoom,
+      );
+    }
+  }
+  ctx.restore();
 }
 
 // ─── Layout ─────────────────────────────────────────────────────────────────
@@ -461,20 +555,28 @@ function renderAssembly(
   kit: KitSpec,
   zoom: number,
   hoveredId: string | null,
+  underlay?: Underlay,
 ): void {
   const colorIndex = new Map(kit.pieces.map((p, i) => [p.id, i]));
   ctx.fillStyle = '#0c0a09';
   ctx.fillRect(0, 0, assembly.width * zoom, assembly.height * zoom);
 
+  if (underlay) drawUnderlay(ctx, assembly, underlay, zoom);
+
   for (const r of assembly.regions) {
     const idx = colorIndex.get(r.pieceId) ?? 0;
     const highlighted = hoveredId === r.pieceId;
     const dimmed = hoveredId !== null && !highlighted;
-    // Alternating repeat shades make each tile period visible.
-    const baseAlpha = r.rep % 2 === 0 ? 0.72 : 0.45;
-    ctx.fillStyle = pieceColor(idx, highlighted ? 0.95 : dimmed ? baseAlpha * 0.25 : baseAlpha);
+    // Over a reference the regions become mostly-transparent overlays so the
+    // current-game render stays readable; solo they carry the whole picture.
+    // Alternating repeat shades make each tile period visible either way.
+    const baseAlpha = underlay
+      ? (r.rep % 2 === 0 ? 0.16 : 0.08)
+      : (r.rep % 2 === 0 ? 0.72 : 0.45);
+    const alpha = highlighted ? (underlay ? 0.45 : 0.95) : dimmed ? baseAlpha * 0.25 : baseAlpha;
+    ctx.fillStyle = pieceColor(idx, alpha);
     ctx.fillRect(r.x * zoom, r.y * zoom, r.w * zoom, r.h * zoom);
-    ctx.strokeStyle = highlighted ? '#ffffff' : 'rgba(0,0,0,0.55)';
+    ctx.strokeStyle = highlighted ? '#ffffff' : underlay ? pieceColor(idx, 0.8) : 'rgba(0,0,0,0.55)';
     ctx.lineWidth = highlighted ? 2 : 1;
     ctx.strokeRect(r.x * zoom + 0.5, r.y * zoom + 0.5, r.w * zoom - 1, r.h * zoom - 1);
   }
@@ -531,14 +633,51 @@ export const PanelForge: React.FC = () => {
   const [kits, setKits] = useState<KitSpec[]>(loadKits);
   const [selectedId, setSelectedId] = useState<string>(kits[0]?.id ?? 'window-panel');
   const [hoveredPieceId, setHoveredPieceId] = useState<string | null>(null);
+  const [refSources, setRefSources] = useState<RefSources>({});
+  const [uploadedRefs, setUploadedRefs] = useState<Map<string, HTMLImageElement>>(new Map());
+  const [showRef, setShowRef] = useState(true);
   const previewRef = useRef<HTMLCanvasElement>(null);
   const assemblyRef = useRef<HTMLCanvasElement>(null);
+  const meshCaptureRef = useRef<HTMLDivElement>(null);
 
   const kit = kits.find(k => k.id === selectedId) ?? kits[0];
   const layout = useMemo(() => (kit ? layoutKit(kit) : null), [kit]);
   const assembly = useMemo(() => (kit ? assembleKit(kit) : null), [kit]);
 
   useEffect(() => saveKits(kits), [kits]);
+
+  // Rasterize the live game meshes once on mount — these become the
+  // draw-under reference ("the rendered mesh next to the texture map").
+  useEffect(() => {
+    const root = meshCaptureRef.current;
+    if (!root) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const portSvg = root.querySelector<SVGSVGElement>('[data-capture="portcullis"] svg');
+        const gemSvg = root.querySelector<SVGSVGElement>('[data-capture="gem"] svg');
+        const sources: RefSources = {};
+        if (portSvg) sources.portcullis = await rasterizeSvg(portSvg, 2000, 128);
+        if (gemSvg) sources.gem = await rasterizeSvg(gemSvg, 400, 140);
+        if (!cancelled) setRefSources(sources);
+      } catch {
+        // Reference is a nicety — the colored assembly still works without it.
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  // Which reference applies to this kit: mesh crops where the game has a
+  // real SVG (gate/rail/gem), otherwise a user-uploaded screenshot.
+  const kitHasMeshRef = !!kit && kit.pieces.some(p => REF_CROPS[p.id]);
+  const underlay: Underlay | undefined = useMemo(() => {
+    if (!kit || !showRef) return undefined;
+    if (kitHasMeshRef && (refSources.portcullis || refSources.gem)) {
+      return { mode: 'crops', sources: refSources };
+    }
+    const uploaded = uploadedRefs.get(kit.id);
+    return uploaded ? { mode: 'stretch', image: uploaded } : undefined;
+  }, [kit, showRef, kitHasMeshRef, refSources, uploadedRefs]);
 
   // Assembled view — the pieces in their real positions, color-coded.
   useEffect(() => {
@@ -550,8 +689,17 @@ export const PanelForge: React.FC = () => {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     ctx.imageSmoothingEnabled = false;
-    renderAssembly(ctx, assembly, kit, zoom, hoveredPieceId);
-  }, [kit, assembly, hoveredPieceId]);
+    renderAssembly(ctx, assembly, kit, zoom, hoveredPieceId, underlay);
+  }, [kit, assembly, hoveredPieceId, underlay]);
+
+  const handleRefUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !kit) return;
+    const img = new Image();
+    img.onload = () => setUploadedRefs(prev => new Map(prev).set(kit.id, img));
+    img.src = URL.createObjectURL(file);
+    e.target.value = '';
+  };
 
   // On-screen preview = the legend at 3×.
   useEffect(() => {
@@ -618,7 +766,7 @@ export const PanelForge: React.FC = () => {
   const exportManifest = () => {
     downloadJson(
       {
-        version: 1,
+        version: 2,
         kitId: kit.id,
         name: kit.name,
         slots: layout.slots.map(s => ({
@@ -629,13 +777,55 @@ export const PanelForge: React.FC = () => {
           nominal: s.nominal,
           notes: s.piece.notes,
         })),
+        // Slice map for the assembled workflow: paint the whole assembled
+        // sample, the Phase 2 slicer extracts each piece from its first
+        // region (tiled pieces: first period; later periods verify seams).
+        assembled: assembly
+          ? { width: assembly.width, height: assembly.height, regions: assembly.regions }
+          : null,
       },
       `panel-forge-${kit.id}-manifest.json`,
     );
   };
 
+  // Assembled workflow exports: paint the whole element in place. The
+  // template carries the slice guides; the reference carries the current
+  // game render — stack reference (bottom), your paint layer (middle),
+  // template guides (top, hidden on export).
+  const exportAssembledTemplate = () => {
+    if (!assembly) return;
+    downloadCanvas(ctx => {
+      ctx.clearRect(0, 0, assembly.width, assembly.height);
+      ctx.strokeStyle = '#ff00ff';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(0.5, 0.5, assembly.width - 1, assembly.height - 1);
+      ctx.strokeStyle = 'rgba(0, 255, 255, 0.55)';
+      for (const r of assembly.regions) {
+        ctx.strokeRect(r.x + 0.5, r.y + 0.5, r.w - 1, r.h - 1);
+      }
+    }, assembly.width, assembly.height, `panel-forge-${kit.id}-assembled-template.png`);
+  };
+
+  const exportReference = () => {
+    if (!assembly || !underlay) return;
+    downloadCanvas(ctx => {
+      drawUnderlay(ctx, assembly, underlay, 1);
+    }, assembly.width, assembly.height, `panel-forge-${kit.id}-reference.png`);
+  };
+
   return (
     <div className="flex h-full min-h-0">
+      {/* Off-screen mount of the LIVE game meshes, rasterized on load into
+          the reference underlay. Sized only so the SVGs exist to serialize. */}
+      <div
+        ref={meshCaptureRef}
+        aria-hidden="true"
+        style={{ position: 'absolute', left: -10000, top: 0, width: 500, height: 100, visibility: 'hidden' }}
+      >
+        <div data-capture="portcullis"><PortcullisMesh /></div>
+        <div data-capture="gem"><GemMesh tone="emerald" /></div>
+      </div>
+
       {/* Kit list */}
       <div className="w-64 flex-shrink-0 border-r border-stone-700 p-3 space-y-2 overflow-y-auto">
         <h2 className="text-lg font-bold font-medieval text-copper-400">Panel Forge</h2>
@@ -682,27 +872,47 @@ export const PanelForge: React.FC = () => {
 
         {/* Exports */}
         <div className="flex flex-wrap gap-2">
-          <button onClick={exportTemplate} className="dungeon-btn-success text-sm px-4 py-2">⬇ Template PNG (1×)</button>
+          <button onClick={exportAssembledTemplate} className="dungeon-btn-success text-sm px-4 py-2" disabled={!assembly}>⬇ Assembled template (1×)</button>
+          <button onClick={exportReference} className="dungeon-btn text-sm px-4 py-2" disabled={!assembly || !underlay} title={!underlay ? 'No reference available — upload a screenshot or enable Show reference' : undefined}>⬇ Reference PNG (1×)</button>
+          <button onClick={exportTemplate} className="dungeon-btn text-sm px-4 py-2">⬇ Per-piece template (1×)</button>
           <button onClick={exportLegend} className="dungeon-btn text-sm px-4 py-2">⬇ Legend PNG (4×)</button>
           <button onClick={exportManifest} className="dungeon-btn text-sm px-4 py-2">⬇ Manifest JSON</button>
         </div>
 
         {/* How to paint */}
         <div className="dungeon-panel rounded p-3 text-xs text-stone-300 space-y-1 max-w-2xl">
-          <p className="font-bold text-parchment-200">How to paint a template</p>
-          <p>1. Open the 1× template in your pixel tool and paint on a <strong>layer above</strong> it; hide the template layer when you export.</p>
-          <p>2. The <span className="text-cyan-300">cyan-tinted box</span> is each piece&apos;s nominal footprint. The space out to the <span className="text-fuchsia-400">magenta line</span> is overflow halo — art there still belongs to the piece and gets anchored (center for gems, outer corner for corners, root for spikes).</p>
-          <p>3. <strong>Tiling pieces have no halo on their tiling axis</strong> — that dimension is a strict period and the ends must wrap seamlessly. Cross-axis overflow is fine.</p>
-          <p>4. Painting smaller than nominal is always fine; transparent pixels don&apos;t render.</p>
+          <p className="font-bold text-parchment-200">How to paint — assembled workflow (recommended)</p>
+          <p>1. Stack three layers in your pixel tool: <strong>Reference PNG</strong> at the bottom (the current game render, your draw-under), your <strong>paint layer</strong> in the middle, and the <strong>Assembled template</strong> guides on top at low opacity.</p>
+          <p>2. Paint the whole element in place, over the reference. Export with only your paint layer visible — the slicer cuts it into pieces using the manifest&apos;s slice map.</p>
+          <p>3. <span className="text-cyan-300">Cyan lines</span> are the slice boundaries. For tiling pieces, keep each repeat identical — the slicer takes the first period and uses the later ones to verify the seams.</p>
+          <p className="font-bold text-parchment-200 pt-1">Per-piece workflow (alternative)</p>
+          <p>The per-piece template lays every slot out separately with overflow halos: nominal footprint (cyan tint) plus halo out to the magenta line. Art in the halo anchors like board sprites (center / outer corner / root). Smaller than nominal is always fine — transparent pixels don&apos;t render.</p>
         </div>
 
         {/* Assembled view — the mesh next to the texture map */}
         {assembly && (
           <div className="dungeon-panel rounded p-3 space-y-2 max-w-2xl">
-            <p className="text-xs font-bold text-parchment-200">Assembled view</p>
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <p className="text-xs font-bold text-parchment-200">Assembled view</p>
+              <div className="flex items-center gap-3">
+                <label className="flex items-center gap-1.5 text-xs text-stone-300 cursor-pointer">
+                  <input type="checkbox" checked={showRef} onChange={e => setShowRef(e.target.checked)} />
+                  Show current-game reference
+                </label>
+                {!kitHasMeshRef && (
+                  <label className="text-xs text-arcane-300 hover:text-arcane-200 cursor-pointer underline">
+                    Upload screenshot reference…
+                    <input type="file" accept="image/*" onChange={handleRefUpload} className="hidden" />
+                  </label>
+                )}
+              </div>
+            </div>
             <p className="text-xs text-stone-400">
-              Where each piece lives once built, using your current sizes. Alternating shades mark
-              one tile repeat. Hover a piece (chips below, or table rows) to highlight it.
+              Where each piece lives once built, using your current sizes.
+              {kitHasMeshRef
+                ? ' The underlay is the LIVE game mesh, so proportions are the real thing — draw against it.'
+                : ' This kit has no SVG mesh in the game (it’s DOM-rendered); upload a cropped screenshot of the element to draw against.'}
+              {' '}Alternating shades mark one tile repeat; hover a piece (chips below, or table rows) to highlight it.
             </p>
             <canvas
               ref={assemblyRef}
