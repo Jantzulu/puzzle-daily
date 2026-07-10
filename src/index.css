@@ -1923,12 +1923,8 @@ body:not(.menu-gate-lowered) .control-rail.rail-riding {
   .animate-rail-descend,
   .animate-rail-ascend,
   .replay-slab-rise,
-  .replay-slab-sink,
-  .menu-gate-open > div > div {
+  .replay-slab-sink {
     animation: none;
-  }
-  .menu-gate-open > div > div::after {
-    display: none;
   }
 }
 
@@ -2075,49 +2071,6 @@ body.menu-gate-lowered .quest-panel-sticky {
   transition: transform 0.9s cubic-bezier(0.45, 0.3, 0.25, 1);
 }
 
-/* The clank: when the drop lands (0.9s), the LATTICE rebounds 2.5px off
-   the rail and settles — the gate seats into its stop. On the content
-   CHILD, never the transitioning div above: a keyframe there would snap
-   on early close (see the ride-vs-settle note — Chrome won't transition
-   from a removed animation's value). If the menu closes mid-open the
-   child animation cancels to translateY(0), invisible during the winch. */
-.menu-gate-open > div > div {
-  animation: gate-clank 0.24s ease-out 0.88s both;
-}
-
-@keyframes gate-clank {
-  0% { transform: translateY(0); }
-  35% { transform: translateY(-2.5px); }
-  100% { transform: translateY(0); }
-}
-
-/* Dust breathed out along the gate's bottom edge at the same moment —
-   a faint band that puffs down and fades. display:none until the open
-   class arms it so it can't ghost during close. */
-.menu-gate > div > div::after {
-  display: none;
-}
-
-.menu-gate-open > div > div::after {
-  content: '';
-  display: block;
-  position: absolute;
-  left: 8%;
-  right: 8%;
-  bottom: -2px;
-  height: 7px;
-  pointer-events: none;
-  background: radial-gradient(ellipse 50% 100% at 50% 0%, rgba(180, 160, 130, 0.28), rgba(180, 160, 130, 0) 70%);
-  opacity: 0;
-  animation: gate-dust 0.5s ease-out 0.9s;
-}
-
-@keyframes gate-dust {
-  0% { opacity: 0; transform: translateY(0) scaleX(0.92); }
-  25% { opacity: 1; transform: translateY(2px) scaleX(1); }
-  100% { opacity: 0; transform: translateY(6px) scaleX(1.08); }
-}
-
 /* Instant dismissal — a link was tapped: the destination page appears
    and the gate is simply gone (a 0.8s winch-up while the page changes
    underneath read as lag). Only the hamburger X keeps the animated
@@ -2127,14 +2080,6 @@ body.menu-gate-lowered .quest-panel-sticky {
 .menu-gate-instant > div,
 body.menu-gate-instant .quest-panel-sticky {
   transition: none;
-}
-
-.menu-gate-instant > div > div {
-  animation: none;
-}
-
-.menu-gate-instant > div > div::after {
-  display: none;
 }
 
 /* Desktop: the gate is the board column's portcullis, not a wall-to-wall
