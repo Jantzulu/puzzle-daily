@@ -764,6 +764,20 @@ function computeFlyInOrigin(boardW: number, boardH: number): { fromX: number; fr
   }
 }
 
+// ─── Setup-phase glances ────────────────────────────────────────────────────
+// When a hero is placed during setup, nearby enemies briefly LOOK at it —
+// a visual-frame-only turn (logical facing untouched; the engine never
+// sees it), staggered a beat per enemy so a crowd doesn't snap in unison,
+// then back to their configured idle heading.
+const GLANCE_RADIUS_TILES = 3.5;
+const GLANCE_HOLD_MS = 850;
+
+interface GlanceState {
+  facing: Direction;
+  startAt: number; // staggered — each onlooker reacts on its own beat
+  until: number;
+}
+
 // ─── Departing souls ────────────────────────────────────────────────────────
 // When a death animation finishes, the corpse's own final frame rises
 // faintly off the body and dissolves — no dedicated art, every entity's
@@ -880,6 +894,8 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
   // alongside the spawn animations, so they share their exact cadence.
   const enemyFlyInsRef = useRef<Map<number, FlyInState>>(new Map());
   const characterFlyInsRef = useRef<Map<string, FlyInState>>(new Map());
+  // Setup-phase glances at freshly placed heroes, keyed by enemy index.
+  const enemyGlancesRef = useRef<Map<number, GlanceState>>(new Map());
   // Track lift-off animations for unplaced characters
   const [liftOffAnimations, setLiftOffAnimations] = useState<LiftOffAnimation[]>([]);
   const prevGameStatusRef = useRef(gameState.gameStatus);
@@ -929,6 +945,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       setEnemySpawnAnimations(new Map());
       enemyFlyInsRef.current.clear();
       characterFlyInsRef.current.clear();
+      enemyGlancesRef.current.clear();
       setLiftOffAnimations([]);
       // Reset death + casting animation tracking (death anims now persist as
       // corpses, so they must be cleared explicitly on a new puzzle).
@@ -1189,6 +1206,22 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
         }
         newCharSpawns.set(spawnKey, { startTime: spawnStart, x: char.x, y: char.y });
         spawnedCharactersRef.current.add(spawnKey);
+
+        // Nearby enemies notice the arrival: each turns to look on its own
+        // beat, holds a moment, then returns to its configured heading.
+        // Visual frames only — logical facing is untouched.
+        if (gameState.gameStatus === 'setup') {
+          gameState.puzzle.enemies.forEach((enemy, enemyIdx) => {
+            if (enemy.dead) return;
+            if (Math.hypot(enemy.x - char.x, enemy.y - char.y) > GLANCE_RADIUS_TILES) return;
+            const startAt = spawnStart + Math.random() * 200;
+            enemyGlancesRef.current.set(enemyIdx, {
+              facing: directionFromTravel(char.x - enemy.x, char.y - enemy.y),
+              startAt,
+              until: startAt + GLANCE_HOLD_MS + Math.random() * 300,
+            });
+          });
+        }
       }
     });
 
@@ -1771,7 +1804,15 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
               }
             }
           } else {
-            drawEnemy(ctx, enemy, enemy.x, enemy.y, movedThisTurn, undefined, gameStarted, deathAnim, now, spawnAnim, enemyGlow, index);
+            // Setup-phase glance: a nearby hero was just placed — look at it.
+            let idleFacing: Direction | undefined = undefined;
+            if (!gameStarted && !enemy.dead) {
+              const glance = enemyGlancesRef.current.get(index);
+              if (glance && now >= glance.startAt && now < glance.until) {
+                idleFacing = glance.facing;
+              }
+            }
+            drawEnemy(ctx, enemy, enemy.x, enemy.y, movedThisTurn, idleFacing, gameStarted, deathAnim, now, spawnAnim, enemyGlow, index);
           }
         } else {
           const character = entity as PlacedCharacter;
