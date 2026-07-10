@@ -665,8 +665,15 @@ const FLY_IN_OFFSCREEN_TILES = 2.5; // how far beyond the board edge flights sta
 
 // Flight styles (CustomSprite.spawnFlyInStyle): 'straight' is the default
 // beeline; 'swoop' banks along a random arc, facing following the curve;
-// 'flutter' wobbles erratically like a bat, settling before it lands.
-type FlyInStyle = 'straight' | 'swoop' | 'flutter';
+// 'flutter' wobbles erratically like a bat, settling before it lands;
+// 'shadow' sends the blob shadow ALONE sliding across the floor, the body
+// materializing out of it on arrival (spawn sheet if set, else a short
+// rise-from-darkness fade).
+type FlyInStyle = 'straight' | 'swoop' | 'flutter' | 'shadow';
+
+// How long a 'shadow' entrance takes to materialize the body after the
+// shadow arrives, when the sprite has no spawn sheet to do it instead.
+const SHADOW_MATERIALIZE_MS = 300;
 
 interface FlyInState {
   startTime: number;
@@ -1669,13 +1676,37 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
           // theater; if the player starts the game mid-flight it snaps to
           // its tile (gameStarted bail).
           const flyIn = enemyFlyInsRef.current.get(index);
-          if (flyIn && !gameStarted && !enemy.dead && now - flyIn.startTime < flyIn.durationMs) {
-            const t = (now - flyIn.startTime) / flyIn.durationMs;
-            const p = flyInPointAt(flyIn, enemy.x, enemy.y, t);
-            // Swoops bank: facing follows the curve. Other styles hold the launch heading.
-            const flightFacing = flyIn.style === 'swoop' ? directionFromTravel(p.dx, p.dy) : flyIn.facing;
-            drawEnemy(ctx, enemy, p.x, p.y, true, flightFacing, gameStarted, undefined, now, undefined, enemyGlow, index);
-            return;
+          if (flyIn && !gameStarted && !enemy.dead) {
+            const elapsed = now - flyIn.startTime;
+            if (elapsed < flyIn.durationMs) {
+              const t = elapsed / flyIn.durationMs;
+              const p = flyInPointAt(flyIn, enemy.x, enemy.y, t);
+              if (flyIn.style === 'shadow') {
+                // The shadow travels alone — no body, no glow, just a dark
+                // shape sliding across the floor toward its tile.
+                if (blobShadowsEnabled()) {
+                  drawBlobShadow(ctx, getEnemy(enemy.enemyId)?.customSprite, flyIn.facing, p.x * TILE_SIZE + TILE_SIZE / 2, p.y * TILE_SIZE + TILE_SIZE / 2, TILE_SIZE, !!getEnemy(enemy.enemyId)?.isFloating);
+                }
+                return;
+              }
+              // Swoops bank: facing follows the curve. Other styles hold the launch heading.
+              const flightFacing = flyIn.style === 'swoop' ? directionFromTravel(p.dx, p.dy) : flyIn.facing;
+              drawEnemy(ctx, enemy, p.x, p.y, true, flightFacing, gameStarted, undefined, now, undefined, enemyGlow, index);
+              return;
+            }
+            // Shadow entrance, just landed, no spawn sheet to materialize
+            // with: rise out of the darkness over a short fade instead.
+            if (flyIn.style === 'shadow' && elapsed < flyIn.durationMs + SHADOW_MATERIALIZE_MS) {
+              const sprite = getEnemy(enemy.enemyId)?.customSprite;
+              if (sprite && !hasSpawnAnimation(sprite)) {
+                ctx.save();
+                ctx.globalAlpha = (elapsed - flyIn.durationMs) / SHADOW_MATERIALIZE_MS;
+                drawEnemy(ctx, enemy, enemy.x, enemy.y, false, undefined, gameStarted, undefined, now, undefined, enemyGlow, index);
+                ctx.restore();
+                return;
+              }
+              // Has a spawn sheet — fall through; the sheet is the materialize.
+            }
           }
           // Walk for the whole turn if this enemy changed tiles this turn
           // (gated to active play so it never loops in place at victory/defeat/setup).
@@ -1763,13 +1794,32 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
           // moving animation and skip every other path (replaces the drop-in).
           // Snaps to its tile if the game starts mid-flight.
           const charFlyIn = characterFlyInsRef.current.get(spawnKey);
-          if (charFlyIn && !gameStarted && !character.dead && now - charFlyIn.startTime < charFlyIn.durationMs) {
-            const t = (now - charFlyIn.startTime) / charFlyIn.durationMs;
-            const p = flyInPointAt(charFlyIn, character.x, character.y, t);
-            // Swoops bank: facing follows the curve. Other styles hold the launch heading.
-            const flightFacing = charFlyIn.style === 'swoop' ? directionFromTravel(p.dx, p.dy) : charFlyIn.facing;
-            drawCharacter(ctx, character, p.x, p.y, true, flightFacing, gameStarted, undefined, now, undefined, charGlow, index);
-            return;
+          if (charFlyIn && !gameStarted && !character.dead) {
+            const charElapsed = now - charFlyIn.startTime;
+            if (charElapsed < charFlyIn.durationMs) {
+              const t = charElapsed / charFlyIn.durationMs;
+              const p = flyInPointAt(charFlyIn, character.x, character.y, t);
+              if (charFlyIn.style === 'shadow') {
+                if (blobShadowsEnabled()) {
+                  drawBlobShadow(ctx, getCharacter(character.characterId)?.customSprite, charFlyIn.facing, p.x * TILE_SIZE + TILE_SIZE / 2, p.y * TILE_SIZE + TILE_SIZE / 2, TILE_SIZE, !!getCharacter(character.characterId)?.isFloating);
+                }
+                return;
+              }
+              // Swoops bank: facing follows the curve. Other styles hold the launch heading.
+              const flightFacing = charFlyIn.style === 'swoop' ? directionFromTravel(p.dx, p.dy) : charFlyIn.facing;
+              drawCharacter(ctx, character, p.x, p.y, true, flightFacing, gameStarted, undefined, now, undefined, charGlow, index);
+              return;
+            }
+            if (charFlyIn.style === 'shadow' && charElapsed < charFlyIn.durationMs + SHADOW_MATERIALIZE_MS) {
+              const sprite = getCharacter(character.characterId)?.customSprite;
+              if (sprite && !hasSpawnAnimation(sprite)) {
+                ctx.save();
+                ctx.globalAlpha = (charElapsed - charFlyIn.durationMs) / SHADOW_MATERIALIZE_MS;
+                drawCharacter(ctx, character, character.x, character.y, false, undefined, gameStarted, undefined, now, undefined, charGlow, index);
+                ctx.restore();
+                return;
+              }
+            }
           }
           // Walk for the whole turn if this character changed tiles this turn
           // (gated to active play so it never loops in place at victory/defeat/setup).

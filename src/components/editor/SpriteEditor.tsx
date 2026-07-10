@@ -3741,17 +3741,20 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, sh
               <label className="text-xs font-bold">Flight path</label>
               <select
                 value={sprite.spawnFlyInStyle ?? 'straight'}
-                onChange={(e) => onChange({ ...sprite, spawnFlyInStyle: e.target.value === 'straight' ? undefined : e.target.value as 'swoop' | 'flutter' })}
+                onChange={(e) => onChange({ ...sprite, spawnFlyInStyle: e.target.value === 'straight' ? undefined : e.target.value as 'swoop' | 'flutter' | 'shadow' })}
                 className="px-2 py-1 bg-stone-700 rounded text-xs"
               >
                 <option value="straight">Straight</option>
                 <option value="swoop">Swooping arc</option>
                 <option value="flutter">Flutter (erratic)</option>
+                <option value="shadow">Shadow slide</option>
               </select>
             </div>
             <p className="text-[10px] text-stone-500 mt-1">
               Swoop banks along a random arc, turning to face along the curve. Flutter wobbles
-              like a bat mid-flight and settles just before landing. Every flight rolls its own
+              like a bat mid-flight and settles just before landing. Shadow slide sends only the
+              ground shadow creeping to the tile — the body materializes out of it on arrival
+              (via the spawn animation if set, else a short fade). Every flight rolls its own
               arc and rhythm.
             </p>
           </div>

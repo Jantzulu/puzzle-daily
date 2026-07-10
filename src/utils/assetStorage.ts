@@ -310,8 +310,10 @@ export interface CustomSprite {
   spawnFlyIn?: boolean;
   // Flight path: 'straight' beeline (default), 'swoop' banks along a random
   // arc with facing following the curve, 'flutter' wobbles erratically like
-  // a bat and settles before landing. Each flight rolls its own arc/wobble.
-  spawnFlyInStyle?: 'straight' | 'swoop' | 'flutter';
+  // a bat and settles before landing, 'shadow' sends the ground shadow alone
+  // sliding to the tile with the body materializing out of it on arrival.
+  // Each flight rolls its own arc/wobble.
+  spawnFlyInStyle?: 'straight' | 'swoop' | 'flutter' | 'shadow';
 
   // Simple rendering (single sprite for all directions)
   shape?: 'circle' | 'square' | 'triangle' | 'star' | 'diamond' | 'hexagon';
