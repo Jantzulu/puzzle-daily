@@ -54,6 +54,11 @@ interface AnimatedGameBoardProps {
   onProjectileKill?: () => void;  // Callback when a projectile kills an enemy (for victory check)
   skinOverride?: PuzzleSkin;  // Override skin instead of loading from localStorage
   replayFrozen?: boolean;  // When true, freeze projectile/particle animations — used during replay pause/step
+  // Entrance animations (spawn sheets + fly-ins) start when this is true.
+  // Hosts that hide the board while it loads (Game's sprite-preload gate)
+  // pass their reveal flag so entrance clocks don't burn while invisible —
+  // otherwise a fly-in is half over before the player can see the board.
+  entrancesRevealed?: boolean;
 }
 
 const TILE_SIZE = 48;
@@ -700,7 +705,7 @@ interface LiftOffAnimation {
   characterId: string;
 }
 
-export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState, onTileClick, isEditor = false, maxWidth, maxHeight, onProjectileKill, skinOverride, replayFrozen = false }) => {
+export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState, onTileClick, isEditor = false, maxWidth, maxHeight, onProjectileKill, skinOverride, replayFrozen = false, entrancesRevealed = true }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imageCache = useRef<Map<string, HTMLImageElement>>(new Map());
   const [characterPositions, setCharacterPositions] = useState<Map<number, CharacterPosition>>(new Map());
@@ -798,6 +803,12 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
 
   // Initialize spawn animations for enemies when puzzle loads (and they haven't spawned yet)
   useEffect(() => {
+    // Board still hidden behind the host's loading gate — wait, so the full
+    // entrance (fly-in flight + spawn sheet) plays where the player can see
+    // it. spawnedEnemiesRef is untouched until then, so this effect re-runs
+    // and creates everything the moment the reveal flag flips.
+    if (!entrancesRevealed) return;
+
     const now = Date.now();
     const newEnemySpawns = new Map<number, SpawnAnimationState>();
 
@@ -831,7 +842,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
         return updated;
       });
     }
-  }, [gameState.puzzle.id, gameState.puzzle.enemies.length]);
+  }, [gameState.puzzle.id, gameState.puzzle.enemies.length, entrancesRevealed]);
 
   // Force re-render when images finish loading. Also bumps the static-bake
   // image version: the bake must resign once tile/border sprites become
@@ -5143,6 +5154,7 @@ interface ResponsiveGameBoardProps {
   onProjectileKill?: () => void;  // Callback when a projectile kills an enemy (for victory check)
   skinOverride?: PuzzleSkin;  // Override skin instead of loading from localStorage
   replayFrozen?: boolean;  // Freeze animations during replay pause
+  entrancesRevealed?: boolean;  // See AnimatedGameBoardProps — forwarded via the props spread
 }
 
 // Maximum dimensions for the puzzle board on desktop
