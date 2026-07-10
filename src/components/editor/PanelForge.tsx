@@ -262,6 +262,241 @@ function renderLegend(ctx: CanvasRenderingContext2D, layout: KitLayout, kit: Kit
   ctx.fillText(`${kit.name} — nominal sizes in art px; · fixed  ↔ tiles-x  ↕ tiles-y  ⤡ tiles-both`, 4, layout.height * zoom + 4);
 }
 
+// ─── Assembled view ─────────────────────────────────────────────────────────
+// The "rendered mesh" next to the "texture map": each kit drawn as the thing
+// it becomes, with every region color-coded to its template piece and
+// alternating shades marking each tile repeat. Geometry uses the CURRENT
+// nominal sizes, so resizing a piece reshapes the assembly live.
+
+interface AssemblyRegion {
+  pieceId: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  rep: number; // repeat index — alternates shading to show the tile period
+}
+
+interface Assembly {
+  regions: AssemblyRegion[];
+  width: number;
+  height: number;
+}
+
+type KitFamily = 'nine-slice' | 'gate' | 'rail' | 'gem' | 'buttons';
+
+function kitFamily(kit: KitSpec): KitFamily | null {
+  const ids = new Set(kit.pieces.map(p => p.id));
+  if (ids.has('corner-tl')) return 'nine-slice';
+  if (ids.has('bar-segment')) return 'gate';
+  if (ids.has('rail-face')) return 'rail';
+  if (ids.has('gem-normal')) return 'gem';
+  if (ids.has('btn-normal-mid')) return 'buttons';
+  return null;
+}
+
+/** Golden-angle hues so adjacent pieces never share a color. */
+function pieceColor(index: number, alpha: number): string {
+  return `hsla(${Math.round((index * 137.5) % 360)}, 65%, 55%, ${alpha})`;
+}
+
+function assembleNineSlice(kit: KitSpec): Assembly | null {
+  const P = (id: string) => kit.pieces.find(p => p.id === id);
+  const c = P('corner-tl');
+  const et = P('edge-top');
+  const eb = P('edge-bottom') ?? et;
+  const el = P('edge-left');
+  const er = P('edge-right') ?? el;
+  const ct = P('center');
+  const dv = P('divider');
+  if (!c || !et || !eb || !el || !er || !ct) return null;
+
+  const RX = 4; // top-edge repeats in the sample panel
+  const RY = 3; // side-edge repeats
+  const W = c.w * 2 + RX * et.w;
+  const H = c.h * 2 + RY * el.h;
+  const regions: AssemblyRegion[] = [];
+
+  // Center fill first so edges/corners/divider draw over it.
+  for (let y = c.h, j = 0; y < H - c.h; y += ct.h, j++) {
+    for (let x = c.w, i = 0; x < W - c.w; x += ct.w, i++) {
+      regions.push({ pieceId: 'center', x, y, w: Math.min(ct.w, W - c.w - x), h: Math.min(ct.h, H - c.h - y), rep: i + j });
+    }
+  }
+  for (let i = 0; i < RX; i++) {
+    regions.push({ pieceId: 'edge-top', x: c.w + i * et.w, y: 0, w: et.w, h: et.h, rep: i });
+    regions.push({ pieceId: 'edge-bottom', x: c.w + i * eb.w, y: H - eb.h, w: eb.w, h: eb.h, rep: i });
+  }
+  for (let j = 0; j < RY; j++) {
+    regions.push({ pieceId: 'edge-left', x: 0, y: c.h + j * el.h, w: el.w, h: el.h, rep: j });
+    regions.push({ pieceId: 'edge-right', x: W - er.w, y: c.h + j * er.h, w: er.w, h: er.h, rep: j });
+  }
+  regions.push({ pieceId: 'corner-tl', x: 0, y: 0, w: c.w, h: c.h, rep: 0 });
+  regions.push({ pieceId: 'corner-tr', x: W - c.w, y: 0, w: c.w, h: c.h, rep: 0 });
+  regions.push({ pieceId: 'corner-bl', x: 0, y: H - c.h, w: c.w, h: c.h, rep: 0 });
+  regions.push({ pieceId: 'corner-br', x: W - c.w, y: H - c.h, w: c.w, h: c.h, rep: 0 });
+  if (dv) {
+    const dy = c.h + Math.floor((H - c.h * 2) * 0.45);
+    for (let x = c.w, i = 0; x < W - c.w; x += dv.w, i++) {
+      regions.push({ pieceId: 'divider', x, y: dy, w: Math.min(dv.w, W - c.w - x), h: dv.h, rep: i });
+    }
+  }
+  return { regions, width: W, height: H };
+}
+
+function assembleGate(kit: KitSpec): Assembly | null {
+  const P = (id: string) => kit.pieces.find(p => p.id === id);
+  const bs = P('bar-segment');
+  const cap = P('bar-top-cap');
+  const cs = P('cross-slat');
+  const sp = P('gate-spike');
+  if (!bs) return null;
+
+  const BARS = 3;
+  const REPS = 3;
+  const spacing = bs.w * 4;
+  const W = spacing * (BARS - 1) + bs.w * 3;
+  const capH = cap?.h ?? 0;
+  const H = capH + REPS * bs.h + (sp?.h ?? 0);
+  const regions: AssemblyRegion[] = [];
+
+  for (let b = 0; b < BARS; b++) {
+    const x = bs.w + b * spacing;
+    if (cap) regions.push({ pieceId: 'bar-top-cap', x: x + (bs.w - cap.w) / 2, y: 0, w: cap.w, h: cap.h, rep: b });
+    for (let r = 0; r < REPS; r++) {
+      regions.push({ pieceId: 'bar-segment', x, y: capH + r * bs.h, w: bs.w, h: bs.h, rep: r });
+    }
+    if (sp) regions.push({ pieceId: 'gate-spike', x: x + (bs.w - sp.w) / 2, y: capH + REPS * bs.h, w: sp.w, h: sp.h, rep: b });
+  }
+  if (cs) {
+    const cy = capH + bs.h;
+    for (let x = 0, i = 0; x < W; x += cs.w, i++) {
+      regions.push({ pieceId: 'cross-slat', x, y: cy, w: Math.min(cs.w, W - x), h: cs.h, rep: i });
+    }
+  }
+  return { regions, width: W, height: H };
+}
+
+function assembleRail(kit: KitSpec): Assembly | null {
+  const P = (id: string) => kit.pieces.find(p => p.id === id);
+  const rf = P('rail-face');
+  const cl = P('rail-cap-l');
+  const cr = P('rail-cap-r');
+  const fp = P('forge-plate');
+  const rs = P('rail-spike');
+  if (!rf) return null;
+
+  const REPS = 6;
+  const clW = cl?.w ?? 0;
+  const crW = cr?.w ?? 0;
+  const W = clW + REPS * rf.w + crW;
+  const H = rf.h + (rs?.h ?? 0);
+  const regions: AssemblyRegion[] = [];
+
+  for (let i = 0; i < REPS; i++) {
+    regions.push({ pieceId: 'rail-face', x: clW + i * rf.w, y: 0, w: rf.w, h: rf.h, rep: i });
+  }
+  if (cl) regions.push({ pieceId: 'rail-cap-l', x: 0, y: 0, w: cl.w, h: cl.h, rep: 0 });
+  if (cr) regions.push({ pieceId: 'rail-cap-r', x: W - cr.w, y: 0, w: cr.w, h: cr.h, rep: 0 });
+  const anchors = [0.2, 0.5, 0.8].map(f => clW + (W - clW - crW) * f);
+  if (fp) anchors.forEach((ax, i) => regions.push({ pieceId: 'forge-plate', x: ax - fp.w / 2, y: 2, w: fp.w, h: fp.h, rep: i }));
+  if (rs) anchors.forEach((ax, i) => regions.push({ pieceId: 'rail-spike', x: ax - rs.w / 2, y: rf.h, w: rs.w, h: rs.h, rep: i }));
+  return { regions, width: W, height: H };
+}
+
+function assembleGem(kit: KitSpec): Assembly | null {
+  const states = kit.pieces.filter(p => p.repeat === 'fixed');
+  if (states.length === 0) return null;
+  const gap = 10;
+  let x = 0;
+  const regions: AssemblyRegion[] = [];
+  let maxH = 0;
+  for (const s of states) {
+    regions.push({ pieceId: s.id, x, y: 0, w: s.w, h: s.h, rep: 0 });
+    x += s.w + gap;
+    maxH = Math.max(maxH, s.h);
+  }
+  return { regions, width: x - gap, height: maxH };
+}
+
+function assembleButtons(kit: KitSpec): Assembly | null {
+  const states = ['normal', 'hover', 'pressed'];
+  const regions: AssemblyRegion[] = [];
+  let y = 0;
+  let W = 0;
+  for (const state of states) {
+    const cl = kit.pieces.find(p => p.id === `btn-${state}-cap-l`);
+    const mid = kit.pieces.find(p => p.id === `btn-${state}-mid`);
+    const cr = kit.pieces.find(p => p.id === `btn-${state}-cap-r`);
+    if (!cl || !mid || !cr) continue;
+    let x = 0;
+    regions.push({ pieceId: cl.id, x, y, w: cl.w, h: cl.h, rep: 0 });
+    x += cl.w;
+    for (let i = 0; i < 3; i++) {
+      regions.push({ pieceId: mid.id, x, y, w: mid.w, h: mid.h, rep: i });
+      x += mid.w;
+    }
+    regions.push({ pieceId: cr.id, x, y, w: cr.w, h: cr.h, rep: 0 });
+    x += cr.w;
+    W = Math.max(W, x);
+    y += Math.max(cl.h, mid.h, cr.h) + 6;
+  }
+  return regions.length ? { regions, width: W, height: y - 6 } : null;
+}
+
+function assembleKit(kit: KitSpec): Assembly | null {
+  switch (kitFamily(kit)) {
+    case 'nine-slice': return assembleNineSlice(kit);
+    case 'gate': return assembleGate(kit);
+    case 'rail': return assembleRail(kit);
+    case 'gem': return assembleGem(kit);
+    case 'buttons': return assembleButtons(kit);
+    default: return null;
+  }
+}
+
+function renderAssembly(
+  ctx: CanvasRenderingContext2D,
+  assembly: Assembly,
+  kit: KitSpec,
+  zoom: number,
+  hoveredId: string | null,
+): void {
+  const colorIndex = new Map(kit.pieces.map((p, i) => [p.id, i]));
+  ctx.fillStyle = '#0c0a09';
+  ctx.fillRect(0, 0, assembly.width * zoom, assembly.height * zoom);
+
+  for (const r of assembly.regions) {
+    const idx = colorIndex.get(r.pieceId) ?? 0;
+    const highlighted = hoveredId === r.pieceId;
+    const dimmed = hoveredId !== null && !highlighted;
+    // Alternating repeat shades make each tile period visible.
+    const baseAlpha = r.rep % 2 === 0 ? 0.72 : 0.45;
+    ctx.fillStyle = pieceColor(idx, highlighted ? 0.95 : dimmed ? baseAlpha * 0.25 : baseAlpha);
+    ctx.fillRect(r.x * zoom, r.y * zoom, r.w * zoom, r.h * zoom);
+    ctx.strokeStyle = highlighted ? '#ffffff' : 'rgba(0,0,0,0.55)';
+    ctx.lineWidth = highlighted ? 2 : 1;
+    ctx.strokeRect(r.x * zoom + 0.5, r.y * zoom + 0.5, r.w * zoom - 1, r.h * zoom - 1);
+  }
+
+  // Name the hovered piece next to its first region.
+  if (hoveredId) {
+    const first = assembly.regions.find(r => r.pieceId === hoveredId);
+    if (first) {
+      ctx.font = '11px monospace';
+      const label = hoveredId;
+      const tw = ctx.measureText(label).width;
+      const lx = Math.min(first.x * zoom, assembly.width * zoom - tw - 6);
+      const ly = Math.max(0, first.y * zoom - 14);
+      ctx.fillStyle = 'rgba(0,0,0,0.8)';
+      ctx.fillRect(lx, ly, tw + 6, 13);
+      ctx.fillStyle = '#fff';
+      ctx.textBaseline = 'top';
+      ctx.fillText(label, lx + 3, ly + 1);
+    }
+  }
+}
+
 function downloadCanvas(draw: (ctx: CanvasRenderingContext2D) => void, w: number, h: number, filename: string): void {
   const canvas = document.createElement('canvas');
   canvas.width = w;
@@ -295,12 +530,28 @@ function downloadJson(data: unknown, filename: string): void {
 export const PanelForge: React.FC = () => {
   const [kits, setKits] = useState<KitSpec[]>(loadKits);
   const [selectedId, setSelectedId] = useState<string>(kits[0]?.id ?? 'window-panel');
+  const [hoveredPieceId, setHoveredPieceId] = useState<string | null>(null);
   const previewRef = useRef<HTMLCanvasElement>(null);
+  const assemblyRef = useRef<HTMLCanvasElement>(null);
 
   const kit = kits.find(k => k.id === selectedId) ?? kits[0];
   const layout = useMemo(() => (kit ? layoutKit(kit) : null), [kit]);
+  const assembly = useMemo(() => (kit ? assembleKit(kit) : null), [kit]);
 
   useEffect(() => saveKits(kits), [kits]);
+
+  // Assembled view — the pieces in their real positions, color-coded.
+  useEffect(() => {
+    const canvas = assemblyRef.current;
+    if (!canvas || !kit || !assembly) return;
+    const zoom = Math.min(4, Math.max(2, Math.floor(380 / assembly.width)));
+    canvas.width = assembly.width * zoom;
+    canvas.height = assembly.height * zoom;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.imageSmoothingEnabled = false;
+    renderAssembly(ctx, assembly, kit, zoom, hoveredPieceId);
+  }, [kit, assembly, hoveredPieceId]);
 
   // On-screen preview = the legend at 3×.
   useEffect(() => {
@@ -445,6 +696,38 @@ export const PanelForge: React.FC = () => {
           <p>4. Painting smaller than nominal is always fine; transparent pixels don&apos;t render.</p>
         </div>
 
+        {/* Assembled view — the mesh next to the texture map */}
+        {assembly && (
+          <div className="dungeon-panel rounded p-3 space-y-2 max-w-2xl">
+            <p className="text-xs font-bold text-parchment-200">Assembled view</p>
+            <p className="text-xs text-stone-400">
+              Where each piece lives once built, using your current sizes. Alternating shades mark
+              one tile repeat. Hover a piece (chips below, or table rows) to highlight it.
+            </p>
+            <canvas
+              ref={assemblyRef}
+              className="border border-stone-700 rounded max-w-full"
+              style={{ imageRendering: 'pixelated' }}
+              onMouseLeave={() => setHoveredPieceId(null)}
+            />
+            <div className="flex flex-wrap gap-1.5">
+              {kit.pieces.map((p, i) => (
+                <span
+                  key={p.id}
+                  onMouseEnter={() => setHoveredPieceId(p.id)}
+                  onMouseLeave={() => setHoveredPieceId(null)}
+                  className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono cursor-default ${
+                    hoveredPieceId === p.id ? 'bg-stone-600 text-parchment-100' : 'bg-stone-800 text-stone-300'
+                  }`}
+                >
+                  <span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: pieceColor(i, 1) }} />
+                  {p.id}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Spec table */}
         <div className="dungeon-panel rounded p-3 overflow-x-auto">
           <table className="text-xs w-full">
@@ -459,7 +742,12 @@ export const PanelForge: React.FC = () => {
             </thead>
             <tbody>
               {kit.pieces.map(p => (
-                <tr key={p.id} className="border-t border-stone-700/60">
+                <tr
+                  key={p.id}
+                  onMouseEnter={() => setHoveredPieceId(p.id)}
+                  onMouseLeave={() => setHoveredPieceId(null)}
+                  className={`border-t border-stone-700/60 ${hoveredPieceId === p.id ? 'bg-stone-700/40' : ''}`}
+                >
                   <td className="pr-4 py-1.5 font-mono text-parchment-200">{p.id}</td>
                   <td className="pr-4 py-1.5">
                     <input
