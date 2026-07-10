@@ -1262,6 +1262,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
         if (gameState.gameStatus === 'setup') {
           gameState.puzzle.enemies.forEach((enemy, enemyIdx) => {
             if (enemy.dead) return;
+            if (getEnemy(enemy.enemyId)?.ignoresPlacement) return; // the oblivious
             if (Math.hypot(enemy.x - char.x, enemy.y - char.y) > GLANCE_RADIUS_TILES) return;
             const startAt = spawnStart + Math.random() * 200;
             enemyGlancesRef.current.set(enemyIdx, {

@@ -276,6 +276,7 @@ export interface Enemy {
   contactDamage?: number; // Damage dealt when walking into characters (0 or undefined = no contact damage)
   immuneToPush?: boolean; // If true, cannot be moved by push abilities
   isFloating?: boolean; // If true, sprite floats/flies — centered in thumbnails instead of bottom-aligned
+  ignoresPlacement?: boolean; // If true, doesn't glance at newly placed heroes during setup (visual flourish; default off = glances)
 
   // Boss configuration
   isBoss?: boolean; // If true, this enemy is a boss - enables 'defeat_boss' win condition

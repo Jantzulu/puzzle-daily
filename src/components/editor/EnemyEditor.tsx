@@ -818,6 +818,17 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
                       <span className="text-sm">Floating/Flying (centers in thumbnail)</span>
                     </label>
                   </div>
+                  <div className="mb-4">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" checked={editing.ignoresPlacement || false}
+                        onChange={(e) => updateEnemy({ ignoresPlacement: e.target.checked || undefined })} className="w-4 h-4" />
+                      <span className="text-sm">Ignores placement (doesn&apos;t glance at newly placed heroes)</span>
+                    </label>
+                    <p className="text-xs text-stone-500 mt-1 ml-6">
+                      By default enemies briefly look at heroes placed nearby during setup. Check
+                      this for the oblivious — statues, mindless slimes, things without eyes.
+                    </p>
+                  </div>
                   {editing.customSprite && (
                     <SpriteEditor
                       sprite={editing.customSprite}
