@@ -39,6 +39,9 @@ interface SpellSpriteEditorProps {
   accentColor: string; // 'blue', 'red', 'green', etc.
   showDirectionalPreview?: boolean; // Show 8-direction rotation preview
   helpText?: string;
+  /** Emitted-light controls (see lightGlow.ts) — only the projectile sprite
+   *  slot renders a glow in game, so only that slot shows them. */
+  showGlow?: boolean;
 }
 
 // Static color class mappings for Tailwind JIT compatibility
@@ -76,6 +79,7 @@ const SpellSpriteEditor: React.FC<SpellSpriteEditorProps> = ({
   accentColor,
   showDirectionalPreview = false,
   helpText,
+  showGlow = false,
 }) => {
   const spriteData = spriteRef?.spriteData || {};
   const colors = colorClasses[accentColor] || colorClasses.blue;
@@ -551,6 +555,91 @@ const SpellSpriteEditor: React.FC<SpellSpriteEditorProps> = ({
               )}
             </>
           )}
+        </div>
+      )}
+
+      {/* Emitted light — additive halo behind the bolt in flight (lightGlow.ts).
+          Off unless a color is set. Radius in art px (a tile is 24). */}
+      {showGlow && (
+        <div className="mt-3 pt-3 border-t border-stone-700">
+          <div className="text-xs font-bold text-stone-300 mb-1">✨ Emitted Light</div>
+          <p className="text-[10px] text-stone-500 mb-2">
+            For projectiles that glow (fireballs, wisps). A soft halo travels with the bolt
+            and shrinks away on despawn. Off unless a color is set.
+          </p>
+          <div className="grid grid-cols-4 gap-2 items-end">
+            <div>
+              <label className="block text-[10px] text-stone-400 mb-1">Color</label>
+              <div className="flex items-center gap-1">
+                <input
+                  type="color"
+                  value={spriteData.glowColor ?? '#ff9a3d'}
+                  onChange={(e) => onChange({
+                    type: 'inline',
+                    spriteData: { ...spriteData, glowColor: e.target.value },
+                  })}
+                  className="w-8 h-7 bg-stone-700 rounded cursor-pointer"
+                />
+                {spriteData.glowColor ? (
+                  <button
+                    onClick={() => onChange({
+                      type: 'inline',
+                      spriteData: { ...spriteData, glowColor: undefined },
+                    })}
+                    className="px-1 py-0.5 text-xs bg-stone-700 hover:bg-stone-600 rounded"
+                    title="Remove glow"
+                  >
+                    ✕
+                  </button>
+                ) : (
+                  <span className="text-[10px] text-stone-500">off</span>
+                )}
+              </div>
+            </div>
+            <div>
+              <label className="block text-[10px] text-stone-400 mb-1">Radius</label>
+              <input
+                type="number"
+                min={0}
+                value={spriteData.glowRadius ?? ''}
+                placeholder="16"
+                onChange={(e) => onChange({
+                  type: 'inline',
+                  spriteData: { ...spriteData, glowRadius: e.target.value === '' ? undefined : Math.max(0, Number(e.target.value)) },
+                })}
+                className="w-full px-2 py-1 bg-stone-700 rounded text-xs text-parchment-100"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] text-stone-400 mb-1">Intensity</label>
+              <input
+                type="number"
+                min={0}
+                max={1}
+                step={0.05}
+                value={spriteData.glowIntensity ?? ''}
+                placeholder="0.35"
+                onChange={(e) => onChange({
+                  type: 'inline',
+                  spriteData: { ...spriteData, glowIntensity: e.target.value === '' ? undefined : Math.min(1, Math.max(0, Number(e.target.value))) },
+                })}
+                className="w-full px-2 py-1 bg-stone-700 rounded text-xs text-parchment-100"
+              />
+            </div>
+            <div className="pb-1">
+              <label className="flex items-center gap-1.5 text-[10px] font-bold text-stone-400 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={!!spriteData.glowFlicker}
+                  onChange={(e) => onChange({
+                    type: 'inline',
+                    spriteData: { ...spriteData, glowFlicker: e.target.checked || undefined },
+                  })}
+                />
+                Flicker
+              </label>
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -2081,6 +2170,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
               <>
                 <SpellSpriteEditor
                   label="Projectile Appearance"
+                  showGlow
                   spriteRef={editedSpell.sprites?.projectile}
                   onChange={(sprite) => setEditedSpell({
                     ...editedSpell,

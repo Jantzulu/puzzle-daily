@@ -13,6 +13,7 @@ import { updateProjectiles, updateParticles, executeParallelActions, DESPAWN_SHR
 import { isTileActiveOnTurn } from '../../engine/actions';
 import { subscribeToImageLoads, loadImage, isImageReady } from '../../utils/imageLoader';
 import { blobShadowsEnabled, drawBlobShadow, drawDeathBlobShadow, drawProjectileBlobShadow } from './blobShadows';
+import { drawLightGlow } from './lightGlow';
 import { wallAOEnabled, drawWallAO, AO_VOID_OCCLUDES } from './wallAO';
 import { staticBakeEnabled } from './staticBake';
 
@@ -2780,6 +2781,9 @@ function drawEnemy(
         ctx.shadowOffsetY = 1;
       }
 
+      // Emitted-light halo behind the body (opt-in per sprite, see lightGlow.ts)
+      drawLightGlow(ctx, enemyData.customSprite, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, now);
+
       if (isSpawning && spawnAnimState) {
         // Spawn animation is playing - draw spawn sprite instead of normal sprite
         drawSpawnSpritePixelPerfect(ctx, enemyData.customSprite, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, spawnAnimState.startTime);
@@ -2836,6 +2840,7 @@ function drawEnemy(
       if (blobShadowsEnabled()) {
         drawBlobShadow(ctx, enemyData?.customSprite, directionToUse, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, !!enemyData?.isFloating);
       }
+      drawLightGlow(ctx, enemyData?.customSprite, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, now);
       ctx.fillStyle = COLORS.enemy;
       ctx.beginPath();
       ctx.arc(px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE / 3, 0, Math.PI * 2);
@@ -3659,6 +3664,9 @@ function drawCharacter(
         ctx.shadowOffsetY = 1;
       }
 
+      // Emitted-light halo behind the body (opt-in per sprite, see lightGlow.ts)
+      drawLightGlow(ctx, charData.customSprite, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, now);
+
       if (isSpawning && spawnAnimState) {
         // Spawn animation is playing - draw spawn sprite instead of normal sprite
         drawSpawnSpritePixelPerfect(ctx, charData.customSprite, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, spawnAnimState.startTime);
@@ -3719,6 +3727,8 @@ function drawCharacter(
         ctx.shadowOffsetX = 1;
         ctx.shadowOffsetY = 1;
       }
+
+      drawLightGlow(ctx, charData?.customSprite, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, now);
 
       ctx.fillStyle = COLORS.character;
       const size = TILE_SIZE * 0.6;
@@ -4331,6 +4341,10 @@ function drawProjectile(
   if (blobShadowsEnabled()) {
     drawProjectileBlobShadow(ctx, px, py, TILE_SIZE, scale);
   }
+
+  // Emitted-light halo behind the bolt (opt-in on the spell's projectile
+  // sprite) — scales with the despawn shrink so the light dies with it
+  drawLightGlow(ctx, projectile.attackData.projectileSprite?.spriteData, px, py, TILE_SIZE, now, scale);
 
   // Check if the visual has passed the reflect point (tint only applies after reflect)
   const pastReflectPoint = projectile.reflected && !!visualState.get(projectile.id)?.visualPastReflectPoint;

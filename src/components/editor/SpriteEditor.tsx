@@ -5,6 +5,7 @@ import { Direction } from '../../types/game';
 import { subscribeToImageLoads, loadImage } from '../../utils/imageLoader';
 import { MediaBrowseButton } from './MediaBrowseButton';
 import { drawBlobShadowResolved, resolveShadowConfigByKey, resolveDeathShadowConfig, type ResolvedShadow } from '../game/blobShadows';
+import { drawLightGlowResolved, resolveGlowConfig, type ResolvedGlow } from '../game/lightGlow';
 
 // Tiles are 24×24 art pixels. Sprite images render at their NATIVE pixel
 // dimensions × (tileSize / ART_TILE_PX), centered on the tile — never scaled
@@ -391,7 +392,10 @@ const AnchorPreview: React.FC<AnchorPreviewLayer & {
   shadow?: ResolvedShadow;
   /** The owning entity's isFloating flag (smaller, fainter shadow). */
   shadowFloating?: boolean;
-}> = ({ imageSrc, anchorX, anchorY, offsetX, offsetY, isSpriteSheet, frameCount, frameRate, frameWidth, frameHeight, ghosts, activeAlpha = 1, shadow, shadowFloating = false }) => {
+  /** When set, the emitted-light halo is drawn behind the sprite exactly as
+   *  on the board (see lightGlow.ts) — for tuning color/radius by eye. */
+  glow?: ResolvedGlow | null;
+}> = ({ imageSrc, anchorX, anchorY, offsetX, offsetY, isSpriteSheet, frameCount, frameRate, frameWidth, frameHeight, ghosts, activeAlpha = 1, shadow, shadowFloating = false, glow }) => {
   const previewRef = useRef<HTMLCanvasElement>(null);
   const zoomRef = useRef<HTMLCanvasElement>(null);
   const [loadTick, setLoadTick] = useState(0);
@@ -506,6 +510,12 @@ const AnchorPreview: React.FC<AnchorPreviewLayer & {
       // Ground shadow under the sprite, board-faithful (entity sprites only)
       if (shadow) {
         drawBlobShadowResolved(ctx, shadow, displaySize / 2, displaySize / 2, tileRect, shadowFloating);
+      }
+
+      // Emitted-light halo behind the sprite, board-faithful. Animates
+      // (flicker) while ▶ playback runs; otherwise a static snapshot.
+      if (glow) {
+        drawLightGlowResolved(ctx, glow, displaySize / 2, displaySize / 2, tileRect, Date.now());
       }
 
       // Draw one sprite layer at frame 0, faithful to the board's native-size
@@ -4093,6 +4103,128 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, sh
               );
             })()}
           </div>
+        </div>
+      </div>
+      )}
+      {shadowPreview && (
+      <div className="border-2 border-stone-600 rounded-lg p-4 bg-stone-900/50">
+        <h4 className="text-stone-300 font-bold mb-3 flex items-center gap-2">
+          <span className="text-lg">✨</span> Emitted Light
+        </h4>
+        <p className="text-xs text-stone-400 mb-3">
+          An additive halo behind the sprite for things that emit light — torches, fireballs,
+          wisps. Off unless a color is set. Radius and offsets are in art pixels (a tile is 24);
+          the halo is centered on the sprite, not the ground. Applies everywhere this sprite
+          renders. Use ▶ on the preview to watch the flicker.
+        </p>
+        <div className="flex gap-4 items-start">
+          <div className="grid grid-cols-3 gap-3 flex-1">
+            <div>
+              <label className="block text-xs font-bold mb-1">Color</label>
+              <div className="flex items-center gap-1">
+                <input
+                  type="color"
+                  value={sprite.glowColor ?? '#ff9a3d'}
+                  onChange={(e) => onChange({ ...sprite, glowColor: e.target.value })}
+                  className="w-9 h-8 bg-stone-700 rounded cursor-pointer"
+                />
+                {sprite.glowColor ? (
+                  <button
+                    onClick={() => onChange({ ...sprite, glowColor: undefined })}
+                    className="px-1.5 py-1 text-xs bg-stone-700 hover:bg-stone-600 rounded"
+                    title="Remove glow"
+                  >
+                    ✕
+                  </button>
+                ) : (
+                  <span className="text-[10px] text-stone-500">off</span>
+                )}
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-bold mb-1">Radius</label>
+              <input
+                type="number"
+                min={0}
+                value={sprite.glowRadius ?? ''}
+                placeholder="16"
+                onChange={(e) => onChange({ ...sprite, glowRadius: e.target.value === '' ? undefined : Math.max(0, Number(e.target.value)) })}
+                className="w-full px-2 py-1.5 bg-stone-700 rounded text-parchment-100 text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold mb-1">Intensity</label>
+              <input
+                type="number"
+                min={0}
+                max={1}
+                step={0.05}
+                value={sprite.glowIntensity ?? ''}
+                placeholder="0.35"
+                onChange={(e) => onChange({ ...sprite, glowIntensity: e.target.value === '' ? undefined : Math.min(1, Math.max(0, Number(e.target.value))) })}
+                className="w-full px-2 py-1.5 bg-stone-700 rounded text-parchment-100 text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold mb-1">Offset X</label>
+              <input
+                type="number"
+                value={sprite.glowOffsetX ?? ''}
+                placeholder="0"
+                onChange={(e) => onChange({ ...sprite, glowOffsetX: e.target.value === '' ? undefined : Number(e.target.value) })}
+                className="w-full px-2 py-1.5 bg-stone-700 rounded text-parchment-100 text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold mb-1">Offset Y</label>
+              <input
+                type="number"
+                value={sprite.glowOffsetY ?? ''}
+                placeholder="0"
+                onChange={(e) => onChange({ ...sprite, glowOffsetY: e.target.value === '' ? undefined : Number(e.target.value) })}
+                className="w-full px-2 py-1.5 bg-stone-700 rounded text-parchment-100 text-sm"
+              />
+            </div>
+            <div className="flex items-end pb-1.5">
+              <label className="flex items-center gap-1.5 text-xs font-bold cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={!!sprite.glowFlicker}
+                  onChange={(e) => onChange({ ...sprite, glowFlicker: e.target.checked || undefined })}
+                />
+                Flicker
+              </label>
+            </div>
+          </div>
+          {(() => {
+            // Same idle-context preview as the Ground Shadow section, with the
+            // halo drawn board-faithfully behind the sprite.
+            const dir = sprite.useDirectional
+              ? (sprite.directionalSprites?.s ?? sprite.directionalSprites?.default)
+              : undefined;
+            const sheet = dir?.idleSpriteSheet ?? sprite.idleSpriteSheet;
+            const imgSrc = sheet?.imageData ?? sheet?.imageUrl
+              ?? dir?.idleImageData ?? dir?.imageData ?? dir?.idleImageUrl ?? dir?.imageUrl
+              ?? sprite.idleImageData ?? sprite.imageData ?? sprite.idleImageUrl ?? sprite.imageUrl;
+            if (!imgSrc || !sprite.glowColor) return null;
+            return (
+              <AnchorPreview
+                imageSrc={imgSrc}
+                anchorX={(sheet ? sheet.anchorX : (dir?.idleAnchorX ?? sprite.idleAnchorX)) ?? 0.5}
+                anchorY={(sheet ? sheet.anchorY : (dir?.idleAnchorY ?? sprite.idleAnchorY)) ?? 0.5}
+                offsetX={(sheet ? sheet.offsetX : (dir?.idleOffsetX ?? sprite.idleOffsetX)) ?? 0}
+                offsetY={(sheet ? sheet.offsetY : (dir?.idleOffsetY ?? sprite.idleOffsetY)) ?? 0}
+                isSpriteSheet={!!sheet}
+                frameCount={sheet?.frameCount}
+                frameRate={sheet?.frameRate}
+                frameWidth={sheet?.frameWidth}
+                frameHeight={sheet?.frameHeight}
+                shadow={resolveShadowConfigByKey(sprite, undefined)}
+                shadowFloating={shadowPreviewFloating}
+                glow={resolveGlowConfig(sprite)}
+              />
+            );
+          })()}
         </div>
       </div>
       )}

@@ -289,6 +289,17 @@ export interface CustomSprite {
   deathShadowOffsetX?: number;
   deathShadowOffsetY?: number;
 
+  // Emitted-light glow (see lightGlow.ts). Opt-in: setting glowColor enables
+  // an additive halo behind the sprite, centered on the body — for things
+  // that emit light (torches, fireballs, wisps). Sizes in ART PIXELS.
+  // Applies wherever this sprite renders: entities and spell projectiles.
+  glowColor?: string;     // hex; unset = no glow
+  glowRadius?: number;    // halo radius (default 16)
+  glowIntensity?: number; // 0-1 peak strength (default 0.35)
+  glowOffsetX?: number;   // shift from sprite center (positive = right)
+  glowOffsetY?: number;   // (positive = down)
+  glowFlicker?: boolean;  // subtle torch-like shimmer
+
   // Simple rendering (single sprite for all directions)
   shape?: 'circle' | 'square' | 'triangle' | 'star' | 'diamond' | 'hexagon';
   primaryColor?: string;
