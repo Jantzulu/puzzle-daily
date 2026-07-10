@@ -643,12 +643,12 @@ interface SpawnAnimationState {
 
 // ─── Fly-in entrance (spawn pre-phase) ──────────────────────────────────────
 // Opt-in per sprite (CustomSprite.spawnFlyIn): the entity swoops linearly
-// from a deterministic off-screen point to its tile using its directional
-// moving animation; the spawn sheet (if any) plays when it lands. Enemies
-// fly in when the board loads; heroes fly in when placed (replacing the
-// drop-in). Cadence rides the spawn-animation lifecycle exactly: once per
-// board mount, again after a page refresh, not on re-runs. Purely visual —
-// the entity logically occupies its tile the whole time; engine untouched.
+// from a random off-screen point to its tile using its directional moving
+// animation; the spawn sheet (if any) plays when it lands. Enemies fly in
+// when the board loads; heroes fly in when placed (replacing the drop-in).
+// Cadence rides the spawn-animation lifecycle exactly: once per board mount,
+// again after a page refresh, not on re-runs. Purely visual — the entity
+// logically occupies its tile the whole time; engine untouched.
 const FLY_IN_MS_PER_TILE = 110;
 const FLY_IN_MIN_MS = 500;
 const FLY_IN_MAX_MS = 1600; // ≈ one spawn sheet's worth of theater, no more
@@ -662,26 +662,14 @@ interface FlyInState {
   facing: Direction; // dominant travel direction (drives the moving sheet)
 }
 
-// FNV-1a: the origin looks arbitrary but is identical on every load of the
-// same puzzle (determinism rule — no Math.random in anything comparable).
-function flyInHash(s: string): number {
-  let h = 2166136261;
-  for (let i = 0; i < s.length; i++) {
-    h ^= s.charCodeAt(i);
-    h = Math.imul(h, 16777619);
-  }
-  return h >>> 0;
-}
-
-function computeFlyInOrigin(
-  puzzleId: string,
-  entitySeed: string,
-  boardW: number,
-  boardH: number,
-): { fromX: number; fromY: number } {
-  const h = flyInHash(`${puzzleId}:${entitySeed}`);
-  const edge = h % 4;
-  const along = ((h >>> 2) % 997) / 996; // 0..1 along the chosen edge
+// Genuinely random: a fresh edge + position every board load and every hero
+// placement. Safe despite the determinism rule — that rule protects the
+// LOGIC loop (sim, scoring, replays), and the fly-in is pre-game theater in
+// a render-only ref: finished before turn 1, never captured into game state,
+// never re-fired in replay. Nothing observable can diverge because of it.
+function computeFlyInOrigin(boardW: number, boardH: number): { fromX: number; fromY: number } {
+  const edge = Math.floor(Math.random() * 4);
+  const along = Math.random(); // 0..1 along the chosen edge
   switch (edge) {
     case 0: return { fromX: along * (boardW - 1), fromY: -FLY_IN_OFFSCREEN_TILES };
     case 1: return { fromX: boardW - 1 + FLY_IN_OFFSCREEN_TILES, fromY: along * (boardH - 1) };
@@ -812,7 +800,6 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
   useEffect(() => {
     const now = Date.now();
     const newEnemySpawns = new Map<number, SpawnAnimationState>();
-    const puzzleId = gameState.puzzle.id;
 
     gameState.puzzle.enemies.forEach((enemy, index) => {
       // Only start spawn animation if enemy hasn't already spawned and isn't dead
@@ -820,7 +807,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
         // Fly-in pre-phase: delay the spawn sheet until the flight lands.
         let spawnStart = now;
         if (getEnemy(enemy.enemyId)?.customSprite?.spawnFlyIn) {
-          const { fromX, fromY } = computeFlyInOrigin(puzzleId, String(index), gameState.puzzle.width, gameState.puzzle.height);
+          const { fromX, fromY } = computeFlyInOrigin(gameState.puzzle.width, gameState.puzzle.height);
           const distTiles = Math.hypot(enemy.x - fromX, enemy.y - fromY);
           const durationMs = Math.min(FLY_IN_MAX_MS, Math.max(FLY_IN_MIN_MS, Math.round(distTiles * FLY_IN_MS_PER_TILE)));
           enemyFlyInsRef.current.set(index, {
@@ -1028,7 +1015,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
         // placement tile; the spawn sheet starts when the flight lands.
         let spawnStart = now;
         if (getCharacter(char.characterId)?.customSprite?.spawnFlyIn) {
-          const { fromX, fromY } = computeFlyInOrigin(gameState.puzzle.id, spawnKey, gameState.puzzle.width, gameState.puzzle.height);
+          const { fromX, fromY } = computeFlyInOrigin(gameState.puzzle.width, gameState.puzzle.height);
           const distTiles = Math.hypot(char.x - fromX, char.y - fromY);
           const durationMs = Math.min(FLY_IN_MAX_MS, Math.max(FLY_IN_MIN_MS, Math.round(distTiles * FLY_IN_MS_PER_TILE)));
           characterFlyInsRef.current.set(spawnKey, {

@@ -301,11 +301,12 @@ export interface CustomSprite {
   glowFlicker?: boolean;  // subtle torch-like shimmer
 
   // Fly-in entrance (visual only — the entity logically occupies its tile
-  // the whole time). When true, the entity swoops linearly from a
-  // deterministic off-screen point using its directional moving animation,
-  // then plays the spawn animation (or idles). Enemies fly in on board load,
-  // heroes on placement (replacing the drop-in); same once-per-page-load
-  // cadence as spawn animations. See the fly-in helpers in AnimatedGameBoard.
+  // the whole time). When true, the entity swoops linearly from a random
+  // off-screen point using its directional moving animation, then plays the
+  // spawn animation (or idles). Enemies fly in on board load, heroes on
+  // placement (replacing the drop-in); same once-per-page-load cadence as
+  // spawn animations. Random is safe here: pre-game theater, render-only,
+  // never enters game state — see the fly-in helpers in AnimatedGameBoard.
   spawnFlyIn?: boolean;
 
   // Simple rendering (single sprite for all directions)
