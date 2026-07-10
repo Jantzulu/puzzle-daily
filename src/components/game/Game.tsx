@@ -33,6 +33,7 @@ import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { lockBodyScroll } from '../../utils/scrollLock';
 import { submitCompletion } from '../../services/statsService';
 import { CommunityStats } from './CommunityStats';
+import { NextPuzzleCountdown } from './NextPuzzleCountdown';
 import { BugReportModal } from './BugReportModal';
 import type { TrackedRun } from '../../types/bugReport';
 import { BannerMesh } from './BannerMesh';
@@ -2632,6 +2633,11 @@ export const Game: React.FC<GameProps> = ({
                         playerOutcome="defeat"
                       />
                     )}
+
+                    {/* Next daily countdown — only once the day is locked (no retries left) */}
+                    {isDailyContext && dailyLockStatus === 'lost' && (
+                      <NextPuzzleCountdown className="mt-4" />
+                    )}
                   </div>
                 </div>
               )}
@@ -2773,6 +2779,9 @@ export const Game: React.FC<GameProps> = ({
                         playerOutcome="victory"
                       />
                     )}
+
+                    {/* Next daily countdown — daily context only */}
+                    {isDailyContext && <NextPuzzleCountdown className="mt-4" />}
                   </div>
                 </div>
               )}
@@ -2826,9 +2835,7 @@ export const Game: React.FC<GameProps> = ({
                     }`}>
                       {dailyLockStatus === 'won' ? "Today's Puzzle Complete" : "Today's Puzzle Failed"}
                     </span>
-                    <span className="text-xs text-parchment-300/80">
-                      Come back tomorrow for a new challenge
-                    </span>
+                    <NextPuzzleCountdown className="mt-1" />
                   </div>
                 </div>
               )}

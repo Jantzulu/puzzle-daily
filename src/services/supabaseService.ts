@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase';
 import type { DbPuzzle, DbAsset } from '../lib/supabase';
 import { logActivity } from './activityLogService';
+import { localDateKey } from '../utils/localDate';
 
 async function getCurrentUserId(): Promise<string | undefined> {
   const { data } = await supabase.auth.getUser();
@@ -451,7 +452,9 @@ export type DailyPuzzleResult =
   | { status: 'error' };
 
 export async function fetchTodaysPuzzle(): Promise<DailyPuzzleResult> {
-  const today = new Date().toISOString().split('T')[0];
+  // Local calendar date — the daily rolls over at the player's local
+  // midnight (see utils/localDate.ts), not UTC.
+  const today = localDateKey();
 
   try {
     // Today's entry if there is one, otherwise the most recent past day —

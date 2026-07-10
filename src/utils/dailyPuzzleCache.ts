@@ -1,10 +1,11 @@
 import type { Puzzle } from '../types/game';
+import { localDateKey } from './localDate';
 
 // Same-day cache of the fetched daily puzzle. Lets a reload (or an offline
 // visit later the same day) boot straight into the real daily instead of the
 // local default, and keeps daily-lock/lives hydration pointed at the right
-// puzzle from the first render. Keyed by UTC date to match
-// fetchTodaysPuzzle's definition of "today".
+// puzzle from the first render. Keyed by LOCAL date to match
+// fetchTodaysPuzzle's definition of "today" (rollover at local midnight).
 
 const KEY = 'puzzle-daily-cached-daily';
 
@@ -15,7 +16,7 @@ export interface CachedDaily {
 }
 
 function todayKey(): string {
-  return new Date().toISOString().split('T')[0];
+  return localDateKey();
 }
 
 export function saveCachedDailyPuzzle(puzzle: Puzzle, puzzleNumber: number | null): void {
