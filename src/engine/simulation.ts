@@ -5060,9 +5060,10 @@ export function updateParticles(gameState: GameState): void {
 
   const now = Date.now();
 
-  // Remove expired particles
+  // Remove expired particles (delayed particles live delayMs longer — their
+  // visible life doesn't start until the hold ends)
   gameState.activeParticles = gameState.activeParticles.filter(p => {
-    const elapsed = now - p.startTime;
+    const elapsed = now - p.startTime - (p.delayMs ?? 0);
     return elapsed < p.duration;
   });
 }

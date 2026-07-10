@@ -790,11 +790,24 @@ function applyContactDamageReaction(
     const spell = loadSpellAsset(asset.contactDamageSpellVisualId);
     if (spell) {
       const toward = calculateDirectionTo(holder.x, holder.y, attacker.x, attacker.y);
+      // The bolt itself: a one-tile flight from the holder to the attacker,
+      // oriented along its travel. A traveling PARTICLE, not a real
+      // projectile — it can't collide, pierce, or enter the logic loop.
+      // The hit visuals below hold until it arrives.
+      let hitDelayMs = 0;
+      if (spell.sprites?.projectile?.spriteData) {
+        const FLIGHT_MS = 180;
+        spawnParticle(attacker.x, attacker.y, spell.sprites.projectile, FLIGHT_MS, gameState, toward, {
+          fromX: holder.x,
+          fromY: holder.y,
+        });
+        hitDelayMs = FLIGHT_MS;
+      }
       if (spell.sprites?.meleeAttack?.spriteData) {
-        spawnParticle(attacker.x, attacker.y, spell.sprites.meleeAttack, 300, gameState, toward);
+        spawnParticle(attacker.x, attacker.y, spell.sprites.meleeAttack, 300, gameState, toward, hitDelayMs ? { delayMs: hitDelayMs } : undefined);
       }
       if (spell.sprites?.damageEffect?.spriteData) {
-        spawnParticle(attacker.x, attacker.y, spell.sprites.damageEffect, 400, gameState);
+        spawnParticle(attacker.x, attacker.y, spell.sprites.damageEffect, 400, gameState, undefined, hitDelayMs ? { delayMs: hitDelayMs } : undefined);
       }
     }
   }
@@ -2500,7 +2513,8 @@ function spawnParticle(
   sprite: any,
   duration: number,
   gameState: GameState,
-  direction?: Direction
+  direction?: Direction,
+  opts?: { delayMs?: number; fromX?: number; fromY?: number }
 ): void {
   if (!gameState.activeParticles) {
     gameState.activeParticles = [];
@@ -2515,6 +2529,7 @@ function spawnParticle(
     duration,
     alpha: 1.0,
     rotation: direction, // Store direction for rotation calculation in rendering
+    ...opts, // delayMs (hold before appearing) / fromX,fromY (travel start)
   };
 
   gameState.activeParticles.push(particle);

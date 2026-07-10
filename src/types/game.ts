@@ -1177,6 +1177,9 @@ export interface ParticleEffect {
   scale?: number;               // Size multiplier (can animate)
   alpha?: number;               // Opacity (for fade out)
   rotation?: Direction;         // Direction enum value used for rendering rotation lookup (see getRotationForDirection in AnimatedGameBoard)
+  delayMs?: number;             // Invisible hold before the particle appears; its visible life (and sheet animation) starts at startTime + delayMs
+  fromX?: number;               // Travel start (tile coords): the particle lerps fromX/fromY → x/y across its visible duration (borrowed contact-damage projectiles)
+  fromY?: number;
 }
 
 /**

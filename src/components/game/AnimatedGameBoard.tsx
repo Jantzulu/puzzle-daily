@@ -4939,11 +4939,20 @@ function drawDefaultProjectile(ctx: CanvasRenderingContext2D, px: number, py: nu
  * - No fade-out is applied to spritesheets (they just disappear when done)
  */
 function drawParticle(ctx: CanvasRenderingContext2D, particle: ParticleEffect, now: number, imageCache: Map<string, HTMLImageElement>) {
-  const elapsed = now - particle.startTime;
-  if (elapsed >= particle.duration) return;
+  // Delayed particles hold invisible until their moment (e.g. a hit effect
+  // waiting for a borrowed projectile to arrive); visible life — and the
+  // sheet animation clock below — starts at startTime + delayMs.
+  const visibleStart = particle.startTime + (particle.delayMs ?? 0);
+  const elapsed = now - visibleStart;
+  if (elapsed < 0 || elapsed >= particle.duration) return;
 
-  const px = particle.x * TILE_SIZE + TILE_SIZE / 2;
-  const py = particle.y * TILE_SIZE + TILE_SIZE / 2;
+  // Traveling particles lerp fromX/fromY → x/y across their visible life
+  // (borrowed contact-damage projectiles: a one-tile flight, then the hit).
+  const travelT = Math.min(1, Math.max(0, elapsed / particle.duration));
+  const tileX = particle.fromX !== undefined ? particle.fromX + (particle.x - particle.fromX) * travelT : particle.x;
+  const tileY = particle.fromY !== undefined ? particle.fromY + (particle.y - particle.fromY) * travelT : particle.y;
+  const px = tileX * TILE_SIZE + TILE_SIZE / 2;
+  const py = tileY * TILE_SIZE + TILE_SIZE / 2;
 
   // Check if particle has custom sprite
   if (particle.sprite?.spriteData) {
@@ -4982,7 +4991,7 @@ function drawParticle(ctx: CanvasRenderingContext2D, particle: ParticleEffect, n
         py,
         spriteSize,
         imageCache,
-        particle.startTime,
+        visibleStart, // delayed particles animate from their visible start
         now,
         rotationConfig
       );
