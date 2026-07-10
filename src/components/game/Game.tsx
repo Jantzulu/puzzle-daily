@@ -38,6 +38,7 @@ import { BugReportModal } from './BugReportModal';
 import type { TrackedRun } from '../../types/bugReport';
 import { BannerMesh } from './BannerMesh';
 import { GemMesh } from './GemMesh';
+import { GateRevealMesh } from './GateRevealMesh';
 import { ReplaySlabMesh } from './ReplaySlabMesh';
 
 // Test mode types
@@ -203,6 +204,30 @@ export const Game: React.FC<GameProps> = ({
   // changes. 0 = never fired.
   const [resetFxNonce, setResetFxNonce] = useState(0);
   const boardFadeRef = useRef<HTMLDivElement | null>(null);
+
+  // Board gate reveal: the loading cover IS a lowered portcullis that
+  // winches up once sprites are ready — the day begins with the dungeon
+  // opening, and entrance flights launch under the rising gate. 'closed'
+  // (covering, board hidden) → 'rising' (winch-up, board fading in behind
+  // it) → 'gone' (unmounted). A mid-session preload restart (cloud daily
+  // swap) drops the gate again.
+  const [gatePhase, setGatePhase] = useState<'closed' | 'rising' | 'gone'>('closed');
+  useEffect(() => {
+    if (!spritesReady) {
+      setGatePhase('closed');
+      return;
+    }
+    if (gatePhase === 'closed') {
+      // Brief hold so cached loads still read as a gate opening, not a flicker.
+      const hold = setTimeout(() => setGatePhase('rising'), 220);
+      return () => clearTimeout(hold);
+    }
+    if (gatePhase === 'rising') {
+      // Fallback if transitionend is missed (reduced motion, hidden tab).
+      const done = setTimeout(() => setGatePhase('gone'), 1500);
+      return () => clearTimeout(done);
+    }
+  }, [spritesReady, gatePhase]);
   useEffect(() => {
     if (resetFxNonce === 0) return;
     boardFadeRef.current?.animate(
@@ -2490,14 +2515,30 @@ export const Game: React.FC<GameProps> = ({
             <div className={`relative top-1.5 lg:top-[7px] z-10 w-full max-w-[900px] overflow-hidden board-rise ${(replayMode || enteringReplay) ? 'board-rise-collapsed ' : ''}${gameState.gameStatus === 'defeat' ? 'animate-screen-shake' : ''}`}>
               <div
                 ref={boardFadeRef}
-                className={`transition-[opacity,transform] duration-700 ease-out ${spritesReady ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
-                style={{ transform: spritesReady ? 'scale(1)' : 'scale(0.85)', transformOrigin: '50% 50%', willChange: 'transform, opacity' }}
+                className={`transition-opacity duration-500 ease-out ${gatePhase !== 'closed' ? 'opacity-100' : 'opacity-0'} ${spritesReady ? '' : 'pointer-events-none'}`}
               >
-                <ResponsiveGameBoard gameState={gameState} onTileClick={handleTileClick} onProjectileKill={handleProjectileKill} replayFrozen={replayMode && !replayPlaying && !replayStepAnimating} entrancesRevealed={spritesReady} />
+                <ResponsiveGameBoard gameState={gameState} onTileClick={handleTileClick} onProjectileKill={handleProjectileKill} replayFrozen={replayMode && !replayPlaying && !replayStepAnimating} entrancesRevealed={gatePhase !== 'closed'} />
               </div>
-              {!spritesReady && (
-                <div className="absolute inset-0 flex items-center justify-center bg-stone-900/80">
-                  <div className="text-stone-400 text-sm animate-pulse">Loading sprites...</div>
+              {/* The gate itself — covers the board while loading, winches
+                  up on ready. Board fades in behind the rising lattice;
+                  entrance flights launch as it clears. */}
+              {gatePhase !== 'gone' && (
+                <div className="absolute inset-0 z-20 overflow-hidden pointer-events-none" aria-hidden="true">
+                  <div
+                    className={`board-gate absolute inset-0 ${gatePhase === 'rising' ? 'board-gate-risen' : ''}`}
+                    onTransitionEnd={(e) => {
+                      if (e.target === e.currentTarget && e.propertyName === 'transform') {
+                        setGatePhase(p => (p === 'rising' ? 'gone' : p));
+                      }
+                    }}
+                  >
+                    <GateRevealMesh />
+                    {!spritesReady && (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="text-stone-400 text-sm animate-pulse">Loading sprites...</div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 

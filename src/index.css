@@ -1919,6 +1919,20 @@ body:not(.menu-gate-lowered) .control-rail.rail-riding {
   animation: replay-slab-sink 0.45s cubic-bezier(0.5, 0, 0.75, 0.5) both;
 }
 
+/* Board gate reveal — the loading cover is a lowered portcullis over the
+   board. Winched up (ease-in start, heavy-iron pace, same curve family as
+   the menu gate's close) once sprites are ready; drops back if a
+   mid-session preload restarts. -104% so the hanging spikes clear. */
+.board-gate {
+  transform: translateY(0);
+  transition: transform 0.9s cubic-bezier(0.5, 0, 0.75, 0.5);
+  will-change: transform;
+}
+
+.board-gate-risen {
+  transform: translateY(-104%);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-rail-descend,
   .animate-rail-ascend,
@@ -1929,6 +1943,9 @@ body:not(.menu-gate-lowered) .control-rail.rail-riding {
   }
   .menu-gate-open > div > div::after {
     display: none;
+  }
+  .board-gate {
+    transition: none;
   }
 }
 
