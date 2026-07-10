@@ -654,10 +654,13 @@ interface SpawnAnimationState {
 // Cadence rides the spawn-animation lifecycle exactly: once per board mount,
 // again after a page refresh, not on re-runs. Purely visual — the entity
 // logically occupies its tile the whole time; engine untouched.
-const FLY_IN_MS_PER_TILE_ENEMY = 160; // ambient theater — a touch leisurely
+const FLY_IN_MS_PER_TILE_ENEMY = 220; // ambient theater — a leisurely glide
 const FLY_IN_MS_PER_TILE_HERO = 110;  // interactive feedback — stays snappy
 const FLY_IN_MIN_MS = 500;
-const FLY_IN_MAX_MS = 1600; // ≈ one spawn sheet's worth of theater, no more
+// Caps split like the speeds: the enemy cap has headroom so long flights
+// aren't compressed back to the old pace; hero entrances stay brief.
+const FLY_IN_MAX_MS_ENEMY = 2200;
+const FLY_IN_MAX_MS_HERO = 1600;
 const FLY_IN_OFFSCREEN_TILES = 2.5; // how far beyond the board edge flights start
 
 // Flight styles (CustomSprite.spawnFlyInStyle): 'straight' is the default
@@ -892,7 +895,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
         if (enemySprite?.spawnFlyIn) {
           const { fromX, fromY } = computeFlyInOrigin(gameState.puzzle.width, gameState.puzzle.height);
           const distTiles = Math.hypot(enemy.x - fromX, enemy.y - fromY);
-          const durationMs = Math.min(FLY_IN_MAX_MS, Math.max(FLY_IN_MIN_MS, Math.round(distTiles * FLY_IN_MS_PER_TILE_ENEMY)));
+          const durationMs = Math.min(FLY_IN_MAX_MS_ENEMY, Math.max(FLY_IN_MIN_MS, Math.round(distTiles * FLY_IN_MS_PER_TILE_ENEMY)));
           enemyFlyInsRef.current.set(index, {
             startTime: now,
             durationMs,
@@ -1103,7 +1106,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
         if (charSprite?.spawnFlyIn) {
           const { fromX, fromY } = computeFlyInOrigin(gameState.puzzle.width, gameState.puzzle.height);
           const distTiles = Math.hypot(char.x - fromX, char.y - fromY);
-          const durationMs = Math.min(FLY_IN_MAX_MS, Math.max(FLY_IN_MIN_MS, Math.round(distTiles * FLY_IN_MS_PER_TILE_HERO)));
+          const durationMs = Math.min(FLY_IN_MAX_MS_HERO, Math.max(FLY_IN_MIN_MS, Math.round(distTiles * FLY_IN_MS_PER_TILE_HERO)));
           characterFlyInsRef.current.set(spawnKey, {
             startTime: now,
             durationMs,
