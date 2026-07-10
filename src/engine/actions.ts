@@ -766,14 +766,37 @@ function applyContactDamageReaction(
 ): void {
   if (!effect) return;
   const asset = loadStatusEffectAsset(effect.statusAssetId);
-  if (!asset || !asset.contactDamageAnimate) return;
-  const reactionFacing = asset.contactDamageFaceAttacker
-    ? calculateDirectionTo(holder.x, holder.y, attacker.x, attacker.y)
-    : (holder.facing ?? Direction.SOUTH);
-  holder.contactReactionTurn = gameState.currentTurn;
-  holder.contactReactionFacing = reactionFacing;
-  if (asset.contactDamageFaceAttacker && asset.contactDamageKeepFacing) {
-    holder.facing = reactionFacing; // persist the new facing (logical); otherwise it reverts (visual-only)
+  if (!asset) return;
+
+  if (asset.contactDamageAnimate) {
+    const reactionFacing = asset.contactDamageFaceAttacker
+      ? calculateDirectionTo(holder.x, holder.y, attacker.x, attacker.y)
+      : (holder.facing ?? Direction.SOUTH);
+    holder.contactReactionTurn = gameState.currentTurn;
+    holder.contactReactionFacing = reactionFacing;
+    if (asset.contactDamageFaceAttacker && asset.contactDamageKeepFacing) {
+      holder.facing = reactionFacing; // persist the new facing (logical); otherwise it reverts (visual-only)
+    }
+  }
+
+  // Borrowed hit presentation: the effect can name a spell whose LANDED-HIT
+  // visuals play when the contact fires — the melee-attack sprite on the
+  // attacker's tile oriented toward them (it's the holder striking whoever
+  // walked in), plus the spell's damage effect there. Visuals only: no
+  // damage, cooldowns, or mechanics are inherited, and since contact damage
+  // always lands, only the successful-hit presentation is used — no
+  // projectile flight even for projectile spells.
+  if (asset.contactDamageSpellVisualId) {
+    const spell = loadSpellAsset(asset.contactDamageSpellVisualId);
+    if (spell) {
+      const toward = calculateDirectionTo(holder.x, holder.y, attacker.x, attacker.y);
+      if (spell.sprites?.meleeAttack?.spriteData) {
+        spawnParticle(attacker.x, attacker.y, spell.sprites.meleeAttack, 300, gameState, toward);
+      }
+      if (spell.sprites?.damageEffect?.spriteData) {
+        spawnParticle(attacker.x, attacker.y, spell.sprites.damageEffect, 400, gameState);
+      }
+    }
   }
 }
 

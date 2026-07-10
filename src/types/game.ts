@@ -1384,6 +1384,7 @@ export interface StatusEffectAsset {
   contactDamageAnimate?: boolean;      // Play the holder's cast animation when its contact damage fires
   contactDamageFaceAttacker?: boolean; // Turn the holder to face the incoming entity for the reaction (else use current facing)
   contactDamageKeepFacing?: boolean;   // With faceAttacker: persist the new facing logically (else revert — the turn is visual-only)
+  contactDamageSpellVisualId?: string; // Borrow this spell's LANDED-HIT visuals when the contact fires: melee-attack sprite oriented toward the attacker + damage effect on their tile. Visuals only — damage/mechanics are NOT inherited, and no projectile flight (contact damage always lands)
 
   // Overlay sprite - renders on top of entity at reduced opacity (for shields, deflect, etc.)
   overlaySprite?: SpriteReference;  // Sprite to overlay on entity (supports spritesheets)

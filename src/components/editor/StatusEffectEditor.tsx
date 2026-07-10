@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 import { toast } from '../shared/Toast';
 import type { StatusEffectAsset, SpriteReference } from '../../types/game';
 import { StatusEffectType } from '../../types/game';
-import { saveStatusEffectAsset } from '../../utils/assetStorage';
+import { saveStatusEffectAsset, loadSpellAsset } from '../../utils/assetStorage';
 import { SpriteThumbnail } from './SpriteThumbnail';
 import { SimpleIconEditor } from './SimpleIconEditor';
+import { SpellPicker } from './SpellPicker';
 import { RichTextEditor } from './RichTextEditor';
 import { useIsMobile } from '../../hooks/useMediaQuery';
 
@@ -138,6 +139,8 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
   const [contactDamageAnimate, setContactDamageAnimate] = useState(effect?.contactDamageAnimate ?? false);
   const [contactDamageFaceAttacker, setContactDamageFaceAttacker] = useState(effect?.contactDamageFaceAttacker ?? false);
   const [contactDamageKeepFacing, setContactDamageKeepFacing] = useState(effect?.contactDamageKeepFacing ?? false);
+  const [contactDamageSpellVisualId, setContactDamageSpellVisualId] = useState(effect?.contactDamageSpellVisualId);
+  const [showContactSpellPicker, setShowContactSpellPicker] = useState(false);
 
   // Dispel/Cleanse state
   const [targetingIntent, setTargetingIntent] = useState<'hostile' | 'friendly' | undefined>(effect?.targetingIntent);
@@ -172,6 +175,7 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
       contactDamageAnimate: type === StatusEffectType.CONTACT_DAMAGE ? contactDamageAnimate : undefined,
       contactDamageFaceAttacker: type === StatusEffectType.CONTACT_DAMAGE ? contactDamageFaceAttacker : undefined,
       contactDamageKeepFacing: type === StatusEffectType.CONTACT_DAMAGE && contactDamageFaceAttacker ? contactDamageKeepFacing : undefined,
+      contactDamageSpellVisualId: type === StatusEffectType.CONTACT_DAMAGE ? contactDamageSpellVisualId : undefined,
       polymorphSprite: type === StatusEffectType.POLYMORPH ? polymorphSprite : undefined,
       overlaySprite: overlaySprite,
       overlayOpacity: overlaySprite ? overlayOpacity : undefined,
@@ -523,6 +527,44 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
                     </label>
                   )}
                 </>
+              )}
+
+              {/* Borrowed hit visual — a spell's landed-hit presentation */}
+              <div className="pt-2 border-t border-stone-600">
+                <div className="text-sm text-stone-300 mb-1">Hit visual (optional)</div>
+                <p className="text-xs text-stone-400 mb-2">
+                  Borrow a spell&apos;s successful-hit visuals when the contact fires: its melee
+                  attack sprite plays toward the attacker and its damage effect lands on them.
+                  Visuals only — the spell&apos;s damage and mechanics are not used, and there&apos;s
+                  no projectile flight (contact damage always lands).
+                </p>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setShowContactSpellPicker(true)}
+                    className="px-2 py-1 bg-arcane-700 rounded text-xs hover:bg-arcane-600"
+                  >
+                    {contactDamageSpellVisualId
+                      ? `Spell: ${loadSpellAsset(contactDamageSpellVisualId)?.name ?? 'missing spell'}`
+                      : 'Choose spell…'}
+                  </button>
+                  {contactDamageSpellVisualId && (
+                    <button
+                      onClick={() => setContactDamageSpellVisualId(undefined)}
+                      className="px-2 py-1 bg-red-600 rounded text-xs hover:bg-red-700"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+              </div>
+              {showContactSpellPicker && (
+                <SpellPicker
+                  onSelect={(spell) => {
+                    setContactDamageSpellVisualId(spell.id);
+                    setShowContactSpellPicker(false);
+                  }}
+                  onCancel={() => setShowContactSpellPicker(false)}
+                />
               )}
             </div>
           )}
