@@ -416,6 +416,7 @@ export interface CustomTileType {
   canBeTriggered?: boolean;         // Can be toggled on/off by pressure plates (via trigger groups)
   hideBehaviorIndicators?: boolean;  // Hide default behavior overlays (purple teleport, blue ice, etc.)
   preventPlacement?: boolean;        // Prevent characters from being placed here during setup (but allow walking)
+  reflective?: boolean;              // Water/ice/polished floor: entities on it cast a faint mirrored reflection (visual only)
   isCustom: boolean;
   createdAt: string;
   folderId?: string; // Optional folder assignment

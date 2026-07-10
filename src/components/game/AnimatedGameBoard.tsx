@@ -764,6 +764,38 @@ function computeFlyInOrigin(boardW: number, boardH: number): { fromX: number; fr
   }
 }
 
+// ─── Puddle reflections ─────────────────────────────────────────────────────
+// Tiles whose custom type is marked `reflective` (water, ice, polished
+// stone) mirror the entities on them: a squashed, faint, vertically
+// flipped copy below the ground line. The active puzzle's reflective tile
+// set is stashed module-side each draw so drawEnemy/drawCharacter need no
+// gameState (same pattern as the contact-reaction map).
+let reflectiveTilesNow: Set<string> | null = null;
+
+function drawEntityReflection(
+  ctx: CanvasRenderingContext2D,
+  sprite: CustomSprite,
+  x: number, // render tile coords (fractional mid-move)
+  y: number,
+  direction: Direction | undefined,
+  isMoving: boolean,
+  now: number,
+): void {
+  if (!reflectiveTilesNow?.has(`${Math.round(x)},${Math.round(y)}`)) return;
+  const cx = x * TILE_SIZE + TILE_SIZE / 2;
+  const cy = y * TILE_SIZE + TILE_SIZE / 2;
+  const groundY = cy + TILE_SIZE * 0.36; // blobShadows' ground line
+  ctx.save();
+  ctx.globalAlpha = ctx.globalAlpha * 0.16;
+  ctx.translate(cx, groundY);
+  ctx.scale(1, -0.8); // squashed mirror below the waterline
+  ctx.translate(-cx, -groundY);
+  // Plain drawSprite, not the pixel-perfect wrapper — its setTransform
+  // would erase the flip. A hair of softness suits water anyway.
+  drawSprite(ctx, sprite, cx, cy, TILE_SIZE, direction, isMoving, now);
+  ctx.restore();
+}
+
 // ─── Setup-phase glances ────────────────────────────────────────────────────
 // When a hero is placed during setup, nearby enemies briefly LOOK at it —
 // a visual-frame-only turn (logical facing untouched; the engine never
@@ -928,6 +960,23 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
   // (it was in the deps array). With a ref, the loop reads the latest value
   // each frame without involving React's render cycle.
   const tileActivationsRef = useRef<TileActivation[]>([]);
+
+  // Which tiles mirror the entities on them (custom type `reflective`).
+  // Static per puzzle — recomputed only when the puzzle object changes.
+  const reflectiveTileSet = useMemo(() => {
+    const set = new Set<string>();
+    const puzzle = gameState.puzzle;
+    for (let ty = 0; ty < puzzle.height; ty++) {
+      for (let tx = 0; tx < puzzle.width; tx++) {
+        const tile = puzzle.tiles[ty]?.[tx];
+        const typeId = tile?.customType ?? tile?.customTileTypeId;
+        if (typeId && loadTileType(typeId)?.reflective) {
+          set.add(`${tx},${ty}`);
+        }
+      }
+    }
+    return set;
+  }, [gameState.puzzle]);
 
   // Fade-in animation when puzzle changes
   const [fadeKey, setFadeKey] = useState(0);
@@ -1686,6 +1735,9 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
 
       // Determine if game has started (for sprite selection)
       const gameStarted = gameState.gameStatus === 'running' || gameState.gameStatus === 'victory' || gameState.gameStatus === 'defeat';
+
+      // Stash this puzzle's reflective tiles for drawEnemy/drawCharacter.
+      reflectiveTilesNow = reflectiveTileSet;
 
       // Render all entities in z-order. renderQueue is memoized at component
       // scope (rebuilt only when entity arrays' references change at turn
@@ -3152,6 +3204,9 @@ function drawEnemy(
 
   if (hasCustomSprite && enemyData.customSprite) {
     if (!enemy.dead) {
+      // Mirrored reflection first — under the shadow and the body.
+      drawEntityReflection(ctx, enemyData.customSprite, x, y, directionToUse, isMoving, now);
+
       // Living enemy — grounded blob shadow, or the legacy offset silhouette
       // when the blob toggle is off (see blobShadows.ts)
       const blob = blobShadowsEnabled();
@@ -4038,6 +4093,9 @@ function drawCharacter(
 
   if (hasCustomSprite && charData.customSprite) {
     if (!character.dead) {
+      // Mirrored reflection first — under the shadow and the body.
+      drawEntityReflection(ctx, charData.customSprite, x, y, directionToUse, isMoving, now);
+
       // Living character — grounded blob shadow, or the legacy offset
       // silhouette when the blob toggle is off (see blobShadows.ts)
       const blob = blobShadowsEnabled();

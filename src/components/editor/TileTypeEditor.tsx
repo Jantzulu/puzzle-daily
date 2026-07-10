@@ -976,6 +976,23 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
                       Characters cannot be placed on this tile during setup, but can still walk on it during gameplay.
                     </p>
                   </div>
+
+                  {/* Reflective Surface Option */}
+                  <div className="pt-3 border-t border-stone-700">
+                    <label className="flex items-center text-sm text-stone-300 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={editing.reflective || false}
+                        onChange={e => setEditing({ ...editing, reflective: e.target.checked || undefined })}
+                        className="mr-2"
+                      />
+                      Reflective surface
+                    </label>
+                    <p className="text-xs text-stone-500 mt-1">
+                      Water, ice, polished stone: entities standing on this tile cast a faint
+                      mirrored reflection beneath them. Purely visual.
+                    </p>
+                  </div>
                 </CollapsiblePanel>
 
                 {/* Behaviors */}
