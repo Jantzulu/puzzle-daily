@@ -77,18 +77,7 @@ for (let i = 0; i < OUTER.length; i++) {
   FACETS.push({ points: pts([OUTER[i], OUTER[j], INNER[j], INNER[i]]), t: facetT(OUTER[i], OUTER[j], i * 2) });
 }
 
-// Hairline fracture for a defeated daily (cracked prop): a jagged main
-// fissure with one branch, drawn as a dark cut with an offset lit lip —
-// the same edge language as The Slab's carved text. Static geometry;
-// "heals" at local midnight when the daily lock resets.
-const CRACK_MAIN: Array<[number, number]> = [
-  [118, 3], [105, 18], [112, 30], [92, 44], [98, 55], [86, 67],
-];
-const CRACK_BRANCH: Array<[number, number]> = [
-  [112, 30], [128, 38], [134, 48],
-];
-
-export const GemMesh: React.FC<{ tone: GemTone; phase?: number; cracked?: boolean }> = ({ tone, phase = 0, cracked = false }) => {
+export const GemMesh: React.FC<{ tone: GemTone; phase?: number }> = ({ tone, phase = 0 }) => {
   const uid = React.useId().replace(/[^a-zA-Z0-9_-]/g, '');
   const clipId = `gemclip${uid}`;
   const shineId = `gemshine${uid}`;
@@ -136,15 +125,6 @@ export const GemMesh: React.FC<{ tone: GemTone; phase?: number; cracked?: boolea
           style={{ '--gem-shine-phase': `${phase}px` } as React.CSSProperties}
         />
       </g>
-
-      {/* Daily-defeat fracture — dark cut + offset lit lip, clipped to the stone */}
-      {cracked && (
-        <g clipPath={`url(#${clipId})`}>
-          <polyline points={pts(CRACK_MAIN.map(([x, y]) => [x + 1.2, y + 1] as [number, number]))} fill="none" stroke="rgba(255,255,255,0.14)" strokeWidth="1.5" strokeLinejoin="round" />
-          <polyline points={pts(CRACK_MAIN)} fill="none" stroke="rgba(0,0,0,0.55)" strokeWidth="2" strokeLinejoin="round" />
-          <polyline points={pts(CRACK_BRANCH)} fill="none" stroke="rgba(0,0,0,0.45)" strokeWidth="1.5" strokeLinejoin="round" />
-        </g>
-      )}
 
       {/* Silhouette definition */}
       <polygon points={pts(OUTER)} fill="none" stroke="rgba(0,0,0,0.5)" strokeWidth="2.5" />
