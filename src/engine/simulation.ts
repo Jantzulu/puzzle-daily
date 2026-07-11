@@ -763,6 +763,7 @@ function markEntityAsDead(
   const entityForTriggers: PlacedCharacter = {
     characterId: (entity as PlacedCharacter).characterId || (entity as PlacedEnemy).enemyId,
     party: entity.party, // wrappers carry the explicit party through (engine/party.ts)
+    excludeFromWinConditions: entity.excludeFromWinConditions,
     x: entity.x,
     y: entity.y,
     facing: entity.facing || Direction.EAST,
@@ -1835,6 +1836,7 @@ export function executeTurn(gameState: GameState): GameState {
       const tempChar: PlacedCharacter = {
         characterId: newEnemy.enemyId,
         party: newEnemy.party, // wrappers carry the explicit party through (engine/party.ts)
+        excludeFromWinConditions: newEnemy.excludeFromWinConditions,
         x: newEnemy.x,
         y: newEnemy.y,
         facing: newEnemy.facing || Direction.SOUTH,
@@ -1939,6 +1941,7 @@ export function executeTurn(gameState: GameState): GameState {
       const tempCharForTrigger: PlacedCharacter = {
         characterId: enemy.enemyId,
         party: enemy.party, // wrappers must carry the explicit party through (engine/party.ts)
+        excludeFromWinConditions: enemy.excludeFromWinConditions,
         x: enemy.x,
         y: enemy.y,
         facing: enemy.facing || Direction.SOUTH,
@@ -1976,6 +1979,7 @@ export function executeTurn(gameState: GameState): GameState {
       const tempCharForTrigger: PlacedCharacter = {
         characterId: enemy.enemyId,
         party: enemy.party, // wrappers must carry the explicit party through (engine/party.ts)
+        excludeFromWinConditions: enemy.excludeFromWinConditions,
         x: enemy.x,
         y: enemy.y,
         facing: enemy.facing || Direction.SOUTH,
@@ -2102,7 +2106,7 @@ export function checkVictoryConditions(gameState: GameState): boolean {
         const enemyParty = [
           ...gameState.placedCharacters,
           ...gameState.puzzle.enemies,
-        ].filter(e => entityParty(e, gameState) === 'enemy');
+        ].filter(e => entityParty(e, gameState) === 'enemy' && !e.excludeFromWinConditions);
         const allEnemiesDead = enemyParty.every(e => !isEntityFunctional(e));
         if (isHomingDebug()) {
           // Dump full enemy state when the defeat_all_enemies check runs, so
@@ -2121,6 +2125,7 @@ export function checkVictoryConditions(gameState: GameState): boolean {
         // future ally content — isn't a kill target).
         const bossEnemies = gameState.puzzle.enemies.filter(placedEnemy => {
           if (entityParty(placedEnemy, gameState) !== 'enemy') return false;
+          if (placedEnemy.excludeFromWinConditions) return false;
           const enemyData = loadEnemy(placedEnemy.enemyId);
           return enemyData?.isBoss === true;
         });

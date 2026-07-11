@@ -338,6 +338,7 @@ export interface PlacedEnemy {
   facing?: Direction;
   dead: boolean;
   party?: EntityParty; // Explicit team override — see EntityParty. Absent = 'enemy'.
+  excludeFromWinConditions?: boolean; // Summoned/spawned combatants: never counted by defeat_all_enemies / defeat_boss (locked design: a summon must not become a kill requirement). Carried through enemy→character wrappers like `party`.
   actionIndex?: number; // For active enemies with behavior patterns
   active?: boolean; // For active enemies
   parallelTrackers?: ParallelActionTracker[]; // For parallel spell execution
@@ -602,6 +603,7 @@ export interface PlacedCharacter {
   facing: Direction;
   currentHealth: number;
   party?: EntityParty; // Explicit team override — see EntityParty. Absent = structural lookup ('enemy' if this id lives in puzzle.enemies — enemy casters are wrapped as characters — else 'hero').
+  excludeFromWinConditions?: boolean; // See PlacedEnemy.excludeFromWinConditions — symmetric so a party-flipped combatant keeps its exemption in either list.
   maxHealth?: number;  // Stamped at placement from the source Character.health, so the no_damage_taken quest can compare against the original max regardless of mid-puzzle Character asset edits.
   actionIndex: number;
   active: boolean;

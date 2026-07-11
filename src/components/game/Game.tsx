@@ -7,6 +7,7 @@ import { getCharacter } from '../../data/characters';
 import { initializeGameState, executeTurn, checkVictoryConditions, setHomingDebugSilenced, findPathBFS, getTilesAlongLine, isHomingDebug, isPierceDebug, maybeMarkLingerDespawn } from '../../engine/simulation';
 import { calculateScore, getRankEmoji, getRankName, checkSideQuests } from '../../engine/scoring';
 import { isTileBlockingMovement } from '../../engine/actions';
+import { entityParty } from '../../engine/party';
 import { ResponsiveGameBoard } from './AnimatedGameBoard';
 import { PortcullisMesh } from './PortcullisMesh';
 import { CharacterSelector } from './CharacterSelector';
@@ -3047,12 +3048,17 @@ export const Game: React.FC<GameProps> = ({
                       {gameState.puzzle.winConditions.map((wc) => {
                         switch (wc.type) {
                           case 'defeat_all_enemies': {
-                            const enemyCount = gameState.puzzle.enemies.filter(e => !e.dead).length;
+                            // Mirror checkVictoryConditions: only ENEMY-party combatants
+                            // that aren't win-condition-exempt (summons) count as quest targets.
+                            const enemyCount = gameState.puzzle.enemies.filter(e =>
+                              !e.dead && entityParty(e, gameState) === 'enemy' && !e.excludeFromWinConditions
+                            ).length;
                             return `Defeat all Enemies (${enemyCount})`;
                           }
                           case 'defeat_boss': {
                             const bossEnemies = gameState.puzzle.enemies
                               .filter(e => {
+                                if (entityParty(e, gameState) !== 'enemy' || e.excludeFromWinConditions) return false;
                                 const enemy = loadEnemy(e.enemyId);
                                 return enemy?.isBoss && !e.dead;
                               })

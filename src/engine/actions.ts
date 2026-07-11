@@ -2745,6 +2745,7 @@ export function applyDamageToEntity(
     const entityForTriggers: PlacedCharacter = {
       characterId: (target as PlacedCharacter).characterId || (target as PlacedEnemy).enemyId,
       party: target.party, // wrappers carry the explicit party through (engine/party.ts)
+      excludeFromWinConditions: target.excludeFromWinConditions,
       x: target.x,
       y: target.y,
       facing: target.facing || Direction.EAST,
@@ -2820,6 +2821,7 @@ export function applyDamageToEntityNoDeflect(
     const entityForTriggers: PlacedCharacter = {
       characterId: (target as PlacedCharacter).characterId || (target as PlacedEnemy).enemyId,
       party: target.party, // wrappers carry the explicit party through (engine/party.ts)
+      excludeFromWinConditions: target.excludeFromWinConditions,
       x: target.x,
       y: target.y,
       facing: target.facing || Direction.EAST,

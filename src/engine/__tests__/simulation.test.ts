@@ -274,6 +274,19 @@ describe('checkVictoryConditions', () => {
       });
       expect(checkVictoryConditions(gs)).toBe(false);
     });
+
+    it('ignores living enemies flagged excludeFromWinConditions (summons)', () => {
+      const gs = createTestGameState({
+        puzzle: createTestPuzzle({
+          winConditions: [{ type: 'defeat_all_enemies' }],
+          enemies: [
+            createTestEnemy({ dead: true }),
+            createTestEnemy({ enemyId: 'summoned-imp', dead: false, excludeFromWinConditions: true }),
+          ],
+        }),
+      });
+      expect(checkVictoryConditions(gs)).toBe(true);
+    });
   });
 
   describe('collect_all', () => {
