@@ -2092,8 +2092,18 @@ function checkGameConditions(gameState: GameState): void {
 export function checkVictoryConditions(gameState: GameState): boolean {
   for (const condition of gameState.puzzle.winConditions) {
     switch (condition.type) {
-      case 'defeat_all_enemies':
-        const allEnemiesDead = gameState.puzzle.enemies.every(e => !isEntityFunctional(e));
+      case 'defeat_all_enemies': {
+        // Party-aware (engine/party.ts): "all enemies" means the base ENEMY
+        // party across both entity lists, not the enemies array. A summon or
+        // ally living in puzzle.enemies with party 'hero' doesn't need
+        // killing; a necromanced corpse flipped to 'hero' stops counting
+        // (its death already happened — locked design answer). Charm is a
+        // temporary allegiance and never affects win conditions.
+        const enemyParty = [
+          ...gameState.placedCharacters,
+          ...gameState.puzzle.enemies,
+        ].filter(e => entityParty(e, gameState) === 'enemy');
+        const allEnemiesDead = enemyParty.every(e => !isEntityFunctional(e));
         if (isHomingDebug()) {
           // Dump full enemy state when the defeat_all_enemies check runs, so
           // we can see if win fires with anything non-dead.
@@ -2104,10 +2114,13 @@ export function checkVictoryConditions(gameState: GameState): boolean {
         }
         if (!allEnemiesDead) return false;
         break;
+      }
 
-      case 'defeat_boss':
-        // All boss enemies must be defeated
+      case 'defeat_boss': {
+        // All ENEMY-party bosses must be defeated (a hero-party boss —
+        // future ally content — isn't a kill target).
         const bossEnemies = gameState.puzzle.enemies.filter(placedEnemy => {
+          if (entityParty(placedEnemy, gameState) !== 'enemy') return false;
           const enemyData = loadEnemy(placedEnemy.enemyId);
           return enemyData?.isBoss === true;
         });
@@ -2117,6 +2130,7 @@ export function checkVictoryConditions(gameState: GameState): boolean {
           if (!allBossesDead) return false;
         }
         break;
+      }
 
       case 'collect_all':
         const allCollected = gameState.puzzle.collectibles.every((c) => c.collected);
