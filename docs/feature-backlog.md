@@ -105,7 +105,7 @@ do, complementary to [`feature-roadmap.md`](../../puzzle-game/feature-roadmap.md
     behavior slot (creator authors several options, player picks one per
     run).
 
-- [ ] **Multi-tile melee sprite stitching.** Currently a melee attack with
+- [x] **Multi-tile melee sprite stitching.** SHIPPED d233430 (2026-07-11) — begin/end sprite slots in spell builder, middle = existing Attack Appearance; also added single-sprite AOE mode (aoeSingleSprite) same commit. Currently a melee attack with
   range > 1 just repeats the single damage sprite per tile. Add the option
   for a creator to author "beginning / middle / end" sprite parts for an
   attack so e.g. a 3-tile lunge looks like a single long sword (start of
