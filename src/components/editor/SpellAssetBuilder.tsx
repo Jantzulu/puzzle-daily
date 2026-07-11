@@ -3,7 +3,7 @@ import { toast } from '../shared/Toast';
 import type { SpellAsset, SpellTemplate, DirectionMode, SpriteReference, RelativeDirection, StatusEffectAsset } from '../../types/game';
 import { Direction } from '../../types/game';
 import type { SpriteSheetConfig } from '../../utils/assetStorage';
-import { saveSpellAsset, getFolders, getStatusEffectAssets, getSoundAssets, getCustomCollectibles } from '../../utils/assetStorage';
+import { saveSpellAsset, getFolders, getStatusEffectAssets, getSoundAssets, getCustomCollectibles, getCustomEnemies } from '../../utils/assetStorage';
 import { RichTextEditor } from './RichTextEditor';
 import { MediaBrowseButton } from './MediaBrowseButton';
 import { VersionHistoryModal } from './VersionHistoryModal';
@@ -898,6 +898,11 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
       return;
     }
 
+    if (editedSpell.templateType === 'summon' && !editedSpell.summonEnemyId) {
+      toast.warning('Please select an entity to summon');
+      return;
+    }
+
     // Save to library
     saveSpellAsset(editedSpell);
     toast.success(`Saved "${editedSpell.name}"!`);
@@ -914,6 +919,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
   const templateIsPush = editedSpell.templateType === 'push';
   const templateIsRedirect = editedSpell.templateType === 'redirect';
   const templateIsThrowPlace = editedSpell.templateType === 'throw_place';
+  const templateIsSummon = editedSpell.templateType === 'summon';
 
   return (
     <div className="space-y-6">
@@ -931,7 +937,12 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
               <h2 className="text-lg md:text-2xl font-bold font-medieval text-copper-400 truncate">
                 {editedSpell.name || 'Unnamed Spell'}
               </h2>
-              <p className="text-xs text-stone-400">{editedSpell.templateType} • {editedSpell.damage} dmg</p>
+              <p className="text-xs text-stone-400">
+                {editedSpell.templateType}
+                {editedSpell.templateType === 'summon'
+                  ? ` • ${getCustomEnemies().find(e => e.id === editedSpell.summonEnemyId)?.name ?? 'no entity'}`
+                  : ` • ${editedSpell.damage} dmg`}
+              </p>
             </div>
           </div>
           <div className="flex gap-1.5 md:gap-2 flex-shrink-0">
@@ -1218,6 +1229,18 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                   <div className="font-semibold">Throw/Place</div>
                   <div className="text-xs text-stone-400">Place or throw an item</div>
                 </button>
+
+                <button
+                  onClick={() => setEditedSpell({ ...editedSpell, templateType: 'summon' as SpellTemplate })}
+                  className={`p-3 rounded border-2 transition-colors ${
+                    editedSpell.templateType === 'summon'
+                      ? 'border-emerald-500 bg-emerald-900'
+                      : 'border-stone-600 bg-stone-700 hover:border-stone-500'
+                  }`}
+                >
+                  <div className="font-semibold">Summon</div>
+                  <div className="text-xs text-stone-400">Spawn an entity nearby</div>
+                </button>
               </div>
             </div>
           </div>
@@ -1457,9 +1480,42 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
             </div>
           )}
 
+          {/* Summon Configuration */}
+          {templateIsSummon && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold border-b border-stone-700 pb-2">Summon Configuration</h3>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Summoned Entity *</label>
+                <select
+                  value={editedSpell.summonEnemyId || ''}
+                  onChange={(e) => setEditedSpell({ ...editedSpell, summonEnemyId: e.target.value || undefined })}
+                  className="w-full px-3 py-2 bg-stone-700 rounded text-parchment-100"
+                >
+                  <option value="">-- Select Entity --</option>
+                  {getCustomEnemies().map((enemy) => (
+                    <option key={enemy.id} value={enemy.id}>{enemy.name}</option>
+                  ))}
+                </select>
+                <p className="text-xs text-stone-400 mt-1">
+                  The entity that appears when this spell is cast
+                </p>
+              </div>
+
+              <div className="bg-blue-900 border border-blue-600 rounded p-2">
+                <p className="text-xs text-blue-200">
+                  <strong>How summoning works:</strong> one spawn attempt per cast direction, on the
+                  adjacent tile (multiple directions = multiple summons). Blocked or occupied tiles
+                  are skipped. The summoned entity joins the caster's team, never counts toward win
+                  conditions, and stands idle until the turn after it appears.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Combat Stats */}
           <div className="space-y-4">
-            {!templateIsRedirect && !templateIsThrowPlace && (
+            {!templateIsRedirect && !templateIsThrowPlace && !templateIsSummon && (
               <h3 className="text-lg font-semibold border-b border-stone-700 pb-2">Combat Stats</h3>
             )}
 
@@ -1657,8 +1713,8 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
               </>
             )}
 
-            {/* Damage vs Healing Toggle - hidden for resurrect, push, and redirect */}
-            {!templateIsResurrect && !templateIsPush && !templateIsRedirect && !templateIsThrowPlace && (
+            {/* Damage vs Healing Toggle - hidden for resurrect, push, redirect, throw/place, and summon */}
+            {!templateIsResurrect && !templateIsPush && !templateIsRedirect && !templateIsThrowPlace && !templateIsSummon && (
               <div>
                 <label className="block text-sm font-medium mb-2">Effect Type</label>
                 <div className="flex gap-2 mb-3">
@@ -1696,8 +1752,8 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
               </div>
             )}
 
-            {/* Damage or Healing Amount - hidden for resurrect, push, and redirect */}
-            {!templateIsResurrect && !templateIsPush && !templateIsRedirect && !templateIsThrowPlace && (
+            {/* Damage or Healing Amount - hidden for resurrect, push, redirect, throw/place, and summon */}
+            {!templateIsResurrect && !templateIsPush && !templateIsRedirect && !templateIsThrowPlace && !templateIsSummon && (
               <div>
                 <label className="block text-sm font-medium mb-1">
                   {editedSpell.healing !== undefined ? 'Healing Amount' : 'Damage Amount *'}
@@ -2335,8 +2391,23 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
               />
             )}
 
+            {/* Summon Materialize Overlay - only for summon spells */}
+            {templateIsSummon && (
+              <SpellSpriteEditor
+                label="Summon Materialize Overlay"
+                spriteRef={editedSpell.sprites?.summonEffect}
+                onChange={(sprite) => setEditedSpell({
+                  ...editedSpell,
+                  sprites: { ...editedSpell.sprites, summonEffect: sprite }
+                })}
+                accentColor="green"
+                showDirectionalPreview={false}
+                helpText="Played ON TOP of the summoned entity's tile as it appears (portal-tile style) — e.g. a burst of conjuring particles. Use a spritesheet for animation."
+              />
+            )}
+
             {/* Damage Effect Visual - only show for damage spells (last in order) */}
-            {editedSpell.healing === undefined && (
+            {editedSpell.healing === undefined && !templateIsSummon && (
               <SpellSpriteEditor
                 label="Damage Effect (on hit)"
                 spriteRef={editedSpell.sprites?.damageEffect}
@@ -2366,8 +2437,10 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
             )}
           </div>
 
-          {/* Status Effect Configuration - hidden for Throw/Place (item carries its own effects) */}
-          {!templateIsThrowPlace && (
+          {/* Status Effect Configuration - hidden for Throw/Place (item carries its own
+              effects) and Summon (no hit to apply to; a per-spell STARTING status for the
+              summoned unit is planned as a dedicated override, not this on-hit config) */}
+          {!templateIsThrowPlace && !templateIsSummon && (
             <StatusEffectConfig
               editedSpell={editedSpell}
               setEditedSpell={setEditedSpell}
