@@ -660,7 +660,7 @@ const SpellConfig: React.FC<SpellConfigProps> = ({ action, spell, context, onUpd
                       homing: e.target.checked ? action.homing : false
                     })}
                     className="w-3 h-3" />
-                  Auto-Target Character
+                  Auto-Target Opposing Team
                 </label>
                 <label className="flex items-center gap-2 text-xs">
                   <input type="checkbox" checked={action.autoTargetNearestEnemy || false}
@@ -671,7 +671,7 @@ const SpellConfig: React.FC<SpellConfigProps> = ({ action, spell, context, onUpd
                       homing: e.target.checked ? action.homing : false
                     })}
                     className="w-3 h-3" />
-                  Auto-Target Enemy
+                  Auto-Target Same Team
                 </label>
               </>
             ) : (
@@ -686,7 +686,7 @@ const SpellConfig: React.FC<SpellConfigProps> = ({ action, spell, context, onUpd
                       homing: e.target.checked ? action.homing : false
                     })}
                     className="w-3 h-3" />
-                  Auto-Target Enemy
+                  Auto-Target Opposing Team
                 </label>
                 <label className="flex items-center gap-2 text-xs">
                   <input type="checkbox" checked={action.autoTargetNearestCharacter || false}
@@ -698,7 +698,7 @@ const SpellConfig: React.FC<SpellConfigProps> = ({ action, spell, context, onUpd
                       homing: e.target.checked ? action.homing : false
                     })}
                     className="w-3 h-3" />
-                  Auto-Target Character
+                  Auto-Target Same Team
                 </label>
                 <label className="flex items-center gap-2 text-xs text-green-300">
                   <input type="checkbox" checked={action.autoTargetNearestDeadAlly || false}

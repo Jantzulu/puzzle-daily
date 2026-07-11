@@ -207,8 +207,8 @@ export interface CharacterAction {
   useRelativeOverride?: boolean; // If true, use relativeDirectionOverride instead of directionOverride
 
   // Auto-targeting configuration
-  autoTargetNearestEnemy?: boolean; // Override spell direction to aim at closest enemy
-  autoTargetNearestCharacter?: boolean; // Override spell direction to aim at closest character (for enemies or healing)
+  autoTargetNearestEnemy?: boolean; // TEAM-RELATIVE (2026-07-11): aim at the closest OPPOSING-team member when authored on a character, SAME-team when authored on an enemy (legacy field name; enemy authors wrote "enemies" meaning their own side). Editors label these Opposing/Same Team.
+  autoTargetNearestCharacter?: boolean; // TEAM-RELATIVE (2026-07-11): the mirror — SAME team on characters, OPPOSING team on enemies. See executeSpellWithTargeting's mapping in engine/actions.ts.
   autoTargetNearestDeadAlly?: boolean; // Target nearest dead ally (for resurrect spells)
   autoTargetMode?: 'omnidirectional' | 'cardinal' | 'diagonal'; // Directional constraints for auto-targeting (default: omnidirectional)
   autoTargetRange?: number;         // Maximum range for auto-targeting (0 = unlimited). Auto-seeded from trigger.eventRange when an "in range" trigger event is selected; dev can override after. Engine falls back to trigger.eventRange when this is unset.
