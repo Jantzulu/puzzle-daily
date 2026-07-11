@@ -75,6 +75,9 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
   // Group all enemies by type (alive + dead) for initial counts
   const enemyGroups = new Map<string, { totalCount: number; livingCount: number }>();
   for (const enemy of enemies) {
+    // Expired summons left the board without dying — drop them from the
+    // tally entirely instead of counting them as slain.
+    if (enemy.despawned) continue;
     const existing = enemyGroups.get(enemy.enemyId);
     if (existing) {
       existing.totalCount++;

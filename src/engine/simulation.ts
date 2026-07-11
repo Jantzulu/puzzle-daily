@@ -2039,6 +2039,9 @@ export function executeTurn(gameState: GameState): GameState {
   // Process collectible durations (despawn expired items)
   processCollectibleDurations(gameState);
 
+  // Duration-limited summons despawn at end of their final turn
+  processSummonExpiry(gameState);
+
   // Process turn-end status effects for all entities
   processAllStatusEffectsTurnEnd(gameState);
 
@@ -2084,6 +2087,34 @@ export function executeTurn(gameState: GameState): GameState {
   }
 
   return gameState;
+}
+
+/**
+ * Duration-limited summons despawn at the END of turn despawnOnTurn.
+ * Despawn is NOT a death (locked design): no drops, no death triggers, no
+ * corpse. The entity stays in the array (append-only invariant — removal
+ * would shift every index-keyed system) marked dead+despawned; diedOnTurn
+ * stays unset so the tile frees immediately. A summon KILLED before expiry
+ * never reaches this (dead check) and dies fully via the normal path.
+ */
+function processSummonExpiry(gameState: GameState): void {
+  for (const enemy of gameState.puzzle.enemies) {
+    if (enemy.dead) continue;
+    if (enemy.despawnOnTurn === undefined || gameState.currentTurn < enemy.despawnOnTurn) continue;
+
+    enemy.dead = true;
+    enemy.despawned = true;
+
+    // Exit transition: dedicated exit overlay if authored, else the
+    // materialize overlay in reverse duty. Render-side only.
+    if (enemy.sourceSpellId) {
+      const spell = loadSpellAsset(enemy.sourceSpellId);
+      const exitSprite = spell?.sprites?.summonExitEffect ?? spell?.sprites?.summonEffect;
+      if (exitSprite) {
+        spawnParticleEffect(enemy.x, enemy.y, exitSprite, 600, gameState, { aboveEntities: true });
+      }
+    }
+  }
 }
 
 /**
@@ -5192,7 +5223,8 @@ function spawnParticleEffect(
   y: number,
   sprite: any,
   duration: number,
-  gameState: GameState
+  gameState: GameState,
+  opts?: { aboveEntities?: boolean }
 ): void {
   if (!gameState.activeParticles) {
     gameState.activeParticles = [];
@@ -5206,6 +5238,7 @@ function spawnParticleEffect(
     startTime: Date.now(),
     duration,
     alpha: 1.0,
+    ...opts, // aboveEntities: draw over the entity layer (summon transitions)
   };
 
   gameState.activeParticles.push(particle);

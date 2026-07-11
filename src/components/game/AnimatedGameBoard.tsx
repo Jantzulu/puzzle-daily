@@ -1757,6 +1757,11 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       renderQueue.forEach(({ type, index, entity }) => {
         if (type === 'enemy') {
           const enemy = entity as PlacedEnemy;
+          // Expired summons draw NOTHING — no corpse, no death animation
+          // (despawn is not a death; the exit overlay particle covers the
+          // vanish). Early return also skips the death-anim first-frame
+          // stamping below, so the souls pass never sees them either.
+          if (enemy.despawned) return;
           // Use ref for synchronous access (prevents flash at new position)
           const anim = enemyPositionsRef.current.get(index);
           let deathAnim = enemyDeathAnimationsRef.current.get(index) || enemyDeathAnimations.get(index);

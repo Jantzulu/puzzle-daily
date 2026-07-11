@@ -280,6 +280,53 @@ describe('SUMMON spell template', () => {
     expect(positions).toEqual(['1,2', '3,2']);
   });
 
+  it('a duration-limited summon acts its allotted turns, then despawns without dying', () => {
+    registerSummonSpell({ summonDuration: 2 });
+    const gs = summonerState();
+
+    executeTurn(gs); // turn 1: cast — summon appears at (3,2), idle. despawnOnTurn = 3
+    const summon = gs.puzzle.enemies[1];
+    expect(summon.despawnOnTurn).toBe(3);
+    expect(summon.sourceSpellId).toBe('summon-walker');
+
+    executeTurn(gs); // turn 2: acts (moves east)
+    expect(gs.puzzle.enemies[1].x).toBe(4);
+    expect(gs.puzzle.enemies[1].despawned).toBeUndefined();
+
+    executeTurn(gs); // turn 3: acts, then expires at end of turn
+    expect(gs.puzzle.enemies[1].x).toBe(5);
+    expect(gs.puzzle.enemies[1].despawned).toBe(true);
+    expect(gs.puzzle.enemies[1].dead).toBe(true);
+    // NOT a death: no diedOnTurn stamp, so the tile frees immediately
+    expect(gs.puzzle.enemies[1].diedOnTurn).toBeUndefined();
+    // Append-only invariant: the entity stays in the array
+    expect(gs.puzzle.enemies).toHaveLength(2);
+  });
+
+  it('a permanent summon (no duration) never despawns', () => {
+    const gs = summonerState();
+    executeTurn(gs);
+    expect(gs.puzzle.enemies[1].despawnOnTurn).toBeUndefined();
+    for (let i = 0; i < 5; i++) executeTurn(gs);
+    expect(gs.puzzle.enemies[1].despawned).toBeUndefined();
+    expect(gs.puzzle.enemies[1].dead).toBe(false);
+  });
+
+  it('a summon killed before expiry dies fully — never marked despawned', () => {
+    registerSummonSpell({ summonDuration: 5 });
+    const gs = summonerState();
+    executeTurn(gs); // summon appears, despawnOnTurn = 6
+
+    // Killed on turn 2 (simulated via the normal death fields)
+    gs.puzzle.enemies[1].currentHealth = 0;
+    gs.puzzle.enemies[1].dead = true;
+    gs.puzzle.enemies[1].diedOnTurn = gs.currentTurn;
+
+    for (let i = 0; i < 6; i++) executeTurn(gs); // run past despawnOnTurn
+    expect(gs.puzzle.enemies[1].despawned).toBeUndefined(); // real death, not an expiry
+    expect(gs.puzzle.enemies[1].dead).toBe(true);
+  });
+
   it('a SILENCED caster cannot summon', () => {
     const gs = summonerState({
       casterStatusEffects: [{

@@ -34,6 +34,10 @@ export interface MidGameSpawnRequest {
   party?: EntityParty;
   /** Summons pass true so they never become kill requirements. */
   excludeFromWinConditions?: boolean;
+  /** Turns the entity remains after appearing (each = one action). Unset/0 = permanent. Expiry despawns at end of turn spawnedOnTurn + durationTurns — an exit transition, NOT a death. */
+  durationTurns?: number;
+  /** Spell that requested the spawn — despawn reads its exit overlay sprite. */
+  sourceSpellId?: string;
 }
 
 /**
@@ -69,6 +73,10 @@ export function spawnEnemyMidGame(
     actionIndex: 0,
     active: true,
     spawnedOnTurn: gameState.currentTurn,
+    despawnOnTurn: request.durationTurns && request.durationTurns > 0
+      ? gameState.currentTurn + request.durationTurns
+      : undefined,
+    sourceSpellId: request.sourceSpellId,
   };
 
   // Initial status effects from the enemy definition — same rules as

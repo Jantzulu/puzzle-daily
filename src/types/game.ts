@@ -340,6 +340,9 @@ export interface PlacedEnemy {
   party?: EntityParty; // Explicit team override — see EntityParty. Absent = 'enemy'.
   excludeFromWinConditions?: boolean; // Summoned/spawned combatants: never counted by defeat_all_enemies / defeat_boss (locked design: a summon must not become a kill requirement). Carried through enemy→character wrappers like `party`.
   spawnedOnTurn?: number; // Set by mid-game spawning (engine/spawning.ts). While === currentTurn, executeTurn keeps the entity idle (no actions, no own triggers) — it's otherwise fully live (blocks tiles, can be hit, contact damage applies). NOT carried through wrappers: a spawn-turn entity never executes actions, so no wrapper is ever built for it while the field matters.
+  despawnOnTurn?: number; // Duration-limited summons: at the END of this turn the entity despawns (locked design: NOT a death — no drops, no death triggers, exit transition only). Killed summons die fully via the normal path instead.
+  despawned?: boolean; // Set by expiry despawn alongside dead=true. Render draws NOTHING for a despawned entity (no corpse, no death anim — the exit overlay particle covers the vanish); diedOnTurn stays unset so the tile frees immediately.
+  sourceSpellId?: string; // Spell that summoned this entity — despawn loads it for the exit overlay sprite; future per-spell overrides read it too.
   actionIndex?: number; // For active enemies with behavior patterns
   active?: boolean; // For active enemies
   parallelTrackers?: ParallelActionTracker[]; // For parallel spell execution
@@ -1339,6 +1342,7 @@ export interface SpellAsset {
     persistentArea?: SpriteReference;  // Visual for persistent ground effects (looping animation)
     bounceEffect?: SpriteReference;   // At wall contact point when projectile bounces
     summonEffect?: SpriteReference;   // For SUMMON spells — materialize overlay played on the summoned unit's tile (renders over the entity, portal-tile style)
+    summonExitEffect?: SpriteReference; // For SUMMON spells — overlay played when a duration-limited summon expires (falls back to summonEffect if unset)
     criticalHitEffect?: SpriteReference; // On backstab/critical hit (falls back to damageEffect if not set)
   };
 
@@ -1382,6 +1386,7 @@ export interface SpellAsset {
   // unit inherits the caster's EFFECTIVE party at cast time (charm included,
   // permanent) and is always excludeFromWinConditions.
   summonEnemyId?: string;         // Enemy asset to spawn
+  summonDuration?: number;        // Turns the summon remains after appearing (each = one action); 0/unset = permanent. Expiry despawns (exit overlay, no drops/triggers) — see PlacedEnemy.despawnOnTurn
 
   // Backstab (critical strike from behind)
   backstabEnabled?: boolean;      // If true, deals double damage when attacking from behind the target

@@ -1845,6 +1845,8 @@ function executeSpellInDirection(
         y: spawnY,
         party: effectiveParty(character, gameState),
         excludeFromWinConditions: true,
+        durationTurns: spell.summonDuration,
+        sourceSpellId: spell.id,
       });
 
       if (spawned) {

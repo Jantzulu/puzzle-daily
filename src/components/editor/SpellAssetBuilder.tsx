@@ -1502,6 +1502,22 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                 </p>
               </div>
 
+              <div>
+                <label className="block text-sm font-medium mb-1">Duration (turns)</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="99"
+                  value={editedSpell.summonDuration ?? 0}
+                  onChange={(e) => setEditedSpell({ ...editedSpell, summonDuration: parseInt(e.target.value) || 0 })}
+                  className="w-full px-3 py-2 bg-stone-700 rounded text-parchment-100"
+                />
+                <p className="text-xs text-stone-400 mt-1">
+                  Turns the summon stays after appearing (each = one action), then it vanishes —
+                  no drops, no death triggers. 0 = permanent. Killed summons still die normally.
+                </p>
+              </div>
+
               <div className="bg-blue-900 border border-blue-600 rounded p-2">
                 <p className="text-xs text-blue-200">
                   <strong>How summoning works:</strong> one spawn attempt per cast direction, on the
@@ -2403,6 +2419,21 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                 accentColor="green"
                 showDirectionalPreview={false}
                 helpText="Played ON TOP of the summoned entity's tile as it appears (portal-tile style) — e.g. a burst of conjuring particles. Use a spritesheet for animation."
+              />
+            )}
+
+            {/* Summon Exit Overlay - only when the summon has a duration */}
+            {templateIsSummon && (editedSpell.summonDuration ?? 0) > 0 && (
+              <SpellSpriteEditor
+                label="Summon Exit Overlay"
+                spriteRef={editedSpell.sprites?.summonExitEffect}
+                onChange={(sprite) => setEditedSpell({
+                  ...editedSpell,
+                  sprites: { ...editedSpell.sprites, summonExitEffect: sprite }
+                })}
+                accentColor="green"
+                showDirectionalPreview={false}
+                helpText="Played on the summon's tile when its duration expires and it vanishes. Falls back to the Materialize Overlay if not set."
               />
             )}
 
