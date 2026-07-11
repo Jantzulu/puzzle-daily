@@ -383,3 +383,125 @@ describe('SUMMON spell template', () => {
     expect(gs.puzzle.enemies).toHaveLength(1); // no spawn
   });
 });
+
+// ==========================================
+// NECROMANCY spell template
+// ==========================================
+describe('NECROMANCY spell template', () => {
+  const registerNecromancySpell = (overrides?: Record<string, unknown>) =>
+    registerTestSpell('raise-dead', {
+      id: 'raise-dead', name: 'Raise Dead', description: '', thumbnailIcon: '',
+      templateType: SpellTemplate.NECROMANCY,
+      directionMode: 'current_facing',
+      sprites: {},
+      ...overrides,
+    });
+
+  const registerNecromancerHero = () =>
+    regChar(createTestCharacterDef({
+      id: 'hero-necro',
+      behavior: [{ type: ActionType.SPELL, spellId: 'raise-dead' }, { type: ActionType.REPEAT }],
+    }));
+
+  const necroState = (extraEnemies: ReturnType<typeof createTestEnemy>[]) =>
+    createTestGameState({
+      puzzle: createTestPuzzle({
+        width: 8, height: 5,
+        winConditions: [{ type: 'defeat_all_enemies' }],
+        enemies: extraEnemies,
+        availableCharacters: ['hero-necro'],
+      }),
+      gameStatus: 'running',
+      currentTurn: 0,
+      testMode: true,
+      placedCharacters: [createTestCharacter({ characterId: 'hero-necro', x: 2, y: 2, facing: Direction.EAST, actionIndex: 0, active: true })],
+    });
+
+  beforeEach(() => {
+    registerNecromancySpell();
+    registerNecromancerHero();
+    regEnemy(createTestEnemyDef({
+      id: 'walker', health: 4,
+      behavior: {
+        type: 'active',
+        pattern: [{ type: ActionType.MOVE_FORWARD }, { type: ActionType.REPEAT }],
+        defaultFacing: Direction.EAST,
+      },
+    }));
+  });
+
+  it('raises a dead enemy as a NEW hero-party combatant; the corpse is consumed and its death still counts', () => {
+    registerNecromancySpell({ resurrectHealthPercent: 50 });
+    const corpse = createTestEnemy({ enemyId: 'walker', x: 4, y: 2, dead: true, currentHealth: 0 });
+    const gs = necroState([corpse]);
+
+    executeTurn(gs);
+
+    expect(gs.puzzle.enemies).toHaveLength(2);
+    const raised = gs.puzzle.enemies[1];
+    expect(raised.enemyId).toBe('walker'); // rises as itself
+    expect(raised.x).toBe(4);
+    expect(raised.y).toBe(2);
+    expect(raised.party).toBe('hero'); // joins the caster's side
+    expect(raised.excludeFromWinConditions).toBe(true);
+    expect(raised.currentHealth).toBe(2); // 50% of 4
+    expect(raised.spawnedOnTurn).toBe(1); // idle until next turn, like a summon
+
+    // Corpse consumed: stays dead (death already counted), draws nothing
+    expect(gs.puzzle.enemies[0].dead).toBe(true);
+    expect(gs.puzzle.enemies[0].despawned).toBe(true);
+
+    // Original kill still satisfies defeat_all_enemies despite the raised
+    // unit standing on the board
+    expect(checkVictoryConditions(gs)).toBe(true);
+  });
+
+  it('a consumed corpse cannot be raised twice', () => {
+    const gs = necroState([createTestEnemy({ enemyId: 'walker', x: 4, y: 2, dead: true, currentHealth: 0 })]);
+
+    executeTurn(gs); // raises
+    expect(gs.puzzle.enemies).toHaveLength(2);
+    executeTurn(gs); // REPEAT casts again — no corpse left
+    expect(gs.puzzle.enemies).toHaveLength(2);
+  });
+
+  it('skips a corpse whose tile is occupied by a living entity', () => {
+    const gs = necroState([
+      createTestEnemy({ enemyId: 'walker', x: 4, y: 2, dead: true, currentHealth: 0 }),
+      createTestEnemy({ enemyId: 'goblin-1', x: 4, y: 2 }), // standing on the corpse
+    ]);
+
+    executeTurn(gs);
+    expect(gs.puzzle.enemies).toHaveLength(2); // nothing raised
+    expect(gs.puzzle.enemies[0].despawned).toBeUndefined(); // corpse not consumed
+  });
+
+  it('v1: an enemy necromancer cannot raise dead heroes (character-shaped corpses)', () => {
+    registerTestSpell('raise-dead', {
+      id: 'raise-dead', name: 'Raise Dead', description: '', thumbnailIcon: '',
+      templateType: SpellTemplate.NECROMANCY, directionMode: 'current_facing', sprites: {},
+    });
+    regEnemy(createTestEnemyDef({
+      id: 'necro-enemy', health: 5,
+      behavior: {
+        type: 'active',
+        pattern: [{ type: ActionType.SPELL, spellId: 'raise-dead' }],
+        defaultFacing: Direction.WEST,
+      },
+    }));
+    const gs = createTestGameState({
+      puzzle: createTestPuzzle({
+        width: 8, height: 5,
+        enemies: [createTestEnemy({ enemyId: 'necro-enemy', x: 5, y: 2, currentHealth: 5, actionIndex: 0, active: true })],
+      }),
+      gameStatus: 'running',
+      currentTurn: 0,
+      testMode: true,
+      placedCharacters: [createTestCharacter({ x: 2, y: 2, dead: true, currentHealth: 0, active: false })],
+    });
+
+    executeTurn(gs);
+    expect(gs.puzzle.enemies).toHaveLength(1); // nothing raised
+    expect(gs.placedCharacters[0].dead).toBe(true); // hero corpse untouched
+  });
+});

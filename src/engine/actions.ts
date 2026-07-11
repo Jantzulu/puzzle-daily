@@ -1422,9 +1422,13 @@ function executeSpell(
     return;
   }
 
-  // Handle RESURRECT spells specially - they don't use directions
-  if (spell.templateType === SpellTemplate.RESURRECT) {
-    executeResurrect(character, spell, action, gameState);
+  // Handle RESURRECT and NECROMANCY specially - they target corpses, not directions
+  if (spell.templateType === SpellTemplate.RESURRECT || spell.templateType === SpellTemplate.NECROMANCY) {
+    if (spell.templateType === SpellTemplate.RESURRECT) {
+      executeResurrect(character, spell, action, gameState);
+    } else {
+      executeNecromancy(character, spell, action, gameState);
+    }
     // Track usage
     if (spell.maxUsesPerGame && spell.maxUsesPerGame > 0 && action.spellId) {
       if (!character.spellUseCounts) {
@@ -3328,7 +3332,8 @@ function findNearestDeadAllies(
   gameState: GameState,
   maxTargets: number = 1,
   mode: 'omnidirectional' | 'cardinal' | 'diagonal' = 'omnidirectional',
-  maxRange: number = 0  // 0 = unlimited
+  maxRange: number = 0,  // 0 = unlimited
+  side: 'same' | 'opposing' = 'same'  // 'same' = resurrect, 'opposing' = necromancy
 ): Array<{ entity: PlacedCharacter | PlacedEnemy; direction: Direction; distance: number; isEnemy: boolean }> {
   // Same-Team semantics for the dead (user decision 2026-07-11): the
   // caster resurrects its EFFECTIVE side's fallen — a charmed unit raises
@@ -3336,7 +3341,12 @@ function findNearestDeadAllies(
   // dead enemies (the old hero-viewpoint derivation had them raising dead
   // heroes). isEnemy stays a SHAPE flag — it tells the resurrect path
   // which asset registry the corpse's id lives in, regardless of party.
-  const targetSide: EntityParty = effectiveParty(caster, gameState);
+  // Necromancy inverts to the opposing side; the corpse's party is judged
+  // by BASE party like every target-side check (charm ignored on corpses).
+  const casterSide: EntityParty = effectiveParty(caster, gameState);
+  const targetSide: EntityParty = side === 'same'
+    ? casterSide
+    : (casterSide === 'hero' ? 'enemy' : 'hero');
 
   const deadAllies: Array<{ entity: PlacedCharacter | PlacedEnemy; isEnemy: boolean }> = [
     ...gameState.placedCharacters,
@@ -3344,6 +3354,9 @@ function findNearestDeadAllies(
   ]
     .filter(t =>
       t.dead &&
+      // Consumed/expired remains: a despawned entity left the board — there
+      // is no corpse for resurrect OR necromancy to work with.
+      !t.despawned &&
       combatId(t) !== caster.characterId &&
       entityParty(t, gameState) === targetSide
     )
@@ -3608,6 +3621,86 @@ function executeResurrect(
     // Spawn cast effect on caster
     if (spell.sprites.castEffect) {
       spawnParticle(caster.x, caster.y, spell.sprites.castEffect, 300, gameState);
+    }
+  }
+}
+
+/**
+ * NECROMANCY — raise an opposing-party corpse as a NEW combatant on the
+ * caster's side. Locked design: the original death already happened and
+ * still counts for win conditions; the corpse entry stays dead and is
+ * CONSUMED (despawned — corpse art vanishes, can't be raised again), while
+ * a fresh win-exempt entity spawns on its tile via the summon primitive,
+ * inheriting all the summon overrides (duration, facing, starting status,
+ * overlays) plus resurrect's health-percent convention.
+ *
+ * v1 limitation: only corpses living in puzzle.enemies can be raised —
+ * a dead HERO (placedCharacters shape) has no enemy-asset id to respawn
+ * from, and character-shaped combatants in the enemies array are the shape
+ * landmine the party-model notes warn about. Enemy-cast necromancy is
+ * therefore inert against hero corpses until that lands.
+ */
+function executeNecromancy(
+  caster: PlacedCharacter,
+  spell: SpellAsset,
+  action: CharacterAction,
+  gameState: GameState
+): void {
+  const maxTargets = action.maxTargets || 1;
+  const targetMode = action.autoTargetMode || 'omnidirectional';
+  const maxRange = action.autoTargetRange || action.trigger?.eventRange || 0;
+  const corpses = findNearestDeadAllies(caster, gameState, maxTargets, targetMode, maxRange, 'opposing');
+
+  for (const target of corpses) {
+    if (!target.isEnemy) continue; // v1: hero corpses can't be raised (see above)
+    const corpse = target.entity as PlacedEnemy;
+
+    // The corpse tile must not hold a living (or freshly-dead) entity —
+    // same deterministic occupancy rule as summon placement. The corpse
+    // itself is expected here and doesn't block its own raise.
+    const blockedByEntity =
+      gameState.puzzle.enemies.some(e =>
+        e !== corpse &&
+        Math.floor(e.x) === Math.floor(corpse.x) && Math.floor(e.y) === Math.floor(corpse.y) &&
+        (!e.dead || isFreshlyDead(e, gameState.currentTurn))) ||
+      gameState.placedCharacters.some(c =>
+        Math.floor(c.x) === Math.floor(corpse.x) && Math.floor(c.y) === Math.floor(corpse.y) &&
+        (!c.dead || isFreshlyDead(c, gameState.currentTurn)));
+    if (blockedByEntity) continue;
+
+    // Facing override — the "spawn axis" for relative modes is the line
+    // from caster to corpse (target.direction from the finder).
+    let raiseFacing: Direction | undefined;
+    switch (spell.summonFacing) {
+      case 'away_from_summoner': raiseFacing = target.direction; break;
+      case 'toward_summoner': raiseFacing = turnAround(target.direction); break;
+      case 'match_summoner': raiseFacing = caster.facing; break;
+      case 'fixed': raiseFacing = spell.summonFacingFixed; break;
+    }
+
+    const raised = spawnEnemyMidGame(gameState, {
+      enemyId: corpse.enemyId,
+      x: Math.floor(corpse.x),
+      y: Math.floor(corpse.y),
+      facing: raiseFacing,
+      party: effectiveParty(caster, gameState),
+      excludeFromWinConditions: true,
+      durationTurns: spell.summonDuration,
+      sourceSpellId: spell.id,
+      startingStatus: spell.summonStartingStatus,
+      healthPercent: spell.resurrectHealthPercent,
+    });
+    if (!raised) continue;
+
+    // Consume the corpse: stays dead (its death already counted), draws
+    // nothing anymore, and no resurrect/necromancy can touch it again.
+    corpse.despawned = true;
+
+    if (spell.sprites.castEffect) {
+      spawnParticle(caster.x, caster.y, spell.sprites.castEffect, 300, gameState);
+    }
+    if (spell.sprites.summonEffect) {
+      spawnParticle(raised.x, raised.y, spell.sprites.summonEffect, 600, gameState, undefined, { aboveEntities: true });
     }
   }
 }

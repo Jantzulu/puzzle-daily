@@ -608,6 +608,7 @@ export interface PlacedCharacter {
   currentHealth: number;
   party?: EntityParty; // Explicit team override — see EntityParty. Absent = structural lookup ('enemy' if this id lives in puzzle.enemies — enemy casters are wrapped as characters — else 'hero').
   excludeFromWinConditions?: boolean; // See PlacedEnemy.excludeFromWinConditions — symmetric so a party-flipped combatant keeps its exemption in either list.
+  despawned?: boolean; // See PlacedEnemy.despawned — no character-side writer yet (heroes don't expire), but corpse-finders filter the union on it and future character-shaped summons will use it.
   maxHealth?: number;  // Stamped at placement from the source Character.health, so the no_damage_taken quest can compare against the original max regardless of mid-puzzle Character asset edits.
   actionIndex: number;
   active: boolean;
@@ -1254,6 +1255,7 @@ export enum SpellTemplate {
   REDIRECT = 'redirect',         // Projectile that changes target's facing direction
   THROW_PLACE = 'throw_place',   // Place or throw a collectible item onto a tile
   SUMMON = 'summon',             // Spawn an entity on an adjacent tile (engine/spawning.ts)
+  NECROMANCY = 'necromancy',     // Raise an opposing-party corpse as a new combatant on the caster's side (rides the summon framework; the original death still counts for win conditions)
 }
 
 /**
@@ -1387,13 +1389,15 @@ export interface SpellAsset {
   throwPlaceGracePeriod?: number;                     // Turns of caster immunity (default 1)
   throwPlacePermanentImmunity?: boolean;              // Caster can never pick up (default false)
 
-  // Summon-specific settings (for SUMMON template)
+  // Summon-specific settings (for SUMMON template; the summon* fields below
+  // except summonEnemyId are SHARED with NECROMANCY — the raised unit is a
+  // summon that happens to reuse the corpse's asset and tile)
   // Placement rides the standard direction config (locked design: "like melee
   // direction config") — ONE spawn attempt per cast direction, on the adjacent
   // tile in that direction; blocked/occupied tiles skip silently. The summoned
   // unit inherits the caster's EFFECTIVE party at cast time (charm included,
   // permanent) and is always excludeFromWinConditions.
-  summonEnemyId?: string;         // Enemy asset to spawn
+  summonEnemyId?: string;         // Enemy asset to spawn (SUMMON only — necromancy raises the corpse as itself)
   summonDuration?: number;        // Turns the summon remains after appearing (each = one action); 0/unset = permanent. Expiry despawns (exit overlay, no drops/triggers) — see PlacedEnemy.despawnOnTurn
   summonFacing?: SummonFacingMode; // Facing override for the summoned unit; unset = the entity asset's defaultFacing
   summonFacingFixed?: Direction;  // For summonFacing 'fixed' — exact compass direction

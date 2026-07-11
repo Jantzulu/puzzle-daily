@@ -44,6 +44,8 @@ export interface MidGameSpawnRequest {
     durationOverride?: number; // -1 = permanent
     valueOverride?: number;
   };
+  /** Spawn at this percent of the asset's max health (floored, min 1). Unset = full health. Necromancy shares resurrect's health-percent convention. */
+  healthPercent?: number;
 }
 
 /**
@@ -67,11 +69,14 @@ export function spawnEnemyMidGame(
   const enemyData = getEnemy(request.enemyId);
   if (!enemyData) return null;
 
+  const maxHealth = enemyData.health || 1;
   const spawned: PlacedEnemy = {
     enemyId: request.enemyId,
     x: request.x,
     y: request.y,
-    currentHealth: enemyData.health || 1,
+    currentHealth: request.healthPercent !== undefined
+      ? Math.max(1, Math.floor(maxHealth * (request.healthPercent / 100)))
+      : maxHealth,
     facing: request.facing ?? enemyData.behavior?.defaultFacing,
     dead: false,
     party: request.party,
