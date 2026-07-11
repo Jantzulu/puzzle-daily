@@ -318,6 +318,18 @@ export interface EnemyBehavior {
   defaultFacing?: Direction;
 }
 
+/**
+ * Which team an entity fights for. Historically team membership was purely
+ * STRUCTURAL (placedCharacters = hero team, puzzle.enemies = enemy team);
+ * the explicit `party` field decouples them so future features can cross
+ * the line: summons inherit their summoner's party, Allies are creator-
+ * placed enemy-array entities on the hero side, Necromancy flips a raised
+ * unit's party. Absent field = the structural default, so all existing
+ * content is unchanged. Charm is NOT stored here — it stays a temporary
+ * inversion applied on top (see engine/party.ts effectiveParty).
+ */
+export type EntityParty = 'hero' | 'enemy';
+
 export interface PlacedEnemy {
   enemyId: string;
   x: number;
@@ -325,6 +337,7 @@ export interface PlacedEnemy {
   currentHealth: number;
   facing?: Direction;
   dead: boolean;
+  party?: EntityParty; // Explicit team override — see EntityParty. Absent = 'enemy'.
   actionIndex?: number; // For active enemies with behavior patterns
   active?: boolean; // For active enemies
   parallelTrackers?: ParallelActionTracker[]; // For parallel spell execution
@@ -588,6 +601,7 @@ export interface PlacedCharacter {
   y: number;
   facing: Direction;
   currentHealth: number;
+  party?: EntityParty; // Explicit team override — see EntityParty. Absent = structural lookup ('enemy' if this id lives in puzzle.enemies — enemy casters are wrapped as characters — else 'hero').
   maxHealth?: number;  // Stamped at placement from the source Character.health, so the no_damage_taken quest can compare against the original max regardless of mid-puzzle Character asset edits.
   actionIndex: number;
   active: boolean;

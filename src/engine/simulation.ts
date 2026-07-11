@@ -755,6 +755,7 @@ function markEntityAsDead(
   // Create a compatible PlacedCharacter-like object for the trigger system
   const entityForTriggers: PlacedCharacter = {
     characterId: (entity as PlacedCharacter).characterId || (entity as PlacedEnemy).enemyId,
+    party: entity.party, // wrappers carry the explicit party through (engine/party.ts)
     x: entity.x,
     y: entity.y,
     facing: entity.facing || Direction.EAST,
@@ -1826,6 +1827,7 @@ export function executeTurn(gameState: GameState): GameState {
     const executeEnemyAction = (action: CharacterAction) => {
       const tempChar: PlacedCharacter = {
         characterId: newEnemy.enemyId,
+        party: newEnemy.party, // wrappers carry the explicit party through (engine/party.ts)
         x: newEnemy.x,
         y: newEnemy.y,
         facing: newEnemy.facing || Direction.SOUTH,
@@ -1929,6 +1931,7 @@ export function executeTurn(gameState: GameState): GameState {
     if (enemy.statusEffects?.some(e => e.type === StatusEffectType.PRIORITY)) {
       const tempCharForTrigger: PlacedCharacter = {
         characterId: enemy.enemyId,
+        party: enemy.party, // wrappers must carry the explicit party through (engine/party.ts)
         x: enemy.x,
         y: enemy.y,
         facing: enemy.facing || Direction.SOUTH,
@@ -1965,6 +1968,7 @@ export function executeTurn(gameState: GameState): GameState {
     if (!enemy.statusEffects?.some(e => e.type === StatusEffectType.PRIORITY) && !enemy.dead) {
       const tempCharForTrigger: PlacedCharacter = {
         characterId: enemy.enemyId,
+        party: enemy.party, // wrappers must carry the explicit party through (engine/party.ts)
         x: enemy.x,
         y: enemy.y,
         facing: enemy.facing || Direction.SOUTH,
@@ -2882,7 +2886,10 @@ function triggerAOEExplosion(
   gameState: GameState,
   spellAssetId?: string
 ): void {
-  // Create a temporary character at the explosion point
+  // Create a temporary character at the explosion point.
+  // PARTY NOTE (Phase 2): only ids reach this point, so an explicit party on
+  // the source can't carry through — the structural id lookup covers all
+  // current content. When summons land, thread the source's party here too.
   const tempChar: PlacedCharacter = {
     characterId: sourceCharacterId || sourceEnemyId || 'explosion_source',
     x,

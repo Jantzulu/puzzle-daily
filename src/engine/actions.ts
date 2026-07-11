@@ -31,6 +31,7 @@ import { getCharacter } from '../data/characters';
 import { getEnemy } from '../data/enemies';
 import { getDirectionOffset, turnLeft, turnRight, turnAround, isInBounds, calculateDistance, calculateDirectionTo, isAttackFromBehind, isEntityFunctional } from './utils';
 import { loadSpellAsset, loadTileType, loadStatusEffectAsset, loadCollectible } from '../utils/assetStorage';
+import { isEntityCharmed, effectiveParty } from './party';
 import type { CollectibleEffectConfig, PlacedCollectible } from '../types/game';
 import { canEntityAct, canEntityCastSpell, canEntityMove, hasHasteBonus, isHomingDebug } from './simulation';
 import { wakeFromSleep } from './simulation';
@@ -2076,8 +2077,10 @@ function executeMeleeAttack(
 
   // Check if the caster is an enemy (attacking characters) or a character (attacking enemies)
   // Charm inverts which team is targeted for melee attacks
-  const structurallyEnemyCaster = gameState.puzzle.enemies.some(e => e.enemyId === character.characterId);
-  const isEnemyCaster = isEntityCharmed(character) ? !structurallyEnemyCaster : structurallyEnemyCaster;
+  // Party model (engine/party.ts): explicit party field wins, structural
+  // lookup is the fallback, charm inverts on top — same math as the old
+  // inline derivation for all existing content.
+  const isEnemyCaster = effectiveParty(character, gameState) === 'enemy';
 
   // Handle range 0 as self-target
   if (meleeRange === 0) {
@@ -2220,8 +2223,10 @@ function executeConeAttack(
 ): void {
   const damage = attackData.damage ?? 1;
   const skipCasterTile = spell?.skipSpriteOnCasterTile || false;
-  const structurallyEnemyCaster = gameState.puzzle.enemies.some(e => e.enemyId === character.characterId);
-  const isEnemyCaster = isEntityCharmed(character) ? !structurallyEnemyCaster : structurallyEnemyCaster;
+  // Party model (engine/party.ts): explicit party field wins, structural
+  // lookup is the fallback, charm inverts on top — same math as the old
+  // inline derivation for all existing content.
+  const isEnemyCaster = effectiveParty(character, gameState) === 'enemy';
 
   // Get attack sprite (same logic as executeMeleeAttack)
   let attackSprite = spell?.sprites.meleeAttack;
@@ -2340,8 +2345,10 @@ export function executeAOEAttack(
 
   // Check if the caster is an enemy (attacking characters) or a character (attacking enemies)
   // Charm inverts which team is targeted/healed
-  const structurallyEnemyCaster = gameState.puzzle.enemies.some(e => e.enemyId === character.characterId);
-  const isEnemyCaster = isEntityCharmed(character) ? !structurallyEnemyCaster : structurallyEnemyCaster;
+  // Party model (engine/party.ts): explicit party field wins, structural
+  // lookup is the fallback, charm inverts on top — same math as the old
+  // inline derivation for all existing content.
+  const isEnemyCaster = effectiveParty(character, gameState) === 'enemy';
 
   // Determine center point
   let centerX = character.x;
@@ -2824,6 +2831,7 @@ export function applyDamageToEntity(
     // Create a PlacedCharacter-like object for death triggers
     const entityForTriggers: PlacedCharacter = {
       characterId: (target as PlacedCharacter).characterId || (target as PlacedEnemy).enemyId,
+      party: target.party, // wrappers carry the explicit party through (engine/party.ts)
       x: target.x,
       y: target.y,
       facing: target.facing || Direction.EAST,
@@ -2898,6 +2906,7 @@ export function applyDamageToEntityNoDeflect(
   if (target.currentHealth <= 0) {
     const entityForTriggers: PlacedCharacter = {
       characterId: (target as PlacedCharacter).characterId || (target as PlacedEnemy).enemyId,
+      party: target.party, // wrappers carry the explicit party through (engine/party.ts)
       x: target.x,
       y: target.y,
       facing: target.facing || Direction.EAST,
@@ -3234,10 +3243,8 @@ function isEntityStealthed(entity: PlacedCharacter | PlacedEnemy): boolean {
 /**
  * Check if an entity has an active charm effect (team allegiance inverted)
  */
-function isEntityCharmed(entity: PlacedCharacter | PlacedEnemy): boolean {
-  if (!entity.statusEffects) return false;
-  return entity.statusEffects.some(e => e.type === StatusEffectType.CHARM);
-}
+// isEntityCharmed moved to engine/party.ts (imported above) — charm is part
+// of the party model now: a temporary inversion on top of the base party.
 
 /**
  * Find the nearest living enemies to an entity, up to maxTargets
