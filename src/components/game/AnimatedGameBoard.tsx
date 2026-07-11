@@ -1024,6 +1024,14 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
     gameState.puzzle.enemies.forEach((enemy, index) => {
       // Only start spawn animation if enemy hasn't already spawned and isn't dead
       if (!spawnedEnemiesRef.current.has(index) && !enemy.dead) {
+        // Mid-game spawns (summons) never get the board entrance — no spawn
+        // sheet, no fly-in. They materialize in the summoner's beat under the
+        // spell's summonEffect overlay instead. (This effect re-runs when
+        // enemies.length grows, which is exactly how a summon reaches here.)
+        if (enemy.spawnedOnTurn !== undefined) {
+          spawnedEnemiesRef.current.add(index);
+          return;
+        }
         // Fly-in pre-phase: delay the spawn sheet until the flight lands.
         let spawnStart = now;
         const enemySprite = getEnemy(enemy.enemyId)?.customSprite;
@@ -1720,9 +1728,12 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
         });
       }
 
-      // Draw particles (Phase 2 - effects layer)
+      // Draw particles (Phase 2 - effects layer). Particles flagged
+      // aboveEntities (summon materialize overlays) skip this pass and draw
+      // after the entity render queue instead.
       if (gameState.activeParticles && gameState.activeParticles.length > 0) {
         gameState.activeParticles.forEach(particle => {
+          if (particle.aboveEntities) return;
           drawParticle(ctx, particle, now, imageCache.current);
         });
       }
@@ -1994,6 +2005,16 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
           }
         }
       });
+
+      // Overlay particles — summon materialize effects draw ON TOP of the
+      // entity they cover (portal-tile style), so this pass runs after the
+      // entity render queue.
+      if (gameState.activeParticles && gameState.activeParticles.length > 0) {
+        gameState.activeParticles.forEach(particle => {
+          if (!particle.aboveEntities) return;
+          drawParticle(ctx, particle, now, imageCache.current);
+        });
+      }
 
       // Departing souls — drawn above the entities so they rise OVER the
       // battlefield. Windows derive from the persistent death-anim maps.

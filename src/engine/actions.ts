@@ -1855,7 +1855,7 @@ function executeSpellInDirection(
         // entity, portal-tile style. Longer default than hit effects so a
         // multi-frame sheet has room to play.
         if (spell.sprites.summonEffect) {
-          spawnParticle(spawnX, spawnY, spell.sprites.summonEffect, 600, gameState);
+          spawnParticle(spawnX, spawnY, spell.sprites.summonEffect, 600, gameState, undefined, { aboveEntities: true });
         }
       }
       break;
@@ -2518,7 +2518,7 @@ function spawnParticle(
   duration: number,
   gameState: GameState,
   direction?: Direction,
-  opts?: { delayMs?: number; fromX?: number; fromY?: number; sizeTiles?: number }
+  opts?: { delayMs?: number; fromX?: number; fromY?: number; sizeTiles?: number; aboveEntities?: boolean }
 ): void {
   if (!gameState.activeParticles) {
     gameState.activeParticles = [];
@@ -2533,7 +2533,7 @@ function spawnParticle(
     duration,
     alpha: 1.0,
     rotation: direction, // Store direction for rotation calculation in rendering
-    ...opts, // delayMs (hold before appearing) / fromX,fromY (travel start)
+    ...opts, // delayMs (hold) / fromX,fromY (travel) / sizeTiles / aboveEntities (draw over the entity layer)
   };
 
   gameState.activeParticles.push(particle);

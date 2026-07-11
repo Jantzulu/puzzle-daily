@@ -1213,6 +1213,7 @@ export interface ParticleEffect {
   fromX?: number;               // Travel start (tile coords): the particle lerps fromX/fromY → x/y across its visible duration (borrowed contact-damage projectiles)
   fromY?: number;
   sizeTiles?: number;           // Render box spans this many tiles instead of the default 32px (single-sprite AOE blasts). Art aspect-fits the box — draw at 24 art px per tile for uniform scaling
+  aboveEntities?: boolean;      // Draw in the pass ABOVE the entity layer instead of the default below-entities effects pass (summon materialize overlays)
 }
 
 /**
