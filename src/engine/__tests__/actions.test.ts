@@ -656,3 +656,110 @@ describe('applyDamageToEntity', () => {
     expect(source.currentHealth).toBe(6);  // source takes reflected 4
   });
 });
+
+// ==========================================
+// TEAM-RELATIVE AUTO-TARGETING (user decisions 2026-07-11):
+// flags mean Opposing/Same Team relative to the authoring side, charm
+// flips the caster's own aim (outgoing only), stealth hides from
+// opposing-team finds in BOTH directions.
+// ==========================================
+describe('team-relative auto-targeting', () => {
+  const registerBolt = () => registerTestSpell('bolt', {
+    id: 'bolt', name: 'Bolt', description: '', thumbnailIcon: '',
+    templateType: SpellTemplate.LINEAR, directionMode: 'current_facing',
+    damage: 1, range: 6, projectileSpeed: 4, sprites: {},
+  });
+  const charm = () => ({
+    id: 'charm-1', type: StatusEffectType.CHARM, statusAssetId: 'charm-asset',
+    duration: 3, appliedOnTurn: 0,
+  });
+  const stealth = () => ({
+    id: 'stealth-1', type: StatusEffectType.STEALTH, statusAssetId: 'stealth-asset',
+    duration: 3, appliedOnTurn: 0,
+  });
+  /** Enemy casters run action code wrapped as PlacedCharacter (characterId = enemyId). */
+  const wrapEnemy = (enemyId: string, x: number, y: number, extra?: object) =>
+    createTestCharacter({ characterId: enemyId, x, y, facing: Direction.NORTH, ...extra });
+
+  it('enemy-authored "nearest character" targets the OPPOSING team (heroes)', () => {
+    registerBolt();
+    const gs = createTestGameState({
+      puzzle: createTestPuzzle({ width: 8, height: 5, enemies: [createTestEnemy({ enemyId: 'goblin-1', x: 2, y: 2 })] }),
+      placedCharacters: [createTestCharacter({ x: 5, y: 2 })],
+      gameStatus: 'running',
+    });
+    executeAction(wrapEnemy('goblin-1', 2, 2), { type: ActionType.SPELL, spellId: 'bolt', autoTargetNearestCharacter: true, homing: true }, gs);
+    expect(gs.activeProjectiles).toHaveLength(1);
+    expect(gs.activeProjectiles![0].targetEntityId).toBe('hero-1');
+    expect(gs.activeProjectiles![0].targetIsEnemy).toBe(false);
+  });
+
+  it('a CHARMED enemy\'s "nearest character" flips to its original team', () => {
+    registerBolt();
+    regEnemy(createTestEnemyDef({ id: 'goblin-2' }));
+    const gs = createTestGameState({
+      puzzle: createTestPuzzle({
+        width: 8, height: 5,
+        enemies: [
+          createTestEnemy({ enemyId: 'goblin-1', x: 2, y: 2, statusEffects: [charm()] }),
+          createTestEnemy({ enemyId: 'goblin-2', x: 5, y: 2 }),
+        ],
+      }),
+      placedCharacters: [createTestCharacter({ x: 2, y: 4 })],
+      gameStatus: 'running',
+    });
+    executeAction(wrapEnemy('goblin-1', 2, 2, { statusEffects: [charm()] }),
+      { type: ActionType.SPELL, spellId: 'bolt', autoTargetNearestCharacter: true, homing: true }, gs);
+    expect(gs.activeProjectiles).toHaveLength(1);
+    expect(gs.activeProjectiles![0].targetEntityId).toBe('goblin-2');
+    expect(gs.activeProjectiles![0].targetIsEnemy).toBe(true);
+  });
+
+  it('a CHARMED hero\'s homing bolt tracks a fellow hero with a usable id (old dead-end fixed)', () => {
+    registerBolt();
+    const gs = createTestGameState({
+      puzzle: createTestPuzzle({ width: 8, height: 5, enemies: [createTestEnemy({ enemyId: 'goblin-1', x: 7, y: 4 })] }),
+      placedCharacters: [
+        createTestCharacter({ characterId: 'hero-1', x: 2, y: 2, statusEffects: [charm()] }),
+        createTestCharacter({ characterId: 'hero-2', x: 5, y: 2 }),
+      ],
+      gameStatus: 'running',
+    });
+    executeAction(gs.placedCharacters[0], { type: ActionType.SPELL, spellId: 'bolt', autoTargetNearestEnemy: true, homing: true }, gs);
+    expect(gs.activeProjectiles).toHaveLength(1);
+    expect(gs.activeProjectiles![0].targetEntityId).toBe('hero-2');
+    expect(gs.activeProjectiles![0].targetIsEnemy).toBe(false);
+  });
+
+  it('stealth hides a HERO from enemy auto-targeting (new baseline)', () => {
+    registerBolt();
+    const gs = createTestGameState({
+      puzzle: createTestPuzzle({ width: 8, height: 5, enemies: [createTestEnemy({ enemyId: 'goblin-1', x: 2, y: 2 })] }),
+      placedCharacters: [createTestCharacter({ x: 5, y: 2, statusEffects: [stealth()] })],
+      gameStatus: 'running',
+    });
+    executeAction(wrapEnemy('goblin-1', 2, 2), { type: ActionType.SPELL, spellId: 'bolt', autoTargetNearestCharacter: true }, gs);
+    expect(gs.activeProjectiles).toHaveLength(0); // no visible target -> no cast
+  });
+
+  it('stealth still hides an ENEMY from hero auto-targeting', () => {
+    registerBolt();
+    const gs = createTestGameState({
+      puzzle: createTestPuzzle({ width: 8, height: 5, enemies: [createTestEnemy({ enemyId: 'goblin-1', x: 5, y: 2, statusEffects: [stealth()] })] }),
+      placedCharacters: [createTestCharacter({ x: 2, y: 2 })],
+      gameStatus: 'running',
+    });
+    executeAction(gs.placedCharacters[0], { type: ActionType.SPELL, spellId: 'bolt', autoTargetNearestEnemy: true }, gs);
+    expect(gs.activeProjectiles).toHaveLength(0);
+  });
+
+  it('FACE_DIRECTION keeps absolute teams: an enemy actor faces the nearest hero', () => {
+    const gs = createTestGameState({
+      puzzle: createTestPuzzle({ width: 8, height: 5, enemies: [createTestEnemy({ enemyId: 'goblin-1', x: 2, y: 2 })] }),
+      placedCharacters: [createTestCharacter({ x: 5, y: 2 })],
+      gameStatus: 'running',
+    });
+    const result = executeAction(wrapEnemy('goblin-1', 2, 2), { type: ActionType.FACE_DIRECTION, faceTarget: 'nearest_hero', faceTargetRange: 6 }, gs);
+    expect(result.facing).toBe(Direction.EAST);
+  });
+});
