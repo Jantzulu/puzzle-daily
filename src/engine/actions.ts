@@ -1916,7 +1916,11 @@ function spawnProjectile(
     targetY = character.y + dy * range;
   }
 
-  // Determine if source is structurally an enemy or character
+  // The firer's BASE party (engine/party.ts): explicit field, else the
+  // structural id lookup this line used to do inline. isEnemy keeps feeding
+  // the id-namespace fields (sourceCharacterId vs sourceEnemyId), which
+  // stay shape-based for lookups/visuals.
+  const firerParty = entityParty(character, gameState);
   const isEnemy = gameState.puzzle.enemies.some(e => e.enemyId === character.characterId);
   // Store enemy array index for reflect targeting (duplicate enemies share the same ID)
   const sourceEnemyIndex = isEnemy
@@ -1979,6 +1983,7 @@ function spawnProjectile(
     sourceCharacterId: isEnemy ? undefined : character.characterId,
     sourceEnemyId: isEnemy ? character.characterId : undefined,
     sourceEnemyIndex: sourceEnemyIndex !== undefined && sourceEnemyIndex >= 0 ? sourceEnemyIndex : undefined,
+    sourceParty: firerParty,
     teamSwapped: casterIsCharmed || undefined,  // Charm: flip hit resolution via getEffectiveTeams()
     spellAssetId: spell?.id,
     // Bounce settings from spell

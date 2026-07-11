@@ -1,11 +1,12 @@
 /* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any, no-case-declarations, prefer-const */
-import type { GameState, PlacedCharacter, PlacedEnemy, ParallelActionTracker, StatusEffectInstance, SpellTemplate, SpellAsset, PlacedCollectible, CharacterAction, Puzzle, Projectile, ProjectileVisualState, SpriteReference, ProjectileEvent } from '../types/game';
+import type { GameState, PlacedCharacter, PlacedEnemy, ParallelActionTracker, StatusEffectInstance, SpellTemplate, SpellAsset, PlacedCollectible, CharacterAction, Puzzle, Projectile, ProjectileVisualState, SpriteReference, ProjectileEvent, EntityParty } from '../types/game';
 import { ActionType, Direction, StatusEffectType, TileType as TileTypeEnum } from '../types/game';
 import { getCharacter } from '../data/characters';
 import { getEnemy } from '../data/enemies';
 import { executeAction, executeAOEAttack, evaluateTriggers, executeDeathTriggers, applyDamageToEntity, applyDamageToEntityNoDeflect, placeCollectibleFromSpell } from './actions';
 import { loadStatusEffectAsset, loadSpellAsset, loadCollectible, loadEnemy, loadCharacter, loadTileType } from '../utils/assetStorage';
 import { turnLeft, turnRight, turnAround, getDirectionOffset, calculateDirectionTo, isAttackFromBehind, isEntityFunctional } from './utils';
+import { entityParty } from './party';
 
 // Debug flag for projectile tracing: flip to true to enable detailed logs
 // covering spawn, per-turn resolve events, per-frame visual interpolation,
@@ -190,15 +191,19 @@ function checkHomingPathForHits(proj: Projectile, tiles: Array<{x: number; y: nu
   const isHealingProjectile = proj.attackData.healing !== undefined;
   if (isHealingProjectile) return; // Don't damage along path for healing spells
 
-  const effectivelyCharFired = proj.teamSwapped ? !!proj.sourceEnemyId : !!proj.sourceCharacterId;
-  const effectivelyEnemyFired = proj.teamSwapped ? !!proj.sourceCharacterId : !!proj.sourceEnemyId;
+  // Party-aware (engine/party.ts): which base party this projectile hurts,
+  // derived the same way as collision (getEffectiveTeams). The two blocks
+  // below stay shape-split because their deferred-death/replay bookkeeping
+  // differs by shape; the party filter inside each scan is what will let
+  // party-flipped entities opt out once they exist.
+  const { targetsEnemies, targetsCharacters } = getEffectiveTeams(proj);
 
   for (let tileIdx = 0; tileIdx < tiles.length; tileIdx++) {
     const tile = tiles[tileIdx];
     // Skip the starting tile
     if (tile.x === Math.floor(proj.logicalX) && tile.y === Math.floor(proj.logicalY)) continue;
 
-    if (effectivelyCharFired) {
+    if (targetsEnemies) {
       // Check for enemy hits — dedup by array index (hitEnemyIndices), not
       // by enemyId, so multiple enemies sharing an enemyId all get hit by
       // pierce.
@@ -206,7 +211,8 @@ function checkHomingPathForHits(proj: Projectile, tiles: Array<{x: number; y: nu
         (e, i) => isEntityFunctional(e) &&
              Math.floor(e.x) === tile.x && Math.floor(e.y) === tile.y &&
              !proj.hitEnemyIndices!.includes(i) &&
-             e.enemyId !== proj.targetEntityId // Don't hit designated target along path
+             e.enemyId !== proj.targetEntityId && // Don't hit designated target along path
+             entityParty(e, gameState) === 'enemy'
       );
       const hitEnemy = hitEnemyIndex >= 0 ? gameState.puzzle.enemies[hitEnemyIndex] : undefined;
       if (hitEnemy) {
@@ -273,13 +279,14 @@ function checkHomingPathForHits(proj: Projectile, tiles: Array<{x: number; y: nu
         });
         if (!proj.attackData.projectilePierces) break;
       }
-    } else if (effectivelyEnemyFired) {
+    } else if (targetsCharacters) {
       // Check for character hits
       const hitChar = gameState.placedCharacters.find(
         c => isEntityFunctional(c) &&
              Math.floor(c.x) === tile.x && Math.floor(c.y) === tile.y &&
              !proj.hitEntityIds!.includes(c.characterId) &&
-             c.characterId !== proj.targetEntityId
+             c.characterId !== proj.targetEntityId &&
+             entityParty(c, gameState) === 'hero'
       );
       if (hitChar) {
         proj.hitEntityIds!.push(hitChar.characterId);
@@ -2917,11 +2924,20 @@ function triggerAOEExplosion(
 // PROJECTILE RESOLUTION HELPERS
 // ==========================================
 
-/** Get effective team targeting based on teamSwapped flag */
+/**
+ * Which base party this projectile hits (engine/party.ts): the firer's
+ * base party (sourceParty, stamped at spawn; falls back to which source id
+ * field is set for legacy/copied projectiles) opposed, then teamSwapped
+ * (charm at spawn, or reflect) flips it back. Sourceless projectiles hit
+ * nobody, exactly like the old both-flags-false case.
+ */
 function getEffectiveTeams(proj: Projectile): { targetsEnemies: boolean; targetsCharacters: boolean } {
-  const targetsEnemies = proj.teamSwapped ? !!proj.sourceEnemyId : !!proj.sourceCharacterId;
-  const targetsCharacters = proj.teamSwapped ? !!proj.sourceCharacterId : !!proj.sourceEnemyId;
-  return { targetsEnemies, targetsCharacters };
+  const sourceParty: EntityParty | undefined = proj.sourceParty
+    ?? (proj.sourceCharacterId ? 'hero' : proj.sourceEnemyId ? 'enemy' : undefined);
+  if (!sourceParty) return { targetsEnemies: false, targetsCharacters: false };
+  const opposed: EntityParty = sourceParty === 'hero' ? 'enemy' : 'hero';
+  const targetSide: EntityParty = proj.teamSwapped ? sourceParty : opposed;
+  return { targetsEnemies: targetSide === 'enemy', targetsCharacters: targetSide === 'hero' };
 }
 
 /** Check if a tile is blocked (wall, void, or out of bounds) */
@@ -2941,43 +2957,50 @@ function findEntityAtTile(
   x: number, y: number, gameState: GameState, proj: Projectile,
   targetEnemies: boolean, excludePendingDeath: boolean
 ): PlacedCharacter | PlacedEnemy | null {
-  if (targetEnemies) {
-    const idx = gameState.puzzle.enemies.findIndex(
-      (e, i) => !e.dead && (!excludePendingDeath || !e.pendingProjectileDeath) &&
-           Math.floor(e.x) === x && Math.floor(e.y) === y &&
-           !(proj.hitEnemyIndices?.includes(i))
-    );
-    return idx >= 0 ? gameState.puzzle.enemies[idx] : null;
-  } else {
-    return gameState.placedCharacters.find(
-      c => !c.dead && (!excludePendingDeath || !c.pendingProjectileDeath) &&
-           Math.floor(c.x) === x && Math.floor(c.y) === y &&
-           !(proj.hitEntityIds?.includes(c.characterId))
-    ) || null;
-  }
+  // Party-aware (engine/party.ts): targetEnemies now means "the base enemy
+  // PARTY", not "the enemies array" — both lists are scanned, characters
+  // first. Pierce-dedup bookkeeping stays shape-based (characters by id,
+  // enemies by array index so duplicate enemyIds all get hit).
+  const side: EntityParty = targetEnemies ? 'enemy' : 'hero';
+  const char = gameState.placedCharacters.find(
+    c => !c.dead && (!excludePendingDeath || !c.pendingProjectileDeath) &&
+         Math.floor(c.x) === x && Math.floor(c.y) === y &&
+         !(proj.hitEntityIds?.includes(c.characterId)) &&
+         entityParty(c, gameState) === side
+  );
+  if (char) return char;
+  const idx = gameState.puzzle.enemies.findIndex(
+    (e, i) => !e.dead && (!excludePendingDeath || !e.pendingProjectileDeath) &&
+         Math.floor(e.x) === x && Math.floor(e.y) === y &&
+         !(proj.hitEnemyIndices?.includes(i)) &&
+         entityParty(e, gameState) === side
+  );
+  return idx >= 0 ? gameState.puzzle.enemies[idx] : null;
 }
 
-/** Find a friendly (healing) entity at a tile position, excluding self */
+/** Find a friendly (healing) entity at a tile position, excluding self.
+ *  Party-aware like findEntityAtTile: targetEnemies means "the base enemy
+ *  party". Self-exclusion keeps its old shape-based forms (characters by
+ *  sourceCharacterId, enemies by sourceEnemyIndex). */
 function findHealTargetAtTile(
   x: number, y: number, gameState: GameState, proj: Projectile,
   targetEnemies: boolean
 ): PlacedCharacter | PlacedEnemy | null {
-  if (!targetEnemies) {
-    // charFired healing targets characters (allies)
-    return gameState.placedCharacters.find(
-      c => !c.dead && Math.floor(c.x) === x && Math.floor(c.y) === y &&
-           c.characterId !== proj.sourceCharacterId &&
-           !(proj.hitEntityIds?.includes(c.characterId))
-    ) || null;
-  } else {
-    // enemyFired healing targets enemies (allies) — dedup by array index
-    const idx = gameState.puzzle.enemies.findIndex(
-      (e, i) => !e.dead && Math.floor(e.x) === x && Math.floor(e.y) === y &&
-           i !== proj.sourceEnemyIndex &&
-           !(proj.hitEnemyIndices?.includes(i))
-    );
-    return idx >= 0 ? gameState.puzzle.enemies[idx] : null;
-  }
+  const side: EntityParty = targetEnemies ? 'enemy' : 'hero';
+  const char = gameState.placedCharacters.find(
+    c => !c.dead && Math.floor(c.x) === x && Math.floor(c.y) === y &&
+         c.characterId !== proj.sourceCharacterId &&
+         !(proj.hitEntityIds?.includes(c.characterId)) &&
+         entityParty(c, gameState) === side
+  );
+  if (char) return char;
+  const idx = gameState.puzzle.enemies.findIndex(
+    (e, i) => !e.dead && Math.floor(e.x) === x && Math.floor(e.y) === y &&
+         i !== proj.sourceEnemyIndex &&
+         !(proj.hitEnemyIndices?.includes(i)) &&
+         entityParty(e, gameState) === side
+  );
+  return idx >= 0 ? gameState.puzzle.enemies[idx] : null;
 }
 
 /** Record a pierce-dedup hit on an enemy by its array index. */

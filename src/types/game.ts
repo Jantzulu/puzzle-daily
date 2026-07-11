@@ -971,6 +971,7 @@ export interface Projectile {
   sourceCharacterId?: string;   // Who fired this
   sourceEnemyId?: string;       // If fired by enemy
   sourceEnemyIndex?: number;    // Array index of source enemy (for duplicate ID handling in reflect)
+  sourceParty?: EntityParty;    // Firer's BASE party at spawn (engine/party.ts). Absent on legacy/copied projectiles — team resolution falls back to which source id field is set (identical for all party-field-free content). Charm rides teamSwapped, not this.
   spellAssetId?: string;        // For status effect application on hit
 
   // -------- Homing (mixed: config + target are LOGICAL, visual anchors are BRIDGE) --------
