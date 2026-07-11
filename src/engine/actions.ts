@@ -2285,11 +2285,11 @@ export function executeAOEAttack(
   const healing = attackData.healing ?? 0;
   const isHeal = healing > 0;
 
-  // Check if the caster is an enemy (attacking characters) or a character (attacking enemies)
-  // Charm inverts which team is targeted/healed
-  // Party model (engine/party.ts): explicit party field wins, structural
-  // lookup is the fallback, charm inverts on top — same math as the old
-  // inline derivation for all existing content.
+  // Party model (engine/party.ts): the caster's effective party decides who
+  // gets hurt (isAttackTarget — opposing side) and who gets healed (its
+  // complement — own side). Charm steers the heal the same way it steers
+  // the blade; the old code picked a list off this flag, identical outcome
+  // for all existing content.
   const isEnemyCaster = effectiveParty(character, gameState) === 'enemy';
 
   // Determine center point
@@ -2306,95 +2306,68 @@ export function executeAOEAttack(
 
   // Apply instant damage/healing
   if (!attackData.persistDuration || attackData.persistDuration === 0) {
+    // Both entity lists, characters first — with existing content the party
+    // filter selects exactly the list the old branched code searched, in
+    // the same order. Entities are flagged dead, never removed, so the
+    // combined array is stable during iteration.
+    const candidates: (PlacedCharacter | PlacedEnemy)[] = [
+      ...gameState.placedCharacters,
+      ...gameState.puzzle.enemies,
+    ];
+
     if (isHeal) {
-      // Heal allies in radius (characters heal characters, enemies heal enemies)
-      if (isEnemyCaster) {
-        // Enemy heals other enemies
-        gameState.puzzle.enemies.forEach(ally => {
-          if (ally.dead || ally.enemyId === character.characterId) return;
+      // Heal allies in radius — everyone on the caster's effective side.
+      candidates.forEach(ally => {
+        if (ally.dead) return;
+        // Self-exclusion: a hero caster IS its list element (reference);
+        // a wrapped enemy caster is a copy, so match its id instead.
+        if (ally === character) return;
+        if ('enemyId' in ally && ally.enemyId === character.characterId) return;
+        if (isAttackTarget(character, ally, gameState)) return; // opposing side
 
-          const distance = Math.sqrt(
-            Math.pow(ally.x - centerX, 2) + Math.pow(ally.y - centerY, 2)
-          );
+        const distance = Math.sqrt(
+          Math.pow(ally.x - centerX, 2) + Math.pow(ally.y - centerY, 2)
+        );
 
-          if (distance <= radius) {
-            const enemyData = getEnemy(ally.enemyId);
-            ally.currentHealth = Math.min(ally.currentHealth + healing, enemyData?.health ?? ally.currentHealth);
+        if (distance <= radius) {
+          // Cap at the source asset's health, like the pre-party branches did.
+          const maxHealth = 'enemyId' in ally
+            ? getEnemy(ally.enemyId)?.health
+            : getCharacter(ally.characterId)?.health;
+          ally.currentHealth = Math.min(ally.currentHealth + healing, maxHealth ?? ally.currentHealth);
 
-            // Use healing effect sprite if available, fallback to hit effect
-            const healSprite = attackData.healingEffectSprite || attackData.hitEffectSprite;
-            if (healSprite) {
-              spawnParticle(ally.x, ally.y, healSprite, attackData.effectDuration || 300, gameState);
-            }
+          // Use healing effect sprite if available, fallback to hit effect
+          const healSprite = attackData.healingEffectSprite || attackData.hitEffectSprite;
+          if (healSprite) {
+            spawnParticle(ally.x, ally.y, healSprite, attackData.effectDuration || 300, gameState);
           }
-        });
-      } else {
-        // Character heals other characters
-        gameState.placedCharacters.forEach(ally => {
-          if (ally.dead || ally === character) return;
-
-          const distance = Math.sqrt(
-            Math.pow(ally.x - centerX, 2) + Math.pow(ally.y - centerY, 2)
-          );
-
-          if (distance <= radius) {
-            ally.currentHealth = Math.min(ally.currentHealth + healing, getCharacter(ally.characterId)?.health ?? ally.currentHealth);
-
-            // Use healing effect sprite if available, fallback to hit effect
-            const healSprite = attackData.healingEffectSprite || attackData.hitEffectSprite;
-            if (healSprite) {
-              spawnParticle(ally.x, ally.y, healSprite, attackData.effectDuration || 300, gameState);
-            }
-          }
-        });
-      }
+        }
+      });
     } else {
-      // Damage targets in radius
-      if (isEnemyCaster) {
-        // Enemy damages characters
-        gameState.placedCharacters.forEach(target => {
-          if (target.dead) return;
+      // Damage everyone on the opposing side in radius. Deliberately NO
+      // self-exclusion, matching the old branches: a charmed enemy's blast
+      // can catch its own base side — itself included.
+      candidates.forEach(target => {
+        if (target.dead) return;
+        if (!isAttackTarget(character, target, gameState)) return;
 
-          const distance = Math.sqrt(
-            Math.pow(target.x - centerX, 2) + Math.pow(target.y - centerY, 2)
-          );
+        const distance = Math.sqrt(
+          Math.pow(target.x - centerX, 2) + Math.pow(target.y - centerY, 2)
+        );
 
-          if (distance <= radius) {
-            applyDamageToEntity(target, damage, gameState, character);
+        if (distance <= radius) {
+          applyDamageToEntity(target, damage, gameState, character);
 
-            // Apply status effect if spell has one configured
-            if (spell && !target.dead) {
-              applyStatusEffectFromSpell(target, spell, character.characterId, true, gameState.currentTurn);
-            }
-
-            if (attackData.hitEffectSprite) {
-              spawnParticle(target.x, target.y, attackData.hitEffectSprite, attackData.effectDuration || 300, gameState);
-            }
+          // Apply status effect if spell has one configured
+          if (spell && !target.dead) {
+            applyStatusEffectFromSpell(target, spell, character.characterId, isEnemyCaster, gameState.currentTurn);
           }
-        });
-      } else {
-        // Character damages enemies
-        gameState.puzzle.enemies.forEach(enemy => {
-          if (enemy.dead) return;
 
-          const distance = Math.sqrt(
-            Math.pow(enemy.x - centerX, 2) + Math.pow(enemy.y - centerY, 2)
-          );
-
-          if (distance <= radius) {
-            applyDamageToEntity(enemy, damage, gameState, character);
-
-            // Apply status effect if spell has one configured
-            if (spell && !enemy.dead) {
-              applyStatusEffectFromSpell(enemy, spell, character.characterId, false, gameState.currentTurn);
-            }
-
-            if (attackData.hitEffectSprite) {
-              spawnParticle(enemy.x, enemy.y, attackData.hitEffectSprite, attackData.effectDuration || 300, gameState);
-            }
+          if (attackData.hitEffectSprite) {
+            spawnParticle(target.x, target.y, attackData.hitEffectSprite, attackData.effectDuration || 300, gameState);
           }
-        });
-      }
+        }
+      });
     }
   }
 
