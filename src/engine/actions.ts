@@ -3617,57 +3617,62 @@ export function checkTriggerCondition(
   eventRange: number | undefined,
   gameState: GameState
 ): boolean {
+  // Living, visible members of a base party. Proximity triggers are
+  // party-aware (engine/party.ts) the same way the finders are: by BASE
+  // party, charm-blind ("enemy_adjacent" senses the enemy team, whoever
+  // it currently fights for). Stealth hides an entity from ALL proximity
+  // triggers, both sides. No self-exclusion — an enemy with an
+  // enemy_adjacent trigger senses itself at distance 0, as it always has.
+  const visiblePartyMembers = (side: EntityParty): Array<PlacedCharacter | PlacedEnemy> =>
+    [...gameState.placedCharacters, ...gameState.puzzle.enemies].filter(t =>
+      isEntityFunctional(t) && !isEntityStealthed(t) && entityParty(t, gameState) === side
+    );
+
   switch (event) {
     case 'enemy_adjacent':
-      // Check if any enemy is within 1 tile (adjacent, including diagonals) (stealthed enemies are invisible)
-      return gameState.puzzle.enemies.some(enemy => {
-        if (!isEntityFunctional(enemy) || isEntityStealthed(enemy)) return false;
+      // Check if any enemy-party entity is within 1 tile (including diagonals)
+      return visiblePartyMembers('enemy').some(enemy => {
         const distance = calculateDistance(character.x, character.y, enemy.x, enemy.y);
         return distance <= 1.42; // sqrt(2) for diagonal adjacency
       });
 
     case 'enemy_in_range':
-      // Check if any enemy is within specified range (stealthed enemies are invisible)
+      // Check if any enemy-party entity is within specified range
       const enemyRange = eventRange || 3; // Default to 3 if not specified
-      return gameState.puzzle.enemies.some(enemy => {
-        if (!isEntityFunctional(enemy) || isEntityStealthed(enemy)) return false;
+      return visiblePartyMembers('enemy').some(enemy => {
         const distance = calculateDistance(character.x, character.y, enemy.x, enemy.y);
         return distance <= enemyRange;
       });
 
     case 'contact_with_enemy':
-      // Check if character is on the same tile as an enemy (stealthed enemies are invisible)
-      return gameState.puzzle.enemies.some(enemy => {
-        if (!isEntityFunctional(enemy) || isEntityStealthed(enemy)) return false;
-        return enemy.x === character.x && enemy.y === character.y;
-      });
+      // Check if character is on the same tile as an enemy-party entity
+      return visiblePartyMembers('enemy').some(enemy =>
+        enemy.x === character.x && enemy.y === character.y
+      );
 
     case 'character_adjacent':
-      // Check if any character is within 1 tile (adjacent, including diagonals)
-      // Used by enemies to detect nearby characters (stealthed characters are invisible)
-      return gameState.placedCharacters.some(char => {
-        if (!isEntityFunctional(char) || isEntityStealthed(char)) return false;
+      // Check if any hero-party entity is within 1 tile (including diagonals)
+      // Used by enemies to detect nearby characters
+      return visiblePartyMembers('hero').some(char => {
         const distance = calculateDistance(character.x, character.y, char.x, char.y);
         return distance <= 1.42; // sqrt(2) for diagonal adjacency
       });
 
     case 'character_in_range':
-      // Check if any character is within specified range
-      // Used by enemies to detect characters at a distance (stealthed characters are invisible)
+      // Check if any hero-party entity is within specified range
+      // Used by enemies to detect characters at a distance
       const charRange = eventRange || 3; // Default to 3 if not specified
-      return gameState.placedCharacters.some(char => {
-        if (!isEntityFunctional(char) || isEntityStealthed(char)) return false;
+      return visiblePartyMembers('hero').some(char => {
         const distance = calculateDistance(character.x, character.y, char.x, char.y);
         return distance <= charRange;
       });
 
     case 'contact_with_character':
-      // Check if entity is on the same tile as a character
-      // Used by enemies to detect characters in melee range (stealthed characters are invisible)
-      return gameState.placedCharacters.some(char => {
-        if (!isEntityFunctional(char) || isEntityStealthed(char)) return false;
-        return char.x === character.x && char.y === character.y;
-      });
+      // Check if entity is on the same tile as a hero-party entity
+      // Used by enemies to detect characters in melee range
+      return visiblePartyMembers('hero').some(char =>
+        char.x === character.x && char.y === character.y
+      );
 
     case 'wall_ahead': {
       // Check if there's a wall in front of the character (includes custom wall tiles)
