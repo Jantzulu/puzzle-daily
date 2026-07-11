@@ -123,7 +123,14 @@ do, complementary to [`feature-roadmap.md`](../../puzzle-game/feature-roadmap.md
 
 ### New entity types & summoning
 
-- [ ] **Summon spell type.** Spawns another entity on adjacent tiles.
+- [x] **Summon spell type.** SHIPPED 2026-07-11 (`c532de3`→`136bd3e`):
+  spawn mechanics + win exclusion + party inheritance (effective party at
+  cast time — charm converts permanently), materialize/exit overlays
+  (particle `aboveEntities` pass), optional duration (expiry despawn ≠
+  death), per-spell overrides (facing incl. relative-to-summoner; starting
+  status covers contact damage — it IS a CONTACT_DAMAGE status), full
+  editor UI in the spell builder. Original spec follows.
+  Spawns another entity on adjacent tiles.
   Behavior:
   - Some kind of "summon" effect (portal animation) and a transition
     animation on the summoned entity
