@@ -9,6 +9,7 @@ import {
   registerTestCharacter as regChar,
   registerTestEnemy as regEnemy,
   registerTestSpell,
+  registerTestStatusEffect,
   createEmptyGrid,
   createTestPuzzle,
   createTestCharacterDef,
@@ -325,6 +326,48 @@ describe('SUMMON spell template', () => {
     for (let i = 0; i < 6; i++) executeTurn(gs); // run past despawnOnTurn
     expect(gs.puzzle.enemies[1].despawned).toBeUndefined(); // real death, not an expiry
     expect(gs.puzzle.enemies[1].dead).toBe(true);
+  });
+
+  it('facing overrides: away/toward/match/fixed resolve against the summoner at cast time', () => {
+    // Summoner at (2,2) facing EAST casts east — spawn axis is EAST.
+    const cases: Array<[Record<string, unknown>, Direction]> = [
+      [{ summonFacing: 'away_from_summoner' }, Direction.EAST],
+      [{ summonFacing: 'toward_summoner' }, Direction.WEST],
+      [{ summonFacing: 'match_summoner' }, Direction.EAST],
+      [{ summonFacing: 'fixed', summonFacingFixed: Direction.NORTH }, Direction.NORTH],
+    ];
+    for (const [overrides, expected] of cases) {
+      clearAllRegistries();
+      registerSummonSpell(overrides);
+      registerSummonerEnemy();
+      regEnemy(createTestEnemyDef({
+        id: 'walker', health: 3,
+        behavior: { type: 'active', pattern: [{ type: ActionType.MOVE_FORWARD }], defaultFacing: Direction.SOUTH },
+      }));
+      const gs = summonerState();
+      executeTurn(gs);
+      expect(gs.puzzle.enemies[1].facing).toBe(expected);
+    }
+  });
+
+  it('per-spell starting status is applied on top of the asset initials', () => {
+    registerTestStatusEffect('contact-spikes', {
+      id: 'contact-spikes', name: 'Spikes', description: '',
+      type: StatusEffectType.CONTACT_DAMAGE,
+      defaultDuration: 3, defaultValue: 1,
+      stackingBehavior: 'refresh',
+    });
+    registerSummonSpell({
+      summonStartingStatus: { statusAssetId: 'contact-spikes', durationOverride: -1, valueOverride: 4 },
+    });
+    const gs = summonerState();
+
+    executeTurn(gs);
+    const summon = gs.puzzle.enemies[1];
+    const status = summon.statusEffects?.find(e => e.type === StatusEffectType.CONTACT_DAMAGE);
+    expect(status).toBeDefined();
+    expect(status!.value).toBe(4);      // value override = contact damage amount
+    expect(status!.duration).toBe(99998); // -1 = permanent (99999, minus the cast turn's end-of-turn tick)
   });
 
   it('a SILENCED caster cannot summon', () => {

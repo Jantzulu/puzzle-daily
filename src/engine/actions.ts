@@ -1836,6 +1836,17 @@ function executeSpellInDirection(
           (!c.dead || isFreshlyDead(c, gameState.currentTurn)));
       if (blockedByEntity) break;
 
+      // Facing override — relative modes resolve against the summoner NOW,
+      // then the result is a plain compass facing on the unit (it doesn't
+      // track the summoner afterwards). Unset = asset defaultFacing.
+      let summonFacing: Direction | undefined;
+      switch (spell.summonFacing) {
+        case 'away_from_summoner': summonFacing = direction; break;
+        case 'toward_summoner': summonFacing = turnAround(direction); break;
+        case 'match_summoner': summonFacing = character.facing; break;
+        case 'fixed': summonFacing = spell.summonFacingFixed; break;
+      }
+
       // Effective party at cast time (locked design): a charmed caster's
       // summon permanently joins the charmer's team. Always excluded from
       // win conditions — a summon must never become a kill requirement.
@@ -1843,10 +1854,12 @@ function executeSpellInDirection(
         enemyId: spell.summonEnemyId,
         x: spawnX,
         y: spawnY,
+        facing: summonFacing,
         party: effectiveParty(character, gameState),
         excludeFromWinConditions: true,
         durationTurns: spell.summonDuration,
         sourceSpellId: spell.id,
+        startingStatus: spell.summonStartingStatus,
       });
 
       if (spawned) {

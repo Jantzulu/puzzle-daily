@@ -1262,6 +1262,14 @@ export enum SpellTemplate {
 export type DirectionMode = 'current_facing' | 'fixed' | 'all_directions' | 'relative';
 
 /**
+ * Facing override for summoned entities (SUMMON template). Relative modes
+ * resolve against the summoner at cast time: 'away_from_summoner' faces
+ * along the spawn axis (the cast direction), 'toward_summoner' faces back
+ * at the caster, 'match_summoner' copies the caster's current facing.
+ */
+export type SummonFacingMode = 'away_from_summoner' | 'toward_summoner' | 'match_summoner' | 'fixed';
+
+/**
  * Relative directions (relative to caster's facing)
  */
 export type RelativeDirection = 'forward' | 'backward' | 'left' | 'right' | 'forward_left' | 'forward_right' | 'backward_left' | 'backward_right';
@@ -1387,6 +1395,13 @@ export interface SpellAsset {
   // permanent) and is always excludeFromWinConditions.
   summonEnemyId?: string;         // Enemy asset to spawn
   summonDuration?: number;        // Turns the summon remains after appearing (each = one action); 0/unset = permanent. Expiry despawns (exit overlay, no drops/triggers) — see PlacedEnemy.despawnOnTurn
+  summonFacing?: SummonFacingMode; // Facing override for the summoned unit; unset = the entity asset's defaultFacing
+  summonFacingFixed?: Direction;  // For summonFacing 'fixed' — exact compass direction
+  summonStartingStatus?: {        // Status effect applied to the summoned unit at spawn, ON TOP of the asset's initial effects. Covers the spec's "contact damage override" too (contact damage IS a CONTACT_DAMAGE status; value = damage)
+    statusAssetId: string;
+    durationOverride?: number;    // -1 = permanent (99999), unset = asset default
+    valueOverride?: number;
+  };
 
   // Backstab (critical strike from behind)
   backstabEnabled?: boolean;      // If true, deals double damage when attacking from behind the target

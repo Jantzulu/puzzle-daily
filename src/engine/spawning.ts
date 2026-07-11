@@ -38,6 +38,12 @@ export interface MidGameSpawnRequest {
   durationTurns?: number;
   /** Spell that requested the spawn — despawn reads its exit overlay sprite. */
   sourceSpellId?: string;
+  /** Status effect applied at spawn ON TOP of the asset's initial effects (per-spell override: starting status / contact damage — contact damage IS a CONTACT_DAMAGE status). */
+  startingStatus?: {
+    statusAssetId: string;
+    durationOverride?: number; // -1 = permanent
+    valueOverride?: number;
+  };
 }
 
 /**
@@ -101,6 +107,27 @@ export function spawnEnemyMidGame(
         };
       })
       .filter(Boolean) as NonNullable<PlacedEnemy['statusEffects']>;
+  }
+
+  // Per-spell starting status — appended AFTER the asset initials so an
+  // authored override rides on top of whatever the entity always carries.
+  if (request.startingStatus) {
+    const effectAsset = loadStatusEffectAsset(request.startingStatus.statusAssetId);
+    if (effectAsset) {
+      const instance = {
+        id: `summonstatus_${request.startingStatus.statusAssetId}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        type: effectAsset.type,
+        statusAssetId: request.startingStatus.statusAssetId,
+        duration: request.startingStatus.durationOverride === -1 ? 99999 : (request.startingStatus.durationOverride ?? effectAsset.defaultDuration),
+        value: request.startingStatus.valueOverride ?? effectAsset.defaultValue,
+        currentStacks: 1,
+        appliedOnTurn: gameState.currentTurn,
+        sourceEntityId: 'summon',
+        sourceIsEnemy: true,
+        movementSkipCounter: 0,
+      };
+      spawned.statusEffects = [...(spawned.statusEffects ?? []), instance];
+    }
   }
 
   gameState.puzzle.enemies.push(spawned);

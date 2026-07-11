@@ -903,6 +903,11 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
       return;
     }
 
+    if (editedSpell.templateType === 'summon' && editedSpell.summonFacing === 'fixed' && !editedSpell.summonFacingFixed) {
+      toast.warning('Please pick the fixed facing direction for the summoned unit');
+      return;
+    }
+
     // Save to library
     saveSpellAsset(editedSpell);
     toast.success(`Saved "${editedSpell.name}"!`);
@@ -1517,6 +1522,134 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                   no drops, no death triggers. 0 = permanent. Killed summons still die normally.
                 </p>
               </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Summoned Unit Facing</label>
+                <select
+                  value={editedSpell.summonFacing || ''}
+                  onChange={(e) => setEditedSpell({
+                    ...editedSpell,
+                    summonFacing: (e.target.value || undefined) as SpellAsset['summonFacing'],
+                  })}
+                  className="w-full px-3 py-2 bg-stone-700 rounded text-parchment-100"
+                >
+                  <option value="">Entity default</option>
+                  <option value="away_from_summoner">Away from summoner (along spawn direction)</option>
+                  <option value="toward_summoner">Toward summoner</option>
+                  <option value="match_summoner">Match summoner's facing</option>
+                  <option value="fixed">Fixed direction</option>
+                </select>
+                <p className="text-xs text-stone-400 mt-1">
+                  Relative options resolve at cast time; the unit keeps that compass facing afterwards
+                </p>
+              </div>
+
+              {editedSpell.summonFacing === 'fixed' && (
+                <div>
+                  <label className="block text-sm font-medium mb-1">Fixed Facing *</label>
+                  <select
+                    value={editedSpell.summonFacingFixed || ''}
+                    onChange={(e) => setEditedSpell({
+                      ...editedSpell,
+                      summonFacingFixed: (e.target.value || undefined) as Direction | undefined,
+                    })}
+                    className="w-full px-3 py-2 bg-stone-700 rounded text-parchment-100"
+                  >
+                    <option value="">-- Select Direction --</option>
+                    {ALL_DIRECTIONS.map((dir) => (
+                      <option key={dir.value} value={dir.value}>{dir.arrow} {dir.label}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={!!editedSpell.summonStartingStatus}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        const effects = getStatusEffectAssets();
+                        if (effects.length === 0) return;
+                        setEditedSpell({
+                          ...editedSpell,
+                          summonStartingStatus: { statusAssetId: effects[0].id },
+                        });
+                      } else {
+                        const { summonStartingStatus: _sss, ...rest } = editedSpell;
+                        setEditedSpell(rest as SpellAsset);
+                      }
+                    }}
+                    className="w-4 h-4"
+                  />
+                  <span className="text-sm">Starting Status Effect</span>
+                </label>
+                <p className="text-xs text-stone-400 ml-6">
+                  Applied to the summoned unit when it appears, on top of the entity's own initial
+                  effects — e.g. give it Contact Damage, a Shield, or Stealth
+                </p>
+              </div>
+
+              {editedSpell.summonStartingStatus && (
+                <div className="space-y-3 pl-4 border-l-2 border-stone-700">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Status Effect</label>
+                    <select
+                      value={editedSpell.summonStartingStatus.statusAssetId}
+                      onChange={(e) => setEditedSpell({
+                        ...editedSpell,
+                        summonStartingStatus: { ...editedSpell.summonStartingStatus!, statusAssetId: e.target.value },
+                      })}
+                      className="w-full px-3 py-2 bg-stone-700 rounded text-parchment-100"
+                    >
+                      {getStatusEffectAssets().map((effect) => (
+                        <option key={effect.id} value={effect.id}>{effect.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs text-stone-400 mb-1">Duration Override</label>
+                      <input
+                        type="number"
+                        min="-1"
+                        max="99"
+                        value={editedSpell.summonStartingStatus.durationOverride ?? ''}
+                        placeholder="asset default"
+                        onChange={(e) => setEditedSpell({
+                          ...editedSpell,
+                          summonStartingStatus: {
+                            ...editedSpell.summonStartingStatus!,
+                            durationOverride: e.target.value === '' ? undefined : parseInt(e.target.value),
+                          },
+                        })}
+                        className="w-full px-3 py-2 bg-stone-700 rounded text-parchment-100"
+                      />
+                      <p className="text-xs text-stone-500 mt-1">-1 = permanent</p>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-stone-400 mb-1">Value Override</label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="99"
+                        value={editedSpell.summonStartingStatus.valueOverride ?? ''}
+                        placeholder="asset default"
+                        onChange={(e) => setEditedSpell({
+                          ...editedSpell,
+                          summonStartingStatus: {
+                            ...editedSpell.summonStartingStatus!,
+                            valueOverride: e.target.value === '' ? undefined : parseInt(e.target.value),
+                          },
+                        })}
+                        className="w-full px-3 py-2 bg-stone-700 rounded text-parchment-100"
+                      />
+                      <p className="text-xs text-stone-500 mt-1">e.g. contact damage amount</p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="bg-blue-900 border border-blue-600 rounded p-2">
                 <p className="text-xs text-blue-200">
