@@ -31,7 +31,8 @@ import { getCharacter } from '../data/characters';
 import { getEnemy } from '../data/enemies';
 import { getDirectionOffset, turnLeft, turnRight, turnAround, isInBounds, calculateDistance, calculateDirectionTo, isAttackFromBehind, isEntityFunctional } from './utils';
 import { loadSpellAsset, loadTileType, loadStatusEffectAsset, loadCollectible } from '../utils/assetStorage';
-import { isEntityCharmed, effectiveParty, isAttackTarget } from './party';
+import { isEntityCharmed, effectiveParty, entityParty, isAttackTarget, combatId } from './party';
+import type { EntityParty } from '../types/game';
 import type { CollectibleEffectConfig, PlacedCollectible } from '../types/game';
 import { canEntityAct, canEntityCastSpell, canEntityMove, hasHasteBonus, isHomingDebug } from './simulation';
 import { wakeFromSleep } from './simulation';
@@ -3162,10 +3163,21 @@ function isEntityStealthed(entity: PlacedCharacter | PlacedEnemy): boolean {
 // of the party model now: a temporary inversion on top of the base party.
 
 /**
- * Find the nearest living enemies to an entity, up to maxTargets
- * Returns array of {enemy, direction} sorted by distance (closest first)
- * Excludes the entity itself if it's an enemy (when an enemy targets other enemies)
- * Stealthed enemies are excluded when a character (hero) is targeting them
+ * Find the nearest living members of the base ENEMY party, up to maxTargets
+ * (the caster's charm flips the selection to the base hero party).
+ * Returns array of {enemy, direction} sorted by distance (closest first).
+ *
+ * PARTY SEMANTICS (Phase 2): this finder selects by BASE party, NOT by
+ * hostility to the caster. Every caller reaches it with a hero-SHAPED
+ * caster (enemy casters are wrapped as PlacedCharacter), so the old
+ * shape-XNOR was in practice a pure charm flip from a hero viewpoint —
+ * "the enemies array, or the characters array when charmed" — and that is
+ * what this encodes, now field-aware via entityParty. Deliberately not
+ * isAttackTarget: FACE_DIRECTION's nearest_enemy/nearest_hero are absolute
+ * teams, and enemy-authored autoTargetNearestCharacter means "the hero
+ * side" literally. How authored auto-target flags map for party-flipped
+ * units (summons/allies running enemy asset behaviors) is a Summon-slice
+ * decision — see docs/feature-backlog.md.
  */
 function findNearestEnemies(
   character: PlacedCharacter,
@@ -3174,46 +3186,31 @@ function findNearestEnemies(
   mode: 'omnidirectional' | 'cardinal' | 'diagonal' = 'omnidirectional',
   maxRange: number = 0  // 0 = unlimited
 ): Array<{ enemy: any; direction: Direction; distance: number; enemyIndex: number }> {
-  // Determine structural team and whether charm inverts it
-  const casterIsEnemy = 'enemyId' in character;
-  const casterIsCharmed = isEntityCharmed(character);
-  // Uncharmed entities target the opposite team (their enemies); charmed entities
-  // target their own structural team (because charm flips perception of "enemy").
-  // XNOR: target-enemies-array iff casterIsEnemy === casterIsCharmed.
-  const targetEnemiesArray = casterIsCharmed ? casterIsEnemy : !casterIsEnemy;
+  const targetSide: EntityParty = isEntityCharmed(character) ? 'hero' : 'enemy';
 
-  // Build candidate list from the correct array, tracking the original array
-  // index so the caller can disambiguate duplicate enemyIds downstream.
-  // Stealth guard uses structural casterIsEnemy: charmed chars still lack enemy-detection abilities
-  let livingTargets: Array<{ entity: PlacedCharacter | PlacedEnemy; enemyIndex: number }>;
-  if (targetEnemiesArray) {
-    livingTargets = gameState.puzzle.enemies
-      .map((e, i) => ({ entity: e as PlacedCharacter | PlacedEnemy, enemyIndex: i }))
-      .filter(({ entity: e }) => {
-        if (e.dead) return false;
-        // Exclude pendingProjectileDeath: the entity is logically dead — a
-        // hit has resolved but the visual hasn't caught up. Without this
-        // filter, a second homing spell fired the same turn would pick this
-        // entity as its target, then resolveProjectiles' target lookup (which
-        // does exclude pendingDeath) falls back to .find() by enemyId and
-        // returns a different instance sharing the same id. The bolt then
-        // redirects to that instance mid-flight.
-        if ((e as any).pendingProjectileDeath) return false;
-        if ((e as PlacedEnemy).enemyId === character.characterId) return false;
-        if (!casterIsEnemy && isEntityStealthed(e)) return false;
-        return true;
-      });
-  } else {
-    livingTargets = gameState.placedCharacters
-      .map(c => ({ entity: c as PlacedCharacter | PlacedEnemy, enemyIndex: -1 }))
-      .filter(({ entity: c }) => {
-        if (c.dead) return false;
-        if ((c as any).pendingProjectileDeath) return false;
-        if ((c as PlacedCharacter).characterId === character.characterId) return false;
-        if (casterIsEnemy && isEntityStealthed(c)) return false;
-        return true;
-      });
-  }
+  // Both lists, tracking the enemies-array index so the caller can
+  // disambiguate duplicate enemyIds downstream (characters get -1).
+  const livingTargets = [
+    ...gameState.placedCharacters.map(c => ({ entity: c as PlacedCharacter | PlacedEnemy, enemyIndex: -1 })),
+    ...gameState.puzzle.enemies.map((e, i) => ({ entity: e as PlacedCharacter | PlacedEnemy, enemyIndex: i })),
+  ].filter(({ entity: e }) => {
+    if (e.dead) return false;
+    // Exclude pendingProjectileDeath: the entity is logically dead — a
+    // hit has resolved but the visual hasn't caught up. Without this
+    // filter, a second homing spell fired the same turn would pick this
+    // entity as its target, then resolveProjectiles' target lookup (which
+    // does exclude pendingDeath) falls back to .find() by enemyId and
+    // returns a different instance sharing the same id. The bolt then
+    // redirects to that instance mid-flight.
+    if ((e as any).pendingProjectileDeath) return false;
+    if (combatId(e) === character.characterId) return false;
+    if (entityParty(e, gameState) !== targetSide) return false;
+    // Stealth hides the base enemy side from auto-target finds. (The old
+    // code only checked stealth in the enemies-array branch, and its
+    // hero-side twin was unreachable with hero-shaped casters.)
+    if (targetSide === 'enemy' && isEntityStealthed(e)) return false;
+    return true;
+  });
 
   // Cardinal directions: N, S, E, W
   const cardinalDirections: Direction[] = [Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST];
@@ -3250,10 +3247,16 @@ function findNearestEnemies(
 }
 
 /**
- * Find the nearest living characters to an entity, up to maxTargets
- * Returns array of {character, direction} sorted by distance (closest first)
- * Excludes the casting entity itself if it's a character
- * Stealthed characters are excluded when an enemy is targeting them
+ * Find the nearest living members of the base HERO party, up to maxTargets
+ * (the caster's charm flips the selection to the base enemy party).
+ * Returns array of {character, direction} sorted by distance (closest first).
+ * Excludes the casting entity itself by id.
+ *
+ * Same base-party semantics as findNearestEnemies (see its note) — this is
+ * its mirror. No stealth filtering: the old "stealthed characters are
+ * excluded when an enemy targets them" guard keyed on a shape check that
+ * was always false with hero-shaped casters, so it never fired; stealth
+ * has never hidden heroes from this finder and that behavior is kept.
  */
 function findNearestCharacters(
   entity: PlacedCharacter,
@@ -3262,32 +3265,19 @@ function findNearestCharacters(
   mode: 'omnidirectional' | 'cardinal' | 'diagonal' = 'omnidirectional',
   maxRange: number = 0  // 0 = unlimited
 ): Array<{ character: PlacedCharacter; direction: Direction; distance: number }> {
-  // Determine structural team and whether charm inverts it
-  const casterIsEnemy = 'enemyId' in entity;
-  const casterIsCharmed = isEntityCharmed(entity);
-  // Charmed entities heal/buff their structural opposite team; uncharmed target their own team
-  const alliesAreEnemies = casterIsCharmed ? !casterIsEnemy : casterIsEnemy;
+  const targetSide: EntityParty = isEntityCharmed(entity) ? 'enemy' : 'hero';
 
-  // Build candidate list from the correct array. Exclude pendingProjectileDeath
-  // entities — they're logically dead, awaiting visual confirmation. See
-  // findNearestEnemies for full reasoning.
-  let livingTargets: Array<PlacedCharacter | PlacedEnemy>;
-  if (alliesAreEnemies) {
-    livingTargets = gameState.puzzle.enemies.filter(e => {
-      if (e.dead) return false;
-      if ((e as any).pendingProjectileDeath) return false;
-      if (e.enemyId === entity.characterId) return false;
-      return true;
-    });
-  } else {
-    livingTargets = gameState.placedCharacters.filter(c => {
-      if (c.dead) return false;
-      if ((c as any).pendingProjectileDeath) return false;
-      if (c.characterId === entity.characterId) return false;
-      if (casterIsEnemy && isEntityStealthed(c)) return false;
-      return true;
-    });
-  }
+  // Exclude pendingProjectileDeath entities — they're logically dead,
+  // awaiting visual confirmation. See findNearestEnemies for full reasoning.
+  const livingTargets: Array<PlacedCharacter | PlacedEnemy> = [
+    ...gameState.placedCharacters,
+    ...gameState.puzzle.enemies,
+  ].filter(t => {
+    if (t.dead) return false;
+    if ((t as any).pendingProjectileDeath) return false;
+    if (combatId(t) === entity.characterId) return false;
+    return entityParty(t, gameState) === targetSide;
+  });
 
   // Cardinal directions: N, S, E, W
   const cardinalDirections: Direction[] = [Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST];
@@ -3334,24 +3324,22 @@ function findNearestDeadAllies(
   mode: 'omnidirectional' | 'cardinal' | 'diagonal' = 'omnidirectional',
   maxRange: number = 0  // 0 = unlimited
 ): Array<{ entity: PlacedCharacter | PlacedEnemy; direction: Direction; distance: number; isEnemy: boolean }> {
-  // Determine structural team and whether charm inverts it
-  const casterIsEnemy = 'enemyId' in caster;
-  const casterIsCharmed = isEntityCharmed(caster);
-  // Charmed casters resurrect from their structural opposite team (now their "allies")
-  const alliesAreEnemies = casterIsCharmed ? !casterIsEnemy : casterIsEnemy;
+  // Same base-party semantics as findNearestCharacters (its mirror for the
+  // dead): the caster's own base side, flipped by charm. isEnemy is a SHAPE
+  // flag — it tells the resurrect path which asset registry the corpse's id
+  // lives in, regardless of party.
+  const targetSide: EntityParty = isEntityCharmed(caster) ? 'enemy' : 'hero';
 
-  // Get dead allies (effective team as caster)
-  let deadAllies: Array<{ entity: PlacedCharacter | PlacedEnemy; isEnemy: boolean }> = [];
-
-  if (alliesAreEnemies) {
-    // Caster targets dead enemies (either naturally enemy, or charmed character)
-    const deadEnemies = gameState.puzzle.enemies.filter(e => e.dead && e.enemyId !== caster.characterId);
-    deadAllies = deadEnemies.map(e => ({ entity: e as any, isEnemy: true }));
-  } else {
-    // Caster targets dead characters (either naturally character, or charmed enemy)
-    const deadChars = gameState.placedCharacters.filter(c => c.dead && c.characterId !== caster.characterId);
-    deadAllies = deadChars.map(c => ({ entity: c, isEnemy: false }));
-  }
+  const deadAllies: Array<{ entity: PlacedCharacter | PlacedEnemy; isEnemy: boolean }> = [
+    ...gameState.placedCharacters,
+    ...gameState.puzzle.enemies,
+  ]
+    .filter(t =>
+      t.dead &&
+      combatId(t) !== caster.characterId &&
+      entityParty(t, gameState) === targetSide
+    )
+    .map(t => ({ entity: t, isEnemy: 'enemyId' in t }));
 
   // Cardinal directions: N, S, E, W
   const cardinalDirections: Direction[] = [Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST];

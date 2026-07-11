@@ -33,7 +33,7 @@ export function isEntityCharmed(entity: CombatEntity): boolean {
 
 /** The entity's id in the shared identity space the engine already uses
  *  (enemy wrappers carry their enemyId as characterId). */
-function combatId(entity: CombatEntity): string {
+export function combatId(entity: CombatEntity): string {
   return 'enemyId' in entity ? entity.enemyId : entity.characterId;
 }
 
