@@ -1856,6 +1856,12 @@ export function executeTurn(gameState: GameState): GameState {
         dead: newEnemy.dead,
         spellCooldowns: newEnemy.spellCooldowns,
         preCastFacing: newEnemy.preCastFacing, // carry the pre-cast stash across chained actions this turn
+        // Shared REFERENCE on purpose: canEntityAct/canEntityCastSpell/
+        // canEntityMove and charm-aware targeting all read the caster's
+        // statusEffects, and slow's movementSkipCounter mutates in place.
+        // This was missing until 2026-07-11 — stun/sleep/silence/disarm/
+        // slow/charm never gated ENEMY actions through this loop.
+        statusEffects: newEnemy.statusEffects,
       };
       const result = executeAction(tempChar, action, gameState);
       newEnemy.x = result.x;
@@ -1963,6 +1969,7 @@ export function executeTurn(gameState: GameState): GameState {
         dead: enemy.dead,
         spellCooldowns: enemy.spellCooldowns,
         preCastFacing: enemy.preCastFacing, // carry the pre-cast stash (may have been set by a sequential cast this turn)
+        statusEffects: enemy.statusEffects, // shared reference — status gates + charm read the caster's effects (see the action-loop wrapper)
       };
       evaluateTriggers(tempCharForTrigger, gameState);
 
@@ -2001,6 +2008,7 @@ export function executeTurn(gameState: GameState): GameState {
         dead: enemy.dead,
         spellCooldowns: enemy.spellCooldowns,
         preCastFacing: enemy.preCastFacing, // carry the pre-cast stash (may have been set by a sequential cast this turn)
+        statusEffects: enemy.statusEffects, // shared reference — status gates + charm read the caster's effects (see the action-loop wrapper)
       };
       evaluateTriggers(tempCharForTrigger, gameState);
 

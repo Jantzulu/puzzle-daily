@@ -245,6 +245,45 @@ describe('executeTurn', () => {
 });
 
 // ==========================================
+// Status gating for ENEMY actors (the executeTurn wrapper must carry
+// statusEffects — it silently dropped them until 2026-07-11, so stun/
+// sleep/silence/slow/charm never gated enemy actions)
+// ==========================================
+describe('executeTurn — enemy status gating', () => {
+  it('a stunned enemy does not act', () => {
+    regEnemy(createTestEnemyDef({
+      id: 'walker',
+      health: 3,
+      behavior: {
+        type: 'active',
+        pattern: [{ type: ActionType.MOVE_FORWARD }, { type: ActionType.REPEAT }],
+        defaultFacing: Direction.EAST,
+      },
+    }));
+    const gs = createTestGameState({
+      puzzle: createTestPuzzle({
+        width: 8, height: 5,
+        enemies: [createTestEnemy({
+          enemyId: 'walker', x: 2, y: 2, currentHealth: 3,
+          actionIndex: 0, active: true, facing: Direction.EAST,
+          statusEffects: [{
+            id: 'stun-1', type: StatusEffectType.STUN, statusAssetId: 'stun-asset',
+            duration: 5, currentStacks: 1, appliedOnTurn: 0,
+            sourceEntityId: 'test', sourceIsEnemy: false, movementSkipCounter: 0,
+          }],
+        })],
+      }),
+      gameStatus: 'running',
+      currentTurn: 0,
+      testMode: true,
+    });
+
+    executeTurn(gs);
+    expect(gs.puzzle.enemies[0].x).toBe(2); // stunned — no move
+  });
+});
+
+// ==========================================
 // checkVictoryConditions
 // ==========================================
 describe('checkVictoryConditions', () => {
