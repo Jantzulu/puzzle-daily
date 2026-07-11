@@ -2940,6 +2940,25 @@ function getEffectiveTeams(proj: Projectile): { targetsEnemies: boolean; targets
   return { targetsEnemies: targetSide === 'enemy', targetsCharacters: targetSide === 'hero' };
 }
 
+/**
+ * Is a homing arrival a hostile hit (damage) or a friendly one (heal/buff)?
+ * Reflected bolts are always hostile — reflect flipped targetIsEnemy to
+ * point back at the original caster's team, but the bolt stays damage-only
+ * (see Task 5 retro). Otherwise: hostile iff the firer's base party differs
+ * from the homing target's side. Party-aware via sourceParty (id-field
+ * fallback, like getEffectiveTeams); charm steered target SELECTION
+ * upstream and deliberately does not re-enter here. Shared by
+ * resolveProjectiles and updateProjectilesHeadless so the visual and
+ * headless classifications cannot drift.
+ */
+function isHostileHomingHit(proj: Projectile): boolean {
+  if (proj.reflected) return true;
+  const sourceParty: EntityParty | undefined = proj.sourceParty
+    ?? (proj.sourceCharacterId ? 'hero' : proj.sourceEnemyId ? 'enemy' : undefined);
+  if (!sourceParty) return false;
+  return sourceParty !== (proj.targetIsEnemy ? 'enemy' : 'hero');
+}
+
 /** Check if a tile is blocked (wall, void, or out of bounds) */
 function isTileBlocked(x: number, y: number, gameState: GameState): boolean {
   if (!isInBounds(x, y, gameState.puzzle.width, gameState.puzzle.height)) return true;
@@ -4084,13 +4103,7 @@ function resolveProjectiles(gameState: GameState): void {
           let deferredDeathIndex: number | undefined;
           let damageForHit = 0;
 
-          // Reflected projectiles are always treated as hostile hits — the
-          // reflector bounced a damage-only bolt back and targetIsEnemy was
-          // flipped to point at the ORIGINAL caster's team. Without this
-          // override, the flipped flag makes the check misclassify the hit as
-          // a heal on an ally (see Task 5 retro).
-          const isHostileHit = proj.reflected || (proj.sourceCharacterId && proj.targetIsEnemy) ||
-                               (proj.sourceEnemyId && !proj.targetIsEnemy);
+          const isHostileHit = isHostileHomingHit(proj);
 
           if (isHostileHit) {
             const targetIsEnemy = !!proj.targetIsEnemy;
@@ -4869,12 +4882,7 @@ function updateProjectilesHeadless(gameState: GameState): void {
         const effectiveReach = Math.min(tilesPerTurn, remainingRange);
 
         if (distance <= effectiveReach || pathfindingReachesThisTurn) {
-          // Reflected projectiles always count as hostile — the reflect flipped
-          // targetIsEnemy but the bolt is still damage-only. Without the override
-          // the solver misclassifies reflected hits as heals (mirror of the fix
-          // in resolveProjectiles' homing branch above).
-          const isHostileHit = proj.reflected || (proj.sourceCharacterId && proj.targetIsEnemy) ||
-                               (proj.sourceEnemyId && !proj.targetIsEnemy);
+          const isHostileHit = isHostileHomingHit(proj);
 
           if (isHostileHit) {
             const targetIsEnemy = !!proj.targetIsEnemy;
