@@ -32,6 +32,7 @@ import { getEnemy } from '../data/enemies';
 import { getDirectionOffset, turnLeft, turnRight, turnAround, isInBounds, calculateDistance, calculateDirectionTo, isAttackFromBehind, isEntityFunctional } from './utils';
 import { loadSpellAsset, loadTileType, loadStatusEffectAsset, loadCollectible } from '../utils/assetStorage';
 import { isEntityCharmed, effectiveParty, entityParty, isAttackTarget, combatId } from './party';
+import { spawnEnemyMidGame } from './spawning';
 import type { EntityParty } from '../types/game';
 import type { CollectibleEffectConfig, PlacedCollectible } from '../types/game';
 import { canEntityAct, canEntityCastSpell, canEntityMove, hasHasteBonus, isHomingDebug } from './simulation';
@@ -1801,6 +1802,61 @@ function executeSpellInDirection(
         }
 
         character.facing = origFacingTP;
+      }
+      break;
+    }
+
+    case SpellTemplate.SUMMON: {
+      // One spawn attempt per cast direction, on the adjacent tile (locked
+      // design: placement rides the standard direction config). Invalid
+      // tiles fail silently, like THROW_PLACE.
+      if (!spell.summonEnemyId) {
+        console.warn('SUMMON spell missing summonEnemyId');
+        break;
+      }
+
+      const { dx, dy } = getDirectionOffset(direction);
+      const spawnX = Math.floor(character.x) + dx;
+      const spawnY = Math.floor(character.y) + dy;
+
+      if (!isInBounds(spawnX, spawnY, gameState.puzzle.width, gameState.puzzle.height)) break;
+      const spawnTile = gameState.puzzle.tiles[spawnY]?.[spawnX];
+      if (isTileBlockingMovement(spawnTile, gameState)) break;
+
+      // Occupancy uses movement semantics: living entities block, and so do
+      // freshly-dead ones (isFreshlyDead — keeps spawn placement deterministic
+      // regardless of when the death visual commits). Stale corpses don't
+      // block, same as walking over them.
+      const blockedByEntity =
+        gameState.puzzle.enemies.some(e =>
+          Math.floor(e.x) === spawnX && Math.floor(e.y) === spawnY &&
+          (!e.dead || isFreshlyDead(e, gameState.currentTurn))) ||
+        gameState.placedCharacters.some(c =>
+          Math.floor(c.x) === spawnX && Math.floor(c.y) === spawnY &&
+          (!c.dead || isFreshlyDead(c, gameState.currentTurn)));
+      if (blockedByEntity) break;
+
+      // Effective party at cast time (locked design): a charmed caster's
+      // summon permanently joins the charmer's team. Always excluded from
+      // win conditions — a summon must never become a kill requirement.
+      const spawned = spawnEnemyMidGame(gameState, {
+        enemyId: spell.summonEnemyId,
+        x: spawnX,
+        y: spawnY,
+        party: effectiveParty(character, gameState),
+        excludeFromWinConditions: true,
+      });
+
+      if (spawned) {
+        if (spell.sprites.castEffect) {
+          spawnParticle(character.x, character.y, spell.sprites.castEffect, 300, gameState);
+        }
+        // Materialize overlay on the summoned unit's tile — draws over the
+        // entity, portal-tile style. Longer default than hit effects so a
+        // multi-frame sheet has room to play.
+        if (spell.sprites.summonEffect) {
+          spawnParticle(spawnX, spawnY, spell.sprites.summonEffect, 600, gameState);
+        }
       }
       break;
     }

@@ -1249,6 +1249,7 @@ export enum SpellTemplate {
   PUSH = 'push',                 // Push target entity in a direction
   REDIRECT = 'redirect',         // Projectile that changes target's facing direction
   THROW_PLACE = 'throw_place',   // Place or throw a collectible item onto a tile
+  SUMMON = 'summon',             // Spawn an entity on an adjacent tile (engine/spawning.ts)
 }
 
 /**
@@ -1336,6 +1337,7 @@ export interface SpellAsset {
     castEffect?: SpriteReference;      // On caster when spell fires
     persistentArea?: SpriteReference;  // Visual for persistent ground effects (looping animation)
     bounceEffect?: SpriteReference;   // At wall contact point when projectile bounces
+    summonEffect?: SpriteReference;   // For SUMMON spells — materialize overlay played on the summoned unit's tile (renders over the entity, portal-tile style)
     criticalHitEffect?: SpriteReference; // On backstab/critical hit (falls back to damageEffect if not set)
   };
 
@@ -1371,6 +1373,14 @@ export interface SpellAsset {
   throwPlaceOverridePermissions?: CollectiblePickupPermissions; // Override who can pick up
   throwPlaceGracePeriod?: number;                     // Turns of caster immunity (default 1)
   throwPlacePermanentImmunity?: boolean;              // Caster can never pick up (default false)
+
+  // Summon-specific settings (for SUMMON template)
+  // Placement rides the standard direction config (locked design: "like melee
+  // direction config") — ONE spawn attempt per cast direction, on the adjacent
+  // tile in that direction; blocked/occupied tiles skip silently. The summoned
+  // unit inherits the caster's EFFECTIVE party at cast time (charm included,
+  // permanent) and is always excludeFromWinConditions.
+  summonEnemyId?: string;         // Enemy asset to spawn
 
   // Backstab (critical strike from behind)
   backstabEnabled?: boolean;      // If true, deals double damage when attacking from behind the target

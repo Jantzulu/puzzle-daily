@@ -1069,8 +1069,8 @@ export function canEntityCastSpell(
       return { allowed: false, reason: 'Disarmed' };
     }
 
-    // Check ranged/AOE prevention (Silenced) — includes throw/place
-    if ((spellTemplate === 'magic_linear' || spellTemplate === 'redirect' || spellTemplate === 'aoe' || spellTemplate === 'throw_place') &&
+    // Check ranged/AOE prevention (Silenced) — includes throw/place and summon
+    if ((spellTemplate === 'magic_linear' || spellTemplate === 'redirect' || spellTemplate === 'aoe' || spellTemplate === 'throw_place' || spellTemplate === 'summon') &&
         effect.type === StatusEffectType.SILENCED) {
       return { allowed: false, reason: 'Silenced' };
     }

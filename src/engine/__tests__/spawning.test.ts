@@ -6,13 +6,19 @@
 import './helpers';
 import {
   clearAllRegistries,
+  registerTestCharacter as regChar,
   registerTestEnemy as regEnemy,
+  registerTestSpell,
+  createEmptyGrid,
   createTestPuzzle,
+  createTestCharacterDef,
   createTestEnemyDef,
+  createTestCharacter,
   createTestEnemy,
   createTestGameState,
+  setTile,
 } from './helpers';
-import { Direction, ActionType } from '../../types/game';
+import { Direction, TileType, ActionType, SpellTemplate, StatusEffectType } from '../../types/game';
 import { executeTurn, checkVictoryConditions } from '../simulation';
 import { spawnEnemyMidGame } from '../spawning';
 
@@ -135,5 +141,155 @@ describe('executeTurn — spawn-turn idle guard', () => {
     expect(checkVictoryConditions(gs)).toBe(false);
     gs.puzzle.enemies[0].dead = true;
     expect(checkVictoryConditions(gs)).toBe(true);
+  });
+});
+
+// ==========================================
+// SUMMON spell template
+// ==========================================
+describe('SUMMON spell template', () => {
+  const registerSummonSpell = (overrides?: Record<string, unknown>) =>
+    registerTestSpell('summon-walker', {
+      id: 'summon-walker', name: 'Summon Walker', description: '', thumbnailIcon: '',
+      templateType: SpellTemplate.SUMMON,
+      directionMode: 'fixed', defaultDirections: [Direction.EAST],
+      summonEnemyId: 'walker',
+      sprites: {},
+      ...overrides,
+    });
+
+  const registerSummonerEnemy = () =>
+    regEnemy(createTestEnemyDef({
+      id: 'summoner',
+      health: 5,
+      behavior: {
+        type: 'active',
+        pattern: [{ type: ActionType.SPELL, spellId: 'summon-walker' }],
+        defaultFacing: Direction.EAST,
+      },
+    }));
+
+  const charm = () => ({
+    id: 'charm-1', type: StatusEffectType.CHARM, statusAssetId: 'charm-asset',
+    duration: 5, currentStacks: 1, appliedOnTurn: 0,
+    sourceEntityId: 'test', sourceIsEnemy: false, movementSkipCounter: 0,
+  });
+
+  const summonerState = (opts?: {
+    tiles?: ReturnType<typeof createEmptyGrid>;
+    extraEnemies?: ReturnType<typeof createTestEnemy>[];
+    casterStatusEffects?: ReturnType<typeof charm>[];
+  }) =>
+    createTestGameState({
+      puzzle: createTestPuzzle({
+        width: 8, height: 5,
+        ...(opts?.tiles ? { tiles: opts.tiles } : {}),
+        enemies: [
+          createTestEnemy({
+            enemyId: 'summoner', x: 2, y: 2, currentHealth: 5,
+            actionIndex: 0, active: true, facing: Direction.EAST,
+            statusEffects: opts?.casterStatusEffects,
+          }),
+          ...(opts?.extraEnemies ?? []),
+        ],
+      }),
+      gameStatus: 'running',
+      currentTurn: 0,
+      testMode: true,
+    });
+
+  beforeEach(() => {
+    registerSummonSpell();
+    registerSummonerEnemy();
+  });
+
+  it('enemy cast spawns on the adjacent tile: enemy party, win-exempt, idle this turn, acts next turn', () => {
+    const gs = summonerState();
+
+    executeTurn(gs); // summoner casts east
+    expect(gs.puzzle.enemies).toHaveLength(2);
+    const summon = gs.puzzle.enemies[1];
+    expect(summon.enemyId).toBe('walker');
+    expect(summon.x).toBe(3);
+    expect(summon.y).toBe(2);
+    expect(summon.party).toBe('enemy');
+    expect(summon.excludeFromWinConditions).toBe(true);
+    expect(summon.spawnedOnTurn).toBe(1);
+    expect(summon.actionIndex).toBe(0); // idle on spawn turn
+
+    executeTurn(gs); // summon's first real turn — walker moves east
+    expect(gs.puzzle.enemies[1].x).toBe(4);
+  });
+
+  it('hero cast spawns a hero-party summon', () => {
+    regChar(createTestCharacterDef({
+      id: 'hero-summoner',
+      behavior: [{ type: ActionType.SPELL, spellId: 'summon-walker' }],
+    }));
+    const gs = createTestGameState({
+      puzzle: createTestPuzzle({ width: 8, height: 5, availableCharacters: ['hero-summoner'] }),
+      gameStatus: 'running',
+      currentTurn: 0,
+      testMode: true,
+      placedCharacters: [createTestCharacter({ characterId: 'hero-summoner', x: 2, y: 2, facing: Direction.EAST, actionIndex: 0, active: true })],
+    });
+
+    executeTurn(gs);
+    expect(gs.puzzle.enemies).toHaveLength(1);
+    expect(gs.puzzle.enemies[0].party).toBe('hero');
+    expect(gs.puzzle.enemies[0].excludeFromWinConditions).toBe(true);
+  });
+
+  it("a CHARMED enemy's summon joins the charmer's team permanently (effective party at cast time)", () => {
+    const gs = summonerState({ casterStatusEffects: [charm()] });
+
+    executeTurn(gs);
+    expect(gs.puzzle.enemies).toHaveLength(2);
+    expect(gs.puzzle.enemies[1].party).toBe('hero'); // stamped once — outlives the charm
+  });
+
+  it('fails silently into a wall tile', () => {
+    const tiles = createEmptyGrid(8, 5);
+    setTile(tiles, 3, 2, TileType.WALL);
+    const gs = summonerState({ tiles });
+
+    executeTurn(gs);
+    expect(gs.puzzle.enemies).toHaveLength(1); // no spawn
+  });
+
+  it('fails silently onto an occupied tile', () => {
+    const gs = summonerState({
+      extraEnemies: [createTestEnemy({ enemyId: 'goblin-1', x: 3, y: 2 })],
+    });
+
+    executeTurn(gs);
+    expect(gs.puzzle.enemies).toHaveLength(2); // summoner + blocker only
+  });
+
+  it('multi-direction config = one spawn attempt per direction, invalid tiles skip', () => {
+    registerSummonSpell({
+      defaultDirections: [Direction.EAST, Direction.WEST, Direction.NORTH],
+    });
+    const tiles = createEmptyGrid(8, 5);
+    setTile(tiles, 2, 1, TileType.WALL); // north blocked
+    const gs = summonerState({ tiles });
+
+    executeTurn(gs);
+    expect(gs.puzzle.enemies).toHaveLength(3); // summoner + east + west
+    const positions = gs.puzzle.enemies.slice(1).map(e => `${e.x},${e.y}`).sort();
+    expect(positions).toEqual(['1,2', '3,2']);
+  });
+
+  it('a SILENCED caster cannot summon', () => {
+    const gs = summonerState({
+      casterStatusEffects: [{
+        id: 'silence-1', type: StatusEffectType.SILENCED, statusAssetId: 'silence-asset',
+        duration: 5, currentStacks: 1, appliedOnTurn: 0,
+        sourceEntityId: 'test', sourceIsEnemy: false, movementSkipCounter: 0,
+      }],
+    });
+
+    executeTurn(gs);
+    expect(gs.puzzle.enemies).toHaveLength(1); // no spawn
   });
 });
