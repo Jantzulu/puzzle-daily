@@ -1789,6 +1789,16 @@ export function executeTurn(gameState: GameState): GameState {
       continue;
     }
 
+    // Skip entities spawned mid-turn (summons): fully live on the board but
+    // idle until next turn (locked design). This loop re-reads length every
+    // iteration, so an entity appended during this very turn WOULD otherwise
+    // be reached and act. actionIndex/active/facing were already initialized
+    // by spawnEnemyMidGame, so the lazy init below never runs for them.
+    if (newEnemy.spawnedOnTurn === gameState.currentTurn) {
+      newEnemies.push(newEnemy);
+      continue;
+    }
+
     const enemyData = getEnemy(newEnemy.enemyId);
     if (!enemyData || !enemyData.behavior || enemyData.behavior.type !== 'active') {
       newEnemies.push(newEnemy); // Skip static enemies
@@ -1924,7 +1934,9 @@ export function executeTurn(gameState: GameState): GameState {
   // Static enemies (behavior.type !== 'active') don't have active=true but can still have triggers
   const pendingEnemyTriggers: PlacedEnemy[] = [];
   for (const enemy of gameState.puzzle.enemies) {
-    if (!enemy.dead) {
+    // Entities spawned this turn stay idle: no actions AND no own triggers
+    // until next turn (they can still be hit / block tiles — that's passive).
+    if (!enemy.dead && enemy.spawnedOnTurn !== gameState.currentTurn) {
       pendingEnemyTriggers.push(enemy);
     }
   }

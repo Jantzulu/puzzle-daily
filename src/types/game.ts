@@ -339,6 +339,7 @@ export interface PlacedEnemy {
   dead: boolean;
   party?: EntityParty; // Explicit team override — see EntityParty. Absent = 'enemy'.
   excludeFromWinConditions?: boolean; // Summoned/spawned combatants: never counted by defeat_all_enemies / defeat_boss (locked design: a summon must not become a kill requirement). Carried through enemy→character wrappers like `party`.
+  spawnedOnTurn?: number; // Set by mid-game spawning (engine/spawning.ts). While === currentTurn, executeTurn keeps the entity idle (no actions, no own triggers) — it's otherwise fully live (blocks tiles, can be hit, contact damage applies). NOT carried through wrappers: a spawn-turn entity never executes actions, so no wrapper is ever built for it while the field matters.
   actionIndex?: number; // For active enemies with behavior patterns
   active?: boolean; // For active enemies
   parallelTrackers?: ParallelActionTracker[]; // For parallel spell execution
