@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { entityParty, effectiveParty, areHostile, isEntityCharmed } from '../party';
+import { entityParty, effectiveParty, areHostile, isEntityCharmed, isAttackTarget } from '../party';
 import { StatusEffectType, Direction } from '../../types/game';
 import type { GameState, PlacedCharacter, PlacedEnemy, StatusEffectInstance } from '../../types/game';
 
@@ -111,5 +111,38 @@ describe('areHostile', () => {
     const ally = makeEnemy('royal-guard', { party: 'hero' });
     expect(areHostile(makeCharacter('knight'), ally, gs)).toBe(false);
     expect(areHostile(ally, makeEnemy('goblin'), gs)).toBe(true);
+  });
+});
+
+describe('isAttackTarget — the charm asymmetry (caster effective, target base)', () => {
+  it('a hero can still strike a charmed enemy (its charm is ignored on the target side)', () => {
+    const gs = stateWithEnemies(['goblin']);
+    const charmedGoblin = makeEnemy('goblin', { statusEffects: [charm()] });
+    // areHostile says "same side this turn" — but the old list-based
+    // targeting let heroes hit charmed enemies, and that must not change.
+    expect(areHostile(makeCharacter('knight'), charmedGoblin, gs)).toBe(false);
+    expect(isAttackTarget(makeCharacter('knight'), charmedGoblin, gs)).toBe(true);
+  });
+
+  it('a charmed enemy strikes its own base side, including other charmed enemies', () => {
+    const gs = stateWithEnemies(['goblin', 'orc']);
+    const charmedGoblin = makeEnemy('goblin', { statusEffects: [charm()] });
+    expect(isAttackTarget(charmedGoblin, makeEnemy('orc'), gs)).toBe(true);
+    expect(isAttackTarget(charmedGoblin, makeEnemy('orc', { statusEffects: [charm()] }), gs)).toBe(true);
+    expect(isAttackTarget(charmedGoblin, makeCharacter('knight'), gs)).toBe(false);
+  });
+
+  it('same base party is never a target when nobody is charmed', () => {
+    const gs = stateWithEnemies(['goblin']);
+    expect(isAttackTarget(makeCharacter('knight'), makeCharacter('mage'), gs)).toBe(false);
+    expect(isAttackTarget(makeEnemy('goblin'), makeEnemy('goblin'), gs)).toBe(false);
+  });
+
+  it('a hero-party summon living in puzzle.enemies is a target for enemies, not heroes', () => {
+    const gs = stateWithEnemies(['skeleton', 'goblin']);
+    const summon = makeEnemy('skeleton', { party: 'hero' });
+    expect(isAttackTarget(makeEnemy('goblin'), summon, gs)).toBe(true);
+    expect(isAttackTarget(makeCharacter('knight'), summon, gs)).toBe(false);
+    expect(isAttackTarget(summon, makeEnemy('goblin'), gs)).toBe(true);
   });
 });

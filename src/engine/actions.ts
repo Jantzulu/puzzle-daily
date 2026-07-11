@@ -31,7 +31,7 @@ import { getCharacter } from '../data/characters';
 import { getEnemy } from '../data/enemies';
 import { getDirectionOffset, turnLeft, turnRight, turnAround, isInBounds, calculateDistance, calculateDirectionTo, isAttackFromBehind, isEntityFunctional } from './utils';
 import { loadSpellAsset, loadTileType, loadStatusEffectAsset, loadCollectible } from '../utils/assetStorage';
-import { isEntityCharmed, effectiveParty } from './party';
+import { isEntityCharmed, effectiveParty, isAttackTarget } from './party';
 import type { CollectibleEffectConfig, PlacedCollectible } from '../types/game';
 import { canEntityAct, canEntityCastSpell, canEntityMove, hasHasteBonus, isHomingDebug } from './simulation';
 import { wakeFromSleep } from './simulation';
@@ -2039,6 +2039,55 @@ function spawnProjectile(
  * Execute melee attack (instant, no projectile)
  * Supports meleeRange to hit multiple tiles in attack direction
  */
+/**
+ * First living entity at (x, y) the caster may strike (party.ts
+ * isAttackTarget). Characters are scanned before enemies; with all existing
+ * content only one of the two lists can ever hold a legal target, so the
+ * order is a deterministic tiebreak reserved for future mixed-party tiles.
+ */
+function findAttackTargetAt(
+  caster: PlacedCharacter,
+  x: number,
+  y: number,
+  gameState: GameState
+): PlacedCharacter | PlacedEnemy | undefined {
+  return (
+    gameState.placedCharacters.find(c => c.x === x && c.y === y && !c.dead && isAttackTarget(caster, c, gameState)) ??
+    gameState.puzzle.enemies.find(e => e.x === x && e.y === y && !e.dead && isAttackTarget(caster, e, gameState))
+  );
+}
+
+/**
+ * One melee strike landing on a found target: backstab crit, damage, the
+ * spell's status effect, hit sprite. (x, y) is the struck tile — passed
+ * explicitly because damage side effects may move the target before the
+ * sprite spawns. casterIsEnemy is the caster's effective party, derived
+ * once when the swing starts.
+ */
+function applyMeleeHit(
+  caster: PlacedCharacter,
+  target: PlacedCharacter | PlacedEnemy,
+  x: number,
+  y: number,
+  attackData: CustomAttack,
+  casterIsEnemy: boolean,
+  gameState: GameState,
+  spell?: SpellAsset
+): void {
+  const damage = attackData.damage ?? 1;
+  const isCrit = attackData.backstabEnabled && isAttackFromBehind(caster.facing, target.facing || Direction.SOUTH);
+  applyDamageToEntity(target, isCrit ? damage * 2 : damage, gameState, caster);
+
+  if (spell && !target.dead) {
+    applyStatusEffectFromSpell(target, spell, caster.characterId, casterIsEnemy, gameState.currentTurn);
+  }
+
+  const hitSprite = isCrit && attackData.criticalHitEffectSprite ? attackData.criticalHitEffectSprite : attackData.hitEffectSprite;
+  if (hitSprite) {
+    spawnParticle(x, y, hitSprite, attackData.effectDuration || 300, gameState, caster.facing);
+  }
+}
+
 function executeMeleeAttack(
   character: PlacedCharacter,
   attackData: CustomAttack,
@@ -2047,7 +2096,6 @@ function executeMeleeAttack(
   spell?: SpellAsset
 ): void {
   const { dx, dy } = getDirectionOffset(character.facing);
-  const damage = attackData.damage ?? 1;
 
   // Determine which sprite to use for attack visual (shows on all targeted tiles)
   // Priority: spell.sprites.meleeAttack > default visual
@@ -2075,12 +2123,11 @@ function executeMeleeAttack(
 
   const skipCasterTile = spell?.skipSpriteOnCasterTile || false;
 
-  // Check if the caster is an enemy (attacking characters) or a character (attacking enemies)
-  // Charm inverts which team is targeted for melee attacks
-  // Party model (engine/party.ts): explicit party field wins, structural
-  // lookup is the fallback, charm inverts on top — same math as the old
-  // inline derivation for all existing content.
-  const isEnemyCaster = effectiveParty(character, gameState) === 'enemy';
+  // Party model (engine/party.ts): the caster's effective party decides which
+  // entities are legal targets — see isAttackTarget for the charm asymmetry.
+  // The old code picked a list (placedCharacters vs puzzle.enemies) off this
+  // flag; identical outcome for all existing content.
+  const casterIsEnemy = effectiveParty(character, gameState) === 'enemy';
 
   // Handle range 0 as self-target
   if (meleeRange === 0) {
@@ -2089,46 +2136,9 @@ function executeMeleeAttack(
       spawnParticle(character.x, character.y, attackSprite, attackData.effectDuration || 300, gameState, character.facing);
     }
 
-    if (isEnemyCaster) {
-      // Enemy attacking characters on same tile
-      const targetChar = gameState.placedCharacters.find(
-        c => c.x === character.x && c.y === character.y && !c.dead
-      );
-
-      if (targetChar) {
-        const isCrit = attackData.backstabEnabled && isAttackFromBehind(character.facing, targetChar.facing);
-        applyDamageToEntity(targetChar, isCrit ? damage * 2 : damage, gameState, character);
-
-        // Apply status effect if spell has one configured
-        if (spell && !targetChar.dead) {
-          applyStatusEffectFromSpell(targetChar, spell, character.characterId, true, gameState.currentTurn);
-        }
-
-        const hitSprite = isCrit && attackData.criticalHitEffectSprite ? attackData.criticalHitEffectSprite : attackData.hitEffectSprite;
-        if (hitSprite) {
-          spawnParticle(character.x, character.y, hitSprite, attackData.effectDuration || 300, gameState, character.facing);
-        }
-      }
-    } else {
-      // Character attacking enemies on same tile
-      const enemy = gameState.puzzle.enemies.find(
-        e => e.x === character.x && e.y === character.y && !e.dead
-      );
-
-      if (enemy) {
-        const isCrit = attackData.backstabEnabled && isAttackFromBehind(character.facing, enemy.facing || Direction.SOUTH);
-        applyDamageToEntity(enemy, isCrit ? damage * 2 : damage, gameState, character);
-
-        // Apply status effect if spell has one configured
-        if (spell && !enemy.dead) {
-          applyStatusEffectFromSpell(enemy, spell, character.characterId, false, gameState.currentTurn);
-        }
-
-        const hitSprite = isCrit && attackData.criticalHitEffectSprite ? attackData.criticalHitEffectSprite : attackData.hitEffectSprite;
-        if (hitSprite) {
-          spawnParticle(character.x, character.y, hitSprite, attackData.effectDuration || 300, gameState, character.facing);
-        }
-      }
+    const target = findAttackTargetAt(character, character.x, character.y, gameState);
+    if (target) {
+      applyMeleeHit(character, target, character.x, character.y, attackData, casterIsEnemy, gameState, spell);
     }
     return;
   }
@@ -2163,46 +2173,9 @@ function executeMeleeAttack(
       spawnParticle(targetX, targetY, partForTile(i), attackData.effectDuration || 300, gameState, character.facing);
     }
 
-    if (isEnemyCaster) {
-      // Enemy attacking characters
-      const targetChar = gameState.placedCharacters.find(
-        c => c.x === targetX && c.y === targetY && !c.dead
-      );
-
-      if (targetChar) {
-        const isCrit = attackData.backstabEnabled && isAttackFromBehind(character.facing, targetChar.facing);
-        applyDamageToEntity(targetChar, isCrit ? damage * 2 : damage, gameState, character);
-
-        // Apply status effect if spell has one configured
-        if (spell && !targetChar.dead) {
-          applyStatusEffectFromSpell(targetChar, spell, character.characterId, true, gameState.currentTurn);
-        }
-
-        const hitSprite = isCrit && attackData.criticalHitEffectSprite ? attackData.criticalHitEffectSprite : attackData.hitEffectSprite;
-        if (hitSprite) {
-          spawnParticle(targetX, targetY, hitSprite, attackData.effectDuration || 300, gameState, character.facing);
-        }
-      }
-    } else {
-      // Character attacking enemies
-      const enemy = gameState.puzzle.enemies.find(
-        e => e.x === targetX && e.y === targetY && !e.dead
-      );
-
-      if (enemy) {
-        const isCrit = attackData.backstabEnabled && isAttackFromBehind(character.facing, enemy.facing || Direction.SOUTH);
-        applyDamageToEntity(enemy, isCrit ? damage * 2 : damage, gameState, character);
-
-        // Apply status effect if spell has one configured
-        if (spell && !enemy.dead) {
-          applyStatusEffectFromSpell(enemy, spell, character.characterId, false, gameState.currentTurn);
-        }
-
-        const hitSprite = isCrit && attackData.criticalHitEffectSprite ? attackData.criticalHitEffectSprite : attackData.hitEffectSprite;
-        if (hitSprite) {
-          spawnParticle(targetX, targetY, hitSprite, attackData.effectDuration || 300, gameState, character.facing);
-        }
-      }
+    const target = findAttackTargetAt(character, targetX, targetY, gameState);
+    if (target) {
+      applyMeleeHit(character, target, targetX, targetY, attackData, casterIsEnemy, gameState, spell);
     }
   }
 }
@@ -2221,12 +2194,10 @@ function executeConeAttack(
   coneAngle: number = 90,
   spell?: SpellAsset
 ): void {
-  const damage = attackData.damage ?? 1;
   const skipCasterTile = spell?.skipSpriteOnCasterTile || false;
-  // Party model (engine/party.ts): explicit party field wins, structural
-  // lookup is the fallback, charm inverts on top — same math as the old
-  // inline derivation for all existing content.
-  const isEnemyCaster = effectiveParty(character, gameState) === 'enemy';
+  // Party model (engine/party.ts): the caster's effective party decides which
+  // entities are legal targets — see isAttackTarget for the charm asymmetry.
+  const casterIsEnemy = effectiveParty(character, gameState) === 'enemy';
 
   // Get attack sprite (same logic as executeMeleeAttack)
   let attackSprite = spell?.sprites.meleeAttack;
@@ -2292,38 +2263,9 @@ function executeConeAttack(
       spawnParticle(target.x, target.y, attackSprite, attackData.effectDuration || 300, gameState, character.facing);
     }
 
-    if (isEnemyCaster) {
-      // Enemy attacking characters
-      const targetChar = gameState.placedCharacters.find(
-        c => c.x === target.x && c.y === target.y && !c.dead
-      );
-      if (targetChar) {
-        const isCrit = attackData.backstabEnabled && isAttackFromBehind(character.facing, targetChar.facing);
-        applyDamageToEntity(targetChar, isCrit ? damage * 2 : damage, gameState, character);
-        if (spell && !targetChar.dead) {
-          applyStatusEffectFromSpell(targetChar, spell, character.characterId, true, gameState.currentTurn);
-        }
-        const hitSprite = isCrit && attackData.criticalHitEffectSprite ? attackData.criticalHitEffectSprite : attackData.hitEffectSprite;
-        if (hitSprite) {
-          spawnParticle(target.x, target.y, hitSprite, attackData.effectDuration || 300, gameState, character.facing);
-        }
-      }
-    } else {
-      // Character attacking enemies
-      const enemy = gameState.puzzle.enemies.find(
-        e => e.x === target.x && e.y === target.y && !e.dead
-      );
-      if (enemy) {
-        const isCrit = attackData.backstabEnabled && isAttackFromBehind(character.facing, enemy.facing || Direction.SOUTH);
-        applyDamageToEntity(enemy, isCrit ? damage * 2 : damage, gameState, character);
-        if (spell && !enemy.dead) {
-          applyStatusEffectFromSpell(enemy, spell, character.characterId, false, gameState.currentTurn);
-        }
-        const hitSprite = isCrit && attackData.criticalHitEffectSprite ? attackData.criticalHitEffectSprite : attackData.hitEffectSprite;
-        if (hitSprite) {
-          spawnParticle(target.x, target.y, hitSprite, attackData.effectDuration || 300, gameState, character.facing);
-        }
-      }
+    const struck = findAttackTargetAt(character, target.x, target.y, gameState);
+    if (struck) {
+      applyMeleeHit(character, struck, target.x, target.y, attackData, casterIsEnemy, gameState, spell);
     }
   }
 }

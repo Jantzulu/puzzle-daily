@@ -60,3 +60,15 @@ export function effectiveParty(entity: CombatEntity, gameState: GameState): Enti
 export function areHostile(a: CombatEntity, b: CombatEntity, gameState: GameState): boolean {
   return effectiveParty(a, gameState) !== effectiveParty(b, gameState);
 }
+
+/**
+ * May the caster strike this target? Asymmetric on purpose: the caster's
+ * CURRENT allegiance (charm included) against the target's BASE party
+ * (charm ignored). A charmed enemy fights for the heroes but can still be
+ * struck by them — exactly how the pre-party list-based targeting behaved
+ * (the attacker's side picked which list to search; the target's charm
+ * never mattered). Not the same as areHostile, which inverts both sides.
+ */
+export function isAttackTarget(caster: CombatEntity, target: CombatEntity, gameState: GameState): boolean {
+  return effectiveParty(caster, gameState) !== entityParty(target, gameState);
+}
