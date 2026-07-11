@@ -1633,6 +1633,7 @@ function executeSpellInDirection(
     aoeCenteredOnCaster: spell.aoeCenteredOnCaster,
     projectileBeforeAOE: spell.projectileBeforeAOE,
     aoeExcludeCenter: spell.aoeExcludeCenter,
+    aoeSingleSprite: spell.aoeSingleSprite,
     persistDuration: spell.persistDuration,
     persistDamagePerTurn: spell.persistDamagePerTurn,
     persistVisualSprite: spell.sprites.persistentArea,
@@ -2129,6 +2130,21 @@ function executeMeleeAttack(
     return;
   }
 
+  // Multi-tile stitching (docs/feature-backlog.md): begin/middle/end parts
+  // compose one long weapon across a range≥2 melee — begin on tile 1 (sword
+  // base), end on the last tile (tip), meleeAttack repeated between. Range 1
+  // keeps the single-sprite path untouched. A lunge clipped by the board
+  // edge draws base+middles with no tip — the blade continues off-board.
+  const beginPart = spell?.sprites.meleeAttackBegin;
+  const endPart = spell?.sprites.meleeAttackEnd;
+  const stitching = meleeRange >= 2 && (hasValidSprite(beginPart) || hasValidSprite(endPart));
+  const partForTile = (i: number) => {
+    if (!stitching) return attackSprite;
+    if (i === 1 && hasValidSprite(beginPart)) return beginPart;
+    if (i === meleeRange && hasValidSprite(endPart)) return endPart;
+    return attackSprite;
+  };
+
   // For range >= 1, show attack sprites and deal damage
   for (let i = 1; i <= meleeRange; i++) {
     const targetX = character.x + dx * i;
@@ -2141,7 +2157,7 @@ function executeMeleeAttack(
 
     // Show attack sprite on this tile (simultaneously on all tiles)
     if (attackSprite) {
-      spawnParticle(targetX, targetY, attackSprite, attackData.effectDuration || 300, gameState, character.facing);
+      spawnParticle(targetX, targetY, partForTile(i), attackData.effectDuration || 300, gameState, character.facing);
     }
 
     if (isEnemyCaster) {
@@ -2456,7 +2472,14 @@ export function executeAOEAttack(
   }
 
   // Spawn AOE effect particles on all affected tiles (instant visual effect when cast)
-  if (attackData.aoeEffectSprite) {
+  if (attackData.aoeEffectSprite && attackData.aoeSingleSprite) {
+    // Single-sprite mode: one particle at the area center whose render box
+    // spans the whole blast — a consistent large visual instead of
+    // per-tile repeats. Art drawn at 24 art px per tile scales uniformly.
+    spawnParticle(centerX, centerY, attackData.aoeEffectSprite, attackData.effectDuration || 500, gameState, undefined, {
+      sizeTiles: radius * 2 + 1,
+    });
+  } else if (attackData.aoeEffectSprite) {
     for (let dx = -radius; dx <= radius; dx++) {
       for (let dy = -radius; dy <= radius; dy++) {
         const tileX = centerX + dx;
@@ -2519,7 +2542,7 @@ function spawnParticle(
   duration: number,
   gameState: GameState,
   direction?: Direction,
-  opts?: { delayMs?: number; fromX?: number; fromY?: number }
+  opts?: { delayMs?: number; fromX?: number; fromY?: number; sizeTiles?: number }
 ): void {
   if (!gameState.activeParticles) {
     gameState.activeParticles = [];

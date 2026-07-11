@@ -797,6 +797,7 @@ export interface CustomAttack {
   aoeCenteredOnCaster?: boolean; // True: AOE around self, False: AOE at target tile
   projectileBeforeAOE?: boolean; // True: Fire projectile that explodes into AOE
   aoeExcludeCenter?: boolean;    // True: Don't show/apply AOE effect on center tile
+  aoeSingleSprite?: boolean;     // True: spawn aoeEffectSprite ONCE at the area center instead of per tile — the art aspect-fits the whole area box (draw at 24 art px per tile: 72×72 for a 3×3 blast)
 
   // Persistent AOE effects
   persistDuration?: number;      // Turns the AOE effect persists (0 = instant)
@@ -1192,6 +1193,7 @@ export interface ParticleEffect {
   delayMs?: number;             // Invisible hold before the particle appears; its visible life (and sheet animation) starts at startTime + delayMs
   fromX?: number;               // Travel start (tile coords): the particle lerps fromX/fromY → x/y across its visible duration (borrowed contact-damage projectiles)
   fromY?: number;
+  sizeTiles?: number;           // Render box spans this many tiles instead of the default 32px (single-sprite AOE blasts). Art aspect-fits the box — draw at 24 art px per tile for uniform scaling
 }
 
 /**
@@ -1288,6 +1290,7 @@ export interface SpellAsset {
   aoeCenteredOnCaster?: boolean; // True: AOE around self, False: AOE at target tile
   projectileBeforeAOE?: boolean; // True: Fire projectile that explodes into AOE
   aoeExcludeCenter?: boolean;    // True: Don't show AOE effect on center tile (usually caster)
+  aoeSingleSprite?: boolean;     // True: one large aoeEffect sprite centered on the area instead of per-tile repeats — art aspect-fits the area box (draw at 24 art px per tile: 72×72 for a 3×3 blast)
 
   // Persistent AOE effects
   persistDuration?: number;      // Turns the AOE effect persists (0 = instant)
@@ -1302,7 +1305,12 @@ export interface SpellAsset {
   // Visual configuration
   sprites: {
     projectile?: SpriteReference;      // For linear spells (per direction)
-    meleeAttack?: SpriteReference;     // For melee spells - sprite shown on attack tiles
+    meleeAttack?: SpriteReference;     // For melee spells - sprite shown on attack tiles (the MIDDLE part when stitching)
+    // Multi-tile stitching (docs/feature-backlog.md): compose one long weapon
+    // across a range≥2 melee — begin on the first tile, end on the last,
+    // meleeAttack repeated between. Range 1 keeps the single-sprite path.
+    meleeAttackBegin?: SpriteReference; // First tile of a range≥2 melee (sword base)
+    meleeAttackEnd?: SpriteReference;   // Last tile of a range≥2 melee (sword tip)
     aoeEffect?: SpriteReference;       // For AOE spells - sprite shown on each affected tile when cast
     damageEffect: SpriteReference;     // On successful damage hit
     healingEffect?: SpriteReference;   // On successful heal (falls back to damageEffect if not set)

@@ -4983,7 +4983,8 @@ function drawParticle(ctx: CanvasRenderingContext2D, particle: ParticleEffect, n
       // No fade-out for spritesheets - they just play and disappear
       ctx.globalAlpha = 1.0;
 
-      const spriteSize = 32; // Size for particle sprite sheets
+      // Default 32px box; single-sprite AOE blasts span their whole area.
+      const spriteSize = particle.sizeTiles ? particle.sizeTiles * TILE_SIZE : 32;
       drawSpellSpriteSheetFromStartTime(
         ctx,
         spriteSheet,
@@ -5011,8 +5012,11 @@ function drawParticle(ctx: CanvasRenderingContext2D, particle: ParticleEffect, n
     const color = spriteData.primaryColor || '#ffff00';
     const imageData = spriteData.idleImageData;
 
-    // Draw expanding effect for shapes, static size for images
-    const radius = imageData ? 12 : (4 + progress * 20);
+    // Draw expanding effect for shapes, static size for images. drawShape
+    // renders images at size×3, so an area-spanning particle passes a third.
+    const radius = imageData
+      ? (particle.sizeTiles ? (particle.sizeTiles * TILE_SIZE) / 3 : 12)
+      : (4 + progress * 20);
     drawShape(ctx, px, py, shape, color, radius, imageData, imageCache, rotationConfig);
 
     // Inner flash (only for non-image sprites)

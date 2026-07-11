@@ -2242,19 +2242,67 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
               />
             )}
 
+            {/* Multi-tile stitching parts — compose one long weapon across a
+                range≥2 straight melee (sword base → middle(s) → tip). Cones
+                ignore these; leaving both empty keeps the repeat behavior. */}
+            {templateIsMeleeOrCone && (editedSpell.range ?? 1) >= 2 && (
+              <>
+                <SpellSpriteEditor
+                  label="Attack Begin (first tile — weapon base)"
+                  spriteRef={editedSpell.sprites?.meleeAttackBegin}
+                  onChange={(sprite) => setEditedSpell({
+                    ...editedSpell,
+                    sprites: { ...editedSpell.sprites, meleeAttackBegin: sprite }
+                  })}
+                  accentColor="purple"
+                  showDirectionalPreview={true}
+                  helpText="Optional stitching: shown on the FIRST tile of a straight multi-tile attack (the sword's base). Attack Appearance above becomes the repeated middle. Leave Begin and Tip empty to repeat one sprite on every tile as before. Straight melee only — cone attacks ignore these."
+                />
+                <SpellSpriteEditor
+                  label="Attack Tip (last tile — weapon tip)"
+                  spriteRef={editedSpell.sprites?.meleeAttackEnd}
+                  onChange={(sprite) => setEditedSpell({
+                    ...editedSpell,
+                    sprites: { ...editedSpell.sprites, meleeAttackEnd: sprite }
+                  })}
+                  accentColor="purple"
+                  showDirectionalPreview={true}
+                  helpText="Optional stitching: shown on the LAST tile (the sword's tip). Range 2 = base + tip; range 3+ repeats the middle between them. If the attack is cut short by the board edge, the tip is omitted — the blade reads as continuing off-board."
+                />
+              </>
+            )}
+
             {/* AOE Effect Visual - only for AOE spells */}
             {templateNeedsRadius && (
-              <SpellSpriteEditor
-                label="AOE Effect (on cast)"
-                spriteRef={editedSpell.sprites?.aoeEffect}
-                onChange={(sprite) => setEditedSpell({
-                  ...editedSpell,
-                  sprites: { ...editedSpell.sprites, aoeEffect: sprite }
-                })}
-                accentColor="purple"
-                showDirectionalPreview={false}
-                helpText="Sprite shown on each tile affected by the AOE when cast (use spritesheet for animated effects)"
-              />
+              <>
+                <SpellSpriteEditor
+                  label="AOE Effect (on cast)"
+                  spriteRef={editedSpell.sprites?.aoeEffect}
+                  onChange={(sprite) => setEditedSpell({
+                    ...editedSpell,
+                    sprites: { ...editedSpell.sprites, aoeEffect: sprite }
+                  })}
+                  accentColor="purple"
+                  showDirectionalPreview={false}
+                  helpText="Sprite shown on each tile affected by the AOE when cast (use spritesheet for animated effects)"
+                />
+                <div className="p-3 rounded bg-stone-800/60 border border-stone-700">
+                  <label className="flex items-center gap-2 text-sm cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={!!editedSpell.aoeSingleSprite}
+                      onChange={(e) => setEditedSpell({ ...editedSpell, aoeSingleSprite: e.target.checked || undefined })}
+                      className="w-4 h-4"
+                    />
+                    One large sprite covering the whole area
+                  </label>
+                  <p className="text-xs text-stone-400 mt-1">
+                    Instead of repeating the effect on every tile, spawn it once at the blast&apos;s
+                    center with its box spanning the full area — one consistent big visual. Draw
+                    the art at 24 art px per tile: a radius-1 (3×3) blast is 72×72.
+                  </p>
+                </div>
+              </>
             )}
 
             {/* Persistent Effect Visual - only for spells with persist duration */}
