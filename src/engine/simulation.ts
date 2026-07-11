@@ -2905,14 +2905,18 @@ function triggerAOEExplosion(
   sourceCharacterId: string | undefined,
   sourceEnemyId: string | undefined,
   gameState: GameState,
-  spellAssetId?: string
+  spellAssetId?: string,
+  sourceParty?: EntityParty
 ): void {
-  // Create a temporary character at the explosion point.
-  // PARTY NOTE (Phase 2): only ids reach this point, so an explicit party on
-  // the source can't carry through — the structural id lookup covers all
-  // current content. When summons land, thread the source's party here too.
+  // Create a temporary character at the explosion point. The firer's BASE
+  // party (proj.sourceParty) rides the wrapper's party field so an explicit
+  // party carries through; absent (legacy callers) the structural id lookup
+  // resolves it, as before. Note the explosion keys on the ORIGINAL firer's
+  // base party — a reflected or charm-fired bolt's explosion still hits the
+  // firer's usual opposite side, exactly like the old id-only derivation.
   const tempChar: PlacedCharacter = {
     characterId: sourceCharacterId || sourceEnemyId || 'explosion_source',
+    party: sourceParty,
     x,
     y,
     facing: Direction.SOUTH,
@@ -3147,7 +3151,7 @@ function applyEntityHit(
   if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
     if (isHomingDebug()) console.log(`[APPLY-HIT ${proj.id.slice(-6)}] → AOE branch`);
     triggerAOEExplosion(target.x, target.y, proj.attackData,
-      proj.sourceCharacterId, proj.sourceEnemyId, gameState, proj.spellAssetId);
+      proj.sourceCharacterId, proj.sourceEnemyId, gameState, proj.spellAssetId, proj.sourceParty);
     return { reflected: false };
   }
 
@@ -3255,7 +3259,7 @@ function applyHealingHit(
 ): any {
   if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
     triggerAOEExplosion(target.x, target.y, proj.attackData,
-      proj.sourceCharacterId, proj.sourceEnemyId, gameState, proj.spellAssetId);
+      proj.sourceCharacterId, proj.sourceEnemyId, gameState, proj.spellAssetId, proj.sourceParty);
     return proj.attackData.healingEffectSprite || proj.attackData.hitEffectSprite;
   }
 
@@ -3496,7 +3500,7 @@ function walkNonHomingTick(
       }
       if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
         triggerAOEExplosion(checkX, checkY, proj.attackData,
-          proj.sourceCharacterId, proj.sourceEnemyId, gameState, proj.spellAssetId);
+          proj.sourceCharacterId, proj.sourceEnemyId, gameState, proj.spellAssetId, proj.sourceParty);
       }
       endedAtWall = true;
       steps.push({ kind: 'wall', x: checkX, y: checkY, dist: segDist });
@@ -4672,7 +4676,7 @@ function resolveProjectiles(gameState: GameState): void {
             // endX/endY), not along the original straight line.
             if (isInBounds(walk.endX, walk.endY, gameState.puzzle.width, gameState.puzzle.height)) {
               triggerAOEExplosion(walk.endX, walk.endY, proj.attackData,
-                proj.sourceCharacterId, proj.sourceEnemyId, gameState, proj.spellAssetId);
+                proj.sourceCharacterId, proj.sourceEnemyId, gameState, proj.spellAssetId, proj.sourceParty);
             }
           }
           shouldRemove = true;
@@ -5057,7 +5061,7 @@ function updateProjectilesHeadless(gameState: GameState): void {
           if (!hitSomething && proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
             if (isInBounds(walk.endX, walk.endY, gameState.puzzle.width, gameState.puzzle.height)) {
               triggerAOEExplosion(walk.endX, walk.endY, proj.attackData,
-                proj.sourceCharacterId, proj.sourceEnemyId, gameState, proj.spellAssetId);
+                proj.sourceCharacterId, proj.sourceEnemyId, gameState, proj.spellAssetId, proj.sourceParty);
             }
           }
           shouldRemove = true;
@@ -5222,19 +5226,30 @@ function processPersistentAreaEffects(gameState: GameState): void {
 
   // Process each persistent effect
   gameState.persistentAreaEffects.forEach(effect => {
-    // Damage all enemies in radius
-    gameState.puzzle.enemies.forEach(enemy => {
-      if (enemy.dead) return;
+    // Party-aware (engine/party.ts): the zone damages the base party
+    // OPPOSED to its creator's side, stamped at cast. Legacy effects
+    // without the stamp default to 'hero' — the only side the old
+    // hero-centric tick ever served (it damaged puzzle.enemies
+    // unconditionally, even for enemy-cast zones; that was the one
+    // deliberate semantic fix of Phase 2).
+    const zoneParty: EntityParty = effect.sourceParty ?? 'hero';
+    const candidates: Array<PlacedCharacter | PlacedEnemy> = [
+      ...gameState.placedCharacters,
+      ...gameState.puzzle.enemies,
+    ];
+    candidates.forEach(target => {
+      if (target.dead) return;
+      if (entityParty(target, gameState) === zoneParty) return; // own side stands in it safely
 
       const distance = Math.sqrt(
-        Math.pow(enemy.x - effect.x, 2) + Math.pow(enemy.y - effect.y, 2)
+        Math.pow(target.x - effect.x, 2) + Math.pow(target.y - effect.y, 2)
       );
 
       if (distance <= effect.radius) {
         // Use centralized damage for shields
-        applyDamageToEntityNoDeflect(enemy, effect.damagePerTurn, gameState);
-        if (enemy.dead) {
-          handleEntityDeathDrop(enemy, true, gameState);
+        applyDamageToEntityNoDeflect(target, effect.damagePerTurn, gameState);
+        if (target.dead) {
+          handleEntityDeathDrop(target, 'enemyId' in target, gameState);
         }
       }
     });

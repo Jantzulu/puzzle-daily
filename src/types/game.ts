@@ -642,6 +642,7 @@ export interface PersistentAreaEffect {
   excludeCenter?: boolean;      // Don't show effect on center tile
   sourceCharacterId?: string;   // Who created this (for friendly fire rules)
   sourceEnemyId?: string;       // If created by enemy
+  sourceParty?: EntityParty;    // Creator's EFFECTIVE party when cast (engine/party.ts) — the zone keeps fighting for that side. Absent on legacy effects = 'hero' (the only side that ever created them before this field).
 }
 
 export interface GameState {

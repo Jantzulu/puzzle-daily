@@ -2394,6 +2394,9 @@ export function executeAOEAttack(
       loopAnimation: true, // Persistent effects should loop by default
       excludeCenter: attackData.aoeExcludeCenter,
       sourceCharacterId: character.characterId,
+      // The zone fights for whoever the caster fought for at cast time —
+      // same allegiance the instant AOE hit above used (isEnemyCaster).
+      sourceParty: isEnemyCaster ? 'enemy' : 'hero',
     };
 
     gameState.persistentAreaEffects.push(persistentEffect);
