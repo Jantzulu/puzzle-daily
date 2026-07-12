@@ -102,8 +102,16 @@ Ordered by (likelihood of live bugs × player impact). Check off as swept.
   behavior-sequence action — see docs/feature-backlog.md. Side-finding
   flagged separately: MOVE_LEFT/RIGHT/DIAGONAL_* action types have UI
   tooltips but NO executeAction case — they silently no-op.
-- [ ] **Heal/resurrect caps.** Healing respects max health for enemies
-  healed by enemies; resurrect health percent; heal targeting a vessel.
+- [x] **Heal/resurrect caps.** SWEPT 2026-07-12
+  (`__tests__/audit-heal-caps.test.ts`, 10 tests). ONE bug fixed: enemy
+  SELF-heals (targetSelfOnly) were uncapped — applySpellToSelf's shape
+  check read the hero-shaped wrapper as a character, found no asset, and
+  skipped the clamp. Fixed with the char-then-enemy id fallback. All
+  other paths capped correctly: AOE heals (both sides, party-isolated),
+  healing projectiles (both directions), vessels (adapter max), summons
+  (enemy-asset max), resurrect percent (both caster sides). Side-finding:
+  `executeHeal` in actions.ts is dead code (no callers), like
+  `markEntityAsDead` in simulation.ts.
 - [ ] **Backstab + crit from enemy attackers.** Authored on enemy spells —
   does isAttackFromBehind fire for enemy casters through the wrapper?
 - [ ] **Headless/visual parity per feature.** For each: summon, necromancy,
