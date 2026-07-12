@@ -1,6 +1,6 @@
 # Projectile System Refactor Plan
 
-**Status:** IN PROGRESS — Phases A+B done; Phase E gate built and GREEN (2026-07-12); Phase E implementation next
+**Status:** IN PROGRESS — Phases A+B+E done (E landed 2026-07-12); Phase C next, then D
 **Scope:** `src/engine/simulation.ts`, `src/engine/actions.ts`, `src/types/game.ts`
 **Goal:** Pay down the technical debt from the March 2026 deterministic-projectile refactor without changing observable gameplay.
 
@@ -101,25 +101,56 @@ Carry over fields one at a time, with a test for each. Entity-side fields (`pend
 
 **Verification:** engine tests + explicit replay regression test (record a puzzle run with reflect + deferred death, replay it, assert pixel-identical frame outputs at selected turn boundaries).
 
-### Phase E — De-duplicate `updateProjectilesHeadless` vs `resolveProjectiles` — HIGH RISK
+### ✅ Phase E — De-duplicate `updateProjectilesHeadless` vs `resolveProjectiles` (done 2026-07-12)
 
-**Goal:** fix D2 — the highest-risk phase, deferred to last.
+**Goal:** fix D2 — the highest-risk phase.
 
-`updateProjectilesHeadless` exists because the solver runs without a frame loop but still needs to know collision outcomes. The collision rules need to match `resolveProjectiles` exactly, or the solver will accept/reject puzzles the real game would not.
+**What was already shared before this phase** (extracted incrementally
+during the pierce/bounce/audit work): `walkNonHomingTick` (the non-homing
+collision walk), `walkReflectedPath` / `walkReflectedPathOnTiles` (reflected
+legs), `applyEntityHit` / `applyHealingHit` (hit application with a
+`HitMode` param). The original "-400 LOC" estimate predated those.
 
-Approach: extract the pure collision-resolution logic from `resolveProjectiles` into a helper `resolveProjectileCollisions(state, projectiles): CollisionOutcome[]`. Both `resolveProjectiles` (real game) and `updateProjectilesHeadless` (solver) call this helper with their respective projectile sets.
+**What this phase extracted** (commits `7edb4a7`, `7d0203e`, `75df15e`):
 
-**Pre-requisite:** ✅ DONE 2026-07-12. The corpus's 22 per-case parity
-gates are live (`corpus.test.ts` "Phase E gate" tests): real vs headless
-final logical outcome (positions, healths, victory, turns, score,
-collectibles), with pendingProjectileDeath folded into `dead` as the one
-intended mode difference. ALL 22 PASS on the current engine — the 2026-07
-audit's sweep-7 fixes (headless diedOnTurn stamp, deterministic vessel
-transforms) closed the last divergences. The audit's
-`audit-parity.test.ts` (8 feature scenarios) guards the same seam from
-the feature side.
+1. `recordProjectileSpawnOnce` — identical spawn-event blocks unified.
+2. `resolveHomingTargetEntity` — the 3-stage homing target lookup
+   (reflected-src → array-index → id-find). Unified liveness on
+   `isEntityFunctional` (equivalent to headless' old `!dead` since
+   headless never sets `pendingProjectileDeath`).
+3. `planHomingTick` — the pure per-turn homing decision (range gate, wall
+   check, reach-vs-advance, BFS budget, clamped fractional move). Both
+   modes consume the plan; callers keep mode-specific bookkeeping.
 
-**Verification:** golden tests, plus solver validation on existing validated puzzles (memory notes commit `ea1d488` fixed a validator/solver mismatch — don't regress that).
+**Parity fix shipped with #3:** the homing wall check
+(`homingIgnoreWalls: false`) previously existed ONLY in real mode —
+headless/solver bolts flew through walls the live game stops at. Pinned
+in `audit-parity.test.ts` ("homing wall check" case; no corpus case
+covered it). Note the flag defaults to TRUE (pass through walls), so
+only opt-out spells were affected.
+
+**Residual known divergences (documented, deliberately NOT fixed here):**
+
+- **`checkHomingPathForHits` is real-mode only** — homing bolts with
+  `homingHitAlongPath` (grid/pathfinding styles) damage entities they
+  pass in the live game but not in the solver. Fixing it requires a
+  `HitMode` param on a §8 do-not-touch function (it hard-codes
+  pendingVisualDamage / pendingProjectileDeath bookkeeping). Same bug
+  class as the wall check; needs its own careful session.
+- **Homing reflect timing** — real mode resolves the reflected return
+  leg in the SAME turn (immediate walk); headless re-targets the caster
+  and flies back over subsequent turns. Final outcomes converge in
+  practice (gate is green) but intermediate turn timing differs; a kill
+  decided by a reflected homing bolt could land on different turns.
+- **THROW_PLACE landing tile** — real places at the last valid tile of
+  the visual tilePath with a fall-back to the previous tile if the last
+  is a wall; headless places at `floor(logical)` with a wall check but
+  no fall-back. Divergence only reachable in edge layouts.
+
+**Verification:** 470 tests green (full suite + 22-case Phase E gate +
+corpus goldens + new pin). `tsc -b` clean. (Memory notes commit `ea1d488`
+fixed a validator/solver mismatch — not regressed; corpus goldens
+unchanged.)
 
 ### Phase F — Slow homing projectile visual — DEFERRED
 
@@ -174,3 +205,5 @@ These are correct-as-is and tempting to "while I'm in there" modify — don't:
 
 Execution order (settled 2026-07-12, per §7): **E → C → D**, one phase
 per session, full suite + corpus green between steps, no combining.
+E landed 2026-07-12 — **Phase C is next** (visual fields → side-table
+in AnimatedGameBoard, keyed on the stable `proj.id`).
