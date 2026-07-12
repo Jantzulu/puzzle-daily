@@ -169,17 +169,43 @@ do, complementary to [`feature-roadmap.md`](../../puzzle-game/feature-roadmap.md
 
 ### New gameplay mechanics
 
-- [ ] **Breakable container framework** (e.g., barrel that an enemy bursts
-  out of). Implement as a special enemy type that holds a *nested*
-  enemyId — the entity it transforms into when triggered. Trigger options:
-  - After N turns
-  - Any damage taken
-  - Specific damage source (spell type, hero, etc.)
+- [ ] **VESSELS — dedicated breakable asset type** (REDESIGNED 2026-07-11,
+  supersedes the "breakable container" enemy-variant idea; name "Vessel"
+  chosen by user). A static thing with HP that may transform into an
+  enemy when broken: barrels, urns, crates, mimic chests, hatching eggs,
+  awakening statues.
 
-  On trigger, the container is replaced by an instance of the nested
-  entity, which adopts that entity's normal behavior with optional
-  overrides (facing direction, possibly more). Same animation/transition
-  language as summon would be reusable here. *Captured 2026-04-27.*
+  Locked design (2026-07-11):
+  - Own ASSET TYPE with its own editor panel under dungeon details and
+    its own section in The Slab (not a special enemy)
+  - Never moves, no actions, no movement direction arrow
+  - Variable health (some vessels are harder to break)
+  - Sprites: idle + death animations ONLY (no directional movement
+    sheets, no spawn anims, no spell anims)
+  - v1 triggers: transform on DEATH (HP to 0) + TIMED (end of turn N —
+    hatching egg / timed ambush). Source-specific triggers later
+  - Win conditions: rides the shipped designer curation
+    (params.excludedEnemyIds) — a decorative barrel gets unchecked; the
+    burst-out enemy counts like any authored enemy (continuity emerges
+    naturally: vessel counts until transform, then its dead+consumed
+    entry satisfies the check and the spawned enemy takes over)
+
+  Architecture (agreed direction): vessels adapt into the ENEMY pipeline
+  under the hood — placed into puzzle.enemies with the vessel's id, and
+  getEnemy()/loadEnemy() fall back to an Enemy-shaped adapter over the
+  vessel registry (health, no behavior, idle/death sprites, drops). The
+  engine stays untouched except an end-of-turn transform processor
+  (mirrors processSummonExpiry): dead-or-timer-elapsed vessels are
+  CONSUMED (despawned) and the nested enemy spawns on their tile via
+  spawnEnemyMidGame (NOT win-exempt; asset defaultFacing or per-vessel
+  override; summon overlay language reusable for the burst). A vessel
+  with no nested enemy is a plain breakable (normal death, drops fire).
+
+  Slices: (1) type + storage + getEnemy adapter + engine transform
+  processor + tests; (2) VesselEditor panel + editors page entry;
+  (3) map editor placement palette; (4) The Slab section; (5) cloud
+  sync (needs the asset-kind plumbing checked). *Captured 2026-04-27,
+  redesigned 2026-07-11.*
 
 ### Profile / cosmetic
 
