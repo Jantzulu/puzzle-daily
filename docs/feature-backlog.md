@@ -169,7 +169,12 @@ do, complementary to [`feature-roadmap.md`](../../puzzle-game/feature-roadmap.md
 
 ### New gameplay mechanics
 
-- [ ] **VESSELS — dedicated breakable asset type** (REDESIGNED 2026-07-11,
+- [x] **VESSELS — dedicated breakable asset type** — SHIPPED 2026-07-11
+  (`f6b4d3f`→`b010238`, all five slices: engine foundation, VesselEditor,
+  map placement, Slab chapter, cloud sync + migration 012). AWAITING
+  USER: paste migration 012, test in editor + game, style pass on the
+  Slab chapter (shares enemies accent) and the sprite-editor guidance
+  approach. Original redesign spec follows. (REDESIGNED 2026-07-11,
   supersedes the "breakable container" enemy-variant idea; name "Vessel"
   chosen by user). A static thing with HP that may transform into an
   enemy when broken: barrels, urns, crates, mimic chests, hatching eggs,
