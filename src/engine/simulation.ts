@@ -4206,6 +4206,120 @@ function resolveHomingTargetEntity(
 }
 
 /**
+ * The per-turn LOGICAL decision for a homing projectile — shared by
+ * resolveProjectiles and updateProjectilesHeadless so real and headless
+ * modes cannot drift on range gating, wall blocking, or reach-vs-advance
+ * math. Pure: no clock reads, no mutation; callers translate the plan into
+ * their own bookkeeping (visual anchors + bridge fields for real, timeline
+ * events + immediate removal for headless).
+ *
+ * Decision order mirrors the original real-mode branch exactly:
+ *
+ * 1. Range gate. Cumulative path length (proj.pathTraveled), not Euclidean
+ *    displacement from spawn — a bolt chasing a moving target curves, and
+ *    straight-line distance from spawn can *decrease*, which would reset
+ *    the budget. Threshold 0.5 (not 0) catches the "infinite crawl" case
+ *    where traveled distance grows asymptotically as the bolt closes in.
+ *    Pathfinding moves in whole-tile BFS steps and can't advance
+ *    fractionally, so < 1 remaining is exhausted there.
+ * 2. Wall check (non-wall-ignoring, non-pathfinding styles): first blocked
+ *    tile on the straight line to the target stops the bolt. NOTE: before
+ *    Phase E this check existed ONLY in real mode — headless bolts flew
+ *    through walls, so the solver could certify kills the live game never
+ *    makes. Sharing the plan closes that hole.
+ * 3. Reach check. Pathfinding can reach within the tile budget even when
+ *    Euclidean distance > effectiveReach (the BFS path wraps walls but may
+ *    be short enough in steps); without it the hit registers a turn late.
+ * 4. Advance. Pathfinding: BFS partial path clamped to the tile budget.
+ *    Others: fractional move along the direct line, clamped to remaining
+ *    range. turnTiles starts from the ROUNDED logical position so the new
+ *    tilePath begins on the tile where the previous turn's visual ended.
+ */
+type HomingTickPlan =
+  | { kind: 'out_of_range' }
+  | { kind: 'wall_blocked'; wallX: number; wallY: number }
+  | { kind: 'reach'; hitX: number; hitY: number }
+  | {
+      kind: 'advance';
+      newX: number;
+      newY: number;
+      turnTiles: Array<{ x: number; y: number }>;
+      /** Path length of this turn's move — callers add it to proj.pathTraveled. */
+      segLen: number;
+      /** Full BFS path (pathfinding style only) — debug logging. */
+      bfsFullPath?: Array<{ x: number; y: number }>;
+    };
+
+function planHomingTick(
+  proj: Projectile,
+  target: { x: number; y: number },
+  gameState: GameState,
+): HomingTickPlan {
+  const range = proj.attackData.range || 10;
+  const tilesPerTurn = proj.speed || 4;
+
+  const dx = target.x - proj.logicalX;
+  const dy = target.y - proj.logicalY;
+  const distance = Math.sqrt(dx * dx + dy * dy);
+
+  const traveled = proj.pathTraveled ?? 0;
+  const remainingRange = Math.max(0, range - traveled);
+  const pathfindingCantAdvance = proj.homingPathStyle === 'pathfinding' && remainingRange < 1;
+  if (remainingRange < 0.5 || pathfindingCantAdvance) {
+    return { kind: 'out_of_range' };
+  }
+
+  if (!proj.homingIgnoreWalls && proj.homingPathStyle !== 'pathfinding') {
+    const pathTiles = getTilesAlongLine(proj.logicalX, proj.logicalY, target.x, target.y);
+    for (const tile of pathTiles) {
+      if (tile.x === Math.floor(proj.logicalX) && tile.y === Math.floor(proj.logicalY)) continue;
+      if (isTileBlocked(tile.x, tile.y, gameState)) {
+        return { kind: 'wall_blocked', wallX: tile.x, wallY: tile.y };
+      }
+    }
+  }
+
+  const effectiveReach = Math.min(tilesPerTurn, remainingRange);
+  const tileBudget = Math.min(tilesPerTurn, Math.floor(remainingRange));
+
+  let bfsFullPath: Array<{ x: number; y: number }> | undefined;
+  let pathfindingReachesThisTurn = false;
+  if (proj.homingPathStyle === 'pathfinding') {
+    bfsFullPath = findPathBFS(
+      Math.round(proj.logicalX), Math.round(proj.logicalY),
+      target.x, target.y, gameState);
+    pathfindingReachesThisTurn = bfsFullPath.length > 0 && bfsFullPath.length - 1 <= tileBudget;
+  }
+
+  if (distance <= effectiveReach || pathfindingReachesThisTurn) {
+    return { kind: 'reach', hitX: target.x, hitY: target.y };
+  }
+
+  const pathStartX = Math.round(proj.logicalX);
+  const pathStartY = Math.round(proj.logicalY);
+  let newX: number;
+  let newY: number;
+  let turnTiles: Array<{ x: number; y: number }>;
+  if (proj.homingPathStyle === 'pathfinding') {
+    // findPathBFS never returns empty (falls back to the direct line), so
+    // turnTiles always has at least one tile.
+    turnTiles = bfsFullPath!.slice(0, tileBudget + 1);
+    const lastTile = turnTiles[turnTiles.length - 1];
+    newX = lastTile.x;
+    newY = lastTile.y;
+  } else {
+    const clampedMove = Math.min(tilesPerTurn, remainingRange);
+    const moveRatio = clampedMove / distance;
+    newX = proj.logicalX + dx * moveRatio;
+    newY = proj.logicalY + dy * moveRatio;
+    turnTiles = getTilesAlongLine(pathStartX, pathStartY, newX, newY);
+  }
+  const segLen = Math.sqrt(
+    Math.pow(newX - proj.logicalX, 2) + Math.pow(newY - proj.logicalY, 2));
+  return { kind: 'advance', newX, newY, turnTiles, segLen, bfsFullPath };
+}
+
+/**
  * Deterministic turn-based projectile resolution for non-headless mode.
  * Mirrors updateProjectilesHeadless for game logic (damage, effects, death)
  * but stores visual metadata (tilePath, hitResult) instead of removing projectiles,
@@ -4258,45 +4372,26 @@ function resolveProjectiles(gameState: GameState): void {
       }
 
       if (targetEntity) {
-        const dx = targetEntity.x - proj.logicalX;
-        const dy = targetEntity.y - proj.logicalY;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-
-        // Range check — homing projectiles should respect their range.
-        // Use cumulative path length (proj.pathTraveled), not Euclidean
-        // displacement from spawn. A bolt chasing a moving target curves,
-        // and the straight-line distance from spawn can *decrease* as the
-        // bolt curves around — which would reset the range budget. Each
-        // turn's MOVE TOWARD / REACHED TARGET below adds its segment length
-        // to proj.pathTraveled so the counter is monotonic.
-        const totalDistanceTraveled = proj.pathTraveled ?? 0;
-        const remainingRange = Math.max(0, range - totalDistanceTraveled);
+        // Shared logical decision (range gate / wall block / reach /
+        // advance) — planHomingTick owns the math and its rationale; this
+        // branch translates the plan into visual + bridge bookkeeping.
+        const plan = planHomingTick(proj, targetEntity, gameState);
         if (isHomingDebug()) {
+          const distance = Math.sqrt(
+            Math.pow(targetEntity.x - proj.logicalX, 2) +
+            Math.pow(targetEntity.y - proj.logicalY, 2));
+          const traveled = proj.pathTraveled ?? 0;
           console.log(
             `[HOMING-RESOLVE ${proj.id.slice(-6)}] style=${proj.homingPathStyle} turn=${gameState.currentTurn} ` +
             `distToTarget=${distance.toFixed(2)} range=${range} ` +
-            `traveled=${totalDistanceTraveled.toFixed(2)} remaining=${remainingRange.toFixed(2)} ` +
+            `traveled=${traveled.toFixed(2)} remaining=${Math.max(0, range - traveled).toFixed(2)} ` +
             `tilesPerTurn=${tilesPerTurn} ` +
             `logical=(${proj.logicalX.toFixed(2)},${proj.logicalY.toFixed(2)}) ` +
             `target=(${targetEntity.x.toFixed(2)},${targetEntity.y.toFixed(2)}) ` +
             `visStart=(${proj.homingVisualStartX?.toFixed(2)},${proj.homingVisualStartY?.toFixed(2)})`
           );
         }
-        // Threshold 0.5 (not 0) to catch the "infinite crawl" case: when a
-        // bolt chases a moving target whose path bends, the Euclidean
-        // traveled distance grows asymptotically slowly as the bolt closes
-        // in, leaving tiny fractions of remainingRange. clampedMove rounds
-        // to the same tile each turn and the visual freezes forever. Treat
-        // sub-half-tile range as exhausted.
-        // Pathfinding moves in whole-tile BFS steps and can't advance
-        // fractionally — if we can't afford a full tile's worth of movement,
-        // treat as out of range. Otherwise the bolt stalls: it fails the
-        // < 0.5 gate (remainingRange ~0.5-1.0), takes MOVE TOWARD, but
-        // Math.floor(remainingRange) = 0 produces a 1-tile tilePath containing
-        // only the start position, so logical never advances and hitResult is
-        // never set. Bolt lingers indefinitely at max-reach tile.
-        const pathfindingCantAdvance = proj.homingPathStyle === 'pathfinding' && remainingRange < 1;
-        if (remainingRange < 0.5 || pathfindingCantAdvance) {
+        if (plan.kind === 'out_of_range') {
           // Out of range — fizzle. To avoid a visual stutter (bolt visibly
           // snapping backward/forward over the fizzle animation), freeze the
           // bolt at its CURRENT visual position and consume immediately.
@@ -4351,62 +4446,35 @@ function resolveProjectiles(gameState: GameState): void {
           continue;
         }
 
-        // Wall check for homing projectiles that don't ignore walls.
-        // Pathfinding mode inherently routes around walls via BFS, so skip
-        // the straight-line wall block here — otherwise the pathfinder never
-        // gets a chance to run.
-        if (!proj.homingIgnoreWalls && proj.homingPathStyle !== 'pathfinding') {
-          const pathTiles = getTilesAlongLine(proj.logicalX, proj.logicalY, targetEntity.x, targetEntity.y);
-          let wallBlocked = false;
-          for (const tile of pathTiles) {
-            if (tile.x === Math.floor(proj.logicalX) && tile.y === Math.floor(proj.logicalY)) continue;
-            if (isTileBlocked(tile.x, tile.y, gameState)) {
-              const wallPath = getTilesAlongLine(proj.homingVisualStartX ?? proj.logicalX, proj.homingVisualStartY ?? proj.logicalY, tile.x, tile.y);
-              if (wallPath.length > 1) wallPath.pop();
-              proj.tilePath = wallPath;
-              proj.currentTileIndex = 0;
-              proj.tileEntryTime = proj.homingVisualStartTime ?? Date.now();
-              proj.hitResult = { hitTileIndex: wallPath.length - 1, deactivate: true };
-              maybeMarkLingerDespawn(proj, wallPath.length - 1, Date.now());
-              // Replay end event — homing bolt stopped at a wall.
-              recordProjectileEvent(gameState, {
-                type: 'wall_hit',
-                projId: proj.id,
-                x: tile.x, y: tile.y,
-              });
-              proj.homingVisualStartX = undefined;
-              proj.homingVisualStartY = undefined;
-              proj.homingVisualStartTime = undefined;
-              wallBlocked = true;
-              break;
-            }
-          }
-          if (wallBlocked) continue;
+        if (plan.kind === 'wall_blocked') {
+          // Stop at the wall: freeze the visual path up to (not including)
+          // the wall tile and deactivate on arrival.
+          const wallPath = getTilesAlongLine(
+            proj.homingVisualStartX ?? proj.logicalX,
+            proj.homingVisualStartY ?? proj.logicalY,
+            plan.wallX, plan.wallY);
+          if (wallPath.length > 1) wallPath.pop();
+          proj.tilePath = wallPath;
+          proj.currentTileIndex = 0;
+          proj.tileEntryTime = proj.homingVisualStartTime ?? Date.now();
+          proj.hitResult = { hitTileIndex: wallPath.length - 1, deactivate: true };
+          maybeMarkLingerDespawn(proj, wallPath.length - 1, Date.now());
+          // Replay end event — homing bolt stopped at a wall.
+          recordProjectileEvent(gameState, {
+            type: 'wall_hit',
+            projId: proj.id,
+            x: plan.wallX, y: plan.wallY,
+          });
+          proj.homingVisualStartX = undefined;
+          proj.homingVisualStartY = undefined;
+          proj.homingVisualStartTime = undefined;
+          continue;
         }
 
-        // Clamp effective reach to remaining range
-        const effectiveReach = Math.min(tilesPerTurn, remainingRange);
-
-        // Pathfinding can reach the target within this turn's tile budget even
-        // when Euclidean `distance > effectiveReach` — the BFS path wraps
-        // around walls but may still be short enough in step count to arrive.
-        // Without this check, MOVE TOWARD would move logical to the target
-        // tile without registering the hit; next turn's REACHED TARGET fires
-        // with a degenerate 1-tile tilePath and the player sees the bolt
-        // "touch" the enemy with no effect, then a delayed "pop" hit VFX.
-        let pathfindingReachesThisTurn = false;
-        if (proj.homingPathStyle === 'pathfinding') {
-          const psx = Math.round(proj.logicalX);
-          const psy = Math.round(proj.logicalY);
-          const bfsPath = findPathBFS(psx, psy, targetEntity.x, targetEntity.y, gameState);
-          const tileBudget = Math.min(tilesPerTurn, Math.floor(remainingRange));
-          pathfindingReachesThisTurn = bfsPath.length > 0 && bfsPath.length - 1 <= tileBudget;
-        }
-
-        if (distance <= effectiveReach || pathfindingReachesThisTurn) {
+        if (plan.kind === 'reach') {
           // Reached target — determine if hostile or healing
-          const hitX = targetEntity.x;
-          const hitY = targetEntity.y;
+          const hitX = plan.hitX;
+          const hitY = plan.hitY;
           let vfxSprite: any;
           let deferredDeathEntityId: string | undefined;
           let deferredDeathIsEnemy: boolean | undefined;
@@ -4646,37 +4714,18 @@ function resolveProjectiles(gameState: GameState): void {
             );
           }
         } else {
-          // Move toward target but don't reach it yet
-          let turnTiles: Array<{x: number; y: number}>;
-          let newX: number;
-          let newY: number;
-
-          // Round the logical start when building the path so the new
-          // tilePath begins at the same tile where the previous turn's
-          // visual ended. See the REACHED TARGET branch for full reasoning.
-          const pathStartX = Math.round(proj.logicalX);
-          const pathStartY = Math.round(proj.logicalY);
-          if (proj.homingPathStyle === 'pathfinding') {
-            const clampedTiles = Math.min(tilesPerTurn, Math.floor(remainingRange));
-            const fullPath = findPathBFS(pathStartX, pathStartY, targetEntity.x, targetEntity.y, gameState);
-            turnTiles = fullPath.slice(0, clampedTiles + 1);
-            const lastTile = turnTiles[turnTiles.length - 1];
-            newX = lastTile.x;
-            newY = lastTile.y;
-            if (isHomingDebug()) {
-              const pathStr = fullPath.map(t => `(${t.x},${t.y})`).join('→');
-              console.log(
-                `[PATHFIND-HOMING ${proj.id.slice(-6)}] turn=${gameState.currentTurn} ` +
-                `from=(${pathStartX},${pathStartY}) to=(${targetEntity.x},${targetEntity.y}) ` +
-                `fullPath=${pathStr} clampedTiles=${clampedTiles} turnEnd=(${newX},${newY})`
-              );
-            }
-          } else {
-            const clampedMove = Math.min(tilesPerTurn, remainingRange);
-            const moveRatio = clampedMove / distance;
-            newX = proj.logicalX + dx * moveRatio;
-            newY = proj.logicalY + dy * moveRatio;
-            turnTiles = getTilesAlongLine(pathStartX, pathStartY, newX, newY);
+          // Move toward target but don't reach it yet — the plan computed
+          // the new logical position and turnTiles (rounded start tile so
+          // the new tilePath begins where the previous turn's visual ended;
+          // see planHomingTick).
+          const { newX, newY, turnTiles } = plan;
+          if (isHomingDebug() && proj.homingPathStyle === 'pathfinding') {
+            const pathStr = (plan.bfsFullPath ?? []).map(t => `(${t.x},${t.y})`).join('→');
+            console.log(
+              `[PATHFIND-HOMING ${proj.id.slice(-6)}] turn=${gameState.currentTurn} ` +
+              `from=(${Math.round(proj.logicalX)},${Math.round(proj.logicalY)}) to=(${targetEntity.x},${targetEntity.y}) ` +
+              `fullPath=${pathStr} clampedTiles=${turnTiles.length - 1} turnEnd=(${newX},${newY})`
+            );
           }
 
           if (proj.homingHitAlongPath && (proj.homingPathStyle === 'grid' || proj.homingPathStyle === 'pathfinding')) {
@@ -4687,13 +4736,9 @@ function resolveProjectiles(gameState: GameState): void {
           proj.currentTileIndex = 0;
           proj.tileEntryTime = Date.now();
           // Accumulate cumulative path length for the range gate (see
-          // pathTraveled field doc on Projectile). Segment = distance from
-          // pre-move logical to post-move logical.
-          const moveSegment = Math.sqrt(
-            Math.pow(newX - proj.logicalX, 2) +
-            Math.pow(newY - proj.logicalY, 2)
-          );
-          proj.pathTraveled = (proj.pathTraveled ?? 0) + moveSegment;
+          // pathTraveled field doc on Projectile). segLen was computed by
+          // the plan against the pre-move logical position.
+          proj.pathTraveled = (proj.pathTraveled ?? 0) + plan.segLen;
           proj.logicalX = newX;
           proj.logicalY = newY;
           // Record per-turn homing position so replay can reconstruct the
@@ -5108,18 +5153,12 @@ function updateProjectilesHeadless(gameState: GameState): void {
       const targetIsEnemyFlag = resolved?.targetIsEnemy ?? false;
 
       if (targetEntity) {
-        const dx = targetEntity.x - proj.logicalX;
-        const dy = targetEntity.y - proj.logicalY;
-        const distance = Math.sqrt(dx * dx + dy * dy);
+        // Shared logical decision — the SAME plan the real game computes,
+        // so solver and live game cannot drift on range gating, wall
+        // blocking, or reach timing.
+        const plan = planHomingTick(proj, targetEntity, gameState);
 
-        // Range gate — mirror resolveProjectiles homing range check so
-        // headless (replay/solver) agrees with real on which bolts fizzle vs.
-        // hit. Without this, OUT OF RANGE bolts in real mode keep hunting in
-        // headless until they hit, and replay shows hits that never happened.
-        const pathTraveledSoFar = proj.pathTraveled ?? 0;
-        const remainingRange = Math.max(0, range - pathTraveledSoFar);
-        const pathfindingCantAdvance = proj.homingPathStyle === 'pathfinding' && remainingRange < 1;
-        if (remainingRange < 0.5 || pathfindingCantAdvance) {
+        if (plan.kind === 'out_of_range') {
           recordProjectileEvent(gameState, {
             type: 'deactivate',
             projId: proj.id,
@@ -5130,31 +5169,21 @@ function updateProjectilesHeadless(gameState: GameState): void {
           continue;
         }
 
-        // Pathfinding: if the BFS partial reaches target within this turn's
-        // budget, treat as REACHED — mirrors the real-mode fix so solver and
-        // live game agree on timing. Without this, real kills on turn N and
-        // headless on turn N+1 for pathfinding paths that step-count shorter
-        // than Euclidean distance.
-        let pathfindingReachesThisTurn = false;
-        let pathfindingPartialPath: Array<{ x: number; y: number }> | undefined;
-        if (proj.homingPathStyle === 'pathfinding') {
-          const psx = Math.round(proj.logicalX);
-          const psy = Math.round(proj.logicalY);
-          const bfsPath = findPathBFS(psx, psy, targetEntity.x, targetEntity.y, gameState);
-          const tileBudget = Math.min(tilesPerTurn, Math.floor(remainingRange));
-          if (bfsPath.length > 0 && bfsPath.length - 1 <= tileBudget) {
-            pathfindingReachesThisTurn = true;
-          } else if (bfsPath.length > 0) {
-            pathfindingPartialPath = bfsPath.slice(0, tileBudget + 1);
-          }
+        if (plan.kind === 'wall_blocked') {
+          // Bolt stops at the wall without hitting. Before Phase E headless
+          // had NO wall check — solver bolts flew through walls the live
+          // game stops at. Mirrors real mode's wall stop.
+          recordProjectileEvent(gameState, {
+            type: 'wall_hit',
+            projId: proj.id,
+            x: plan.wallX, y: plan.wallY,
+          });
+          proj.active = false;
+          projectilesToRemove.push(proj.id);
+          continue;
         }
 
-        // effectiveReach clamps per-turn movement by remaining range so the
-        // last turn of a fizzling bolt moves only what's left in its budget
-        // (matches real-mode). tilesPerTurn alone would overshoot.
-        const effectiveReach = Math.min(tilesPerTurn, remainingRange);
-
-        if (distance <= effectiveReach || pathfindingReachesThisTurn) {
+        if (plan.kind === 'reach') {
           const isHostileHit = isHostileHomingHit(proj);
 
           if (isHostileHit) {
@@ -5199,36 +5228,13 @@ function updateProjectilesHeadless(gameState: GameState): void {
             });
           }
           shouldRemove = true;
-        } else if (pathfindingPartialPath) {
-          const lastTile = pathfindingPartialPath[pathfindingPartialPath.length - 1];
-          const segLen = Math.sqrt(
-            Math.pow(lastTile.x - proj.logicalX, 2) +
-            Math.pow(lastTile.y - proj.logicalY, 2)
-          );
-          proj.pathTraveled = (proj.pathTraveled ?? 0) + segLen;
-          proj.logicalX = lastTile.x;
-          proj.logicalY = lastTile.y;
-          proj.targetX = targetEntity.x;
-          proj.targetY = targetEntity.y;
-          recordProjectileEvent(gameState, {
-            type: 'homing_move',
-            projId: proj.id,
-            x: proj.logicalX, y: proj.logicalY,
-          });
         } else {
-          // Clamp per-turn motion to effectiveReach (remaining range) so the
-          // final turn of a fizzling bolt stops exactly at its range budget.
-          const clampedMove = Math.min(tilesPerTurn, remainingRange);
-          const moveRatio = clampedMove / distance;
-          const newX = proj.logicalX + dx * moveRatio;
-          const newY = proj.logicalY + dy * moveRatio;
-          const segLen = Math.sqrt(
-            Math.pow(newX - proj.logicalX, 2) +
-            Math.pow(newY - proj.logicalY, 2)
-          );
-          proj.pathTraveled = (proj.pathTraveled ?? 0) + segLen;
-          proj.logicalX = newX;
-          proj.logicalY = newY;
+          // Advance toward the target — position math from the shared plan
+          // (BFS partial path for pathfinding, clamped fractional move
+          // otherwise; segLen computed against the pre-move position).
+          proj.pathTraveled = (proj.pathTraveled ?? 0) + plan.segLen;
+          proj.logicalX = plan.newX;
+          proj.logicalY = plan.newY;
           proj.targetX = targetEntity.x;
           proj.targetY = targetEntity.y;
           recordProjectileEvent(gameState, {

@@ -25,8 +25,10 @@ import {
   createTestCharacter,
   createTestEnemy,
   createTestGameState,
+  createEmptyGrid,
+  setTile,
 } from './helpers';
-import { Direction, ActionType, SpellTemplate } from '../../types/game';
+import { Direction, ActionType, SpellTemplate, TileType } from '../../types/game';
 import type { GameState, PlacedEnemy, PlacedCharacter } from '../../types/game';
 import { executeTurn } from '../simulation';
 
@@ -327,5 +329,46 @@ describe('headless/visual parity', () => {
       })],
     }), 4);
     expect(final.enemies[0].dead).toBe(true); // ground itself down on the spikes in both modes
+  });
+
+  it('homing wall check: a straight-style bolt stops at a wall in BOTH modes', () => {
+    // Phase E pin (2026-07-12): before the shared planHomingTick, the wall
+    // check existed only in resolveProjectiles — headless homing bolts flew
+    // THROUGH walls, so the solver could certify kills the live game never
+    // makes. This scenario had no corpus coverage (case 08 is pathfinding,
+    // which routes around walls by design). Note homingIgnoreWalls defaults
+    // to TRUE — the wall check only applies when the author opts out.
+    regChar(createTestCharacterDef({
+      id: 'homing-archer', health: 10,
+      behavior: [{
+        type: ActionType.SPELL, spellId: 'bolt',
+        autoTargetNearestEnemy: true, homing: true, homingPathStyle: 'straight',
+        homingIgnoreWalls: false,
+      }, { type: ActionType.REPEAT }] as never,
+    }));
+    const final = expectParity(() => {
+      const tiles = createEmptyGrid(8, 5);
+      setTile(tiles, 3, 2, TileType.WALL);
+      return createTestGameState({
+        puzzle: createTestPuzzle({
+          width: 8, height: 5, tiles,
+          enemies: [createTestEnemy({
+            enemyId: 'goblin-1', x: 6, y: 2, currentHealth: 5,
+            actionIndex: 0, active: true,
+          })],
+        }),
+        placedCharacters: [createTestCharacter({
+          characterId: 'homing-archer', x: 0, y: 2, facing: Direction.EAST,
+          currentHealth: 10, actionIndex: 0, active: true,
+        })],
+        gameStatus: 'running',
+        currentTurn: 0,
+        testMode: true,
+      });
+    }, 5);
+    // The wall between caster and target stops every bolt — the goblin is
+    // untouched in both modes. (Pre-fix headless killed it by turn ~3.)
+    expect(final.enemies[0].health).toBe(5);
+    expect(final.enemies[0].dead).toBe(false);
   });
 });
