@@ -52,10 +52,19 @@ test as the pin.
 
 Ordered by (likelihood of live bugs × player impact). Check off as swept.
 
-- [ ] **Death triggers × kill path.** `executeDeathTriggers` is called from
-  several death sites (applyDamage blocks, markEntityAsDead, deferred
-  commits). Does an entity's authored death trigger fire when killed by
-  EVERY delivery? (Same fault line as the drops bug.)
+- [x] **Death triggers × kill path.** SWEPT 2026-07-11
+  (`__tests__/audit-death-triggers.test.ts`, 25 tests). Trigger firing
+  itself was solid on every delivery (melee/cone/AOE/push/projectile
+  visual+headless/contact/tile/DOT/deflect/zone, hero + enemy victims,
+  once-only under multi-kill). ONE real bug found and fixed: mid-action
+  feedback damage (a victim's on_death spell striking its killer) was
+  silently discarded by all three actor loops' copy write-backs — the
+  trigger-phase copy-back could even UN-kill the attacker. Fix = external
+  health-delta merge in simulation.ts (character loop, enemy loop, both
+  trigger-phase blocks). Note for authors: trigger config only exists on
+  executionMode 'parallel' actions; a hand-authored sequential+on_death
+  action WOULD execute as a normal turn action (editor can't produce
+  this; left as-is).
 - [ ] **Status effects on ENEMIES, per effect.** `8ddaacb` fixed the
   wrapper; now verify each effect actually behaves for enemy actors:
   slow (skip cadence), haste, shield absorb, deflect, reflect, stealth,
