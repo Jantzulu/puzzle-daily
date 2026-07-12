@@ -146,10 +146,14 @@ do, complementary to [`feature-roadmap.md`](../../puzzle-game/feature-roadmap.md
 
   *Captured 2026-04-27.*
 
-- [ ] **Necromancy spell type.** Like resurrect, but for *opposing-party*
-  dead units. Likely shares most of the summon and resurrect settings
-  (transition animation, party assignment, optional duration). Builds on
-  the summon framework once that lands. *Captured 2026-04-27.*
+- [x] **Necromancy spell type.** SHIPPED 2026-07-11 (`4f0b0da`): raises
+  nearest opposing-party corpse(s) as NEW win-exempt combatants on the
+  caster's side; corpse consumed (single-raise); shares all summon
+  overrides + resurrect's health-percent; editor UI in the spell builder.
+  v1 limitation: only corpses in the enemies array can rise — dead
+  HEROES can't be raised yet (character-shaped combatants in the enemies
+  array are a shape landmine). Original spec: like resurrect, but for
+  *opposing-party* dead units. *Captured 2026-04-27.*
 
 - [ ] **"Allies" entity class.** New entity class — friendly to heroes
   (same team), placed on the puzzle from the start by the creator (like

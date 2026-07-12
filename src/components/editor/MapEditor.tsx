@@ -3087,6 +3087,53 @@ export const MapEditor: React.FC = () => {
                                 </div>
                               )}
 
+                              {/* Per-type kill-requirement curation (user design 2026-07-11):
+                                  every enemy type placed on the map gets a checkbox; unchecked
+                                  types go into params.excludedEnemyIds — they neither block
+                                  victory nor appear in the player's quest text. */}
+                              {condition.type === 'defeat_all_enemies' && (() => {
+                                const placedTypes = Array.from(new Set(state.enemies.map(e => e.enemyId)));
+                                if (placedTypes.length === 0) return (
+                                  <p className="text-xs text-stone-500 italic">Place enemies to choose which count</p>
+                                );
+                                const excluded = condition.params?.excludedEnemyIds ?? [];
+                                return (
+                                  <div className="space-y-1 mt-1">
+                                    <p className="text-xs text-stone-400">Counts toward the quest:</p>
+                                    {placedTypes.map(enemyId => {
+                                      const counts = !excluded.includes(enemyId);
+                                      const name = getEnemy(enemyId)?.name ?? enemyId;
+                                      return (
+                                        <label key={enemyId} className="flex items-center gap-2 text-xs cursor-pointer">
+                                          <input
+                                            type="checkbox"
+                                            checked={counts}
+                                            onChange={(e) => {
+                                              const next = e.target.checked
+                                                ? excluded.filter(id => id !== enemyId)
+                                                : [...excluded, enemyId];
+                                              setState(prev => {
+                                                const newConditions = [...prev.winConditions];
+                                                newConditions[index] = {
+                                                  ...newConditions[index],
+                                                  params: {
+                                                    ...newConditions[index].params,
+                                                    excludedEnemyIds: next.length > 0 ? next : undefined,
+                                                  },
+                                                };
+                                                return { ...prev, winConditions: newConditions };
+                                              });
+                                            }}
+                                            className="w-3.5 h-3.5"
+                                          />
+                                          <span className={counts ? '' : 'text-stone-500 line-through'}>{name}</span>
+                                        </label>
+                                      );
+                                    })}
+                                  </div>
+                                );
+                              })()}
+
                               {(condition.type === 'max_characters' || condition.type === 'characters_alive') && (
                                 <div className="flex items-center gap-2">
                                   <label className="text-xs text-stone-400">Characters:</label>

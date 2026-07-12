@@ -3048,12 +3048,29 @@ export const Game: React.FC<GameProps> = ({
                       {gameState.puzzle.winConditions.map((wc) => {
                         switch (wc.type) {
                           case 'defeat_all_enemies': {
-                            // Mirror checkVictoryConditions: only ENEMY-party combatants
-                            // that aren't win-condition-exempt (summons) count as quest targets.
-                            const enemyCount = gameState.puzzle.enemies.filter(e =>
-                              !e.dead && entityParty(e, gameState) === 'enemy' && !e.excludeFromWinConditions
-                            ).length;
-                            return `Defeat all Enemies (${enemyCount})`;
+                            // Mirror checkVictoryConditions: ENEMY-party combatants that
+                            // aren't win-exempt (summons) or designer-excluded types.
+                            // Named quest text (user design 2026-07-11): group the
+                            // remaining kill targets by type — "Defeat the Bats (2) and
+                            // Skeleton (1)" — using the asset's pluralName when several.
+                            const excludedIds = wc.params?.excludedEnemyIds ?? [];
+                            const counted = gameState.puzzle.enemies.filter(e =>
+                              !e.dead && entityParty(e, gameState) === 'enemy' &&
+                              !e.excludeFromWinConditions && !excludedIds.includes(e.enemyId)
+                            );
+                            if (counted.length === 0) return 'Defeat all Enemies (0)';
+                            const groups = new Map<string, number>();
+                            counted.forEach(e => groups.set(e.enemyId, (groups.get(e.enemyId) ?? 0) + 1));
+                            const parts = Array.from(groups.entries()).map(([id, n]) => {
+                              const data = loadEnemy(id);
+                              const base = data?.name ?? 'Enemy';
+                              const label = n > 1 ? (data?.pluralName || `${base}s`) : base;
+                              return `${label} (${n})`;
+                            });
+                            const list = parts.length === 1
+                              ? parts[0]
+                              : `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`;
+                            return `Defeat the ${list}`;
                           }
                           case 'defeat_boss': {
                             const bossEnemies = gameState.puzzle.enemies

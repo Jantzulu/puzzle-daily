@@ -314,6 +314,19 @@ describe('checkVictoryConditions', () => {
       expect(checkVictoryConditions(gs)).toBe(false);
     });
 
+    it('ignores living enemies of designer-excluded types (params.excludedEnemyIds)', () => {
+      const gs = createTestGameState({
+        puzzle: createTestPuzzle({
+          winConditions: [{ type: 'defeat_all_enemies', params: { excludedEnemyIds: ['scenery-rat'] } }],
+          enemies: [
+            createTestEnemy({ dead: true }),
+            createTestEnemy({ enemyId: 'scenery-rat', dead: false }),
+          ],
+        }),
+      });
+      expect(checkVictoryConditions(gs)).toBe(true);
+    });
+
     it('ignores living enemies flagged excludeFromWinConditions (summons)', () => {
       const gs = createTestGameState({
         puzzle: createTestPuzzle({

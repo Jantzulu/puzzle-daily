@@ -2154,10 +2154,18 @@ export function checkVictoryConditions(gameState: GameState): boolean {
         // killing; a necromanced corpse flipped to 'hero' stops counting
         // (its death already happened — locked design answer). Charm is a
         // temporary allegiance and never affects win conditions.
+        // Designer-curated exclusions: enemy TYPES opted out of the kill
+        // requirement in the map editor (params.excludedEnemyIds), on top
+        // of the per-entity summon exemption.
+        const excludedIds = condition.params?.excludedEnemyIds;
         const enemyParty = [
           ...gameState.placedCharacters,
           ...gameState.puzzle.enemies,
-        ].filter(e => entityParty(e, gameState) === 'enemy' && !e.excludeFromWinConditions);
+        ].filter(e =>
+          entityParty(e, gameState) === 'enemy' &&
+          !e.excludeFromWinConditions &&
+          !(excludedIds && 'enemyId' in e && excludedIds.includes(e.enemyId))
+        );
         const allEnemiesDead = enemyParty.every(e => !isEntityFunctional(e));
         if (isHomingDebug()) {
           // Dump full enemy state when the defeat_all_enemies check runs, so

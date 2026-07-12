@@ -372,6 +372,14 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
                         className="w-full px-3 py-2 bg-stone-700 rounded" />
                     </div>
                     <div>
+                      <label className="block text-sm mb-1">Plural Name <span className="text-stone-400 font-normal">(optional)</span></label>
+                      <input type="text" value={editing.pluralName || ''}
+                        onChange={(e) => updateEnemy({ pluralName: e.target.value || undefined })}
+                        placeholder={`e.g., ${editing.name}s`}
+                        className="w-full px-3 py-2 bg-stone-700 rounded" />
+                      <p className="text-xs text-stone-400 mt-1">Used in quest text when several are on the board ("Defeat the Bats (2)")</p>
+                    </div>
+                    <div>
                       <label className="block text-sm mb-1">Title <span className="text-stone-400 font-normal">(optional)</span></label>
                       <input type="text" value={editing.title || ''}
                         onChange={(e) => updateEnemy({ title: e.target.value || undefined })}

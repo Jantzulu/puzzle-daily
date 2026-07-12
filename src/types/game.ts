@@ -268,6 +268,7 @@ export interface Enemy {
   name: string;
   title?: string; // Optional title displayed after name in italics (e.g., "the Terrible")
   description?: string; // Description of the enemy
+  pluralName?: string; // Plural form for grouped quest text ("Defeat the Bats (2)"); falls back to name + 's'
   spriteId: string;
   health: number;
   behavior?: EnemyBehavior;
@@ -426,6 +427,11 @@ export interface WinConditionParams {
 
   // For max_characters and characters_alive
   characterCount?: number;
+
+  // For defeat_all_enemies — enemy ASSET ids the designer opted out of the
+  // kill requirement (map editor per-type checkboxes). Living entities of
+  // these types neither block victory nor appear in the quest label.
+  excludedEnemyIds?: string[];
 }
 
 export interface WinCondition {
