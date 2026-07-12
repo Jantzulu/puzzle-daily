@@ -136,9 +136,15 @@ Ordered by (likelihood of live bugs × player impact). Check off as swept.
   straight bolt, pierced through by a pierce bolt (rear target still
   reached), correctly IGNORED by a locked homing bolt (single-target by
   design), and the interception is headless-parity clean.
-- [ ] **Tile behaviors × enemy actors.** Pressure plates, damage tiles,
-  teleports, ice — most tile tests likely exercise heroes; do enemies
-  (and summons) trigger/suffer them identically?
+- [x] **Tile behaviors × enemy actors.** SWEPT 2026-07-12
+  (`__tests__/audit-tiles-enemies.test.ts`, 6 tests). Enemies ride
+  damage tiles, teleports, ice, direction-changes, and pressure plates
+  identically to heroes (all through moveCharacter). ONE bug fixed:
+  damage-once dedupe keyed by characterId, which for enemies is the
+  SHARED enemyId — every same-asset duplicate after the first crossed
+  free. Fix = deterministic per-instance `instanceKey`
+  ('enemy#<index>'/'char#<index>') stamped by the executeTurn loops,
+  carried by all three wrappers, used as the dedupe key.
 - [ ] **Collectible pickup permissions × actor.** Enemy pickup, grace
   periods, thrown-item ownership — especially for summons (whose party
   is not their array side).

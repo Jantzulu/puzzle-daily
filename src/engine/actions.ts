@@ -1290,11 +1290,13 @@ function moveCharacter(
       updatedChar.y = newY;
     }
 
-    // Check for collectibles
-    // Detect if this is actually an enemy (enemies use characterId = enemyId when wrapped as PlacedCharacter)
-    const isEnemy = !getCharacter(updatedChar.characterId) && !!getEnemy(updatedChar.characterId);
-    // Charmed entities use their effective team for pickup permissions
-    const effectiveIsEnemy = isEntityCharmed(updatedChar) ? !isEnemy : isEnemy;
+    // Check for collectibles — pickup side is the entity's EFFECTIVE party
+    // (audit sweep 10): "characters can collect" means the hero SIDE, so a
+    // hero-party summon collects (and scores) like a hero, and charm keeps
+    // flipping allegiance exactly as the old manual charm-flip did.
+    // effectiveParty handles the wrapper (characterId = enemyId id fallback),
+    // the explicit party field, and charm in one place.
+    const effectiveIsEnemy = effectiveParty(updatedChar, gameState) === 'enemy';
     processCollectiblePickup(updatedChar, effectiveIsEnemy, newX, newY, gameState);
 
     // Process custom tile behaviors (damage, teleport, ice, etc.)
@@ -3145,10 +3147,12 @@ export function processCollectiblePickup(
   // Don't pick up despawning items
   if (collectible.despawning) return;
 
-  // Check grace period / permanent placer immunity
-  const entityId = isEnemy
-    ? (entity as PlacedEnemy).enemyId
-    : (entity as PlacedCharacter).characterId;
+  // Check grace period / permanent placer immunity. Id by field fallback,
+  // NOT by the party flag: movers arrive as hero-shaped wrappers
+  // (characterId = enemyId, no enemyId field), so the old flag-based read
+  // returned undefined for every enemy collector — enemy placers were
+  // never recognized as their own item's placer (audit sweep 10).
+  const entityId = (entity as PlacedCharacter).characterId || (entity as PlacedEnemy).enemyId;
   if (collectible.placedByEntityId && collectible.placedByEntityId === entityId) {
     if (collectible.placerPermanentlyImmune) return;
     if (collectible.placerImmuneUntilTurn !== undefined &&
@@ -3160,11 +3164,9 @@ export function processCollectiblePickup(
   if (isEnemy && !permissions.enemies) return;
   if (!isEnemy && !permissions.characters) return;
 
-  // Mark as collected
+  // Mark as collected (same field-fallback id as the grace check above)
   collectible.collected = true;
-  collectible.collectedBy = isEnemy
-    ? (entity as PlacedEnemy).enemyId
-    : (entity as PlacedCharacter).characterId;
+  collectible.collectedBy = entityId;
   collectible.collectedByType = isEnemy ? 'enemy' : 'character';
 
   // Apply all effects
@@ -3210,12 +3212,19 @@ function applyCollectibleEffect(
       // Win condition checker will scan for uncollected win_key collectibles
       break;
 
-    case 'heal':
-      const maxHealth = isEnemy
-        ? getEnemy((entity as PlacedEnemy).enemyId)?.health ?? entity.currentHealth
-        : getCharacter((entity as PlacedCharacter).characterId)?.health ?? entity.currentHealth;
+    case 'heal': {
+      // Max-health lookup by ID, not by the party flag: `isEnemy` is now the
+      // collector's ALLEGIANCE (a hero-party summon picks up as a hero) but
+      // its asset still lives in the enemy registry. Char-then-enemy
+      // fallback covers every shape (wrappers carry characterId = enemyId).
+      const collectorId = (entity as PlacedCharacter).characterId || (entity as PlacedEnemy).enemyId;
+      const maxHealth =
+        getCharacter(collectorId)?.health ??
+        getEnemy(collectorId)?.health ??
+        entity.currentHealth;
       entity.currentHealth = Math.min(entity.currentHealth + (effect.amount ?? 0), maxHealth);
       break;
+    }
 
     case 'damage':
       // Use centralized damage to respect shields (no source for trigger damage)
