@@ -65,10 +65,15 @@ Ordered by (likelihood of live bugs × player impact). Check off as swept.
   executionMode 'parallel' actions; a hand-authored sequential+on_death
   action WOULD execute as a normal turn action (editor can't produce
   this; left as-is).
-- [ ] **Status effects on ENEMIES, per effect.** `8ddaacb` fixed the
-  wrapper; now verify each effect actually behaves for enemy actors:
-  slow (skip cadence), haste, shield absorb, deflect, reflect, stealth,
-  invulnerable, priority, polymorph visuals aside — logic only.
+- [x] **Status effects on ENEMIES, per effect.** SWEPT 2026-07-12
+  (`__tests__/audit-enemy-status.test.ts`, 18 tests). NO bugs — the
+  `8ddaacb` wrapper fix holds per effect: sleep+wake, silence/disarm
+  gating, slow/haste cadence (counters persist through the shared
+  statusEffects reference), shield, invulnerable, deflect (melee +
+  projectile), hero-reflect vs enemy bolts, sturdy, steadfast, regen
+  cap, poison stacks, charm end-to-end. Pinned as-is: STURDY swallows a
+  push spell's damage rider along with the push. (Stealth/priority/stun
+  already covered in actions/simulation/party tests + sweep 1.)
 - [ ] **Enemy spell bookkeeping.** Cooldowns and maxUsesPerGame for
   ENEMY casters across chained/linked actions and REPEAT loops (the
   wrapper copies spellCooldowns back — spellUseCounts too?).
