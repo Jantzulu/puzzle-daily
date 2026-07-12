@@ -2677,11 +2677,14 @@ function applySpellToSelf(
 
   // Apply healing to self
   if (spell.healing && spell.healing > 0) {
-    // Look up source's max health to clamp the heal. Mirrors the canonical
-    // pattern used in the projectile / RESURRECT / range-heal paths above.
-    const sourceMaxHealth = isEnemy
-      ? getEnemy((character as unknown as PlacedEnemy).enemyId)?.health
-      : getCharacter(character.characterId)?.health;
+    // Look up source's max health to clamp the heal — char-then-enemy id
+    // fallback, NOT shape: enemy casters arrive as hero-shaped wrappers
+    // (characterId = enemyId, no enemyId field), so the old `'enemyId' in
+    // character` check read them as heroes, found no character asset, and
+    // let enemy self-heals run UNCAPPED (audit sweep 5, 2026-07-12).
+    const sourceMaxHealth =
+      getCharacter(character.characterId)?.health ??
+      getEnemy(character.characterId)?.health;
     character.currentHealth = Math.min(
       character.currentHealth + spell.healing,
       sourceMaxHealth ?? character.currentHealth + spell.healing
