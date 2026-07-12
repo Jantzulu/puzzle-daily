@@ -2197,12 +2197,22 @@ function processVesselTransforms(gameState: GameState): void {
   for (let i = 0; i < count; i++) {
     const entity = gameState.puzzle.enemies[i];
     if (entity.despawned || entity.transformedOnTurn !== undefined) continue;
-    if (entity.pendingProjectileDeath) continue; // dying — wait for the committed death
     const vessel = loadVessel(entity.enemyId);
     if (!vessel?.transformEnemyId) continue;
 
-    const brokeOpen = entity.dead;
-    const hatchDue = !entity.dead &&
+    // Deferred projectile deaths: the entity is LOGICALLY dead the moment
+    // the hit registers (pendingProjectileDeath), but the `dead` flag
+    // itself is committed by the RENDER loop on visual arrival — a wall
+    // clock the headless validator never runs. Keying the transform on the
+    // committed flag made the hatch turn diverge between modes (audit
+    // sweep 7). Deterministic rule instead: logically dead AND past the
+    // stamped death-visual turn (diedOnTurn — same clock the corpse
+    // movement blockers use).
+    const logicallyDead = entity.dead || !!entity.pendingProjectileDeath;
+    const deathSettled = entity.diedOnTurn === undefined ||
+      gameState.currentTurn >= entity.diedOnTurn;
+    const brokeOpen = logicallyDead && deathSettled;
+    const hatchDue = !logicallyDead &&
       vessel.transformAfterTurns !== undefined && vessel.transformAfterTurns > 0 &&
       gameState.currentTurn >= (entity.spawnedOnTurn ?? 0) + vessel.transformAfterTurns;
     if (!brokeOpen && !hatchDue) continue;
@@ -3430,6 +3440,12 @@ function applyEntityHit(
           console.log(`[DEATH-MUT ${targetIsEnemy ? 'enemy' : 'char'}] id=${id.slice(-6)}@(${target.x},${target.y}) → pendingDeath (from applyEntityHit, proj=${proj.id.slice(-6)} dmg=${damage})`);
         }
       } else {
+        // Headless: the death commits immediately, but the death-VISUAL
+        // turn is still next turn — stamp diedOnTurn to match the visual
+        // mode's deferred stamp, or every diedOnTurn consumer (corpse
+        // movement blocking, vessel transforms) runs a full turn early in
+        // the validator (audit sweep 7).
+        target.diedOnTurn = gameState.currentTurn + 1;
         handleEntityDeathDrop(target, targetIsEnemy, gameState);
       }
     }
