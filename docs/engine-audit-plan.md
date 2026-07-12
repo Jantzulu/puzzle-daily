@@ -145,9 +145,33 @@ Ordered by (likelihood of live bugs × player impact). Check off as swept.
   free. Fix = deterministic per-instance `instanceKey`
   ('enemy#<index>'/'char#<index>') stamped by the executeTurn loops,
   carried by all three wrappers, used as the dedupe key.
-- [ ] **Collectible pickup permissions × actor.** Enemy pickup, grace
-  periods, thrown-item ownership — especially for summons (whose party
-  is not their array side).
+- [x] **Collectible pickup permissions × actor.** SWEPT 2026-07-12
+  (`__tests__/audit-pickups.test.ts`, 9 tests). THREE fixes, one root
+  (flag from asset shape): pickup side is now the collector's EFFECTIVE
+  party (hero-party summons collect heroes-only items and SCORE for the
+  player; charm flips access both ways); grace-period placer id used a
+  field the wrapper doesn't have, so enemy placers could instantly
+  re-scoop their own drops (and collectedBy recorded undefined for all
+  enemy pickups); the heal collectible's max-health lookup went
+  id-fallback. Known edge left as-is: duplicate same-asset placers
+  share grace immunity (id-based; would need instanceKey persisted on
+  the collectible).
+
+---
+
+## AUDIT COMPLETE — 2026-07-12
+
+All ten sweeps done across two days (sweeps 1–10, ~70 new pin tests in
+`__tests__/audit-*.test.ts`, full suite 436 green). Bugs found & fixed:
+mid-action feedback damage discarded (3 loops), enemy spellUseCounts
+never carried (unlimited resurrects), hero-fights-own-summon contact
+(superseded by the Thorns/Trample redesign), enemy self-heals uncapped,
+projectile-smashed vessels never hatching headless + diedOnTurn stamp
+asymmetry (validator parity), damage-once tiles keyed by shared id,
+pickup side keyed by shape. Clean sweeps: enemy status effects,
+backstab, projectiles vs mid-turn summons. The audit suites ARE the
+regression net for these axes going forward — extend them when adding
+features that touch an axis.
 
 ## Rules of engagement
 
