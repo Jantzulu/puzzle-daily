@@ -487,8 +487,12 @@ function processDamageBehavior(
     if (!tileState.damagedEntities) {
       tileState.damagedEntities = new Set();
     }
-    // Use character position + id as unique key
-    const entityKey = character.characterId;
+    // Per-INSTANCE key: same-asset enemies share an enemyId (which is the
+    // wrapper's characterId), so an id key let every duplicate after the
+    // first cross for free (audit sweep 9). instanceKey is the executeTurn
+    // loop's index-based identity; the id remains a fallback for entities
+    // damaged outside the loops (e.g. setup states in tests).
+    const entityKey = character.instanceKey ?? character.characterId;
     if (tileState.damagedEntities.has(entityKey)) {
       // Already damaged this entity
       return character;

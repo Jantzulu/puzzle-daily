@@ -1605,6 +1605,9 @@ export function executeTurn(gameState: GameState): GameState {
     const character = gameState.placedCharacters[i];
     // Create a new character object (shallow copy)
     const newCharacter = { ...character };
+    // Per-instance identity for id-collision-safe bookkeeping (damage-once
+    // tiles): deterministic, index-based, re-stamped every turn.
+    newCharacter.instanceKey = `char#${i}`;
 
     // Clear animation flags from previous turn (animation has completed)
     newCharacter.justTeleported = false;
@@ -1792,6 +1795,10 @@ export function executeTurn(gameState: GameState): GameState {
     const enemy = gameState.puzzle.enemies[i];
     // Create a new enemy object (shallow copy)
     const newEnemy = { ...enemy };
+    // Per-instance identity — same-asset enemies share an enemyId, so id
+    // keys collide (damage-once tiles). Index-based: append-only invariant
+    // keeps it stable.
+    newEnemy.instanceKey = `enemy#${i}`;
 
     // Clear animation flags from previous turn (animation has completed)
     newEnemy.justTeleported = false;
@@ -1888,6 +1895,7 @@ export function executeTurn(gameState: GameState): GameState {
         spellUseCounts: newEnemy.spellUseCounts, // maxUsesPerGame tracking — missing until audit sweep 3 (2026-07-12): enemy casters had unlimited uses
         contactHaltTurn: newEnemy.contactHaltTurn, // Thorns/Trample movement-halt stamps ride the wrapper both ways
         contactHaltForever: newEnemy.contactHaltForever,
+        instanceKey: newEnemy.instanceKey, // per-instance identity for tile bookkeeping
         preCastFacing: newEnemy.preCastFacing, // carry the pre-cast stash across chained actions this turn
         // Shared REFERENCE on purpose: canEntityAct/canEntityCastSpell/
         // canEntityMove and charm-aware targeting all read the caster's
@@ -2026,6 +2034,7 @@ export function executeTurn(gameState: GameState): GameState {
         spellUseCounts: enemy.spellUseCounts, // maxUsesPerGame tracking — missing until audit sweep 3 (2026-07-12)
         contactHaltTurn: enemy.contactHaltTurn, // Thorns/Trample movement-halt stamps ride the wrapper both ways
         contactHaltForever: enemy.contactHaltForever,
+        instanceKey: enemy.instanceKey, // per-instance identity for tile bookkeeping
         preCastFacing: enemy.preCastFacing, // carry the pre-cast stash (may have been set by a sequential cast this turn)
         statusEffects: enemy.statusEffects, // shared reference — status gates + charm read the caster's effects (see the action-loop wrapper)
       };
@@ -2080,6 +2089,7 @@ export function executeTurn(gameState: GameState): GameState {
         spellUseCounts: enemy.spellUseCounts, // maxUsesPerGame tracking — missing until audit sweep 3 (2026-07-12)
         contactHaltTurn: enemy.contactHaltTurn, // Thorns/Trample movement-halt stamps ride the wrapper both ways
         contactHaltForever: enemy.contactHaltForever,
+        instanceKey: enemy.instanceKey, // per-instance identity for tile bookkeeping
         preCastFacing: enemy.preCastFacing, // carry the pre-cast stash (may have been set by a sequential cast this turn)
         statusEffects: enemy.statusEffects, // shared reference — status gates + charm read the caster's effects (see the action-loop wrapper)
       };

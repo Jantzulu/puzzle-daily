@@ -359,6 +359,7 @@ export interface PlacedEnemy {
   contactReactionFacing?: Direction; // Facing to render the contact-damage reaction animation toward — visual only
   contactHaltTurn?: number; // Thorns/Trample haltMovementOnContact: movement suppressed while currentTurn === this (stamped when the holder's contact damage fires)
   contactHaltForever?: boolean; // Thorns/Trample haltMovementMode 'forever': movement suppressed permanently
+  instanceKey?: string; // Deterministic per-INSTANCE identity ('enemy#<index>'), stamped by executeTurn each turn (arrays are append-only, so the index is stable). Needed where ids don't cut it: same-asset entities share enemyId (damage-once tile dedupe, audit sweep 9)
   statusEffects?: StatusEffectInstance[]; // Active status effects on this enemy
   spellCooldowns?: Record<string, number>; // Spell ID -> turns remaining on cooldown
   spellUseCounts?: Record<string, number>; // Spell ID -> number of times used this game (for maxUsesPerGame)
@@ -634,6 +635,7 @@ export interface PlacedCharacter {
   contactReactionFacing?: Direction; // Facing to render the contact-damage reaction animation toward — visual only
   contactHaltTurn?: number; // Thorns/Trample haltMovementOnContact: movement suppressed while currentTurn === this (stamped when the holder's contact damage fires)
   contactHaltForever?: boolean; // Thorns/Trample haltMovementMode 'forever': movement suppressed permanently
+  instanceKey?: string; // Deterministic per-INSTANCE identity ('char#<index>'), stamped by executeTurn each turn — see the PlacedEnemy field
   statusEffects?: StatusEffectInstance[]; // Active status effects on this character
   spellCooldowns?: Record<string, number>; // Spell ID -> turns remaining on cooldown
   spellUseCounts?: Record<string, number>; // Spell ID -> number of times used this game (for maxUsesPerGame)
