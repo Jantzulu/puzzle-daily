@@ -92,6 +92,7 @@ export interface ThemeAssets {
   // Compendium Tab Icons (emoji/text)
   iconTabHeroes?: string;       // Icon for Heroes tab (default: ⚔️)
   iconTabEnemies?: string;      // Icon for Enemies tab (default: 👹)
+  iconTabVessels?: string;      // Icon for Vessels tab (default: 🛢️)
   iconTabEnchantments?: string; // Icon for Enchantments tab (default: ✨)
   iconTabTiles?: string;        // Icon for Dungeon Tiles tab (default: 🧱)
   iconTabItems?: string;        // Icon for Items tab (default: 💎)
@@ -284,6 +285,7 @@ export const THEME_ASSET_CONFIG: Record<ThemeAssetKey, { label: string; descript
   iconBugReport: { label: 'Bug Report Icon', description: 'Icon/emoji shown on the Report Bug link (default: 🐛)', category: 'icons', inputType: 'text' },
   iconTabHeroes: { label: 'Heroes Tab Icon', description: 'Icon/emoji for Heroes tab in Compendium (default: ⚔️)', category: 'icons', inputType: 'text' },
   iconTabEnemies: { label: 'Enemies Tab Icon', description: 'Icon/emoji for Enemies tab in Compendium (default: 👹)', category: 'icons', inputType: 'text' },
+  iconTabVessels: { label: 'Vessels Tab Icon', description: 'Icon/emoji for Vessels tab in Compendium (default: 🛢️)', category: 'icons', inputType: 'text' },
   iconTabEnchantments: { label: 'Status Effects Tab Icon', description: 'Icon/emoji for Status Effects tab in Compendium (default: ✨)', category: 'icons', inputType: 'text' },
   iconTabTiles: { label: 'Tiles Tab Icon', description: 'Icon/emoji for Dungeon Tiles tab in Compendium (default: 🧱)', category: 'icons', inputType: 'text' },
   iconTabItems: { label: 'Items Tab Icon', description: 'Icon/emoji for Items tab in Compendium (default: 💎)', category: 'icons', inputType: 'text' },
