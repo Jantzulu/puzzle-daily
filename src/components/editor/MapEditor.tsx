@@ -10,7 +10,7 @@ import { playBackgroundMusic, stopMusic } from '../../utils/gameSounds';
 import { savePuzzle, getSavedPuzzles, deletePuzzle, loadPuzzle, type SavedPuzzle } from '../../utils/puzzleStorage';
 import { cacheEditorState, getCachedEditorState, clearCachedEditorState } from '../../utils/editorState';
 import { writeAutoSave, readAutoSave, clearAutoSave, AUTOSAVE_INTERVAL_MS, type AutoSaveData } from '../../utils/autoSave';
-import { getAllPuzzleSkins, loadPuzzleSkin, getCustomTileTypes, loadTileType, loadSpellAsset, getAllObjects, loadObject, getAllCollectibles, loadCollectible, getSoundAssets, resolveImageSource, type CustomObject } from '../../utils/assetStorage';
+import { getAllPuzzleSkins, loadPuzzleSkin, getCustomTileTypes, loadTileType, loadSpellAsset, getAllObjects, loadObject, getAllCollectibles, loadCollectible, getSoundAssets, resolveImageSource, getCustomVessels, vesselToEnemyAsset, type CustomObject } from '../../utils/assetStorage';
 import { collectPuzzleAssetUrls } from '../../utils/spritePreload';
 import { preloadImages } from '../../utils/imageLoader';
 import type { PuzzleSkin, SoundAsset } from '../../types/game';
@@ -681,6 +681,10 @@ export const MapEditor: React.FC = () => {
   const [selectedObjectId, setSelectedObjectId] = useState<string | null>(null);
   const [selectedCollectibleId, setSelectedCollectibleId] = useState<string | null>(null);
   const allEnemies = getAllEnemies();
+  // Vessels place exactly like enemies (they live in puzzle.enemies and
+  // resolve through the enemy adapter) — shown as their own palette section.
+  const allVessels = getCustomVessels().map(vesselToEnemyAsset);
+  const placeableEnemyTypes = [...allEnemies, ...allVessels];
   const allCharacters = getAllCharacters();
   const allObjects = getAllObjects();
   const allCollectibles = getAllCollectibles();
@@ -940,7 +944,7 @@ export const MapEditor: React.FC = () => {
         return;
       }
 
-      const enemyType = allEnemies.find(e => e.id === selectedEnemyId);
+      const enemyType = placeableEnemyTypes.find(e => e.id === selectedEnemyId);
       if (!enemyType) return;
 
       setState(prev => {
@@ -2327,6 +2331,36 @@ export const MapEditor: React.FC = () => {
                       })}
                     </div>
                   )}
+
+                  {/* Vessels — breakable statics, placed exactly like enemies */}
+                  {allVessels.length > 0 && (() => {
+                    const searchFilteredVessels = allVessels.filter(v =>
+                      v.name.toLowerCase().includes(toolSearchTerm.toLowerCase())
+                    );
+                    if (searchFilteredVessels.length === 0) return null;
+                    return (
+                      <>
+                        <h3 className="text-sm font-bold mt-4 mb-2 text-copper-300">🛢️ Vessels</h3>
+                        <div className="space-y-2 max-h-48 overflow-y-auto">
+                          {searchFilteredVessels.map(vessel => (
+                            <button
+                              key={vessel.id}
+                              onClick={() => setSelectedEnemyId(vessel.id)}
+                              className={`w-full p-2 rounded text-left flex items-center gap-2 ${
+                                selectedEnemyId === vessel.id ? 'bg-blue-600' : 'bg-stone-700 hover:bg-stone-600'
+                              }`}
+                            >
+                              <SpriteThumbnail sprite={vessel.customSprite} size={32} previewType="entity" />
+                              <div className="flex-1 min-w-0">
+                                <div className="text-sm font-medium truncate">{vessel.name}</div>
+                                <div className="text-xs text-stone-400">HP: {vessel.health}</div>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
               )}
 
