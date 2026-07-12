@@ -357,6 +357,8 @@ export interface PlacedEnemy {
   preCastFacing?: Direction; // Set when a face-on-cast with revert changes facing; restored at the next turn start (deterministic)
   contactReactionTurn?: number; // Turn on which this entity's contact-damage reaction fired — visual only (board plays a cast animation while this === currentTurn)
   contactReactionFacing?: Direction; // Facing to render the contact-damage reaction animation toward — visual only
+  contactHaltTurn?: number; // Thorns/Trample haltMovementOnContact: movement suppressed while currentTurn === this (stamped when the holder's contact damage fires)
+  contactHaltForever?: boolean; // Thorns/Trample haltMovementMode 'forever': movement suppressed permanently
   statusEffects?: StatusEffectInstance[]; // Active status effects on this enemy
   spellCooldowns?: Record<string, number>; // Spell ID -> turns remaining on cooldown
   spellUseCounts?: Record<string, number>; // Spell ID -> number of times used this game (for maxUsesPerGame)
@@ -630,6 +632,8 @@ export interface PlacedCharacter {
   preCastFacing?: Direction; // Set when a face-on-cast with revert changes facing; restored at the next turn start (deterministic)
   contactReactionTurn?: number; // Turn on which this entity's contact-damage reaction fired — visual only (board plays a cast animation while this === currentTurn)
   contactReactionFacing?: Direction; // Facing to render the contact-damage reaction animation toward — visual only
+  contactHaltTurn?: number; // Thorns/Trample haltMovementOnContact: movement suppressed while currentTurn === this (stamped when the holder's contact damage fires)
+  contactHaltForever?: boolean; // Thorns/Trample haltMovementMode 'forever': movement suppressed permanently
   statusEffects?: StatusEffectInstance[]; // Active status effects on this character
   spellCooldowns?: Record<string, number>; // Spell ID -> turns remaining on cooldown
   spellUseCounts?: Record<string, number>; // Spell ID -> number of times used this game (for maxUsesPerGame)
@@ -749,7 +753,8 @@ export enum StatusEffectType {
   STEADFAST = 'steadfast', // Immune to direction changes (redirect spells, items, tiles)
   REFLECT = 'reflect',     // Reflects projectiles back at caster's team
   // Entity trait types (replace property flags)
-  CONTACT_DAMAGE = 'contact_damage', // Deals damage when another entity enters same tile
+  CONTACT_DAMAGE = 'contact_damage', // "Thorns" (display name; storage value kept for saved assets) — REACTIVE: bites any hostile that tries to walk onto the holder's tile, every attempt
+  TRAMPLE = 'trample',               // OFFENSIVE walk-in: the holder damages hostile entities IT walks into, plowing through on a kill. Hero-side strikes first in a Thorns/Trample trade unless the enemy side has PRIORITY (user design 2026-07-12)
   GHOST = 'ghost',                   // Can overlap / pass through other entities
   WALL_ALIVE = 'wall_alive',         // Triggers wall-collision reactions when alive
   WALL_DEAD = 'wall_dead',           // Triggers wall-collision reactions when dead (corpse)
@@ -1469,6 +1474,12 @@ export interface StatusEffectAsset {
   contactDamageFaceAttacker?: boolean; // Turn the holder to face the incoming entity for the reaction (else use current facing)
   contactDamageKeepFacing?: boolean;   // With faceAttacker: persist the new facing logically (else revert — the turn is visual-only)
   contactDamageSpellVisualId?: string; // Borrow this spell's LANDED-HIT visuals when the contact fires: melee-attack sprite oriented toward the attacker + damage effect on their tile. Visuals only — damage/mechanics are NOT inherited, and no projectile flight (contact damage always lands)
+
+  // Thorns/Trample movement consequence (CONTACT_DAMAGE + TRAMPLE types,
+  // user design 2026-07-12): when the holder's contact damage fires, its own
+  // movement can halt — the goring beast stops to gore.
+  haltMovementOnContact?: boolean;         // Skip the holder's movement for the turn the damage is dealt (a trampler will NOT take the vacated tile that turn)
+  haltMovementMode?: 'resume' | 'forever'; // After the halt turn: resume the behavior pattern next turn (default) or never execute movement again
 
   // Overlay sprite - renders on top of entity at reduced opacity (for shields, deflect, etc.)
   overlaySprite?: SpriteReference;  // Sprite to overlay on entity (supports spritesheets)

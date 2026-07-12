@@ -34,7 +34,8 @@ const TYPE_DESCRIPTIONS: Record<StatusEffectType, string> = {
   [StatusEffectType.INVULNERABLE]: 'Completely immune to all damage for the duration.',
   [StatusEffectType.STEADFAST]: 'Immune to direction changes — redirect spells, tiles, and items have no effect.',
   [StatusEffectType.REFLECT]: 'Reflects incoming projectiles back at the caster\'s team. Configurable by direction, tint color, and sprite.',
-  [StatusEffectType.CONTACT_DAMAGE]: 'Deals damage equal to the value when another entity enters the same tile. Use the value field to set how much damage is dealt.',
+  [StatusEffectType.CONTACT_DAMAGE]: 'Thorns — REACTIVE: bites any hostile entity that tries to walk onto the holder\'s tile, every attempt (blocked walkers that keep bumping keep getting bitten). The holder never deals this damage by moving. Use the value field for the damage.',
+  [StatusEffectType.TRAMPLE]: 'Trample — OFFENSIVE: the holder damages hostile entities IT walks into, plowing through the tile on a kill. In a Thorns/Trample trade the hero-side entity strikes first, unless the enemy side has Priority ("this one is faster"). Use the value field for the damage.',
   [StatusEffectType.GHOST]: 'Can freely overlap and pass through other entities. Also allows other entities to pass through this one.',
   [StatusEffectType.WALL_ALIVE]: 'While alive, triggers wall-collision reactions in moving entities (turn left, turn right, bounce, etc.).',
   [StatusEffectType.WALL_DEAD]: 'While a corpse, triggers wall-collision reactions in moving entities. Has no effect while alive.',
@@ -69,6 +70,7 @@ const TYPE_COLORS: Record<StatusEffectType, string> = {
   [StatusEffectType.STEADFAST]: '#78716c',
   [StatusEffectType.REFLECT]: '#06b6d4',
   [StatusEffectType.CONTACT_DAMAGE]: '#dc2626',
+  [StatusEffectType.TRAMPLE]: '#ea580c',
   [StatusEffectType.GHOST]: '#e0f2fe',
   [StatusEffectType.WALL_ALIVE]: '#b45309',
   [StatusEffectType.WALL_DEAD]: '#78350f',
@@ -82,6 +84,17 @@ const TYPE_COLORS: Record<StatusEffectType, string> = {
   [StatusEffectType.DISPEL]: '#f59e0b',
   [StatusEffectType.CLEANSE]: '#34d399',
 };
+
+// Display-name overrides. CONTACT_DAMAGE keeps its stored enum value
+// ('contact_damage' lives inside every saved status asset) but presents as
+// "Thorns" since the 2026-07-12 reactive-contact redesign.
+const TYPE_LABELS: Partial<Record<StatusEffectType, string>> = {
+  [StatusEffectType.CONTACT_DAMAGE]: 'Thorns',
+  [StatusEffectType.TRAMPLE]: 'Trample',
+};
+
+export const statusTypeLabel = (t: StatusEffectType): string =>
+  TYPE_LABELS[t] ?? t.charAt(0).toUpperCase() + t.slice(1);
 
 function makeDefaultIcon(color: string): SpriteReference {
   return {
@@ -141,6 +154,8 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
   const [contactDamageKeepFacing, setContactDamageKeepFacing] = useState(effect?.contactDamageKeepFacing ?? false);
   const [contactDamageSpellVisualId, setContactDamageSpellVisualId] = useState(effect?.contactDamageSpellVisualId);
   const [showContactSpellPicker, setShowContactSpellPicker] = useState(false);
+  const [haltMovementOnContact, setHaltMovementOnContact] = useState(effect?.haltMovementOnContact ?? false);
+  const [haltMovementMode, setHaltMovementMode] = useState<'resume' | 'forever'>(effect?.haltMovementMode ?? 'resume');
 
   // Dispel/Cleanse state
   const [targetingIntent, setTargetingIntent] = useState<'hostile' | 'friendly' | undefined>(effect?.targetingIntent);
@@ -176,6 +191,8 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
       contactDamageFaceAttacker: type === StatusEffectType.CONTACT_DAMAGE ? contactDamageFaceAttacker : undefined,
       contactDamageKeepFacing: type === StatusEffectType.CONTACT_DAMAGE && contactDamageFaceAttacker ? contactDamageKeepFacing : undefined,
       contactDamageSpellVisualId: type === StatusEffectType.CONTACT_DAMAGE ? contactDamageSpellVisualId : undefined,
+      haltMovementOnContact: (type === StatusEffectType.CONTACT_DAMAGE || type === StatusEffectType.TRAMPLE) && haltMovementOnContact ? true : undefined,
+      haltMovementMode: (type === StatusEffectType.CONTACT_DAMAGE || type === StatusEffectType.TRAMPLE) && haltMovementOnContact ? haltMovementMode : undefined,
       polymorphSprite: type === StatusEffectType.POLYMORPH ? polymorphSprite : undefined,
       overlaySprite: overlaySprite,
       overlayOpacity: overlaySprite ? overlayOpacity : undefined,
@@ -263,6 +280,7 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
         setStackingBehavior('refresh');
         break;
       case StatusEffectType.CONTACT_DAMAGE:
+      case StatusEffectType.TRAMPLE:
         setDefaultDuration(99999); setDefaultValue(1);
         setStackingBehavior('refresh');
         break;
@@ -315,7 +333,7 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
               <h2 className="text-lg md:text-2xl font-bold font-medieval text-copper-400 truncate">
                 {name || 'Unnamed Effect'}
               </h2>
-              <p className="text-xs text-stone-400">{type}</p>
+              <p className="text-xs text-stone-400">{statusTypeLabel(type)}</p>
             </div>
           </div>
           <div className="flex gap-1.5 md:gap-2 flex-shrink-0">
@@ -368,7 +386,7 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
             >
               {Object.values(StatusEffectType).map(t => (
                 <option key={t} value={t}>
-                  {t.charAt(0).toUpperCase() + t.slice(1)}
+                  {statusTypeLabel(t)}
                 </option>
               ))}
             </select>
@@ -411,6 +429,8 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
                   ? 'Health restored per turn'
                   : [StatusEffectType.POISON, StatusEffectType.BURN, StatusEffectType.BLEED].includes(type)
                   ? 'Damage dealt per turn (multiplied by stacks)'
+                  : [StatusEffectType.CONTACT_DAMAGE, StatusEffectType.TRAMPLE].includes(type)
+                  ? 'Damage dealt on contact'
                   : 'Not used by this effect type'}
               </p>
             </div>
@@ -486,6 +506,36 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
                   <span className="relative">Entity sprite</span>
                 </div>
               </div>
+            </div>
+          )}
+
+          {(type === StatusEffectType.CONTACT_DAMAGE || type === StatusEffectType.TRAMPLE) && (
+            <div className="space-y-2 p-3 rounded-lg bg-stone-700/40 border border-stone-600">
+              <h4 className="text-sm font-medium text-stone-300">Movement on Contact (optional)</h4>
+              <p className="text-xs text-stone-400">
+                When this damage is dealt, the holder can halt its own movement — the goring
+                beast stops to gore (a halted trampler will not take the vacated tile that turn).
+              </p>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={haltMovementOnContact}
+                  onChange={(e) => setHaltMovementOnContact(e.target.checked)}
+                  className="w-4 h-4"
+                />
+                Halt movement for the turn the damage is dealt
+              </label>
+              {haltMovementOnContact && (
+                <select
+                  value={haltMovementMode}
+                  onChange={(e) => setHaltMovementMode(e.target.value as 'resume' | 'forever')}
+                  className="w-full px-2 py-1 bg-stone-600 rounded text-xs ml-4"
+                  style={{ maxWidth: 'calc(100% - 1rem)' }}
+                >
+                  <option value="resume">Resume the behavior pattern next turn</option>
+                  <option value="forever">Stop moving forever</option>
+                </select>
+              )}
             </div>
           )}
 

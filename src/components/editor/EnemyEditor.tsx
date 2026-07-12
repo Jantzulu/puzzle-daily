@@ -615,7 +615,7 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
                       <span className="text-sm font-medium text-blood-300">Boss Enemy</span>
                     </label>
                     <p className="text-xs text-stone-400 ml-1">Boss enemies enable the "Defeat the Boss" win condition.</p>
-                    <p className="text-xs text-stone-500 ml-1 mt-1">Other traits (Ghost, Wall, Halt, Priority, Sturdy, Contact Damage) are assigned via starting status effects.</p>
+                    <p className="text-xs text-stone-500 ml-1 mt-1">Other traits (Ghost, Wall, Halt, Priority, Sturdy, Thorns, Trample) are assigned via starting status effects.</p>
                   </CollapsiblePanel>
 
                   {/* Sound Effects */}

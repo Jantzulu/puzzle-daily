@@ -1019,6 +1019,7 @@ const STATUS_EFFECT_POLARITY: Record<StatusEffectType, 'positive' | 'negative' |
   [StatusEffectType.POLYMORPH]:       'negative',
   // Innate traits — never removed by Dispel/Cleanse
   [StatusEffectType.CONTACT_DAMAGE]:  'neutral',
+  [StatusEffectType.TRAMPLE]:         'neutral',
   [StatusEffectType.GHOST]:           'neutral',
   [StatusEffectType.WALL_ALIVE]:      'neutral',
   [StatusEffectType.WALL_DEAD]:       'neutral',
@@ -1081,10 +1082,15 @@ export function canEntityCastSpell(
 }
 
 /**
- * Check if an entity can move based on status effects (for Slow effect)
- * Returns true if entity can move, false if this movement should be skipped
+ * Check if an entity can move based on status effects (for Slow effect) and
+ * the Thorns/Trample movement-halt stamps (haltMovementOnContact).
+ * Returns true if entity can move, false if this movement should be skipped.
+ * Pass currentTurn to honor the one-turn halt stamp; the forever halt needs
+ * no clock.
  */
-export function canEntityMove(entity: PlacedCharacter | PlacedEnemy): boolean {
+export function canEntityMove(entity: PlacedCharacter | PlacedEnemy, currentTurn?: number): boolean {
+  if (entity.contactHaltForever) return false;
+  if (currentTurn !== undefined && entity.contactHaltTurn === currentTurn) return false;
   if (!entity.statusEffects) return true;
 
   for (const effect of entity.statusEffects) {
@@ -1880,6 +1886,8 @@ export function executeTurn(gameState: GameState): GameState {
         dead: newEnemy.dead,
         spellCooldowns: newEnemy.spellCooldowns,
         spellUseCounts: newEnemy.spellUseCounts, // maxUsesPerGame tracking — missing until audit sweep 3 (2026-07-12): enemy casters had unlimited uses
+        contactHaltTurn: newEnemy.contactHaltTurn, // Thorns/Trample movement-halt stamps ride the wrapper both ways
+        contactHaltForever: newEnemy.contactHaltForever,
         preCastFacing: newEnemy.preCastFacing, // carry the pre-cast stash across chained actions this turn
         // Shared REFERENCE on purpose: canEntityAct/canEntityCastSpell/
         // canEntityMove and charm-aware targeting all read the caster's
@@ -1898,6 +1906,8 @@ export function executeTurn(gameState: GameState): GameState {
       newEnemy.preCastFacing = result.preCastFacing; // face-on-cast-with-revert stash (restored next turn start)
       newEnemy.spellCooldowns = result.spellCooldowns;
       newEnemy.spellUseCounts = result.spellUseCounts;
+      newEnemy.contactHaltTurn = result.contactHaltTurn;
+      newEnemy.contactHaltForever = result.contactHaltForever;
       newEnemy.justTeleported = result.justTeleported;
       newEnemy.teleportFromX = result.teleportFromX;
       newEnemy.teleportFromY = result.teleportFromY;
@@ -2014,6 +2024,8 @@ export function executeTurn(gameState: GameState): GameState {
         dead: enemy.dead,
         spellCooldowns: enemy.spellCooldowns,
         spellUseCounts: enemy.spellUseCounts, // maxUsesPerGame tracking — missing until audit sweep 3 (2026-07-12)
+        contactHaltTurn: enemy.contactHaltTurn, // Thorns/Trample movement-halt stamps ride the wrapper both ways
+        contactHaltForever: enemy.contactHaltForever,
         preCastFacing: enemy.preCastFacing, // carry the pre-cast stash (may have been set by a sequential cast this turn)
         statusEffects: enemy.statusEffects, // shared reference — status gates + charm read the caster's effects (see the action-loop wrapper)
       };
@@ -2034,6 +2046,8 @@ export function executeTurn(gameState: GameState): GameState {
       enemy.preCastFacing = tempCharForTrigger.preCastFacing; // face-on-cast-with-revert stash (restored next turn start)
       enemy.spellCooldowns = tempCharForTrigger.spellCooldowns;
       enemy.spellUseCounts = tempCharForTrigger.spellUseCounts;
+      enemy.contactHaltTurn = tempCharForTrigger.contactHaltTurn;
+      enemy.contactHaltForever = tempCharForTrigger.contactHaltForever;
       if (!enemy.dead && enemy.currentHealth <= 0) {
         applyDamageToEntity(enemy, 0, gameState); // combined-lethality: die via the canonical path
       }
@@ -2064,6 +2078,8 @@ export function executeTurn(gameState: GameState): GameState {
         dead: enemy.dead,
         spellCooldowns: enemy.spellCooldowns,
         spellUseCounts: enemy.spellUseCounts, // maxUsesPerGame tracking — missing until audit sweep 3 (2026-07-12)
+        contactHaltTurn: enemy.contactHaltTurn, // Thorns/Trample movement-halt stamps ride the wrapper both ways
+        contactHaltForever: enemy.contactHaltForever,
         preCastFacing: enemy.preCastFacing, // carry the pre-cast stash (may have been set by a sequential cast this turn)
         statusEffects: enemy.statusEffects, // shared reference — status gates + charm read the caster's effects (see the action-loop wrapper)
       };
@@ -2083,6 +2099,8 @@ export function executeTurn(gameState: GameState): GameState {
       enemy.preCastFacing = tempCharForTrigger.preCastFacing; // face-on-cast-with-revert stash (restored next turn start)
       enemy.spellCooldowns = tempCharForTrigger.spellCooldowns;
       enemy.spellUseCounts = tempCharForTrigger.spellUseCounts;
+      enemy.contactHaltTurn = tempCharForTrigger.contactHaltTurn;
+      enemy.contactHaltForever = tempCharForTrigger.contactHaltForever;
       if (!enemy.dead && enemy.currentHealth <= 0) {
         applyDamageToEntity(enemy, 0, gameState); // combined-lethality: die via the canonical path
       }

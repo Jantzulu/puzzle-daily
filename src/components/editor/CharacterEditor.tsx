@@ -668,7 +668,7 @@ export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ init
 
                     {/* Properties */}
                     <CollapsiblePanel title="Properties" className="space-y-2">
-                      <p className="text-xs text-stone-500 ml-1">Traits (Ghost, Wall, Halt, Sturdy, Contact Damage) are assigned via starting status effects.</p>
+                      <p className="text-xs text-stone-500 ml-1">Traits (Ghost, Wall, Halt, Sturdy, Thorns, Trample) are assigned via starting status effects.</p>
                     </CollapsiblePanel>
 
                     {/* Sound Effects */}

@@ -236,14 +236,14 @@ during the next session.
 
 ## Captured but untriaged
 
-- [ ] **IDEA — Offensive contact damage as a behavior action.** Shows up
-  in the entity editors' behavior sequence builder. CONTACT_DAMAGE went
-  purely reactive on 2026-07-12 (a stationary holder's spikes bite any
-  hostile that tries to walk onto its tile; the walker's own contact
-  never fires). The offensive half — "deal damage to whatever I walk
-  into" — should come back as a behavior-sequence action so it gets the
-  full flexibility of the action system (triggers, ordering, per-action
-  config) instead of being a status side effect. Why it matters: lets
-  designers build ramming/charging enemies without reviving the old
-  walk-in combat branch. *Captured 2026-07-12 (user, during engine
-  audit sweep 4).*
+- [x] **Offensive contact damage — SHIPPED 2026-07-12 as the TRAMPLE
+  status effect** (user pivoted from the behavior-action idea to a
+  status, same day it was captured). CONTACT_DAMAGE displays as
+  "Thorns" (reactive: bites hostile walkers, every attempt); TRAMPLE is
+  the offensive half (the holder gores hostiles it walks into, plowing
+  through on a kill). Hero-side strikes first in a Thorns/Trample
+  trade unless the enemy side has PRIORITY ("this one is faster").
+  Both support halt-movement-on-contact (resume next turn / stop
+  forever). A behavior-ACTION variant (full trigger/ordering
+  flexibility) remains a possible future refinement if the status
+  proves too rigid.

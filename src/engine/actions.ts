@@ -164,8 +164,8 @@ export function executeAction(
     ActionType.MOVE_DIAGONAL_SW,
   ].includes(normalizedType);
 
-  if (isMovementAction && !canEntityMove(character)) {
-    // Slow effect - skip this movement
+  if (isMovementAction && !canEntityMove(character, gameState.currentTurn)) {
+    // Slow effect or Thorns/Trample movement halt - skip this movement
     return updatedCharacter;
   }
 
@@ -821,29 +821,105 @@ function applyContactDamageReaction(
 }
 
 /**
- * Reactive contact damage (user decision 2026-07-12): a stationary entity
- * holding CONTACT_DAMAGE bites any HOSTILE mover that tries to walk onto
- * its tile — every attempt, all shapes and parties. Hostility is judged
- * attacker-style from the DEFENDER's side (defender effective vs mover
- * base), so a charmed holder's spikes switch sides with it while charmed
- * movers can still be bitten by their original foes.
- *
- * The walker's own contact damage never fires — contact is not a weapon
- * you carry into someone's tile. Offensive contact is a future
- * behavior-sequence action (docs/feature-backlog.md).
+ * A holder's contact strike against a victim, if it applies: the effect
+ * must exist with positive damage and the victim must be a valid attack
+ * target (holder EFFECTIVE vs victim BASE — charm moves the strike's
+ * allegiance with its holder; charmed victims can still be hit by their
+ * original foes).
  */
-function applyReactiveContactDamage(
+function getContactStrike(
+  holder: PlacedCharacter | PlacedEnemy,
+  victim: PlacedCharacter | PlacedEnemy,
+  type: StatusEffectType,
+  gameState: GameState
+): { effect: StatusEffectInstance; damage: number } | null {
+  const effect = holder.statusEffects?.find(e => e.type === type);
+  if (!effect) return null;
+  const damage = effect.value ?? 0;
+  if (damage <= 0) return null;
+  if (!isAttackTarget(holder, victim, gameState)) return null;
+  return { effect, damage };
+}
+
+/** Stamp the holder's movement halt if its Thorns/Trample asset opts in. */
+function applyContactHaltFlags(
+  holder: PlacedCharacter | PlacedEnemy,
+  effect: StatusEffectInstance,
+  gameState: GameState
+): void {
+  const asset = loadStatusEffectAsset(effect.statusAssetId);
+  if (!asset?.haltMovementOnContact) return;
+  if (asset.haltMovementMode === 'forever') {
+    holder.contactHaltForever = true;
+  } else {
+    holder.contactHaltTurn = gameState.currentTurn;
+  }
+}
+
+/**
+ * Walk-in collision (user design 2026-07-12): THORNS (CONTACT_DAMAGE) on
+ * the defender bites hostile movers — every attempt, lethal to dumb
+ * walkers by design; TRAMPLE on the mover gores hostile defenders it
+ * walks into, plowing through on a kill.
+ *
+ * When both compete, the HERO-SIDE entity strikes first (player
+ * satisfaction rule) — unless the enemy-side entity has PRIORITY, which
+ * flips it: "this one is faster; you can't just plow through it."
+ * Sides use EFFECTIVE party (a charmed unit carries the player's
+ * initiative while it fights for them); degenerate same-side edges from
+ * charm asymmetry default to the defender striking first, matching the
+ * reactive spirit of thorns. Each strike fires only while both parties to
+ * it are alive.
+ *
+ * Returns whether the mover may advance into the tile: only over a
+ * trample-killed defender, and not if the mover's own halt flag stopped
+ * it in place (the goring beast stays to gore).
+ */
+function resolveWalkInCollision(
   mover: PlacedCharacter,
   defender: PlacedCharacter | PlacedEnemy,
   gameState: GameState
-): void {
-  const effect = defender.statusEffects?.find(e => e.type === StatusEffectType.CONTACT_DAMAGE);
-  if (!effect) return;
-  const damage = effect.value ?? 0;
-  if (damage <= 0) return;
-  if (!isAttackTarget(defender, mover, gameState)) return; // spikes only bite hostiles
-  applyDamageToEntity(mover, damage, gameState, defender);
-  applyContactDamageReaction(defender, mover, effect, gameState);
+): { moverMayAdvance: boolean } {
+  const thorns = getContactStrike(defender, mover, StatusEffectType.CONTACT_DAMAGE, gameState);
+  const trample = getContactStrike(mover, defender, StatusEffectType.TRAMPLE, gameState);
+  if (!thorns && !trample) return { moverMayAdvance: false };
+
+  const moverSide = effectiveParty(mover, gameState);
+  const defenderSide = effectiveParty(defender, gameState);
+  let defenderFirst = true;
+  if (moverSide !== defenderSide) {
+    const enemySideEntity = moverSide === 'enemy' ? mover : defender;
+    const enemySideHasPriority =
+      enemySideEntity.statusEffects?.some(e => e.type === StatusEffectType.PRIORITY) ?? false;
+    const heroSideFirst = !enemySideHasPriority;
+    defenderFirst = (defenderSide === 'hero') === heroSideFirst;
+  }
+
+  let moverHalted = false;
+  const strikeThorns = () => {
+    if (!thorns || defender.dead || mover.dead) return;
+    applyDamageToEntity(mover, thorns.damage, gameState, defender);
+    applyContactDamageReaction(defender, mover, thorns.effect, gameState);
+    applyContactHaltFlags(defender, thorns.effect, gameState);
+  };
+  const strikeTrample = () => {
+    if (!trample || mover.dead || defender.dead) return;
+    applyDamageToEntity(defender, trample.damage, gameState, mover);
+    applyContactHaltFlags(mover, trample.effect, gameState);
+    if (mover.contactHaltForever || mover.contactHaltTurn === gameState.currentTurn) {
+      moverHalted = true;
+    }
+  };
+
+  if (defenderFirst) {
+    strikeThorns();
+    strikeTrample();
+  } else {
+    strikeTrample();
+    strikeThorns();
+  }
+
+  return { moverMayAdvance: !!defender.dead && !mover.dead && !moverHalted };
 }
 
 /**
@@ -1014,10 +1090,18 @@ function moveCharacter(
 
         // If the other character is trying to move into our tile, block (swap attempt)
         if (otherTargetKey === ourCurrentKey) {
-          // Both trying to swap tiles - block this move (head-on bump: the
-          // defender's spikes still bite; the other side bites back when
-          // ITS move processes)
-          applyReactiveContactDamage(updatedChar, otherCharacter, gameState);
+          // Both trying to swap tiles - block this move (head-on bump:
+          // thorns/trample still resolve; the other side gets its own
+          // resolution when ITS move processes)
+          const swapCollision = resolveWalkInCollision(updatedChar, otherCharacter, gameState);
+          if (swapCollision.moverMayAdvance) {
+            // Trample-killed mid-swap: plow into the tile. (Pickup/tile
+            // processing is skipped for this step — character-shaped
+            // defenders are a rare trample target; revisit if it matters.)
+            updatedChar.x = newX;
+            updatedChar.y = newY;
+            continue;
+          }
           return updatedChar;
         }
 
@@ -1027,11 +1111,17 @@ function moveCharacter(
         continue;
       }
 
-      // Otherwise, blocked: take the defender's reactive contact damage (if
-      // hostile + spiky) and wait (doesn't trigger IF_WALL, character will
-      // try again next turn — and get bitten again; spikes are lethal to
-      // dumb walkers by design)
-      applyReactiveContactDamage(updatedChar, otherCharacter, gameState);
+      // Otherwise, blocked: resolve thorns/trample (a blocked walker gets
+      // bitten EVERY attempt — spiky defenders are lethal to dumb walkers
+      // by design) and wait, unless the trample killed the defender.
+      const charCollision = resolveWalkInCollision(updatedChar, otherCharacter, gameState);
+      if (charCollision.moverMayAdvance) {
+        // Plow through the fallen defender. (Pickup/tile processing is
+        // skipped for this step — see the swap branch note.)
+        updatedChar.x = newX;
+        updatedChar.y = newY;
+        continue;
+      }
       return updatedChar;
     }
 
@@ -1150,9 +1240,13 @@ function moveCharacter(
           // If the other enemy is trying to move into our tile, block (swap attempt)
           if (otherTargetKey === ourCurrentKey) {
             // Both trying to swap tiles - block this move (head-on bump:
-            // reactive spikes still bite hostile movers, e.g. a summon
-            // meeting an enemy)
-            applyReactiveContactDamage(updatedChar, enemyAtTarget, gameState);
+            // thorns/trample still resolve, e.g. a summon meeting an enemy)
+            const swapCollision = resolveWalkInCollision(updatedChar, enemyAtTarget, gameState);
+            if (swapCollision.moverMayAdvance) {
+              updatedChar.x = newX;
+              updatedChar.y = newY;
+              continue;
+            }
             return updatedChar;
           }
 
@@ -1161,22 +1255,31 @@ function moveCharacter(
           updatedChar.y = newY;
           continue;
         }
-        // Enemy-to-enemy collision: blocked. No combat between enemy-shaped
-        // entities, but reactive spikes bite HOSTILE movers (a hero-party
-        // summon bumping an enemy, or vice versa) — party decides, not shape.
-        applyReactiveContactDamage(updatedChar, enemyAtTarget, gameState);
+        // Enemy-to-enemy collision: blocked, but thorns/trample resolve for
+        // HOSTILE pairs (a hero-party summon bumping an enemy, or vice
+        // versa) — party decides, not shape. A trample kill plows through.
+        const enemyCollision = resolveWalkInCollision(updatedChar, enemyAtTarget, gameState);
+        if (enemyCollision.moverMayAdvance) {
+          updatedChar.x = newX;
+          updatedChar.y = newY;
+          continue;
+        }
         return updatedChar;
       }
 
-      // Reactive contact only (user decision 2026-07-12): the defender's
-      // spikes bite the hostile walker — EVERY attempt, so spiky holders
-      // are deliberately lethal to dumb walkers — and the walker deals
-      // nothing by walking. The old mutual-exchange combat (walker contact
-      // damage + PRIORITY ordering + move-in-on-kill) lived here; offensive
-      // contact returns later as a behavior action (docs/feature-backlog.md).
-      // A living defender always blocks the tile.
-      applyReactiveContactDamage(updatedChar, enemyAtTarget, gameState);
-      return updatedChar;
+      // Thorns/Trample walk-in resolution (user design 2026-07-12): the
+      // defender's thorns bite the hostile walker; the mover's trample
+      // gores the defender; hero-side initiative unless enemy-side
+      // PRIORITY. A living (or merely gored) defender blocks; a
+      // trample-killed one is plowed through.
+      const collision = resolveWalkInCollision(updatedChar, enemyAtTarget, gameState);
+      if (!collision.moverMayAdvance) {
+        return updatedChar;
+      }
+      // Plow through: take the vacated tile and keep processing (pickup,
+      // tile behaviors, remaining tilesPerMove).
+      updatedChar.x = newX;
+      updatedChar.y = newY;
     } else {
       // No obstacles, move freely
       updatedChar.x = newX;
