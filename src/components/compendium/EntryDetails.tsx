@@ -3,6 +3,10 @@ import { sanitizeHtml } from '../../utils/sanitizeHtml';
 import { brToNewlines } from '../../utils/plainText';
 import {
   getAllPuzzleSkins,
+  getCustomCharacters,
+  getCustomEnemies,
+  getCustomVessels,
+  getSpellAssets,
   type CustomCharacter,
   type CustomEnemy,
   type CustomTileType,
@@ -400,6 +404,25 @@ export const TileDetail: React.FC<{ tile: CustomTileType }> = ({ tile }) => {
 };
 
 export const ItemDetail: React.FC<{ item: CustomCollectible }> = ({ item }) => {
+  // Who drops or places this item — the codex view spans every authored
+  // source (heroes, enemies, vessels, throw/place spells), not just the
+  // current puzzle. Registries are cached, so scanning per render is cheap.
+  const dropSources = useMemo(() => [
+    ...getCustomCharacters()
+      .filter(c => c.droppedCollectibleId === item.id)
+      .map(c => ({ id: c.id, name: c.name, sprite: c.customSprite, detail: 'on death' })),
+    ...getCustomEnemies()
+      .filter(e => e.droppedCollectibleId === item.id)
+      .map(e => ({ id: e.id, name: e.name, sprite: e.customSprite, detail: 'on death' })),
+    ...getCustomVessels()
+      .filter(v => v.droppedCollectibleId === item.id)
+      .map(v => ({ id: v.id, name: v.name, sprite: v.customSprite, detail: 'on break' })),
+  ], [item.id]);
+  const spellSources = useMemo(() =>
+    getSpellAssets().filter(s => s.templateType === 'throw_place' && s.spawnCollectibleId === item.id),
+    [item.id]
+  );
+
   const getEffectDescription = (effect: CustomCollectible['effects'][0]) => {
     switch (effect.type) {
       case 'heal':
@@ -458,6 +481,26 @@ export const ItemDetail: React.FC<{ item: CustomCollectible }> = ({ item }) => {
           <ul className="space-y-1 text-sm" style={{ color: 'var(--text-primary)' }}>
             {item.effects.map((effect, idx) => (
               <li key={idx}>• {getEffectDescription(effect)}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Dropped By — every authored source of this item */}
+      {(dropSources.length > 0 || spellSources.length > 0) && (
+        <div className="compendium-detail-section">
+          <h3>Dropped By</h3>
+          <ul className="space-y-1.5 text-sm" style={{ color: 'var(--text-primary)' }}>
+            {dropSources.map(s => (
+              <li key={s.id} className="flex items-center gap-2">
+                <SpriteThumbnail sprite={s.sprite} size={22} previewType="entity" />
+                <span>
+                  {s.name} <span style={{ color: 'var(--text-muted)' }}>({s.detail})</span>
+                </span>
+              </li>
+            ))}
+            {spellSources.map(s => (
+              <li key={s.id}>• Conjured by the spell “{s.name}”</li>
             ))}
           </ul>
         </div>
