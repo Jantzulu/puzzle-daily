@@ -118,10 +118,18 @@ Ordered by (likelihood of live bugs × player impact). Check off as swept.
   wrapper (attack direction + target facing are both shape-independent).
   Current design noted: cones have no crit site; backstab is melee +
   projectile only.
-- [ ] **Headless/visual parity per feature.** For each: summon, necromancy,
-  vessel transform, drops, persistent zones — run the same scenario through
-  testMode/headless and visual-path executeTurn; compare final states.
-  (The validator's authority depends on this.)
+- [x] **Headless/visual parity per feature.** SWEPT 2026-07-12
+  (`__tests__/audit-parity.test.ts`, 8 scenarios compared on normalized
+  snapshots). TWO bugs fixed, one root (deferred projectile deaths):
+  (1) processVesselTransforms keyed on the committed `dead` flag, which
+  only the RENDER loop sets for projectile kills — projectile-smashed
+  vessels hatched on different turns per mode (never, in headless-style
+  runs); now keyed on logically-dead + diedOnTurn. (2) headless
+  applyEntityHit never re-stamped diedOnTurn to the visual-death turn
+  (N+1), so corpse-blocking windows ran a turn early in the validator;
+  now stamped like visual. Corpus stayed green. Parity holds for:
+  projectile duels, duration summons, necromancy, vessel transforms,
+  death drops, enemy zones, thorns grind, per-turn corpse pathing.
 - [ ] **Pierce/bounce/homing edge re-verification against summons.**
   Mid-flight projectile vs an entity appended THIS turn (spawn-turn
   hittability is asserted in design; is it pinned for every projectile
