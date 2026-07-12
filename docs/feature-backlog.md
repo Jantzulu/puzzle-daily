@@ -236,4 +236,14 @@ during the next session.
 
 ## Captured but untriaged
 
-*(Empty — all current items triaged.)*
+- [ ] **IDEA — Offensive contact damage as a behavior action.** Shows up
+  in the entity editors' behavior sequence builder. CONTACT_DAMAGE went
+  purely reactive on 2026-07-12 (a stationary holder's spikes bite any
+  hostile that tries to walk onto its tile; the walker's own contact
+  never fires). The offensive half — "deal damage to whatever I walk
+  into" — should come back as a behavior-sequence action so it gets the
+  full flexibility of the action system (triggers, ordering, per-action
+  config) instead of being a status side effect. Why it matters: lets
+  designers build ramming/charging enemies without reviving the old
+  walk-in combat branch. *Captured 2026-07-12 (user, during engine
+  audit sweep 4).*

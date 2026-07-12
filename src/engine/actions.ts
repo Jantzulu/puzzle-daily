@@ -821,6 +821,32 @@ function applyContactDamageReaction(
 }
 
 /**
+ * Reactive contact damage (user decision 2026-07-12): a stationary entity
+ * holding CONTACT_DAMAGE bites any HOSTILE mover that tries to walk onto
+ * its tile — every attempt, all shapes and parties. Hostility is judged
+ * attacker-style from the DEFENDER's side (defender effective vs mover
+ * base), so a charmed holder's spikes switch sides with it while charmed
+ * movers can still be bitten by their original foes.
+ *
+ * The walker's own contact damage never fires — contact is not a weapon
+ * you carry into someone's tile. Offensive contact is a future
+ * behavior-sequence action (docs/feature-backlog.md).
+ */
+function applyReactiveContactDamage(
+  mover: PlacedCharacter,
+  defender: PlacedCharacter | PlacedEnemy,
+  gameState: GameState
+): void {
+  const effect = defender.statusEffects?.find(e => e.type === StatusEffectType.CONTACT_DAMAGE);
+  if (!effect) return;
+  const damage = effect.value ?? 0;
+  if (damage <= 0) return;
+  if (!isAttackTarget(defender, mover, gameState)) return; // spikes only bite hostiles
+  applyDamageToEntity(mover, damage, gameState, defender);
+  applyContactDamageReaction(defender, mover, effect, gameState);
+}
+
+/**
  * Move character in a direction, handling collisions
  */
 function moveCharacter(
@@ -988,7 +1014,10 @@ function moveCharacter(
 
         // If the other character is trying to move into our tile, block (swap attempt)
         if (otherTargetKey === ourCurrentKey) {
-          // Both trying to swap tiles - block this move
+          // Both trying to swap tiles - block this move (head-on bump: the
+          // defender's spikes still bite; the other side bites back when
+          // ITS move processes)
+          applyReactiveContactDamage(updatedChar, otherCharacter, gameState);
           return updatedChar;
         }
 
@@ -998,7 +1027,11 @@ function moveCharacter(
         continue;
       }
 
-      // Otherwise, just wait (doesn't trigger IF_WALL, character will try again next turn)
+      // Otherwise, blocked: take the defender's reactive contact damage (if
+      // hostile + spiky) and wait (doesn't trigger IF_WALL, character will
+      // try again next turn — and get bitten again; spikes are lethal to
+      // dumb walkers by design)
+      applyReactiveContactDamage(updatedChar, otherCharacter, gameState);
       return updatedChar;
     }
 
@@ -1116,7 +1149,10 @@ function moveCharacter(
 
           // If the other enemy is trying to move into our tile, block (swap attempt)
           if (otherTargetKey === ourCurrentKey) {
-            // Both trying to swap tiles - block this move
+            // Both trying to swap tiles - block this move (head-on bump:
+            // reactive spikes still bite hostile movers, e.g. a summon
+            // meeting an enemy)
+            applyReactiveContactDamage(updatedChar, enemyAtTarget, gameState);
             return updatedChar;
           }
 
@@ -1125,68 +1161,22 @@ function moveCharacter(
           updatedChar.y = newY;
           continue;
         }
-        // Enemy-to-enemy collision: just wait, don't move, don't fight
+        // Enemy-to-enemy collision: blocked. No combat between enemy-shaped
+        // entities, but reactive spikes bite HOSTILE movers (a hero-party
+        // summon bumping an enemy, or vice versa) — party decides, not shape.
+        applyReactiveContactDamage(updatedChar, enemyAtTarget, gameState);
         return updatedChar;
       }
 
-      // Combat: Check if enemy has melee priority
-      const charData = getCharacter(updatedChar.characterId);
-
-      // Party-aware gate (audit sweep 4): walking into a NON-HOSTILE
-      // enemy-shaped entity — the hero's own summon, or any enemy once the
-      // mover is charmed to their side — is a block, not a fight, mirroring
-      // the enemy-to-enemy wait above. Target side uses BASE party like all
-      // attack targeting (isAttackTarget).
-      if (charData && !isAttackTarget(updatedChar, enemyAtTarget, gameState)) {
-        return updatedChar;
-      }
-
-      if (charData) {
-        const enemyHasPriority = enemyAtTarget.statusEffects?.some(e => e.type === StatusEffectType.PRIORITY) ?? false;
-
-        const enemyContactEffect = enemyAtTarget.statusEffects?.find(e => e.type === StatusEffectType.CONTACT_DAMAGE);
-        const charContactEffect = updatedChar.statusEffects?.find(e => e.type === StatusEffectType.CONTACT_DAMAGE);
-        const enemyContactDamage = enemyContactEffect?.value ?? 0;
-        const charContactDamage = charContactEffect?.value ?? 0;
-
-        if (enemyHasPriority) {
-          // Enemy attacks first (enemy has priority)
-          // Use centralized damage to respect shields - enemy is source for deflect
-          applyDamageToEntity(updatedChar, enemyContactDamage, gameState, enemyAtTarget);
-
-          // Character counterattacks ONLY if still alive
-          if (!updatedChar.dead) {
-            // Use centralized damage to respect shields - character is source for deflect
-            applyDamageToEntity(enemyAtTarget, charContactDamage, gameState, updatedChar);
-          }
-        } else {
-          // Character attacks first (default - player initiative)
-          // Use centralized damage to respect shields - character is source for deflect
-          applyDamageToEntity(enemyAtTarget, charContactDamage, gameState, updatedChar);
-
-          // Enemy counterattacks ONLY if still alive
-          if (!enemyAtTarget.dead) {
-            // Use centralized damage to respect shields - enemy is source for deflect
-            applyDamageToEntity(updatedChar, enemyContactDamage, gameState, enemyAtTarget);
-          }
-        }
-
-        // Contact-damage reaction: the stationary enemy (walked into by the hero) with
-        // a CONTACT_DAMAGE effect optionally plays a cast animation + turns to face the
-        // incoming hero. No-op unless the effect's asset opts in. Skip if it just died.
-        if (enemyContactEffect && !enemyAtTarget.dead) {
-          applyContactDamageReaction(enemyAtTarget, updatedChar, enemyContactEffect, gameState);
-        }
-      }
-
-      // Only move into space if enemy is now dead
-      if (enemyAtTarget.dead) {
-        updatedChar.x = newX;
-        updatedChar.y = newY;
-      } else {
-        // If enemy survived, character stays in place - stop movement
-        return updatedChar;
-      }
+      // Reactive contact only (user decision 2026-07-12): the defender's
+      // spikes bite the hostile walker — EVERY attempt, so spiky holders
+      // are deliberately lethal to dumb walkers — and the walker deals
+      // nothing by walking. The old mutual-exchange combat (walker contact
+      // damage + PRIORITY ordering + move-in-on-kill) lived here; offensive
+      // contact returns later as a behavior action (docs/feature-backlog.md).
+      // A living defender always blocks the tile.
+      applyReactiveContactDamage(updatedChar, enemyAtTarget, gameState);
+      return updatedChar;
     } else {
       // No obstacles, move freely
       updatedChar.x = newX;

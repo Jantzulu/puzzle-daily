@@ -243,15 +243,29 @@ describe('death trigger fires once per kill path (enemy victim)', () => {
     expect(spawnlings(gs)).toHaveLength(1);
   });
 
-  it('contact-damage kill (hero walks into the victim)', () => {
-    regKillerHero('', [{ type: ActionType.MOVE_FORWARD }]);
+  it('contact-damage kill (victim walks onto a spiky hero — reactive rule, 2026-07-12)', () => {
+    // Contact is reactive-only: the defender's spikes bite the hostile
+    // walker. So the contact KILL PATH is the victim bumping a spiky
+    // defender and dying of it mid-move.
+    regKillerHero('', [{ type: ActionType.WAIT }]);
+    regEnemy(createTestEnemyDef({
+      id: 'walking-bomber', health: 2,
+      behavior: {
+        type: 'active',
+        pattern: [{ type: ActionType.MOVE_FORWARD }, onDeathSummon],
+        defaultFacing: Direction.WEST,
+      },
+    }));
     const gs = baseState({
-      enemies: [placedBomber()],
+      enemies: [createTestEnemy({
+        enemyId: 'walking-bomber', x: 3, y: 2, currentHealth: 2,
+        actionIndex: 0, active: true, facing: Direction.WEST,
+      })],
       heroes: [placedKiller({
         statusEffects: [statusInst(StatusEffectType.CONTACT_DAMAGE, 5)],
       })],
     });
-    executeTurn(gs);
+    executeTurn(gs); // bomber bumps the spiky hero and dies of the bite
     expect(gs.puzzle.enemies[0].dead).toBe(true);
     expect(spawnlings(gs)).toHaveLength(1);
   });
@@ -687,39 +701,48 @@ describe('on-death revenge damage reaches the killer (mid-action feedback)', () 
   });
 
   it('pipeline + external damage that is only lethal COMBINED still kills (and fires the trigger once)', () => {
-    // Priority contact enemy hits the walking hero for 3 (pipeline damage on
-    // the acting copy); the hero's counter kills it; its revenge blast lands
-    // another 3 on the array original. 5 hp - 3 - 3: dead, though neither
-    // source alone was lethal.
+    // Linked chain in one turn: the slash kills the avenger, whose revenge
+    // blast lands 3 on the hero's ARRAY ORIGINAL (external); the linked
+    // turn+move steps onto a damage tile for 3 on the ACTING COPY
+    // (pipeline). 5 hp - 3 - 3: dead, though neither source alone was
+    // lethal — the write-back merge + combined-lethality guard must catch
+    // it and fire the hero's own death trigger exactly once.
     regEnemy(createTestEnemyDef({
-      id: 'spiky', health: 2,
+      id: 'avenger', health: 2,
       behavior: {
         type: 'active',
         pattern: [onDeathRevenge],
         defaultFacing: Direction.WEST,
       },
     }));
+    registerTestTileType('spike-tile', {
+      id: 'spike-tile', name: 'Spike Tile', baseType: 'empty',
+      behaviors: [{ type: 'damage', damageAmount: 3 }],
+    });
     regChar(createTestCharacterDef({
-      id: 'brawler', health: 5,
-      behavior: [{ type: ActionType.MOVE_FORWARD }, onDeathSummon] as never,
+      id: 'delver', health: 5,
+      behavior: [
+        { type: ActionType.SPELL, spellId: 'slash', linkedToNext: true },
+        { type: ActionType.TURN_LEFT, linkedToNext: true },
+        { type: ActionType.MOVE_FORWARD },
+        onDeathSummon,
+      ] as never,
     }));
+    const tiles = createEmptyGrid(8, 5);
+    tiles[1][2] = { x: 2, y: 1, type: tiles[1][2]!.type, customTileTypeId: 'spike-tile' };
     const gs = baseState({
+      tiles,
       enemies: [createTestEnemy({
-        enemyId: 'spiky', x: 3, y: 2, currentHealth: 2,
+        enemyId: 'avenger', x: 3, y: 2, currentHealth: 2,
         actionIndex: 0, active: true, facing: Direction.WEST,
-        statusEffects: [
-          statusInst(StatusEffectType.PRIORITY, 0),
-          statusInst(StatusEffectType.CONTACT_DAMAGE, 3),
-        ],
       })],
       heroes: [createTestCharacter({
-        characterId: 'brawler', x: 2, y: 2, facing: Direction.EAST,
+        characterId: 'delver', x: 2, y: 2, facing: Direction.EAST,
         currentHealth: 5, actionIndex: 0, active: true,
-        statusEffects: [statusInst(StatusEffectType.CONTACT_DAMAGE, 5)],
       })],
     });
     executeTurn(gs);
-    expect(gs.puzzle.enemies.find(e => e.enemyId === 'spiky')!.dead).toBe(true);
+    expect(gs.puzzle.enemies.find(e => e.enemyId === 'avenger')!.dead).toBe(true);
     expect(gs.placedCharacters[0].dead).toBe(true);
     expect(spawnlings(gs)).toHaveLength(1); // the hero's own death trigger, exactly once
     expect(spawnlings(gs)[0].party).toBe('hero');

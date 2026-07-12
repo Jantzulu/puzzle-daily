@@ -1,18 +1,17 @@
 /**
- * Engine audit sweep 4 (docs/engine-audit-plan.md): contact damage matrix —
- * walker-into-target across party pairs, PRIORITY ordering, both-sides
- * contact, and the move-in-on-kill rule.
+ * Engine audit sweep 4 (docs/engine-audit-plan.md): contact damage matrix.
  *
- * The engine's ONLY contact-damage site is moveCharacter's hero-shaped-
- * mover-into-enemy-shaped-target branch (actions.ts). Two asymmetries are
- * PINNED here as current design (surfaced to the user, not changed):
- *   1. An ENEMY walking into a hero never deals contact damage — it waits.
- *      Contact combat is strictly initiated by the hero-side mover; a
- *      stationary spiky enemy is "reactive" only (hurts heroes who walk in).
- *   2. An enemy-shaped mover never fights ANY enemy-shaped target, even a
- *      hostile one (hero-party summon vs enemy) — shape blocks first.
- * And one party bug is FIXED and pinned: a hero walking into its own
- * hero-party summon used to fight it (the combat gate was shape-based).
+ * RULE (user decision 2026-07-12): CONTACT_DAMAGE is purely REACTIVE and
+ * universal — a stationary holder's spikes bite any HOSTILE entity that
+ * tries to walk onto its tile, every attempt, all shapes and parties.
+ * The walker's own contact damage never fires (offensive contact is a
+ * future behavior action — docs/feature-backlog.md), so walk-ins can
+ * never kill the defender: a living defender always blocks the tile.
+ * Hostility is judged from the defender's side attacker-style (defender
+ * EFFECTIVE vs mover BASE), so charm moves the spikes' allegiance with
+ * their owner while charmed movers can still be bitten by their original
+ * foes. PRIORITY no longer plays a role in contact (there is no exchange
+ * to order).
  */
 import './helpers';
 import {
@@ -34,12 +33,6 @@ import { executeTurn } from '../simulation';
 const contact = (value: number): StatusEffectInstance => ({
   id: 'contact-inst', type: StatusEffectType.CONTACT_DAMAGE, statusAssetId: 'contact-asset',
   duration: 99, value, currentStacks: 1, appliedOnTurn: 0,
-  sourceEntityId: 'test', sourceIsEnemy: false, movementSkipCounter: 0,
-} as StatusEffectInstance);
-
-const priority = (): StatusEffectInstance => ({
-  id: 'priority-inst', type: StatusEffectType.PRIORITY, statusAssetId: 'priority-asset',
-  duration: 99, currentStacks: 1, appliedOnTurn: 0,
   sourceEntityId: 'test', sourceIsEnemy: false, movementSkipCounter: 0,
 } as StatusEffectInstance);
 
@@ -71,6 +64,13 @@ const regWalkerHero = (health = 10) =>
     behavior: [{ type: ActionType.MOVE_FORWARD }, { type: ActionType.REPEAT }] as never,
   }));
 
+/** Hero that stands still. */
+const regWaitingHero = () =>
+  regChar(createTestCharacterDef({
+    id: 'brawler', health: 10,
+    behavior: [{ type: ActionType.WAIT }, { type: ActionType.REPEAT }] as never,
+  }));
+
 const placedBrawler = (overrides?: Partial<PlacedCharacter>) =>
   createTestCharacter({
     characterId: 'brawler', x: 2, y: 2, facing: Direction.EAST,
@@ -89,15 +89,15 @@ beforeEach(() => {
       defaultFacing: Direction.EAST,
     },
   }));
-  regWalkerHero();
 });
 
 // ==========================================
-// Hero-initiated contact (the live combat branch)
+// Hero walks into an enemy-shaped defender
 // ==========================================
 
-describe('hero walks into an enemy', () => {
-  it('both sides exchange contact damage; the survivor blocks the tile', () => {
+describe('hero walker vs spiky defender', () => {
+  it("the defender's spikes bite the walker; the walker's own contact deals nothing", () => {
+    regWalkerHero();
     const gs = baseState({
       enemies: [createTestEnemy({
         enemyId: 'goblin-1', x: 3, y: 2, currentHealth: 5,
@@ -106,143 +106,163 @@ describe('hero walks into an enemy', () => {
       heroes: [placedBrawler({ statusEffects: [contact(2)] })],
     });
     executeTurn(gs);
-    expect(gs.puzzle.enemies[0].currentHealth).toBe(3);   // took the hero's 2
-    expect(gs.placedCharacters[0].currentHealth).toBe(7); // took the enemy's 3
-    expect(gs.placedCharacters[0].x).toBe(2);             // enemy survived — no move-in
+    expect(gs.placedCharacters[0].currentHealth).toBe(7); // bitten
+    expect(gs.puzzle.enemies[0].currentHealth).toBe(5);   // defender untouched
+    expect(gs.placedCharacters[0].x).toBe(2);             // blocked
   });
 
-  it('a kill lets the hero move into the vacated tile unhurt (enemy corpse deals no counter)', () => {
+  it('a walker cannot smash a defender by walking — a living defender always blocks', () => {
+    regWalkerHero();
+    const gs = baseState({
+      enemies: [createTestEnemy({ enemyId: 'goblin-1', x: 3, y: 2, currentHealth: 5 })],
+      heroes: [placedBrawler({ statusEffects: [contact(99)] })],
+    });
+    executeTurn(gs);
+    executeTurn(gs);
+    expect(gs.puzzle.enemies[0].currentHealth).toBe(5); // never hurt
+    expect(gs.puzzle.enemies[0].dead).toBe(false);
+    expect(gs.placedCharacters[0].x).toBe(2);
+    expect(gs.placedCharacters[0].currentHealth).toBe(10); // unspiky defender bites nothing either
+  });
+
+  it('spikes bite EVERY attempt — lethal to a dumb walker (by design)', () => {
+    regWalkerHero(7);
     const gs = baseState({
       enemies: [createTestEnemy({
         enemyId: 'goblin-1', x: 3, y: 2, currentHealth: 5,
         statusEffects: [contact(3)],
       })],
-      heroes: [placedBrawler({ statusEffects: [contact(5)] })],
+      heroes: [placedBrawler({ currentHealth: 7 })],
     });
-    executeTurn(gs);
-    expect(gs.puzzle.enemies[0].dead).toBe(true);
-    expect(gs.placedCharacters[0].x).toBe(3);              // moved in
-    expect(gs.placedCharacters[0].currentHealth).toBe(10); // corpse never countered
-  });
-
-  it('PRIORITY: the enemy strikes first, and a dead hero cannot counter', () => {
-    regWalkerHero(3); // dies to the priority hit
-    const gs = baseState({
-      enemies: [createTestEnemy({
-        enemyId: 'goblin-1', x: 3, y: 2, currentHealth: 5,
-        statusEffects: [contact(3), priority()],
-      })],
-      heroes: [placedBrawler({ currentHealth: 3, statusEffects: [contact(5)] })],
-    });
-    executeTurn(gs);
+    executeTurn(gs); // 7 → 4
+    executeTurn(gs); // 4 → 1
+    expect(gs.placedCharacters[0].currentHealth).toBe(1);
+    executeTurn(gs); // 1 → dead
     expect(gs.placedCharacters[0].dead).toBe(true);
-    expect(gs.puzzle.enemies[0].currentHealth).toBe(5); // no counter from the corpse
+    expect(gs.puzzle.enemies[0].currentHealth).toBe(5); // hedgehog never scratched
   });
 
-  it('a CHARMED enemy is still a valid contact target (charm is ignored on the target side)', () => {
-    const gs = baseState({
-      enemies: [createTestEnemy({
-        enemyId: 'goblin-1', x: 3, y: 2, currentHealth: 5,
-        statusEffects: [charm()],
-      })],
-      heroes: [placedBrawler({ statusEffects: [contact(2)] })],
-    });
-    executeTurn(gs);
-    expect(gs.puzzle.enemies[0].currentHealth).toBe(3);
-  });
-
-  it('a vessel (adapter-resolved) is smashed by walk-in contact and the hero moves in', () => {
+  it('a vessel cannot be smashed by walking into it — breaking needs a real attack', () => {
+    regWalkerHero();
     registerTestVessel({ id: 'barrel', name: 'Barrel', health: 2 });
     const gs = baseState({
       enemies: [createTestEnemy({ enemyId: 'barrel', x: 3, y: 2, currentHealth: 2 })],
       heroes: [placedBrawler({ statusEffects: [contact(5)] })],
     });
     executeTurn(gs);
-    expect(gs.puzzle.enemies[0].dead).toBe(true);
-    expect(gs.placedCharacters[0].x).toBe(3);
-    expect(gs.placedCharacters[0].currentHealth).toBe(10);
+    expect(gs.puzzle.enemies[0].dead).toBe(false); // intact
+    expect(gs.placedCharacters[0].x).toBe(2);      // blocked
   });
 });
 
 // ==========================================
-// Pinned asymmetries (current design — surfaced, not changed)
+// Reactive contact is universal (all shapes and parties)
 // ==========================================
 
-describe('pinned: contact combat is hero-mover-initiated only', () => {
-  it('an ENEMY walking into a hero deals NO contact damage — it waits', () => {
-    // Asymmetry pinned as current design: a spiky enemy is reactive only.
-    // If enemy-initiated contact is ever wanted, this is the pin to flip.
+describe('reactive contact across the actor matrix', () => {
+  it('an ENEMY walking into a spiky hero gets bitten — and dies to it eventually', () => {
+    regWaitingHero();
     const gs = baseState({
       enemies: [createTestEnemy({
         enemyId: 'walker', x: 3, y: 2, currentHealth: 5,
         actionIndex: 0, active: true, facing: Direction.WEST,
-        statusEffects: [contact(3)],
       })],
-      heroes: [placedBrawler({
-        x: 2, y: 2,
-        // Waiting hero: swap the walk for a wait so only the enemy moves
-      })],
+      heroes: [placedBrawler({ statusEffects: [contact(3)] })],
     });
-    regChar(createTestCharacterDef({
-      id: 'brawler', health: 10,
-      behavior: [{ type: ActionType.WAIT }, { type: ActionType.REPEAT }] as never,
-    }));
-    executeTurn(gs);
-    executeTurn(gs);
-    expect(gs.placedCharacters[0].currentHealth).toBe(10); // never bitten
-    expect(gs.puzzle.enemies[0].x).toBe(3);                // blocked, waiting
+    executeTurn(gs); // 5 → 2
+    expect(gs.puzzle.enemies[0].currentHealth).toBe(2);
+    expect(gs.puzzle.enemies[0].x).toBe(3); // blocked
+    expect(gs.placedCharacters[0].currentHealth).toBe(10);
+    executeTurn(gs); // 2 → dead
+    expect(gs.puzzle.enemies[0].dead).toBe(true);
   });
 
-  it('a hostile hero-party summon walking into an enemy waits — shape blocks before party', () => {
-    // Enemy-shaped movers never fight enemy-shaped targets, hostile or not.
+  it('a hostile hero-party summon walking into a spiky enemy gets bitten', () => {
     const gs = baseState({
       enemies: [
         createTestEnemy({
           enemyId: 'walker', x: 2, y: 2, currentHealth: 5,
           actionIndex: 0, active: true, facing: Direction.EAST,
           party: 'hero', // a summon fighting for the heroes
+        }),
+        createTestEnemy({
+          enemyId: 'goblin-1', x: 3, y: 2, currentHealth: 5,
           statusEffects: [contact(3)],
         }),
-        createTestEnemy({ enemyId: 'goblin-1', x: 3, y: 2, currentHealth: 5 }),
       ],
     });
     executeTurn(gs);
-    expect(gs.puzzle.enemies[1].currentHealth).toBe(5); // untouched
+    expect(gs.puzzle.enemies[0].currentHealth).toBe(2); // summon bitten
     expect(gs.puzzle.enemies[0].x).toBe(2);             // blocked
+    expect(gs.puzzle.enemies[1].currentHealth).toBe(5); // defender untouched
   });
-});
 
-// ==========================================
-// Party-aware combat gate (fixed by this sweep)
-// ==========================================
+  it('an enemy walking into a spiky hero-party SUMMON gets bitten (party decides, not shape)', () => {
+    const gs = baseState({
+      enemies: [
+        createTestEnemy({
+          enemyId: 'walker', x: 3, y: 2, currentHealth: 5,
+          actionIndex: 0, active: true, facing: Direction.WEST,
+        }),
+        createTestEnemy({
+          enemyId: 'goblin-1', x: 2, y: 2, currentHealth: 5,
+          party: 'hero', // spiky summon holding the line
+          statusEffects: [contact(3)],
+        }),
+      ],
+    });
+    executeTurn(gs);
+    expect(gs.puzzle.enemies[0].currentHealth).toBe(2); // walker bitten
+    expect(gs.puzzle.enemies[1].currentHealth).toBe(5);
+  });
 
-describe('non-hostile walk-ins are a block, not a fight', () => {
-  it('a hero walking into its OWN hero-party summon does not fight it', () => {
+  it('same-side bumps never bite: a hero walking into its own spiky summon is only blocked', () => {
+    regWalkerHero();
     const gs = baseState({
       enemies: [createTestEnemy({
         enemyId: 'goblin-1', x: 3, y: 2, currentHealth: 5,
-        party: 'hero', // the hero's own summon
+        party: 'hero',
         statusEffects: [contact(3)],
       })],
       heroes: [placedBrawler({ statusEffects: [contact(2)] })],
     });
     executeTurn(gs);
-    expect(gs.puzzle.enemies[0].currentHealth).toBe(5);    // ally unhurt
-    expect(gs.placedCharacters[0].currentHealth).toBe(10); // hero unhurt
-    expect(gs.placedCharacters[0].x).toBe(2);              // blocked like an ally should
+    expect(gs.placedCharacters[0].currentHealth).toBe(10); // ally spikes don't bite
+    expect(gs.puzzle.enemies[0].currentHealth).toBe(5);
+    expect(gs.placedCharacters[0].x).toBe(2); // still blocked like any body
+  });
+});
+
+// ==========================================
+// Charm asymmetry on spikes
+// ==========================================
+
+describe('charm and reactive contact', () => {
+  it("a CHARMED spiky enemy stops biting heroes — its spikes fight for them now", () => {
+    regWalkerHero();
+    const gs = baseState({
+      enemies: [createTestEnemy({
+        enemyId: 'goblin-1', x: 3, y: 2, currentHealth: 5,
+        statusEffects: [contact(3), charm()],
+      })],
+      heroes: [placedBrawler()],
+    });
+    executeTurn(gs);
+    expect(gs.placedCharacters[0].currentHealth).toBe(10); // no bite from an ally-of-the-moment
+    expect(gs.placedCharacters[0].x).toBe(2);
   });
 
-  it('a CHARMED hero (fighting for the enemy) does not brawl the enemies it walks into', () => {
+  it('a CHARMED hero is still bitten by enemy spikes (charm ignored on the mover side)', () => {
+    regWalkerHero();
     const gs = baseState({
       enemies: [createTestEnemy({
         enemyId: 'goblin-1', x: 3, y: 2, currentHealth: 5,
         statusEffects: [contact(3)],
       })],
-      heroes: [placedBrawler({ statusEffects: [contact(2), charm()] })],
+      heroes: [placedBrawler({ statusEffects: [charm()] })],
     });
     executeTurn(gs);
-    expect(gs.puzzle.enemies[0].currentHealth).toBe(5);    // same side now — no fight
-    expect(gs.placedCharacters[0].currentHealth).toBe(10);
-    expect(gs.placedCharacters[0].x).toBe(2);
+    expect(gs.placedCharacters[0].currentHealth).toBe(7); // base party is what the spikes see
+    expect(gs.puzzle.enemies[0].currentHealth).toBe(5);
   });
 });
