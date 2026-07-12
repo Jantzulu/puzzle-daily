@@ -91,13 +91,17 @@ Ordered by (likelihood of live bugs × player impact). Check off as swept.
   brawling enemies. Fixed with an isAttackTarget gate (non-hostile
   walk-in = block, not fight). Covered: mutual exchange, move-in-on-kill
   (no corpse counter), PRIORITY first strike, charmed targets, vessels.
-  **⚠️ TWO ASYMMETRIES PINNED AS-IS — user decision wanted:**
-  (a) an ENEMY walking into a hero deals NO contact damage, ever —
-  contact combat only fires when the hero-side mover initiates; spiky
-  enemies are reactive only. (b) enemy-shaped movers never contact-fight
-  enemy-shaped targets even when hostile (hero-party summon walking
-  into an enemy just waits). If either should change, flip the pins in
-  the "pinned" describe block and wire the branch party-aware.
+  **RESOLVED 2026-07-12 (user decision, implemented same day):** contact
+  damage is now purely REACTIVE and UNIVERSAL — a stationary holder's
+  spikes bite any hostile that tries to walk onto its tile, every
+  attempt (lethal to dumb walkers by design), all shapes/parties;
+  defender-effective vs mover-base hostility so charm moves spikes'
+  allegiance. The walker's own contact damage was REMOVED (mutual
+  exchange + PRIORITY ordering + move-in-on-kill are gone; a living
+  defender always blocks). Offensive contact returns later as a
+  behavior-sequence action — see docs/feature-backlog.md. Side-finding
+  flagged separately: MOVE_LEFT/RIGHT/DIAGONAL_* action types have UI
+  tooltips but NO executeAction case — they silently no-op.
 - [ ] **Heal/resurrect caps.** Healing respects max health for enemies
   healed by enemies; resurrect health percent; heal targeting a vessel.
 - [ ] **Backstab + crit from enemy attackers.** Authored on enemy spells —
