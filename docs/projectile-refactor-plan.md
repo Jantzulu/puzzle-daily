@@ -1,6 +1,6 @@
 # Projectile System Refactor Plan
 
-**Status:** Proposed — not started
+**Status:** IN PROGRESS — Phases A+B done; Phase E gate built and GREEN (2026-07-12); Phase E implementation next
 **Scope:** `src/engine/simulation.ts`, `src/engine/actions.ts`, `src/types/game.ts`
 **Goal:** Pay down the technical debt from the March 2026 deterministic-projectile refactor without changing observable gameplay.
 
@@ -109,7 +109,15 @@ Carry over fields one at a time, with a test for each. Entity-side fields (`pend
 
 Approach: extract the pure collision-resolution logic from `resolveProjectiles` into a helper `resolveProjectileCollisions(state, projectiles): CollisionOutcome[]`. Both `resolveProjectiles` (real game) and `updateProjectilesHeadless` (solver) call this helper with their respective projectile sets.
 
-**Pre-requisite:** a golden-test suite that runs a corpus of saved puzzles through both the real simulator and the headless solver and asserts the same outcomes. Build this suite **before** touching the code.
+**Pre-requisite:** ✅ DONE 2026-07-12. The corpus's 22 per-case parity
+gates are live (`corpus.test.ts` "Phase E gate" tests): real vs headless
+final logical outcome (positions, healths, victory, turns, score,
+collectibles), with pendingProjectileDeath folded into `dead` as the one
+intended mode difference. ALL 22 PASS on the current engine — the 2026-07
+audit's sweep-7 fixes (headless diedOnTurn stamp, deterministic vessel
+transforms) closed the last divergences. The audit's
+`audit-parity.test.ts` (8 feature scenarios) guards the same seam from
+the feature side.
 
 **Verification:** golden tests, plus solver validation on existing validated puzzles (memory notes commit `ea1d488` fixed a validator/solver mismatch — don't regress that).
 
@@ -156,8 +164,13 @@ These are correct-as-is and tempting to "while I'm in there" modify — don't:
 
 ## 9. Open Questions
 
-1. Do projectiles have stable IDs already? (Required for Phase C's visual map keying.)
-2. Is there appetite for building the golden-test corpus Phase E requires, or should Phase E be deferred indefinitely?
-3. Should the `ProjectileDeferred` struct in Phase D be per-projectile or per-turn? Per-projectile matches current flag placement; per-turn might be cleaner for the "pending death" case that lives on entities.
+1. ✅ ANSWERED (2026-07-12): projectiles have stable ids — `proj.id` is
+   assigned at spawn and used as the stable key throughout (logs, replay
+   events, pierce dedup). Phase C's visual map can key on it.
+2. ✅ ANSWERED: the golden corpus exists and the parity gates are green
+   (see Phase E pre-requisite above). Phase E is GO.
+3. OPEN: `ProjectileDeferred` per-projectile vs per-turn — decide when
+   Phase D starts.
 
-Bring these up before kicking off Phase C.
+Execution order (settled 2026-07-12, per §7): **E → C → D**, one phase
+per session, full suite + corpus green between steps, no combining.
