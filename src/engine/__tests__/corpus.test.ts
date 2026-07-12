@@ -125,9 +125,15 @@ describe('corpus golden tests', () => {
       // snapshots are NOT the target — real mode deliberately defers
       // `enemy.dead=true` via pendingProjectileDeath (waits for visual
       // projectile sprite to arrive); headless has no visual loop and flips
-      // immediately. This is intentional design, not drift.
-      // See docs/projectile-refactor-plan.md §4 Phase E.
-      it.todo('Phase E: real and headless agree on final-turn entity state');
+      // immediately. The parity view folds that one intended difference
+      // (pending counts as dead) and compares everything else.
+      // Implemented 2026-07-12 as the Phase E gate — see
+      // docs/projectile-refactor-plan.md §4 Phase E.
+      it('Phase E gate: real and headless agree on the final logical outcome', () => {
+        const real = runCase(testCase, { headless: false });
+        const headless = runCase(testCase, { headless: true });
+        expect(real.finalParity).toEqual(headless.finalParity);
+      });
     });
   }
 });

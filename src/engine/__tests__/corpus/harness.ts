@@ -18,6 +18,30 @@ export interface RunResult {
   finalStatus: string;
   turnsExecuted: number;
   hitTurnCap: boolean;
+  /** Phase E parity view — see finalParityView(). */
+  finalParity: FinalParityView;
+}
+
+/**
+ * The Phase E success criterion (docs/projectile-refactor-plan.md §4):
+ * real and headless mode must agree on final LOGICAL outcomes. Deferred
+ * bookkeeping is folded away — real mode's pendingProjectileDeath counts
+ * as dead, matching how the audit's parity sweep normalizes the one
+ * intended difference between the modes.
+ */
+export interface FinalParityView {
+  finalStatus: string;
+  turnsExecuted: number;
+  score: number;
+  characters: Array<{
+    characterId: string; x: number; y: number; facing: string;
+    health: number; dead: boolean;
+  }>;
+  enemies: Array<{
+    enemyId: string; x: number; y: number; facing?: string;
+    health: number; dead: boolean;
+  }>;
+  collectibles: Array<{ collectibleId?: string; x: number; y: number; collected: boolean }>;
 }
 
 export interface RunOptions {
@@ -70,6 +94,32 @@ export function runCase(testCase: CorpusCase, opts: RunOptions = {}): RunResult 
     finalStatus: gs.gameStatus,
     turnsExecuted: turns,
     hitTurnCap: turns >= maxTurns && gs.gameStatus === 'running',
+    finalParity: finalParityView(gs, turns),
+  };
+}
+
+function finalParityView(gs: Parameters<typeof executeTurn>[0], turns: number): FinalParityView {
+  return {
+    finalStatus: gs.gameStatus,
+    turnsExecuted: turns,
+    score: gs.score,
+    characters: gs.placedCharacters.map(c => ({
+      characterId: c.characterId,
+      x: c.x, y: c.y, facing: c.facing,
+      health: c.currentHealth,
+      dead: !!(c.dead || c.pendingProjectileDeath), // fold the deferred commit
+    })),
+    enemies: gs.puzzle.enemies.map(e => ({
+      enemyId: e.enemyId,
+      x: e.x, y: e.y, facing: e.facing,
+      health: e.currentHealth,
+      dead: !!(e.dead || e.pendingProjectileDeath),
+    })),
+    collectibles: gs.puzzle.collectibles.map(col => ({
+      collectibleId: col.collectibleId,
+      x: col.x, y: col.y,
+      collected: !!col.collected,
+    })),
   };
 }
 
