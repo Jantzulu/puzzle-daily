@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { CharacterEditor } from './CharacterEditor';
 import { EnemyEditor } from './EnemyEditor';
+import { VesselEditor } from './VesselEditor';
 import { SpellLibrary } from './SpellLibrary';
 import { StatusEffectLibrary } from './StatusEffectLibrary';
 import { SkinEditor } from './SkinEditor';
@@ -11,11 +12,12 @@ import { CollectibleEditor } from './CollectibleEditor';
 import { MediaLibraryTab } from './MediaLibraryTab';
 import { SoundEditor } from './SoundEditor';
 
-type AssetTab = 'characters' | 'enemies' | 'spells' | 'status_effects' | 'skins' | 'tiles' | 'objects' | 'collectibles' | 'sounds' | 'media';
+type AssetTab = 'characters' | 'enemies' | 'vessels' | 'spells' | 'status_effects' | 'skins' | 'tiles' | 'objects' | 'collectibles' | 'sounds' | 'media';
 
 const TABS: { id: AssetTab; label: string; icon: string }[] = [
   { id: 'characters', label: 'Heroes', icon: '\u2694\uFE0F' },
   { id: 'enemies', label: 'Enemies', icon: '\uD83D\uDC79' },
+  { id: 'vessels', label: 'Vessels', icon: '\uD83D\uDEE2\uFE0F' },
   { id: 'spells', label: 'Spells', icon: '\u2728' },
   { id: 'status_effects', label: 'Status Effects', icon: '\uD83D\uDD2E' },
   { id: 'tiles', label: 'Tiles', icon: '\uD83E\uDDF1' },
@@ -82,6 +84,7 @@ export const AssetManager: React.FC = () => {
       <div className="flex-1 min-h-0 overflow-auto">
         {activeTab === 'characters' && <CharacterEditor initialSelectedId={searchParams.get('id') || undefined} />}
         {activeTab === 'enemies' && <EnemyEditor initialSelectedId={searchParams.get('id') || undefined} />}
+        {activeTab === 'vessels' && <VesselEditor initialSelectedId={searchParams.get('id') || undefined} />}
         {activeTab === 'spells' && <SpellLibrary initialSelectedId={searchParams.get('id') || undefined} />}
         {activeTab === 'status_effects' && <StatusEffectLibrary initialSelectedId={searchParams.get('id') || undefined} />}
         {activeTab === 'skins' && <SkinEditor initialSelectedId={searchParams.get('id') || undefined} />}
