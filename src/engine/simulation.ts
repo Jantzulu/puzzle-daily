@@ -1648,6 +1648,12 @@ export function executeTurn(gameState: GameState): GameState {
       continue;
     }
 
+    // While this action chain runs, `character` (the pre-action original) is
+    // still the object in gameState.placedCharacters — feedback damage the
+    // action provokes (e.g. a victim's on_death spell striking its killer)
+    // lands there, not on the acting copy. Snapshot to merge the delta below.
+    const externalHealthBefore = character.currentHealth;
+
     // Handle REPEAT action - loop back to beginning AND execute first action
     // Check for both enum value and string key
     if (currentAction.type === ActionType.REPEAT) {
@@ -1702,6 +1708,23 @@ export function executeTurn(gameState: GameState): GameState {
           break;
         }
       }
+    }
+
+    // Merge externally-applied damage/heals into the acting copy — without
+    // this, the array write-back below silently discards them.
+    const externalDelta = character.currentHealth - externalHealthBefore;
+    if (externalDelta !== 0) {
+      newCharacter.currentHealth += externalDelta;
+    }
+    if (character.dead && !newCharacter.dead) {
+      // The external hit was lethal on its own: death (trigger + drop)
+      // already resolved against the original — carry the outcome over.
+      newCharacter.dead = true;
+      newCharacter.diedOnTurn = character.diedOnTurn;
+    } else if (!newCharacter.dead && newCharacter.currentHealth <= 0) {
+      // Only the COMBINED pipeline + external damage is lethal: finish the
+      // death through the canonical path so trigger/drop fire exactly once.
+      applyDamageToEntity(newCharacter, 0, gameState);
     }
 
     // Advance to next action
@@ -1892,6 +1915,12 @@ export function executeTurn(gameState: GameState): GameState {
       }
     };
 
+    // Same external-mutation window as the character loop: `enemy` (the
+    // pre-action original) is still the object in gameState.puzzle.enemies
+    // while this action chain runs — feedback damage lands there and the
+    // wrapper copy-back would clobber it. Snapshot to merge the delta below.
+    const externalHealthBefore = enemy.currentHealth;
+
     // Handle REPEAT action - loop back to beginning AND execute first action
     if (currentAction.type === ActionType.REPEAT) {
       // Reset to beginning
@@ -1923,6 +1952,19 @@ export function executeTurn(gameState: GameState): GameState {
 
       // Execute linkedToNext chain — linked actions fire on the same turn
       executeEnemyLinkedChain();
+    }
+
+    // Merge externally-applied damage/heals into the acting copy (see the
+    // character loop for the full rationale).
+    const externalDelta = enemy.currentHealth - externalHealthBefore;
+    if (externalDelta !== 0) {
+      newEnemy.currentHealth += externalDelta;
+    }
+    if (enemy.dead && !newEnemy.dead) {
+      newEnemy.dead = true;
+      newEnemy.diedOnTurn = enemy.diedOnTurn;
+    } else if (!newEnemy.dead && newEnemy.currentHealth <= 0) {
+      applyDamageToEntity(newEnemy, 0, gameState);
     }
 
     // Advance to next action
@@ -1972,16 +2014,25 @@ export function executeTurn(gameState: GameState): GameState {
         preCastFacing: enemy.preCastFacing, // carry the pre-cast stash (may have been set by a sequential cast this turn)
         statusEffects: enemy.statusEffects, // shared reference — status gates + charm read the caster's effects (see the action-loop wrapper)
       };
+      // The acting enemy IS the array object here, so feedback damage from
+      // the trigger (a victim's on_death spell striking back) lands directly
+      // on `enemy` mid-call — the copy-back must not clobber or un-kill it.
+      const triggerHealthBefore = enemy.currentHealth;
       evaluateTriggers(tempCharForTrigger, gameState);
+      const externalDelta = enemy.currentHealth - triggerHealthBefore;
+      const externallyDied = enemy.dead;
 
       // Copy back any changes from trigger execution
       enemy.x = tempCharForTrigger.x;
       enemy.y = tempCharForTrigger.y;
       enemy.facing = tempCharForTrigger.facing;
-      enemy.currentHealth = tempCharForTrigger.currentHealth;
-      enemy.dead = tempCharForTrigger.dead;
+      enemy.currentHealth = tempCharForTrigger.currentHealth + externalDelta;
+      enemy.dead = tempCharForTrigger.dead || externallyDied;
       enemy.preCastFacing = tempCharForTrigger.preCastFacing; // face-on-cast-with-revert stash (restored next turn start)
       enemy.spellCooldowns = tempCharForTrigger.spellCooldowns;
+      if (!enemy.dead && enemy.currentHealth <= 0) {
+        applyDamageToEntity(enemy, 0, gameState); // combined-lethality: die via the canonical path
+      }
     }
   }
 
@@ -2011,16 +2062,24 @@ export function executeTurn(gameState: GameState): GameState {
         preCastFacing: enemy.preCastFacing, // carry the pre-cast stash (may have been set by a sequential cast this turn)
         statusEffects: enemy.statusEffects, // shared reference — status gates + charm read the caster's effects (see the action-loop wrapper)
       };
+      // See the priority block above: preserve feedback damage the trigger
+      // provoked against the REAL enemy through this copy-back.
+      const triggerHealthBefore = enemy.currentHealth;
       evaluateTriggers(tempCharForTrigger, gameState);
+      const externalDelta = enemy.currentHealth - triggerHealthBefore;
+      const externallyDied = enemy.dead;
 
       // Copy back any changes from trigger execution
       enemy.x = tempCharForTrigger.x;
       enemy.y = tempCharForTrigger.y;
       enemy.facing = tempCharForTrigger.facing;
-      enemy.currentHealth = tempCharForTrigger.currentHealth;
-      enemy.dead = tempCharForTrigger.dead;
+      enemy.currentHealth = tempCharForTrigger.currentHealth + externalDelta;
+      enemy.dead = tempCharForTrigger.dead || externallyDied;
       enemy.preCastFacing = tempCharForTrigger.preCastFacing; // face-on-cast-with-revert stash (restored next turn start)
       enemy.spellCooldowns = tempCharForTrigger.spellCooldowns;
+      if (!enemy.dead && enemy.currentHealth <= 0) {
+        applyDamageToEntity(enemy, 0, gameState); // combined-lethality: die via the canonical path
+      }
     }
   }
 

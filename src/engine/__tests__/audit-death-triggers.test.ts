@@ -490,3 +490,238 @@ describe('a victim killed twice fires its trigger once', () => {
   });
 });
 
+// ==========================================
+// The on-death spell aims at the right side, and its damage STICKS
+// ==========================================
+// The action loops act on copies while gameState still holds the original,
+// so feedback damage — a victim's on_death spell striking its killer
+// mid-action — must survive the post-action write-back on every loop:
+// hero sequential, enemy sequential (wrapper copy-back), enemy trigger-phase.
+
+const registerRevengeBlast = () =>
+  registerTestSpell('revenge-blast', {
+    id: 'revenge-blast', name: 'Revenge Blast', description: '', thumbnailIcon: '',
+    templateType: SpellTemplate.AOE, directionMode: 'current_facing',
+    radius: 1, aoeCenteredOnCaster: true, damage: 3,
+    sprites: {},
+  });
+
+const onDeathRevenge = {
+  type: ActionType.SPELL, spellId: 'revenge-blast',
+  executionMode: 'parallel' as const,
+  trigger: { mode: 'on_event' as const, event: 'on_death' as const },
+};
+
+describe('on-death revenge damage reaches the killer (mid-action feedback)', () => {
+  const regAvenger = (health = 2) =>
+    regEnemy(createTestEnemyDef({
+      id: 'avenger', health,
+      behavior: {
+        type: 'active',
+        pattern: [onDeathRevenge],
+        defaultFacing: Direction.WEST,
+      },
+    }));
+
+  beforeEach(registerRevengeBlast);
+
+  it("a dying ENEMY's on_death AOE damages the killer hero, not fellow enemies", () => {
+    regAvenger();
+    regKillerHero('slash');
+    regEnemy(createTestEnemyDef()); // goblin-1 def
+    const gs = baseState({
+      enemies: [
+        createTestEnemy({
+          enemyId: 'avenger', x: 3, y: 2, currentHealth: 2,
+          actionIndex: 0, active: true, facing: Direction.WEST,
+        }),
+        createTestEnemy({ enemyId: 'goblin-1', x: 4, y: 2, currentHealth: 5 }),
+      ],
+      heroes: [placedKiller()],
+    });
+    executeTurn(gs); // slash kills the avenger → revenge blast
+    expect(gs.puzzle.enemies[0].dead).toBe(true);
+    expect(gs.placedCharacters[0].currentHealth).toBe(7); // 10 - 3 revenge
+    expect(gs.puzzle.enemies[1].currentHealth).toBe(5);   // fellow enemy untouched
+  });
+
+  it('a LETHAL revenge blast kills the acting hero', () => {
+    regAvenger();
+    regKillerHero('slash');
+    const gs = baseState({
+      enemies: [createTestEnemy({
+        enemyId: 'avenger', x: 3, y: 2, currentHealth: 2,
+        actionIndex: 0, active: true, facing: Direction.WEST,
+      })],
+      heroes: [placedKiller({ currentHealth: 3 })],
+    });
+    executeTurn(gs);
+    expect(gs.puzzle.enemies[0].dead).toBe(true);
+    expect(gs.placedCharacters[0].dead).toBe(true); // 3 hp - 3 revenge
+  });
+
+  it("a dying HERO's on_death AOE damages the killing enemy (sequential enemy loop)", () => {
+    regChar(createTestCharacterDef({
+      id: 'martyr', health: 2,
+      behavior: [{ type: ActionType.WAIT }, onDeathRevenge] as never,
+    }));
+    regEnemy(createTestEnemyDef({
+      id: 'stabber', health: 5,
+      behavior: {
+        type: 'active',
+        pattern: [{ type: ActionType.SPELL, spellId: 'stab' }],
+        defaultFacing: Direction.WEST,
+      },
+    }));
+    const gs = baseState({
+      enemies: [createTestEnemy({
+        enemyId: 'stabber', x: 3, y: 2, currentHealth: 5,
+        actionIndex: 0, active: true, facing: Direction.WEST,
+      })],
+      heroes: [createTestCharacter({
+        characterId: 'martyr', x: 2, y: 2, facing: Direction.EAST,
+        currentHealth: 2, actionIndex: 0, active: true,
+      })],
+    });
+    executeTurn(gs); // stab kills the martyr → revenge blast hits the stabber
+    expect(gs.placedCharacters[0].dead).toBe(true);
+    expect(gs.puzzle.enemies[0].currentHealth).toBe(2); // 5 - 3 revenge
+  });
+
+  it("a LETHAL revenge blast kills the acting enemy — and it STAYS dead", () => {
+    regChar(createTestCharacterDef({
+      id: 'martyr', health: 2,
+      behavior: [{ type: ActionType.WAIT }, onDeathRevenge] as never,
+    }));
+    regEnemy(createTestEnemyDef({
+      id: 'stabber', health: 2,
+      behavior: {
+        type: 'active',
+        pattern: [{ type: ActionType.SPELL, spellId: 'stab' }],
+        defaultFacing: Direction.WEST,
+      },
+    }));
+    const gs = baseState({
+      enemies: [createTestEnemy({
+        enemyId: 'stabber', x: 3, y: 2, currentHealth: 2,
+        actionIndex: 0, active: true, facing: Direction.WEST,
+      })],
+      heroes: [createTestCharacter({
+        characterId: 'martyr', x: 2, y: 2, facing: Direction.EAST,
+        currentHealth: 2, actionIndex: 0, active: true,
+      })],
+    });
+    executeTurn(gs);
+    expect(gs.placedCharacters[0].dead).toBe(true);
+    expect(gs.puzzle.enemies[0].dead).toBe(true); // 2 hp - 3 revenge
+  });
+
+  it('revenge damage survives the TRIGGER-PHASE copy-back (on_event attacker)', () => {
+    regChar(createTestCharacterDef({
+      id: 'martyr', health: 2,
+      behavior: [{ type: ActionType.WAIT }, onDeathRevenge] as never,
+    }));
+    regEnemy(createTestEnemyDef({
+      id: 'ambusher', health: 5,
+      behavior: {
+        type: 'active',
+        pattern: [
+          { type: ActionType.WAIT },
+          {
+            type: ActionType.SPELL, spellId: 'stab',
+            executionMode: 'parallel',
+            trigger: { mode: 'on_event', event: 'character_in_range', eventRange: 1 },
+          },
+        ],
+        defaultFacing: Direction.WEST,
+      },
+    }));
+    const gs = baseState({
+      enemies: [createTestEnemy({
+        enemyId: 'ambusher', x: 3, y: 2, currentHealth: 5,
+        actionIndex: 0, active: true, facing: Direction.WEST,
+      })],
+      heroes: [createTestCharacter({
+        characterId: 'martyr', x: 2, y: 2, facing: Direction.EAST,
+        currentHealth: 2, actionIndex: 0, active: true,
+      })],
+    });
+    executeTurn(gs); // trigger-phase stab kills the martyr → revenge blast
+    expect(gs.placedCharacters[0].dead).toBe(true);
+    expect(gs.puzzle.enemies[0].currentHealth).toBe(2);
+  });
+
+  it('a lethal revenge blast in the trigger phase cannot UN-kill the attacker', () => {
+    regChar(createTestCharacterDef({
+      id: 'martyr', health: 2,
+      behavior: [{ type: ActionType.WAIT }, onDeathRevenge] as never,
+    }));
+    regEnemy(createTestEnemyDef({
+      id: 'ambusher', health: 2,
+      behavior: {
+        type: 'active',
+        pattern: [
+          { type: ActionType.WAIT },
+          {
+            type: ActionType.SPELL, spellId: 'stab',
+            executionMode: 'parallel',
+            trigger: { mode: 'on_event', event: 'character_in_range', eventRange: 1 },
+          },
+        ],
+        defaultFacing: Direction.WEST,
+      },
+    }));
+    const gs = baseState({
+      enemies: [createTestEnemy({
+        enemyId: 'ambusher', x: 3, y: 2, currentHealth: 2,
+        actionIndex: 0, active: true, facing: Direction.WEST,
+      })],
+      heroes: [createTestCharacter({
+        characterId: 'martyr', x: 2, y: 2, facing: Direction.EAST,
+        currentHealth: 2, actionIndex: 0, active: true,
+      })],
+    });
+    executeTurn(gs);
+    expect(gs.placedCharacters[0].dead).toBe(true);
+    expect(gs.puzzle.enemies[0].dead).toBe(true);
+  });
+
+  it('pipeline + external damage that is only lethal COMBINED still kills (and fires the trigger once)', () => {
+    // Priority contact enemy hits the walking hero for 3 (pipeline damage on
+    // the acting copy); the hero's counter kills it; its revenge blast lands
+    // another 3 on the array original. 5 hp - 3 - 3: dead, though neither
+    // source alone was lethal.
+    regEnemy(createTestEnemyDef({
+      id: 'spiky', health: 2,
+      behavior: {
+        type: 'active',
+        pattern: [onDeathRevenge],
+        defaultFacing: Direction.WEST,
+      },
+    }));
+    regChar(createTestCharacterDef({
+      id: 'brawler', health: 5,
+      behavior: [{ type: ActionType.MOVE_FORWARD }, onDeathSummon] as never,
+    }));
+    const gs = baseState({
+      enemies: [createTestEnemy({
+        enemyId: 'spiky', x: 3, y: 2, currentHealth: 2,
+        actionIndex: 0, active: true, facing: Direction.WEST,
+        statusEffects: [
+          statusInst(StatusEffectType.PRIORITY, 0),
+          statusInst(StatusEffectType.CONTACT_DAMAGE, 3),
+        ],
+      })],
+      heroes: [createTestCharacter({
+        characterId: 'brawler', x: 2, y: 2, facing: Direction.EAST,
+        currentHealth: 5, actionIndex: 0, active: true,
+        statusEffects: [statusInst(StatusEffectType.CONTACT_DAMAGE, 5)],
+      })],
+    });
+    executeTurn(gs);
+    expect(gs.puzzle.enemies.find(e => e.enemyId === 'spiky')!.dead).toBe(true);
+    expect(gs.placedCharacters[0].dead).toBe(true);
+    expect(spawnlings(gs)).toHaveLength(1); // the hero's own death trigger, exactly once
+    expect(spawnlings(gs)[0].party).toBe('hero');
+  });
+});
