@@ -6,14 +6,19 @@
 import './helpers';
 import {
   clearAllRegistries,
+  registerTestCharacter as regChar,
   registerTestEnemy as regEnemy,
   registerTestVessel,
+  registerTestSpell,
+  registerTestCollectible,
   createTestPuzzle,
+  createTestCharacterDef,
   createTestEnemyDef,
+  createTestCharacter,
   createTestEnemy,
   createTestGameState,
 } from './helpers';
-import { Direction, ActionType } from '../../types/game';
+import { Direction, ActionType, SpellTemplate } from '../../types/game';
 import { executeTurn, checkVictoryConditions } from '../simulation';
 
 beforeEach(() => {
@@ -156,6 +161,60 @@ describe('vessel transform — timed hatch', () => {
     expect(gs.puzzle.enemies).toHaveLength(2);
     expect(gs.puzzle.enemies[1].enemyId).toBe('spider');
     expect(gs.puzzle.enemies[0].despawned).toBeUndefined(); // died for real — corpse stays
+  });
+});
+
+describe('death drops on direct damage (melee) — vessels and enemies', () => {
+  // Regression for the 2026-07-11 fix: direct-damage kills (melee/cone/AOE/
+  // contact) never fired death drops — only projectile and DOT deaths did.
+  // Found via vessels, whose primary break mode is a melee smash.
+  const setupMeleeHero = () => {
+    registerTestCollectible('gold', { id: 'gold', name: 'Gold', effects: [] });
+    registerTestSpell('slash', {
+      id: 'slash', name: 'Slash', description: '', thumbnailIcon: '',
+      templateType: SpellTemplate.MELEE, directionMode: 'current_facing',
+      damage: 5, sprites: {},
+    });
+    regChar(createTestCharacterDef({
+      id: 'hero-basher',
+      behavior: [{ type: ActionType.SPELL, spellId: 'slash' }],
+    }));
+  };
+
+  const meleeState = (enemies: ReturnType<typeof createTestEnemy>[]) =>
+    createTestGameState({
+      puzzle: createTestPuzzle({ width: 6, height: 5, enemies }),
+      gameStatus: 'running',
+      currentTurn: 0,
+      testMode: true,
+      placedCharacters: [createTestCharacter({ characterId: 'hero-basher', x: 2, y: 2, facing: Direction.EAST, actionIndex: 0, active: true })],
+    });
+
+  it('a melee-killed enemy drops its loot', () => {
+    setupMeleeHero();
+    regEnemy(createTestEnemyDef({ id: 'goblin-1', health: 2, droppedCollectibleId: 'gold' }));
+    const gs = meleeState([createTestEnemy({ enemyId: 'goblin-1', x: 3, y: 2, currentHealth: 2 })]);
+
+    executeTurn(gs);
+    expect(gs.puzzle.enemies[0].dead).toBe(true);
+    expect(gs.puzzle.collectibles).toHaveLength(1);
+    expect(gs.puzzle.collectibles[0].collectibleId).toBe('gold');
+  });
+
+  it('a smashed vessel drops its loot AND its held enemy emerges', () => {
+    setupMeleeHero();
+    registerTestVessel({
+      id: 'loot-barrel', name: 'Loot Barrel', health: 1,
+      droppedCollectibleId: 'gold',
+      transformEnemyId: 'spider',
+    });
+    const gs = meleeState([createTestEnemy({ enemyId: 'loot-barrel', x: 3, y: 2, currentHealth: 1 })]);
+
+    executeTurn(gs);
+    expect(gs.puzzle.enemies[0].dead).toBe(true); // barrel smashed
+    expect(gs.puzzle.collectibles).toHaveLength(1); // gold dropped
+    expect(gs.puzzle.enemies).toHaveLength(2); // spider emerged
+    expect(gs.puzzle.enemies[1].enemyId).toBe('spider');
   });
 });
 

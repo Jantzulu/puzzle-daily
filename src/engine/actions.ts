@@ -35,7 +35,7 @@ import { isEntityCharmed, effectiveParty, entityParty, isAttackTarget, combatId 
 import { spawnEnemyMidGame } from './spawning';
 import type { EntityParty } from '../types/game';
 import type { CollectibleEffectConfig, PlacedCollectible } from '../types/game';
-import { canEntityAct, canEntityCastSpell, canEntityMove, hasHasteBonus, isHomingDebug } from './simulation';
+import { canEntityAct, canEntityCastSpell, canEntityMove, hasHasteBonus, isHomingDebug, handleEntityDeathDrop } from './simulation';
 import { wakeFromSleep } from './simulation';
 
 // ── Trait helpers ────────────────────────────────────────────────────────────
@@ -2772,7 +2772,14 @@ export function applyDamageToEntity(
 
     if (hasDeflect && remainingDamage > 0) {
       // Deflect all damage back to source (don't recurse - source can't deflect reflected damage)
+      const sourceWasAlive = !source.dead;
       applyDamageToEntityNoDeflect(source, remainingDamage, gameState);
+      // A deflect kill drops the source's loot (same as simulation's own
+      // deflect helper) — NoDeflect itself never drops, its projectile/DOT
+      // callers handle their own.
+      if (sourceWasAlive && source.dead) {
+        handleEntityDeathDrop(source, 'enemyId' in source, gameState);
+      }
       // Target takes no damage
       return;
     }
@@ -2832,6 +2839,7 @@ export function applyDamageToEntity(
       statusEffects: target.statusEffects,
       spellCooldowns: target.spellCooldowns,
     };
+    const firstDeath = !target.dead;
     executeDeathTriggers(entityForTriggers, gameState);
     target.dead = true;
     // Stamp logical death turn once. Survives the pending→dead→pending
@@ -2843,6 +2851,15 @@ export function applyDamageToEntity(
     // "blocking" and "walkable corpse" non-deterministically).
     if (target.diedOnTurn === undefined) {
       target.diedOnTurn = gameState.currentTurn;
+    }
+    if (firstDeath) {
+      // Death drop for DIRECT-damage kills (melee, cone, AOE, contact,
+      // tile damage, push). Fixed 2026-07-11: before this, only projectile
+      // kills (deferred visual commit) and status-effect deaths ever fired
+      // drops — a melee'd enemy never dropped its loot. Projectile and DOT
+      // paths keep their own drop calls; they damage via NoDeflect, which
+      // never drops.
+      handleEntityDeathDrop(target, 'enemyId' in target, gameState);
     }
   }
 }

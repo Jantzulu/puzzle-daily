@@ -6,16 +6,17 @@ import { getSavedPuzzles } from './puzzleStorage';
 import {
   getCustomCharacters,
   getCustomEnemies,
+  getCustomVessels,
   getAllCollectibles,
   getSpellAssets,
   getPuzzleSkins,
 } from './assetStorage';
 import type { CharacterAction } from '../types/game';
 
-export type AssetType = 'character' | 'enemy' | 'spell' | 'tile_type' | 'collectible' | 'object' | 'skin' | 'sound' | 'status_effect';
+export type AssetType = 'character' | 'enemy' | 'vessel' | 'spell' | 'tile_type' | 'collectible' | 'object' | 'skin' | 'sound' | 'status_effect';
 
 export interface AssetUsage {
-  type: 'puzzle' | 'character' | 'enemy' | 'spell' | 'collectible' | 'skin';
+  type: 'puzzle' | 'character' | 'enemy' | 'vessel' | 'spell' | 'collectible' | 'skin';
   id: string;
   name: string;
   detail: string; // e.g. "used as placed enemy", "referenced in behavior"
@@ -41,6 +42,28 @@ export function findAssetUsages(assetType: AssetType, assetId: string): AssetUsa
 
   switch (assetType) {
     case 'enemy': {
+      for (const p of puzzles) {
+        if (p.enemies?.some(e => e.enemyId === assetId)) {
+          usages.push({ type: 'puzzle', id: p.id, name: p.name || p.id, detail: 'placed on map' });
+        }
+      }
+      // Vessels holding this enemy (emerges when the vessel breaks)
+      for (const vessel of getCustomVessels()) {
+        if (vessel.transformEnemyId === assetId) {
+          usages.push({ type: 'vessel', id: vessel.id, name: vessel.name, detail: 'held inside vessel' });
+        }
+      }
+      // Summon spells that spawn this enemy
+      for (const spell of getSpellAssets()) {
+        if (spell.summonEnemyId === assetId) {
+          usages.push({ type: 'spell', id: spell.id, name: spell.name, detail: 'summoned by spell' });
+        }
+      }
+      break;
+    }
+
+    case 'vessel': {
+      // Vessels are placed into puzzle.enemies under their own id
       for (const p of puzzles) {
         if (p.enemies?.some(e => e.enemyId === assetId)) {
           usages.push({ type: 'puzzle', id: p.id, name: p.name || p.id, detail: 'placed on map' });
@@ -110,6 +133,11 @@ export function findAssetUsages(assetType: AssetType, assetId: string): AssetUsa
       for (const enemy of getCustomEnemies()) {
         if (enemy.droppedCollectibleId === assetId) {
           usages.push({ type: 'enemy', id: enemy.id, name: enemy.name, detail: 'as death drop' });
+        }
+      }
+      for (const vessel of getCustomVessels()) {
+        if (vessel.droppedCollectibleId === assetId) {
+          usages.push({ type: 'vessel', id: vessel.id, name: vessel.name, detail: 'dropped on break' });
         }
       }
       break;

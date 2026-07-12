@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { toast } from '../shared/Toast';
+import { findAssetUsages, formatUsageWarning } from '../../utils/assetDependencies';
 import { scaledNameClass } from '../../utils/textScale';
 import { Direction } from '../../types/game';
 import type { CustomVessel, CustomSprite } from '../../utils/assetStorage';
@@ -86,7 +87,9 @@ export const VesselEditor: React.FC<{ initialSelectedId?: string }> = ({ initial
   };
 
   const handleDelete = (id: string) => {
-    if (!confirm('Delete this vessel? Maps that place it will lose the entity.')) return;
+    const usages = findAssetUsages('vessel', id);
+    const warning = usages.length > 0 ? `\n\n${formatUsageWarning(usages)}` : '';
+    if (!confirm(`Delete this vessel?${warning}`)) return;
     deleteVessel(id);
     setVessels(getCustomVessels());
     if (selectedId === id) {
