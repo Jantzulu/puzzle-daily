@@ -1,5 +1,5 @@
 import type { Enemy } from '../../types/game';
-import { getCustomEnemies, isAssetHidden, type CustomEnemy } from '../../utils/assetStorage';
+import { getCustomEnemies, isAssetHidden, loadVessel, vesselToEnemyAsset, type CustomEnemy } from '../../utils/assetStorage';
 import { migrateActions } from '../../utils/actionMigration';
 import goblinData from './goblin.json';
 import targetDummyData from './target-dummy.json';
@@ -29,6 +29,13 @@ export const getEnemy = (id: string): EnemyWithSprite | undefined => {
   // Check official enemies as fallback
   if (officialEnemies[id]) {
     return officialEnemies[id];
+  }
+
+  // Vessels are enemy-compatible combatants — placed-entity lookups resolve
+  // them through the adapter (no behavior = static; docs/feature-backlog.md)
+  const vessel = loadVessel(id);
+  if (vessel) {
+    return vesselToEnemyAsset(vessel);
   }
 
   return undefined;

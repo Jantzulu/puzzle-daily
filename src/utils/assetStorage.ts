@@ -1,4 +1,4 @@
-import type { Character, Enemy, TileBehaviorConfig, CadenceConfig, SoundAsset, GlobalSoundConfig, GlobalHapticConfig, CollectibleEffectConfig, CollectiblePickupPermissions } from '../types/game';
+import type { Character, Enemy, TileBehaviorConfig, CadenceConfig, SoundAsset, GlobalSoundConfig, GlobalHapticConfig, CollectibleEffectConfig, CollectiblePickupPermissions, Direction } from '../types/game';
 import { toast } from '../components/shared/Toast';
 import { logActivity } from '../services/activityLogService';
 
@@ -77,7 +77,7 @@ let statusEffectsCache: StatusEffectAsset[] | null = null;
 
 export interface PendingDeletion {
   id: string;
-  type: 'tile_type' | 'enemy' | 'character' | 'object' | 'skin' | 'spell' | 'status_effect' | 'folder' | 'collectible_type' | 'collectible' | 'sound';
+  type: 'tile_type' | 'enemy' | 'character' | 'object' | 'skin' | 'spell' | 'status_effect' | 'folder' | 'collectible_type' | 'collectible' | 'sound' | 'vessel';
   deletedAt: string;
 }
 
@@ -631,7 +631,115 @@ export const deleteEnemy = (enemyId: string): void => {
 
 export const loadEnemy = (enemyId: string): CustomEnemy | null => {
   const enemies = getCustomEnemies();
-  return enemies.find(e => e.id === enemyId) || null;
+  const direct = enemies.find(e => e.id === enemyId);
+  if (direct) return direct;
+  // Vessels are enemy-compatible combatants (docs/feature-backlog.md):
+  // placed-entity lookups by id resolve them through the adapter so the
+  // engine, quest labels, and drops all work without knowing the kind.
+  const vessel = loadVessel(enemyId);
+  return vessel ? vesselToEnemyAsset(vessel) : null;
+};
+
+// ============ VESSEL STORAGE ============
+// Vessels (user design 2026-07-11): a dedicated breakable asset type —
+// barrels, urns, mimic chests, hatching eggs. Static (never moves, no
+// actions, no movement arrow), variable HP, idle + death animations only,
+// and optionally TRANSFORMS into a nested enemy on death or on a timer
+// (engine/simulation.ts processVesselTransforms). Full spec + slice plan:
+// docs/feature-backlog.md.
+
+export interface CustomVessel {
+  id: string;
+  name: string;
+  pluralName?: string;      // For grouped quest text, same as Enemy.pluralName
+  description?: string;
+  health: number;           // Some vessels are harder to break
+  customSprite?: CustomSprite; // Idle + death sheets only — no directional movement, no spawn, no spells
+  transformEnemyId?: string;    // Enemy that emerges when the vessel breaks (unset = plain breakable)
+  transformAfterTurns?: number; // Timed hatch: transforms at the END of this many turns even if unbroken (0/unset = death-trigger only)
+  transformFacing?: Direction;  // Facing for the emerged enemy (unset = its asset default)
+  droppedCollectibleId?: string; // Loot on break — fires via the normal death-drop path (a transforming vessel usually shouldn't also drop)
+  sounds?: Enemy['sounds'];
+  isCustom: boolean;
+  createdAt: string;
+  folderId?: string;
+}
+
+const VESSEL_STORAGE_KEY = 'custom_vessels';
+let vesselsCache: CustomVessel[] | null = null;
+
+/**
+ * Adapt a vessel to the Enemy shape the engine and game UI consume.
+ * No behavior = the enemy turn loop treats it as static; health, sprites,
+ * drops, and quest naming all ride the existing enemy paths.
+ */
+export const vesselToEnemyAsset = (vessel: CustomVessel): CustomEnemy => ({
+  id: vessel.id,
+  name: vessel.name,
+  pluralName: vessel.pluralName,
+  description: vessel.description,
+  spriteId: vessel.id,
+  health: vessel.health,
+  customSprite: vessel.customSprite,
+  droppedCollectibleId: vessel.droppedCollectibleId,
+  sounds: vessel.sounds,
+  isCustom: true,
+  createdAt: vessel.createdAt,
+  folderId: vessel.folderId,
+});
+
+export const saveVessel = (vessel: CustomVessel): boolean => {
+  const vessels = getCustomVessels();
+  const existingIndex = vessels.findIndex(v => v.id === vessel.id);
+  const isCreate = existingIndex < 0;
+
+  if (existingIndex >= 0) {
+    vessels[existingIndex] = { ...vessel, createdAt: new Date().toISOString() };
+  } else {
+    vessels.push({ ...vessel, createdAt: new Date().toISOString(), isCustom: true });
+  }
+
+  const success = safeLocalStorageSet(VESSEL_STORAGE_KEY, JSON.stringify(vessels));
+  if (success) {
+    vesselsCache = null;
+    logActivity({ action: isCreate ? 'create' : 'update', asset_type: 'vessel', asset_id: vessel.id, asset_name: vessel.name });
+  }
+  return success;
+};
+
+export const getCustomVessels = (): CustomVessel[] => {
+  if (vesselsCache !== null) return vesselsCache.slice();
+  const stored = localStorage.getItem(VESSEL_STORAGE_KEY);
+  if (!stored) {
+    vesselsCache = [];
+    return [];
+  }
+  try {
+    vesselsCache = JSON.parse(stored);
+    return vesselsCache!.slice();
+  } catch (e) {
+    console.error('Failed to parse custom vessels:', e);
+    vesselsCache = [];
+    return [];
+  }
+};
+
+export const deleteVessel = (vesselId: string): void => {
+  const vessels = getCustomVessels();
+  const vessel = vessels.find(v => v.id === vesselId);
+  const filtered = vessels.filter(v => v.id !== vesselId);
+  localStorage.setItem(VESSEL_STORAGE_KEY, JSON.stringify(filtered));
+  vesselsCache = null;
+
+  // Track deletion for cloud sync (push/pull wiring is the cloud slice)
+  addPendingAssetDeletion(vesselId, 'vessel');
+
+  logActivity({ action: 'delete', asset_type: 'vessel', asset_id: vesselId, asset_name: vessel?.name });
+};
+
+export const loadVessel = (vesselId: string): CustomVessel | null => {
+  const vessels = getCustomVessels();
+  return vessels.find(v => v.id === vesselId) || null;
 };
 
 // ============ TILE STORAGE ============

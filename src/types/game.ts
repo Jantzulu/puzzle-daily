@@ -344,6 +344,7 @@ export interface PlacedEnemy {
   despawnOnTurn?: number; // Duration-limited summons: at the END of this turn the entity despawns (locked design: NOT a death — no drops, no death triggers, exit transition only). Killed summons die fully via the normal path instead.
   despawned?: boolean; // Set by expiry despawn alongside dead=true. Render draws NOTHING for a despawned entity (no corpse, no death anim — the exit overlay particle covers the vanish); diedOnTurn stays unset so the tile frees immediately.
   sourceSpellId?: string; // Spell that summoned this entity — despawn loads it for the exit overlay sprite; future per-spell overrides read it too.
+  transformedOnTurn?: number; // Vessels: turn this vessel's transform fired (processVesselTransforms). Set once on success — prevents re-transform; unset while the emergence is blocked (retries each turn end).
   actionIndex?: number; // For active enemies with behavior patterns
   active?: boolean; // For active enemies
   parallelTrackers?: ParallelActionTracker[]; // For parallel spell execution

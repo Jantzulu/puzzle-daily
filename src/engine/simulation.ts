@@ -4,7 +4,8 @@ import { ActionType, Direction, StatusEffectType, TileType as TileTypeEnum } fro
 import { getCharacter } from '../data/characters';
 import { getEnemy } from '../data/enemies';
 import { executeAction, executeAOEAttack, evaluateTriggers, executeDeathTriggers, applyDamageToEntity, applyDamageToEntityNoDeflect, placeCollectibleFromSpell } from './actions';
-import { loadStatusEffectAsset, loadSpellAsset, loadCollectible, loadEnemy, loadCharacter, loadTileType } from '../utils/assetStorage';
+import { loadStatusEffectAsset, loadSpellAsset, loadCollectible, loadEnemy, loadCharacter, loadTileType, loadVessel } from '../utils/assetStorage';
+import { spawnEnemyMidGame } from './spawning';
 import { turnLeft, turnRight, turnAround, getDirectionOffset, calculateDirectionTo, isAttackFromBehind, isEntityFunctional } from './utils';
 import { entityParty } from './party';
 
@@ -2039,6 +2040,10 @@ export function executeTurn(gameState: GameState): GameState {
   // Process collectible durations (despawn expired items)
   processCollectibleDurations(gameState);
 
+  // Vessels break open / hatch — before summon expiry so an emerged enemy
+  // exists for this turn's win check
+  processVesselTransforms(gameState);
+
   // Duration-limited summons despawn at end of their final turn
   processSummonExpiry(gameState);
 
@@ -2087,6 +2092,71 @@ export function executeTurn(gameState: GameState): GameState {
   }
 
   return gameState;
+}
+
+/**
+ * Vessels (docs/feature-backlog.md) transform at end of turn:
+ * - BROKE OPEN: the vessel died this or an earlier turn via the normal
+ *   death path (drops/death-anim already handled there). Its corpse STAYS
+ *   a corpse — debris under the emerged enemy.
+ * - TIMED HATCH: transformAfterTurns elapsed while still alive. The vessel
+ *   leaves WITHOUT dying (despawned like summon expiry — no drops, no
+ *   death anim; the emergence is the moment).
+ * The emerged enemy spawns on the vessel's tile via the summon primitive,
+ * NOT win-exempt (authored content — designers curate via
+ * params.excludedEnemyIds), idle until next turn like any mid-game spawn.
+ * A blocked tile (living/freshly-dead entity standing there) skips and
+ * retries next turn end; transformedOnTurn stamps only on success.
+ */
+function processVesselTransforms(gameState: GameState): void {
+  // Snapshot length: enemies emerged during this pass must not be re-scanned
+  const count = gameState.puzzle.enemies.length;
+  for (let i = 0; i < count; i++) {
+    const entity = gameState.puzzle.enemies[i];
+    if (entity.despawned || entity.transformedOnTurn !== undefined) continue;
+    if (entity.pendingProjectileDeath) continue; // dying — wait for the committed death
+    const vessel = loadVessel(entity.enemyId);
+    if (!vessel?.transformEnemyId) continue;
+
+    const brokeOpen = entity.dead;
+    const hatchDue = !entity.dead &&
+      vessel.transformAfterTurns !== undefined && vessel.transformAfterTurns > 0 &&
+      gameState.currentTurn >= (entity.spawnedOnTurn ?? 0) + vessel.transformAfterTurns;
+    if (!brokeOpen && !hatchDue) continue;
+
+    const vx = Math.floor(entity.x);
+    const vy = Math.floor(entity.y);
+    const blockedByEntity =
+      gameState.puzzle.enemies.some(e =>
+        e !== entity &&
+        Math.floor(e.x) === vx && Math.floor(e.y) === vy &&
+        (!e.dead || isFreshlyDeadEntity(e, gameState.currentTurn))) ||
+      gameState.placedCharacters.some(c =>
+        Math.floor(c.x) === vx && Math.floor(c.y) === vy &&
+        (!c.dead || isFreshlyDeadEntity(c, gameState.currentTurn)));
+    if (blockedByEntity) continue;
+
+    const emerged = spawnEnemyMidGame(gameState, {
+      enemyId: vessel.transformEnemyId,
+      x: vx,
+      y: vy,
+      facing: vessel.transformFacing,
+      party: entity.party, // authored placement's party rides through (normally 'enemy')
+    });
+    if (!emerged) continue;
+
+    entity.transformedOnTurn = gameState.currentTurn;
+    if (!brokeOpen) {
+      // Timed hatch of a living vessel — it leaves without dying.
+      entity.dead = true;
+      entity.despawned = true;
+    }
+  }
+}
+
+/** Same rule as actions.ts isFreshlyDead — local mirror to avoid an export churn. */
+function isFreshlyDeadEntity(entity: PlacedCharacter | PlacedEnemy, currentTurn: number): boolean {
+  return !!entity.dead && entity.diedOnTurn !== undefined && currentTurn <= entity.diedOnTurn;
 }
 
 /**

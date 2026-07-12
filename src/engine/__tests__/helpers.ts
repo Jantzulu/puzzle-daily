@@ -30,6 +30,22 @@ const collectibleRegistry = new Map<string, any>();
 const spellRegistry = new Map<string, any>();
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const statusEffectRegistry = new Map<string, any>();
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const vesselRegistry = new Map<string, any>();
+
+// Mirror of assetStorage.vesselToEnemyAsset for the mocked modules: vessels
+// resolve as static Enemy-shaped assets (no behavior) through getEnemy/loadEnemy.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const testVesselToEnemy = (vessel: any) => ({
+  id: vessel.id,
+  name: vessel.name,
+  pluralName: vessel.pluralName,
+  spriteId: vessel.id,
+  health: vessel.health,
+  droppedCollectibleId: vessel.droppedCollectibleId,
+  isCustom: true,
+  createdAt: vessel.createdAt ?? '2026-01-01',
+});
 
 export function registerTestCharacter(char: Character) {
   characterRegistry.set(char.id, char);
@@ -59,6 +75,11 @@ export function registerTestStatusEffect(id: string, def: any) {
   statusEffectRegistry.set(id, def);
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function registerTestVessel(vessel: any) {
+  vesselRegistry.set(vessel.id, vessel);
+}
+
 export function clearAllRegistries() {
   characterRegistry.clear();
   enemyRegistry.clear();
@@ -66,6 +87,7 @@ export function clearAllRegistries() {
   collectibleRegistry.clear();
   spellRegistry.clear();
   statusEffectRegistry.clear();
+  vesselRegistry.clear();
 }
 
 // ==========================================
@@ -81,7 +103,9 @@ vi.mock('../../data/enemies', () => ({
   // Match the real getEnemy signature (EnemyWithSprite | undefined). Returning null
   // for a miss breaks engine checks like `getEnemy(id) !== undefined` (null passes),
   // which misclassifies heroes as enemies in moveCharacter's combat branch.
-  getEnemy: (id: string) => enemyRegistry.get(id) ?? undefined,
+  // Vessel fallback mirrors the real module.
+  getEnemy: (id: string) =>
+    enemyRegistry.get(id) ?? (vesselRegistry.has(id) ? testVesselToEnemy(vesselRegistry.get(id)) : undefined),
 }));
 
 vi.mock('../../utils/assetStorage', () => ({
@@ -89,11 +113,15 @@ vi.mock('../../utils/assetStorage', () => ({
   loadCollectible: (id: string) => collectibleRegistry.get(id) ?? null,
   loadSpellAsset: (id: string) => spellRegistry.get(id) ?? null,
   loadStatusEffectAsset: (id: string) => statusEffectRegistry.get(id) ?? null,
-  loadEnemy: (id: string) => enemyRegistry.get(id) ?? null,
+  loadEnemy: (id: string) =>
+    enemyRegistry.get(id) ?? (vesselRegistry.has(id) ? testVesselToEnemy(vesselRegistry.get(id)) : null),
   loadCharacter: (id: string) => characterRegistry.get(id) ?? null,
+  loadVessel: (id: string) => vesselRegistry.get(id) ?? null,
+  vesselToEnemyAsset: testVesselToEnemy,
   isAssetHidden: () => false,
   getCustomCharacters: () => Array.from(characterRegistry.values()),
   getCustomEnemies: () => Array.from(enemyRegistry.values()),
+  getCustomVessels: () => Array.from(vesselRegistry.values()),
 }));
 
 // ==========================================
