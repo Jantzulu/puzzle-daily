@@ -130,10 +130,12 @@ Ordered by (likelihood of live bugs × player impact). Check off as swept.
   now stamped like visual. Corpus stayed green. Parity holds for:
   projectile duels, duration summons, necromancy, vessel transforms,
   death drops, enemy zones, thorns grind, per-turn corpse pathing.
-- [ ] **Pierce/bounce/homing edge re-verification against summons.**
-  Mid-flight projectile vs an entity appended THIS turn (spawn-turn
-  hittability is asserted in design; is it pinned for every projectile
-  style?)
+- [x] **Pierce/bounce/homing edge re-verification against summons.**
+  SWEPT 2026-07-12 (`__tests__/audit-projectiles-vs-summons.test.ts`,
+  4 tests). NO bugs — a summon appended mid-turn is hit by an in-flight
+  straight bolt, pierced through by a pierce bolt (rear target still
+  reached), correctly IGNORED by a locked homing bolt (single-target by
+  design), and the interception is headless-parity clean.
 - [ ] **Tile behaviors × enemy actors.** Pressure plates, damage tiles,
   teleports, ice — most tile tests likely exercise heroes; do enemies
   (and summons) trigger/suffer them identically?
