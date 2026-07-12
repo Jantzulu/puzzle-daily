@@ -1879,6 +1879,7 @@ export function executeTurn(gameState: GameState): GameState {
         active: newEnemy.active || true,
         dead: newEnemy.dead,
         spellCooldowns: newEnemy.spellCooldowns,
+        spellUseCounts: newEnemy.spellUseCounts, // maxUsesPerGame tracking — missing until audit sweep 3 (2026-07-12): enemy casters had unlimited uses
         preCastFacing: newEnemy.preCastFacing, // carry the pre-cast stash across chained actions this turn
         // Shared REFERENCE on purpose: canEntityAct/canEntityCastSpell/
         // canEntityMove and charm-aware targeting all read the caster's
@@ -1896,6 +1897,7 @@ export function executeTurn(gameState: GameState): GameState {
       if (result.isCasting) newEnemy.isCasting = true; // sticky within the turn (reset once at turn start); a later chained action can't clear it
       newEnemy.preCastFacing = result.preCastFacing; // face-on-cast-with-revert stash (restored next turn start)
       newEnemy.spellCooldowns = result.spellCooldowns;
+      newEnemy.spellUseCounts = result.spellUseCounts;
       newEnemy.justTeleported = result.justTeleported;
       newEnemy.teleportFromX = result.teleportFromX;
       newEnemy.teleportFromY = result.teleportFromY;
@@ -2011,6 +2013,7 @@ export function executeTurn(gameState: GameState): GameState {
         active: enemy.active || true,
         dead: enemy.dead,
         spellCooldowns: enemy.spellCooldowns,
+        spellUseCounts: enemy.spellUseCounts, // maxUsesPerGame tracking — missing until audit sweep 3 (2026-07-12)
         preCastFacing: enemy.preCastFacing, // carry the pre-cast stash (may have been set by a sequential cast this turn)
         statusEffects: enemy.statusEffects, // shared reference — status gates + charm read the caster's effects (see the action-loop wrapper)
       };
@@ -2030,6 +2033,7 @@ export function executeTurn(gameState: GameState): GameState {
       enemy.dead = tempCharForTrigger.dead || externallyDied;
       enemy.preCastFacing = tempCharForTrigger.preCastFacing; // face-on-cast-with-revert stash (restored next turn start)
       enemy.spellCooldowns = tempCharForTrigger.spellCooldowns;
+      enemy.spellUseCounts = tempCharForTrigger.spellUseCounts;
       if (!enemy.dead && enemy.currentHealth <= 0) {
         applyDamageToEntity(enemy, 0, gameState); // combined-lethality: die via the canonical path
       }
@@ -2059,6 +2063,7 @@ export function executeTurn(gameState: GameState): GameState {
         active: enemy.active || true,
         dead: enemy.dead,
         spellCooldowns: enemy.spellCooldowns,
+        spellUseCounts: enemy.spellUseCounts, // maxUsesPerGame tracking — missing until audit sweep 3 (2026-07-12)
         preCastFacing: enemy.preCastFacing, // carry the pre-cast stash (may have been set by a sequential cast this turn)
         statusEffects: enemy.statusEffects, // shared reference — status gates + charm read the caster's effects (see the action-loop wrapper)
       };
@@ -2077,6 +2082,7 @@ export function executeTurn(gameState: GameState): GameState {
       enemy.dead = tempCharForTrigger.dead || externallyDied;
       enemy.preCastFacing = tempCharForTrigger.preCastFacing; // face-on-cast-with-revert stash (restored next turn start)
       enemy.spellCooldowns = tempCharForTrigger.spellCooldowns;
+      enemy.spellUseCounts = tempCharForTrigger.spellUseCounts;
       if (!enemy.dead && enemy.currentHealth <= 0) {
         applyDamageToEntity(enemy, 0, gameState); // combined-lethality: die via the canonical path
       }
