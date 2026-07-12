@@ -112,8 +112,12 @@ Ordered by (likelihood of live bugs × player impact). Check off as swept.
   (enemy-asset max), resurrect percent (both caster sides). Side-finding:
   `executeHeal` in actions.ts is dead code (no callers), like
   `markEntityAsDead` in simulation.ts.
-- [ ] **Backstab + crit from enemy attackers.** Authored on enemy spells —
-  does isAttackFromBehind fire for enemy casters through the wrapper?
+- [x] **Backstab + crit from enemy attackers.** SWEPT 2026-07-12
+  (`__tests__/audit-backstab.test.ts`, 5 tests). NO bugs — the 2×
+  multiplier fires for enemy melee and enemy projectiles through the
+  wrapper (attack direction + target facing are both shape-independent).
+  Current design noted: cones have no crit site; backstab is melee +
+  projectile only.
 - [ ] **Headless/visual parity per feature.** For each: summon, necromancy,
   vessel transform, drops, persistent zones — run the same scenario through
   testMode/headless and visual-path executeTurn; compare final states.
