@@ -74,9 +74,16 @@ Ordered by (likelihood of live bugs × player impact). Check off as swept.
   cap, poison stacks, charm end-to-end. Pinned as-is: STURDY swallows a
   push spell's damage rider along with the push. (Stealth/priority/stun
   already covered in actions/simulation/party tests + sweep 1.)
-- [ ] **Enemy spell bookkeeping.** Cooldowns and maxUsesPerGame for
-  ENEMY casters across chained/linked actions and REPEAT loops (the
-  wrapper copies spellCooldowns back — spellUseCounts too?).
+- [x] **Enemy spell bookkeeping.** SWEPT 2026-07-12
+  (`__tests__/audit-spell-bookkeeping.test.ts`, 6 tests). Cooldowns were
+  solid (REPEAT cadence, linked same-spell suppression, trigger phase).
+  ONE bug found and fixed: the answer to "spellUseCounts too?" was NO —
+  none of the three enemy wrappers carried it, so enemy resurrectors
+  ignored maxUsesPerGame entirely. Fixed by carrying + copying back in
+  all three. Dormant, noted: maxUsesPerGame is resurrect-only in the
+  editor AND in the engine's increment logic; other templates check but
+  never increment. If the editor ever exposes it wider, move the
+  increment out of the resurrect branch.
 - [ ] **Contact damage matrix.** Walker-into-target × (hero→enemy,
   enemy→hero, summon→hero, hero→vessel), plus priority (PRIORITY status)
   ordering and contact-damage-on-BOTH collisions.
