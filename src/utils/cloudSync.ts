@@ -32,6 +32,7 @@ import type {
   CustomObject,
   CustomCharacter,
   CustomEnemy,
+  CustomVessel,
 } from './assetStorage';
 import type { PuzzleSkin, SpellAsset, StatusEffectAsset } from '../types/game';
 import {
@@ -39,6 +40,7 @@ import {
   getCustomObjects,
   getCustomCharacters,
   getCustomEnemies,
+  getCustomVessels,
   getPuzzleSkins,
   getSpellAssets,
   getStatusEffectAssets,
@@ -54,6 +56,7 @@ import {
   saveObject,
   saveCharacter,
   saveEnemy,
+  saveVessel,
   savePuzzleSkin,
   saveSpellAsset,
   saveStatusEffectAsset,
@@ -68,6 +71,7 @@ import {
   deleteObject,
   deleteCharacter,
   deleteEnemy,
+  deleteVessel,
   deletePuzzleSkin,
   deleteSpellAsset,
   deleteStatusEffectAsset,
@@ -184,6 +188,13 @@ export async function pushAllToCloud(): Promise<{ success: boolean; errors: stri
     for (const enemy of enemies) {
       const success = await saveAssetToCloud(enemy.id, 'enemy', enemy.name, enemy as unknown as CustomEnemy);
       if (!success) errors.push(`Failed to upload enemy: ${enemy.name}`);
+    }
+
+    // Push vessels
+    const vessels = getCustomVessels();
+    for (const vessel of vessels) {
+      const success = await saveAssetToCloud(vessel.id, 'vessel', vessel.name, vessel as unknown as CustomVessel);
+      if (!success) errors.push(`Failed to upload vessel: ${vessel.name}`);
     }
 
     // Push characters
@@ -340,6 +351,7 @@ export async function pushAllToCloud(): Promise<{ success: boolean; errors: stri
     const allPushedIds = [
       ...tileTypes.map(t => t.id),
       ...enemies.map(e => e.id),
+      ...vessels.map(v => v.id),
       ...characters.map(c => c.id),
       ...objects.map(o => o.id),
       ...skins.filter(s => !s.isBuiltIn).map(s => s.id),
@@ -387,6 +399,7 @@ export async function pullFromCloud(): Promise<{ success: boolean; errors: strin
     const allCloudAssets = [
       ...cloudData.tileTypes,
       ...cloudData.enemies,
+      ...cloudData.vessels,
       ...cloudData.characters,
       ...cloudData.objects,
       ...cloudData.skins,
@@ -454,6 +467,25 @@ export async function pullFromCloud(): Promise<{ success: boolean; errors: strin
         }
       } catch {
         errors.push(`Failed to import enemy: ${asset.name}`);
+      }
+    }
+
+    // Import vessels (or delete if soft-deleted)
+    for (const asset of cloudData.vessels) {
+      if (conflictedIds.has(asset.id)) continue;
+      try {
+        if (asset.deleted_at) {
+          deleteVessel(asset.id);
+          console.log(`[CloudSync] Deleted vessel locally: ${asset.name}`);
+        } else {
+          const vessel = asset.data as unknown as CustomVessel;
+          const saved = saveVessel(vessel);
+          if (!saved) {
+            errors.push(`Storage full - failed to save vessel: ${asset.name}`);
+          }
+        }
+      } catch {
+        errors.push(`Failed to import vessel: ${asset.name}`);
       }
     }
 

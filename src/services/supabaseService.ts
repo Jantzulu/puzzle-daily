@@ -136,7 +136,7 @@ export async function requestPuzzleChanges(id: string, name?: string, notes?: st
 // ASSET OPERATIONS
 // ============================================
 
-type AssetType = 'tile_type' | 'enemy' | 'character' | 'object' | 'skin' | 'spell' | 'status_effect' | 'folder' | 'collectible_type' | 'collectible' | 'hidden_assets' | 'sound' | 'global_sound_config' | 'global_haptic_config' | 'help_content' | 'theme_settings';
+type AssetType = 'tile_type' | 'enemy' | 'vessel' | 'character' | 'object' | 'skin' | 'spell' | 'status_effect' | 'folder' | 'collectible_type' | 'collectible' | 'hidden_assets' | 'sound' | 'global_sound_config' | 'global_haptic_config' | 'help_content' | 'theme_settings';
 type AssetData = CustomTileType | EnemyWithSprite | CharacterWithSprite | CustomObject | PuzzleSkin | SpellAsset | object;
 
 export async function fetchAllAssets(type?: AssetType, includeDeleted: boolean = false): Promise<DbAsset[]> {
@@ -400,6 +400,7 @@ export async function syncFromCloud(): Promise<{
   puzzles: DbPuzzle[];
   tileTypes: DbAsset[];
   enemies: DbAsset[];
+  vessels: DbAsset[];
   characters: DbAsset[];
   objects: DbAsset[];
   skins: DbAsset[];
@@ -416,10 +417,11 @@ export async function syncFromCloud(): Promise<{
   themeSettings: DbAsset[];
 }> {
   // Include deleted items so pull can process deletions
-  const [puzzles, tileTypes, enemies, characters, objects, skins, spells, statusEffects, folders, collectibleTypes, collectibles, hiddenAssets, sounds, globalSoundConfig, globalHapticConfig, helpContent, themeSettings] = await Promise.all([
+  const [puzzles, tileTypes, enemies, vessels, characters, objects, skins, spells, statusEffects, folders, collectibleTypes, collectibles, hiddenAssets, sounds, globalSoundConfig, globalHapticConfig, helpContent, themeSettings] = await Promise.all([
     fetchAllPuzzles(true),
     fetchAllAssets('tile_type', true),
     fetchAllAssets('enemy', true),
+    fetchAllAssets('vessel', true),
     fetchAllAssets('character', true),
     fetchAllAssets('object', true),
     fetchAllAssets('skin', true),
@@ -436,7 +438,7 @@ export async function syncFromCloud(): Promise<{
     fetchAllAssets('theme_settings', true),
   ]);
 
-  return { puzzles, tileTypes, enemies, characters, objects, skins, spells, statusEffects, folders, collectibleTypes, collectibles, hiddenAssets, sounds, globalSoundConfig, globalHapticConfig, helpContent, themeSettings };
+  return { puzzles, tileTypes, enemies, vessels, characters, objects, skins, spells, statusEffects, folders, collectibleTypes, collectibles, hiddenAssets, sounds, globalSoundConfig, globalHapticConfig, helpContent, themeSettings };
 }
 
 // ============================================

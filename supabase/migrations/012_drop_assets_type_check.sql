@@ -1,0 +1,11 @@
+-- 012: Drop the narrow assets_draft.type CHECK constraint.
+--
+-- The original schema allowed only six asset types, but the app has long
+-- synced more (status_effect, folder, collectible, sound, configs, ...) and
+-- now adds 'vessel'. If the constraint is still present on the live DB those
+-- earlier types only worked because the constraint was already dropped or
+-- the rows predate it — either way, the client-side TypeScript unions are
+-- the real gate, and the DB should accept any type string the app sends.
+--
+-- Safe to run repeatedly.
+ALTER TABLE assets_draft DROP CONSTRAINT IF EXISTS assets_draft_type_check;

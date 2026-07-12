@@ -27,7 +27,7 @@ export interface DbPuzzle {
 
 export interface DbAsset {
   id: string;
-  type: 'tile_type' | 'enemy' | 'character' | 'object' | 'skin' | 'spell' | 'status_effect' | 'folder' | 'collectible_type' | 'collectible' | 'hidden_assets' | 'sound' | 'global_sound_config' | 'global_haptic_config' | 'help_content' | 'theme_settings';
+  type: 'tile_type' | 'enemy' | 'vessel' | 'character' | 'object' | 'skin' | 'spell' | 'status_effect' | 'folder' | 'collectible_type' | 'collectible' | 'hidden_assets' | 'sound' | 'global_sound_config' | 'global_haptic_config' | 'help_content' | 'theme_settings';
   name: string;
   data: object; // Full asset JSON
   status: 'draft' | 'published';
