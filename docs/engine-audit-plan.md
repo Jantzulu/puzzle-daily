@@ -84,9 +84,20 @@ Ordered by (likelihood of live bugs × player impact). Check off as swept.
   editor AND in the engine's increment logic; other templates check but
   never increment. If the editor ever exposes it wider, move the
   increment out of the resurrect branch.
-- [ ] **Contact damage matrix.** Walker-into-target × (hero→enemy,
-  enemy→hero, summon→hero, hero→vessel), plus priority (PRIORITY status)
-  ordering and contact-damage-on-BOTH collisions.
+- [x] **Contact damage matrix.** SWEPT 2026-07-12
+  (`__tests__/audit-contact-matrix.test.ts`, 9 tests). ONE bug fixed:
+  the walk-in combat branch was shape-gated with no party check — a hero
+  fought its OWN hero-party summon on contact, and a charmed hero kept
+  brawling enemies. Fixed with an isAttackTarget gate (non-hostile
+  walk-in = block, not fight). Covered: mutual exchange, move-in-on-kill
+  (no corpse counter), PRIORITY first strike, charmed targets, vessels.
+  **⚠️ TWO ASYMMETRIES PINNED AS-IS — user decision wanted:**
+  (a) an ENEMY walking into a hero deals NO contact damage, ever —
+  contact combat only fires when the hero-side mover initiates; spiky
+  enemies are reactive only. (b) enemy-shaped movers never contact-fight
+  enemy-shaped targets even when hostile (hero-party summon walking
+  into an enemy just waits). If either should change, flip the pins in
+  the "pinned" describe block and wire the branch party-aware.
 - [ ] **Heal/resurrect caps.** Healing respects max health for enemies
   healed by enemies; resurrect health percent; heal targeting a vessel.
 - [ ] **Backstab + crit from enemy attackers.** Authored on enemy spells —
