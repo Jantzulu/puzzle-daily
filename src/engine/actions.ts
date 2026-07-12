@@ -1132,6 +1132,15 @@ function moveCharacter(
       // Combat: Check if enemy has melee priority
       const charData = getCharacter(updatedChar.characterId);
 
+      // Party-aware gate (audit sweep 4): walking into a NON-HOSTILE
+      // enemy-shaped entity — the hero's own summon, or any enemy once the
+      // mover is charmed to their side — is a block, not a fight, mirroring
+      // the enemy-to-enemy wait above. Target side uses BASE party like all
+      // attack targeting (isAttackTarget).
+      if (charData && !isAttackTarget(updatedChar, enemyAtTarget, gameState)) {
+        return updatedChar;
+      }
+
       if (charData) {
         const enemyHasPriority = enemyAtTarget.statusEffects?.some(e => e.type === StatusEffectType.PRIORITY) ?? false;
 
