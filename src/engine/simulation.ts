@@ -4120,6 +4120,35 @@ function resolveReflectedPathHeadless(
 }
 
 /**
+ * Record a projectile's spawn event on first encounter (idempotent via
+ * `proj._recorded`). Shared by resolveProjectiles and
+ * updateProjectilesHeadless so the replay timeline gets identical spawn
+ * payloads in both modes — buildReplayProjectiles needs a spawn event to
+ * open a lifetime per projectile. Placed BEFORE any early-skip (hitResult /
+ * reflected) so a bolt that range-gates immediately still gets its spawn
+ * recorded, followed by the deactivate at the gate.
+ */
+function recordProjectileSpawnOnce(gameState: GameState, proj: Projectile): void {
+  if (!gameState.projectileTimeline || proj._recorded) return;
+  recordProjectileEvent(gameState, {
+    type: 'spawn',
+    projId: proj.id,
+    x: proj.startX, y: proj.startY,
+    tilePath: proj.tilePath ? [...proj.tilePath] : undefined,
+    direction: proj.direction,
+    speed: proj.speed,
+    sourceEntityId: proj.sourceCharacterId || proj.sourceEnemyId,
+    sourceIsEnemy: !!proj.sourceEnemyId,
+    isHoming: proj.isHoming,
+    homingPathStyle: proj.homingPathStyle,
+    spellAssetId: proj.spellAssetId,
+    attackData: proj.attackData,
+    projectileScale: proj.attackData.projectileScale,
+  });
+  proj._recorded = true;
+}
+
+/**
  * Deterministic turn-based projectile resolution for non-headless mode.
  * Mirrors updateProjectilesHeadless for game logic (damage, effects, death)
  * but stores visual metadata (tilePath, hitResult) instead of removing projectiles,
@@ -4136,29 +4165,7 @@ function resolveProjectiles(gameState: GameState): void {
       continue;
     }
 
-    // Record spawn event on first encounter. Mirrors the same block in
-    // updateProjectilesHeadless so the real-play replay has the spawn events
-    // buildReplayProjectiles needs to create a lifetime per projectile.
-    // Placed BEFORE the hitResult skip so a bolt that range-gates immediately
-    // still gets its spawn recorded (followed by the deactivate at the gate).
-    if (gameState.projectileTimeline && !proj._recorded) {
-      recordProjectileEvent(gameState, {
-        type: 'spawn',
-        projId: proj.id,
-        x: proj.startX, y: proj.startY,
-        tilePath: proj.tilePath ? [...proj.tilePath] : undefined,
-        direction: proj.direction,
-        speed: proj.speed,
-        sourceEntityId: proj.sourceCharacterId || proj.sourceEnemyId,
-        sourceIsEnemy: !!proj.sourceEnemyId,
-        isHoming: proj.isHoming,
-        homingPathStyle: proj.homingPathStyle,
-        spellAssetId: proj.spellAssetId,
-        attackData: proj.attackData,
-        projectileScale: proj.attackData.projectileScale,
-      });
-      proj._recorded = true;
-    }
+    recordProjectileSpawnOnce(gameState, proj);
 
     // Skip projectiles that already have a hitResult — they've been resolved
     // and are just waiting for the visual system to consume the result.
@@ -5050,25 +5057,7 @@ function updateProjectilesHeadless(gameState: GameState): void {
       continue;
     }
 
-    // Record spawn event if this projectile hasn't been recorded yet
-    if (gameState.projectileTimeline && !proj._recorded) {
-      recordProjectileEvent(gameState, {
-        type: 'spawn',
-        projId: proj.id,
-        x: proj.startX, y: proj.startY,
-        tilePath: proj.tilePath ? [...proj.tilePath] : undefined,
-        direction: proj.direction,
-        speed: proj.speed,
-        sourceEntityId: proj.sourceCharacterId || proj.sourceEnemyId,
-        sourceIsEnemy: !!proj.sourceEnemyId,
-        isHoming: proj.isHoming,
-        homingPathStyle: proj.homingPathStyle,
-        spellAssetId: proj.spellAssetId,
-        attackData: proj.attackData,
-        projectileScale: proj.attackData.projectileScale,
-      });
-      proj._recorded = true;
-    }
+    recordProjectileSpawnOnce(gameState, proj);
 
     const isHealingProjectile = proj.attackData.healing !== undefined;
     const range = proj.attackData.range || 10;
