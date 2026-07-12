@@ -4149,6 +4149,63 @@ function recordProjectileSpawnOnce(gameState: GameState, proj: Projectile): void
 }
 
 /**
+ * Resolve a homing projectile's current target entity — shared by
+ * resolveProjectiles and updateProjectilesHeadless so both modes agree on
+ * WHICH entity a bolt is chasing (the drift risk that made duplicate
+ * enemyIds resolve differently is gone: one lookup, two consumers).
+ *
+ * Resolution order:
+ *   1. reflected-src — a reflected bolt retargets its original caster
+ *      (enemy side, by sourceEnemyIndex).
+ *   2. index — prefer the array-index lookup when available so duplicate
+ *      enemyIds resolve to the specific instance findNearestEnemies picked.
+ *      Without this, .find(enemyId) returns the first placement-order match
+ *      regardless of which instance is closest.
+ *   3. find-fallback — id lookup.
+ *
+ * Liveness = isEntityFunctional (not dead, not pending projectile death).
+ * In headless mode pendingProjectileDeath is never set (deaths commit
+ * immediately), so this is equivalent to the plain !dead check headless
+ * used before the Phase E dedup.
+ *
+ * Returns undefined when the target is gone — callers remove the bolt.
+ */
+function resolveHomingTargetEntity(
+  proj: Projectile,
+  gameState: GameState,
+): {
+  target: PlacedCharacter | PlacedEnemy;
+  targetIsEnemy: boolean;
+  targetEntityId: string;
+  resolveMode: 'reflected-src' | 'index' | 'find-fallback' | 'char';
+} | undefined {
+  if (proj.targetIsEnemy) {
+    if (proj.reflected && proj.sourceEnemyIndex !== undefined && gameState.puzzle.enemies[proj.sourceEnemyIndex]) {
+      const enemy = gameState.puzzle.enemies[proj.sourceEnemyIndex];
+      if (isEntityFunctional(enemy)) {
+        return { target: enemy, targetIsEnemy: true, targetEntityId: enemy.enemyId, resolveMode: 'reflected-src' };
+      }
+    }
+    if (proj.targetEnemyIndex !== undefined) {
+      const enemy = gameState.puzzle.enemies[proj.targetEnemyIndex];
+      if (enemy && enemy.enemyId === proj.targetEntityId && isEntityFunctional(enemy)) {
+        return { target: enemy, targetIsEnemy: true, targetEntityId: enemy.enemyId, resolveMode: 'index' };
+      }
+    }
+    const enemy = gameState.puzzle.enemies.find(e => e.enemyId === proj.targetEntityId && isEntityFunctional(e));
+    if (enemy) {
+      return { target: enemy, targetIsEnemy: true, targetEntityId: enemy.enemyId, resolveMode: 'find-fallback' };
+    }
+    return undefined;
+  }
+  const char = gameState.placedCharacters.find(c => c.characterId === proj.targetEntityId && isEntityFunctional(c));
+  if (char) {
+    return { target: char, targetIsEnemy: false, targetEntityId: char.characterId, resolveMode: 'char' };
+  }
+  return undefined;
+}
+
+/**
  * Deterministic turn-based projectile resolution for non-headless mode.
  * Mirrors updateProjectilesHeadless for game logic (damage, effects, death)
  * but stores visual metadata (tilePath, hitResult) instead of removing projectiles,
@@ -4189,38 +4246,15 @@ function resolveProjectiles(gameState: GameState): void {
 
     // === HOMING PROJECTILES ===
     if (proj.isHoming && proj.targetEntityId) {
-      let targetEntity: { x: number; y: number; dead?: boolean; pendingProjectileDeath?: boolean } | undefined;
-      if (proj.targetIsEnemy) {
-        if (proj.reflected && proj.sourceEnemyIndex !== undefined && gameState.puzzle.enemies[proj.sourceEnemyIndex]) {
-          const enemy = gameState.puzzle.enemies[proj.sourceEnemyIndex];
-          if (isEntityFunctional(enemy)) targetEntity = enemy;
-        }
-        // Prefer the array-index lookup when available so duplicate enemyIds
-        // resolve to the specific instance findNearestEnemies actually picked.
-        // Without this, .find(enemyId) returns the first placement-order match
-        // regardless of which instance is closest.
-        let resolveMode: 'reflected-src' | 'index' | 'find-fallback' | 'none' = targetEntity ? 'reflected-src' : 'none';
-        if (!targetEntity && proj.targetEnemyIndex !== undefined) {
-          const enemy = gameState.puzzle.enemies[proj.targetEnemyIndex];
-          if (enemy && enemy.enemyId === proj.targetEntityId && isEntityFunctional(enemy)) {
-            targetEntity = enemy;
-            resolveMode = 'index';
-          }
-        }
-        if (!targetEntity) {
-          targetEntity = gameState.puzzle.enemies.find(e => e.enemyId === proj.targetEntityId && isEntityFunctional(e));
-          if (targetEntity) resolveMode = 'find-fallback';
-        }
-        if (isHomingDebug() && proj.isHoming) {
-          const foundIdx = targetEntity ? gameState.puzzle.enemies.indexOf(targetEntity as PlacedEnemy) : -1;
-          console.log(
-            `[HOMING-TARGET ${proj.id.slice(-6)}] turn=${gameState.currentTurn} resolve=${resolveMode} ` +
-            `targetEntityId=${proj.targetEntityId} targetEnemyIndex=${proj.targetEnemyIndex} ` +
-            `found=enemies[${foundIdx}]${targetEntity ? `@(${(targetEntity as any).x},${(targetEntity as any).y}) enemyId=${(targetEntity as PlacedEnemy).enemyId}` : 'NONE'}`
-          );
-        }
-      } else {
-        targetEntity = gameState.placedCharacters.find(c => c.characterId === proj.targetEntityId && isEntityFunctional(c));
+      const resolved = resolveHomingTargetEntity(proj, gameState);
+      const targetEntity = resolved?.target;
+      if (isHomingDebug() && proj.targetIsEnemy) {
+        const foundIdx = targetEntity ? gameState.puzzle.enemies.indexOf(targetEntity as PlacedEnemy) : -1;
+        console.log(
+          `[HOMING-TARGET ${proj.id.slice(-6)}] turn=${gameState.currentTurn} resolve=${resolved?.resolveMode ?? 'none'} ` +
+          `targetEntityId=${proj.targetEntityId} targetEnemyIndex=${proj.targetEnemyIndex} ` +
+          `found=enemies[${foundIdx}]${targetEntity ? `@(${targetEntity.x},${targetEntity.y}) enemyId=${(targetEntity as PlacedEnemy).enemyId}` : 'NONE'}`
+        );
       }
 
       if (targetEntity) {
@@ -5068,29 +5102,10 @@ function updateProjectilesHeadless(gameState: GameState): void {
 
     // === HOMING PROJECTILES ===
     if (proj.isHoming && proj.targetEntityId) {
-      let targetEntity: { x: number; y: number; dead?: boolean } | undefined;
-      let targetEntityId: string | undefined;
-      let targetIsEnemyFlag = false;
-      if (proj.targetIsEnemy) {
-        if (proj.reflected && proj.sourceEnemyIndex !== undefined && gameState.puzzle.enemies[proj.sourceEnemyIndex]) {
-          const enemy = gameState.puzzle.enemies[proj.sourceEnemyIndex];
-          if (!enemy.dead) { targetEntity = enemy; targetEntityId = enemy.enemyId; targetIsEnemyFlag = true; }
-        }
-        // Prefer array-index lookup to disambiguate duplicate enemyIds.
-        if (!targetEntity && proj.targetEnemyIndex !== undefined) {
-          const enemy = gameState.puzzle.enemies[proj.targetEnemyIndex];
-          if (enemy && enemy.enemyId === proj.targetEntityId && !enemy.dead) {
-            targetEntity = enemy; targetEntityId = enemy.enemyId; targetIsEnemyFlag = true;
-          }
-        }
-        if (!targetEntity) {
-          const enemy = gameState.puzzle.enemies.find(e => e.enemyId === proj.targetEntityId && !e.dead);
-          if (enemy) { targetEntity = enemy; targetEntityId = enemy.enemyId; targetIsEnemyFlag = true; }
-        }
-      } else {
-        const char = gameState.placedCharacters.find(c => c.characterId === proj.targetEntityId && !c.dead);
-        if (char) { targetEntity = char; targetEntityId = char.characterId; targetIsEnemyFlag = false; }
-      }
+      const resolved = resolveHomingTargetEntity(proj, gameState);
+      const targetEntity = resolved?.target;
+      const targetEntityId = resolved?.targetEntityId;
+      const targetIsEnemyFlag = resolved?.targetIsEnemy ?? false;
 
       if (targetEntity) {
         const dx = targetEntity.x - proj.logicalX;
