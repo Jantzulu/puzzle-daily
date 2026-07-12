@@ -190,6 +190,39 @@ export function executeAction(
       return movedCharacter;
     }
 
+    // Strafes: move perpendicular to facing WITHOUT turning. These enum
+    // values were always offered in the behavior editor but had no case
+    // here — they fell to the default warn and silently did nothing
+    // (found during the 2026-07 engine audit, fixed 2026-07-12).
+    case ActionType.MOVE_LEFT:
+    case ActionType.MOVE_RIGHT: {
+      const strafe = (facing: Direction) =>
+        normalizedType === ActionType.MOVE_LEFT ? turnLeft(facing, 90) : turnRight(facing, 90);
+      let movedCharacter = moveCharacter(updatedCharacter, strafe(character.facing), gameState, action.tilesPerMove || 1, action.onWallCollision ?? 'stop', action.turnDegrees ?? 90);
+      // Haste bonus, like the other movement actions
+      if (hasHasteBonus(movedCharacter)) {
+        movedCharacter = moveCharacter(movedCharacter, strafe(movedCharacter.facing), gameState, action.tilesPerMove || 1, action.onWallCollision ?? 'stop', action.turnDegrees ?? 90);
+      }
+      return movedCharacter;
+    }
+
+    // Diagonals: move on the ABSOLUTE compass diagonal, facing unchanged.
+    case ActionType.MOVE_DIAGONAL_NE:
+    case ActionType.MOVE_DIAGONAL_NW:
+    case ActionType.MOVE_DIAGONAL_SE:
+    case ActionType.MOVE_DIAGONAL_SW: {
+      const diagDir =
+        normalizedType === ActionType.MOVE_DIAGONAL_NE ? Direction.NORTHEAST :
+        normalizedType === ActionType.MOVE_DIAGONAL_NW ? Direction.NORTHWEST :
+        normalizedType === ActionType.MOVE_DIAGONAL_SE ? Direction.SOUTHEAST :
+        Direction.SOUTHWEST;
+      let movedCharacter = moveCharacter(updatedCharacter, diagDir, gameState, action.tilesPerMove || 1, action.onWallCollision ?? 'stop', action.turnDegrees ?? 90);
+      if (hasHasteBonus(movedCharacter)) {
+        movedCharacter = moveCharacter(movedCharacter, diagDir, gameState, action.tilesPerMove || 1, action.onWallCollision ?? 'stop', action.turnDegrees ?? 90);
+      }
+      return movedCharacter;
+    }
+
     case ActionType.TURN_LEFT:
       updatedCharacter.facing = turnLeft(character.facing, action.turnDegrees ?? 90);
       return updatedCharacter;

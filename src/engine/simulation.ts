@@ -1592,7 +1592,11 @@ export function executeTurn(gameState: GameState): GameState {
     if (actionType === ActionType.MOVE_FORWARD ||
         actionType === ActionType.MOVE_BACKWARD ||
         actionType === ActionType.MOVE_LEFT ||
-        actionType === ActionType.MOVE_RIGHT) {
+        actionType === ActionType.MOVE_RIGHT ||
+        actionType === ActionType.MOVE_DIAGONAL_NE ||
+        actionType === ActionType.MOVE_DIAGONAL_NW ||
+        actionType === ActionType.MOVE_DIAGONAL_SE ||
+        actionType === ActionType.MOVE_DIAGONAL_SW) {
       // This character intends to move, so its current tile will be vacated
       gameState.tilesBeingVacated.add(`${Math.floor(character.x)},${Math.floor(character.y)}`);
     }
@@ -1782,7 +1786,11 @@ export function executeTurn(gameState: GameState): GameState {
     if (actionType === ActionType.MOVE_FORWARD ||
         actionType === ActionType.MOVE_BACKWARD ||
         actionType === ActionType.MOVE_LEFT ||
-        actionType === ActionType.MOVE_RIGHT) {
+        actionType === ActionType.MOVE_RIGHT ||
+        actionType === ActionType.MOVE_DIAGONAL_NE ||
+        actionType === ActionType.MOVE_DIAGONAL_NW ||
+        actionType === ActionType.MOVE_DIAGONAL_SE ||
+        actionType === ActionType.MOVE_DIAGONAL_SW) {
       // This enemy intends to move, so its current tile will be vacated
       gameState.tilesBeingVacated.add(`${Math.floor(enemy.x)},${Math.floor(enemy.y)}`);
     }
