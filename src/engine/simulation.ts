@@ -3,7 +3,7 @@ import type { GameState, PlacedCharacter, PlacedEnemy, ParallelActionTracker, St
 import { ActionType, Direction, StatusEffectType, TileType as TileTypeEnum } from '../types/game';
 import { getCharacter } from '../data/characters';
 import { getEnemy } from '../data/enemies';
-import { executeAction, executeAOEAttack, evaluateTriggers, executeDeathTriggers, applyDamageToEntity, applyDamageToEntityNoDeflect, placeCollectibleFromSpell, checkTriggerCondition } from './actions';
+import { executeAction, executeAOEAttack, evaluateTriggers, executeDeathTriggers, applyDamageToEntity, applyDamageToEntityNoDeflect, placeCollectibleFromSpell, checkTriggerCondition, mergeHitStamps } from './actions';
 import { loadStatusEffectAsset, loadSpellAsset, loadCollectible, loadEnemy, loadCharacter, loadTileType, loadVessel } from '../utils/assetStorage';
 import { spawnEnemyMidGame } from './spawning';
 import { turnLeft, turnRight, turnAround, getDirectionOffset, calculateDirectionTo, isAttackFromBehind, isEntityFunctional } from './utils';
@@ -1690,7 +1690,7 @@ function evaluateRepeatUntil(
     }
   } else {
     conditionMet = checkTriggerCondition(
-      conditionHolder, action.untilEvent, action.untilEventRange, gameState, action.untilValue
+      conditionHolder, action.untilEvent, action.untilEventRange, gameState, action.untilValue, action.untilWindow
     );
   }
   if (conditionMet && entity.repeatUntilCounts?.[blockIndex]) {
@@ -1825,6 +1825,12 @@ export function executeTurn(gameState: GameState): GameState {
         newCharacter, newCharacter, currentAction, newCharacter.actionIndex, gameState
       );
       const plan = planRepeatUntil(charData.behavior, newCharacter.actionIndex, conditionMet);
+      // Loop-back = a new behavior cycle: refresh the 'this_cycle' hit-stamp
+      // window basis. Evaluated AFTER the condition read above, so an
+      // until-condition using 'this_cycle' judged the cycle that just ran.
+      if (!conditionMet) {
+        newCharacter.cycleStartTurn = gameState.currentTurn;
+      }
       newCharacter.actionIndex = plan.pointerIndex;
       if (plan.executeIndex !== null) {
         const planned = charData.behavior[plan.executeIndex];
@@ -1846,6 +1852,8 @@ export function executeTurn(gameState: GameState): GameState {
     } else if (currentAction.type === ActionType.REPEAT) {
       // Reset to beginning
       newCharacter.actionIndex = 0;
+      // New behavior cycle: refresh the 'this_cycle' hit-stamp window basis.
+      newCharacter.cycleStartTurn = gameState.currentTurn;
 
       // Find the first SEQUENTIAL action (skip parallel actions)
       let firstSequentialIndex = 0;
@@ -1903,6 +1911,10 @@ export function executeTurn(gameState: GameState): GameState {
     if (externalDelta !== 0) {
       newCharacter.currentHealth += externalDelta;
     }
+    // Hit stamps written on the ORIGINAL by feedback damage (a victim's
+    // on_death spell, deflect) ride the same merge — per-key latest wins.
+    newCharacter.hitStamps = mergeHitStamps(newCharacter.hitStamps, character.hitStamps);
+    newCharacter.dealtStamps = mergeHitStamps(newCharacter.dealtStamps, character.dealtStamps);
     if (character.dead && !newCharacter.dead) {
       // The external hit was lethal on its own: death (trigger + drop)
       // already resolved against the original — carry the outcome over.
@@ -2078,6 +2090,9 @@ export function executeTurn(gameState: GameState): GameState {
         contactHaltTurn: newEnemy.contactHaltTurn, // Thorns/Trample movement-halt stamps ride the wrapper both ways
         contactHaltForever: newEnemy.contactHaltForever,
         instanceKey: newEnemy.instanceKey, // per-instance identity for tile bookkeeping
+        hitStamps: newEnemy.hitStamps, // hit-stamp bookkeeping rides the wrapper both ways (victim stamps from tile damage / deflect-backs, dealer stamps from this action's strikes)
+        dealtStamps: newEnemy.dealtStamps,
+        cycleStartTurn: newEnemy.cycleStartTurn, // 'this_cycle' window basis (read-only during actions)
         preCastFacing: newEnemy.preCastFacing, // carry the pre-cast stash across chained actions this turn
         // Shared REFERENCE on purpose: canEntityAct/canEntityCastSpell/
         // canEntityMove and charm-aware targeting all read the caster's
@@ -2098,6 +2113,8 @@ export function executeTurn(gameState: GameState): GameState {
       newEnemy.spellUseCounts = result.spellUseCounts;
       newEnemy.contactHaltTurn = result.contactHaltTurn;
       newEnemy.contactHaltForever = result.contactHaltForever;
+      newEnemy.hitStamps = result.hitStamps;
+      newEnemy.dealtStamps = result.dealtStamps;
       newEnemy.justTeleported = result.justTeleported;
       newEnemy.teleportFromX = result.teleportFromX;
       newEnemy.teleportFromY = result.teleportFromY;
@@ -2143,11 +2160,18 @@ export function executeTurn(gameState: GameState): GameState {
         dead: newEnemy.dead,
         instanceKey: newEnemy.instanceKey,
         statusEffects: newEnemy.statusEffects,
+        hitStamps: newEnemy.hitStamps, // hit-stamp conditions read these (read-only here)
+        dealtStamps: newEnemy.dealtStamps,
+        cycleStartTurn: newEnemy.cycleStartTurn,
       };
       const conditionMet = evaluateRepeatUntil(
         newEnemy, conditionHolder, currentAction, newEnemy.actionIndex || 0, gameState
       );
       const plan = planRepeatUntil(pattern, newEnemy.actionIndex || 0, conditionMet);
+      // Loop-back = a new behavior cycle (see the character loop).
+      if (!conditionMet) {
+        newEnemy.cycleStartTurn = gameState.currentTurn;
+      }
       newEnemy.actionIndex = plan.pointerIndex;
       if (plan.executeIndex !== null) {
         executeEnemyAction(pattern[plan.executeIndex]);
@@ -2156,6 +2180,8 @@ export function executeTurn(gameState: GameState): GameState {
     } else if (currentAction.type === ActionType.REPEAT) {
       // Reset to beginning
       newEnemy.actionIndex = 0;
+      // New behavior cycle: refresh the 'this_cycle' hit-stamp window basis.
+      newEnemy.cycleStartTurn = gameState.currentTurn;
 
       // Find the first SEQUENTIAL action (skip parallel actions)
       let firstSequentialIndex = 0;
@@ -2191,6 +2217,9 @@ export function executeTurn(gameState: GameState): GameState {
     if (externalDelta !== 0) {
       newEnemy.currentHealth += externalDelta;
     }
+    // Feedback-damage hit stamps on the original ride the same merge.
+    newEnemy.hitStamps = mergeHitStamps(newEnemy.hitStamps, enemy.hitStamps);
+    newEnemy.dealtStamps = mergeHitStamps(newEnemy.dealtStamps, enemy.dealtStamps);
     if (enemy.dead && !newEnemy.dead) {
       newEnemy.dead = true;
       newEnemy.diedOnTurn = enemy.diedOnTurn;
@@ -2246,6 +2275,9 @@ export function executeTurn(gameState: GameState): GameState {
         contactHaltTurn: enemy.contactHaltTurn, // Thorns/Trample movement-halt stamps ride the wrapper both ways
         contactHaltForever: enemy.contactHaltForever,
         instanceKey: enemy.instanceKey, // per-instance identity for tile bookkeeping
+        hitStamps: enemy.hitStamps, // hit-stamp conditions read these; this trigger's own strikes write dealtStamps
+        dealtStamps: enemy.dealtStamps,
+        cycleStartTurn: enemy.cycleStartTurn, // 'this_cycle' window basis
         preCastFacing: enemy.preCastFacing, // carry the pre-cast stash (may have been set by a sequential cast this turn)
         statusEffects: enemy.statusEffects, // shared reference — status gates + charm read the caster's effects (see the action-loop wrapper)
       };
@@ -2268,6 +2300,8 @@ export function executeTurn(gameState: GameState): GameState {
       enemy.spellUseCounts = tempCharForTrigger.spellUseCounts;
       enemy.contactHaltTurn = tempCharForTrigger.contactHaltTurn;
       enemy.contactHaltForever = tempCharForTrigger.contactHaltForever;
+      enemy.hitStamps = mergeHitStamps(tempCharForTrigger.hitStamps, enemy.hitStamps); // feedback may have stamped `enemy` mid-call
+      enemy.dealtStamps = mergeHitStamps(tempCharForTrigger.dealtStamps, enemy.dealtStamps);
       if (!enemy.dead && enemy.currentHealth <= 0) {
         applyDamageToEntity(enemy, 0, gameState); // combined-lethality: die via the canonical path
       }
@@ -2301,6 +2335,9 @@ export function executeTurn(gameState: GameState): GameState {
         contactHaltTurn: enemy.contactHaltTurn, // Thorns/Trample movement-halt stamps ride the wrapper both ways
         contactHaltForever: enemy.contactHaltForever,
         instanceKey: enemy.instanceKey, // per-instance identity for tile bookkeeping
+        hitStamps: enemy.hitStamps, // hit-stamp conditions read these; this trigger's own strikes write dealtStamps
+        dealtStamps: enemy.dealtStamps,
+        cycleStartTurn: enemy.cycleStartTurn, // 'this_cycle' window basis
         preCastFacing: enemy.preCastFacing, // carry the pre-cast stash (may have been set by a sequential cast this turn)
         statusEffects: enemy.statusEffects, // shared reference — status gates + charm read the caster's effects (see the action-loop wrapper)
       };
@@ -2322,6 +2359,8 @@ export function executeTurn(gameState: GameState): GameState {
       enemy.spellUseCounts = tempCharForTrigger.spellUseCounts;
       enemy.contactHaltTurn = tempCharForTrigger.contactHaltTurn;
       enemy.contactHaltForever = tempCharForTrigger.contactHaltForever;
+      enemy.hitStamps = mergeHitStamps(tempCharForTrigger.hitStamps, enemy.hitStamps); // feedback may have stamped `enemy` mid-call
+      enemy.dealtStamps = mergeHitStamps(tempCharForTrigger.dealtStamps, enemy.dealtStamps);
       if (!enemy.dead && enemy.currentHealth <= 0) {
         applyDamageToEntity(enemy, 0, gameState); // combined-lethality: die via the canonical path
       }
@@ -2749,6 +2788,11 @@ export function initializeGameState(puzzle: Puzzle): GameState {
           ...e,
           dead: false, // Always reset dead status
           currentHealth: maxHealth, // Reset to full health from enemy definition
+          // Hit-stamp bookkeeping must not leak across runs — a stale 'ever'
+          // stamp would fire hit conditions on turn 0 of a fresh attempt.
+          hitStamps: undefined,
+          dealtStamps: undefined,
+          cycleStartTurn: undefined,
           // Facing comes from the CURRENT asset's behavior, not the value
           // stamped at map-placement time — editing defaultFacing in the
           // EnemyEditor after placing must reach existing puzzles. Static

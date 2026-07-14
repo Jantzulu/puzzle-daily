@@ -188,6 +188,11 @@ export type TriggerEvent =
   | 'character_adjacent' | 'character_in_range' | 'contact_with_character'
   // Non-proximity events, unchanged.
   | 'wall_ahead' | 'health_below_50' | 'on_death'
+  // Hit-stamp conditions (2026-07-14) — pure predicates over the hitStamps /
+  // dealtStamps turn numbers written on the SACRED damage path. Freshness
+  // window rides TriggerConfig.eventWindow / CharacterAction.untilWindow.
+  | 'hit_by_melee' | 'hit_by_projectile' | 'hit_by_contact' | 'hit_by_any'
+  | 'landed_melee_hit' | 'landed_projectile_hit' | 'landed_contact_hit' | 'landed_any_hit'
   // Rich condition vocabulary (2026-07-14) — pure predicates of game state,
   // shared by parallel event triggers and REPEAT_UNTIL. Numeric parameter
   // rides in TriggerConfig.eventValue / CharacterAction.untilValue.
@@ -200,12 +205,31 @@ export type TriggerEvent =
   | 'standing_on_goal'           // holder stands on a GOAL tile
   | 'repeated_times';            // REPEAT_UNTIL only: segment has run untilValue times (handled in the loop branch, false elsewhere)
 
+// Hit-stamp bookkeeping (2026-07-14). When damage lands (past invulnerability
+// and deflect; shield absorption still counts — the blow connected), the
+// victim's hitStamps and the attacker's dealtStamps record the turn number
+// per delivery kind. 'any' is stamped on every delivery; the named kinds only
+// by their own paths (melee = MELEE/MELEE_CONE strikes, projectile = bolt
+// hits incl. along-path, contact = Thorns/Trample). AOE splash, push riders,
+// tile damage and DOT ticks are 'any'-only.
+export type HitStampKind = 'melee' | 'projectile' | 'contact' | 'any';
+export type HitStamps = Partial<Record<HitStampKind, number>>;
+
+// Freshness windows for the hit-stamp conditions (user design 2026-07-14):
+// 'previous_action' — stamp within the last turn (reactive; projectiles
+// resolve after actions, so a turn-N bolt hit is reacted to on turn N+1);
+// 'this_cycle' — stamp since the entity's behavior loop last wrapped
+// (cycleStartTurn refreshes on every REPEAT / REPEAT_UNTIL loop-back, so the
+// condition can fire once per cycle); 'ever' — once true, always true.
+export type HitStampWindow = 'previous_action' | 'this_cycle' | 'ever';
+
 export interface TriggerConfig {
   mode: TriggerMode;
   intervalMs?: number;        // For interval mode
   event?: TriggerEvent;       // For event mode
   eventRange?: number;        // For the *_in_range / noble_in_danger events - how far to detect (tiles)
   eventValue?: number;        // Numeric parameter for the value-based events (% / turn / count)
+  eventWindow?: HitStampWindow; // Freshness window for the hit_by_* / landed_*_hit events (default 'previous_action')
 }
 
 export interface CharacterAction {
@@ -231,6 +255,7 @@ export interface CharacterAction {
   untilEvent?: TriggerEvent;      // Condition that breaks the loop (falls through when met)
   untilEventRange?: number;       // Range for the *_in_range / noble_in_danger conditions (tiles)
   untilValue?: number;            // Numeric parameter for the value-based conditions (% / turn / count / times)
+  untilWindow?: HitStampWindow;   // Freshness window for the hit_by_* / landed_*_hit conditions (default 'previous_action')
 
   // For SPELL action type
   spellId?: string;             // Reference to spell in library
@@ -400,6 +425,9 @@ export interface PlacedEnemy {
   contactHaltForever?: boolean; // Thorns/Trample haltMovementMode 'forever': movement suppressed permanently
   instanceKey?: string; // Deterministic per-INSTANCE identity ('enemy#<index>'), stamped by executeTurn each turn (arrays are append-only, so the index is stable). Needed where ids don't cut it: same-asset entities share enemyId (damage-once tile dedupe, audit sweep 9)
   repeatUntilCounts?: Record<number, number>; // Completed segment passes per REPEAT_UNTIL block (keyed by action index). Only maintained for the 'repeated_times' condition; reset on fall-through. Plain JSON — survives replay snapshots.
+  hitStamps?: HitStamps; // Turn number this entity was last HIT, per delivery kind (see HitStamps). Written new-object (never mutated in place — replay snapshots share references); carried through all enemy→character wrappers BOTH directions.
+  dealtStamps?: HitStamps; // Turn number this entity last LANDED a hit, per delivery kind. Same rules as hitStamps.
+  cycleStartTurn?: number; // Turn the behavior loop last wrapped to its segment start (REPEAT / REPEAT_UNTIL loop-back). Unset = never wrapped, treated as 0. Basis of the 'this_cycle' freshness window.
   statusEffects?: StatusEffectInstance[]; // Active status effects on this enemy
   spellCooldowns?: Record<string, number>; // Spell ID -> turns remaining on cooldown
   spellUseCounts?: Record<string, number>; // Spell ID -> number of times used this game (for maxUsesPerGame)
@@ -685,6 +713,9 @@ export interface PlacedCharacter {
   contactHaltForever?: boolean; // Thorns/Trample haltMovementMode 'forever': movement suppressed permanently
   instanceKey?: string; // Deterministic per-INSTANCE identity ('char#<index>'), stamped by executeTurn each turn — see the PlacedEnemy field
   repeatUntilCounts?: Record<number, number>; // See the PlacedEnemy field — 'repeated_times' bookkeeping
+  hitStamps?: HitStamps; // See the PlacedEnemy field — last-hit turn per delivery kind
+  dealtStamps?: HitStamps; // See the PlacedEnemy field — last-landed-hit turn per delivery kind
+  cycleStartTurn?: number; // See the PlacedEnemy field — 'this_cycle' window basis
   statusEffects?: StatusEffectInstance[]; // Active status effects on this character
   spellCooldowns?: Record<string, number>; // Spell ID -> turns remaining on cooldown
   spellUseCounts?: Record<string, number>; // Spell ID -> number of times used this game (for maxUsesPerGame)

@@ -18,6 +18,9 @@ import type {
   StatusEffectInstance,
   CadenceConfig,
   ThrowPlaceConfig,
+  HitStampKind,
+  HitStamps,
+  HitStampWindow,
 } from '../types/game';
 import {
   ActionType,
@@ -2289,7 +2292,7 @@ function applyMeleeHit(
 ): void {
   const damage = attackData.damage ?? 1;
   const isCrit = attackData.backstabEnabled && isAttackFromBehind(caster.facing, target.facing || Direction.SOUTH);
-  applyDamageToEntity(target, isCrit ? damage * 2 : damage, gameState, caster);
+  applyDamageToEntity(target, isCrit ? damage * 2 : damage, gameState, caster, 'melee');
 
   if (spell && !target.dead) {
     applyStatusEffectFromSpell(target, spell, caster.characterId, casterIsEnemy, gameState.currentTurn);
@@ -2893,6 +2896,47 @@ function isSteadfast(entity: PlacedCharacter | PlacedEnemy): boolean {
 // isStealthed alias — uses the existing isEntityStealthed function defined below
 
 /**
+ * Hit-stamp bookkeeping on the sacred damage path (2026-07-14). Stamps the
+ * victim's hitStamps (and the attacker's dealtStamps when known) with the
+ * current turn under the delivery kind plus 'any'. New-object writes only —
+ * replay snapshots and wrapper copies share references. Called once per
+ * landed delivery AFTER invulnerability and deflect resolve: a fully
+ * shield-absorbed blow still stamps (the hit connected), an invulnerable or
+ * deflecting target does not (and a deflected attacker gets no dealt credit).
+ */
+export function stampHitLanded(
+  victim: PlacedCharacter | PlacedEnemy,
+  attacker: PlacedCharacter | PlacedEnemy | undefined,
+  kind: Exclude<HitStampKind, 'any'> | undefined,
+  gameState: GameState
+): void {
+  const turn = gameState.currentTurn;
+  const write = (prev?: HitStamps): HitStamps =>
+    kind ? { ...prev, [kind]: turn, any: turn } : { ...prev, any: turn };
+  victim.hitStamps = write(victim.hitStamps);
+  if (attacker) attacker.dealtStamps = write(attacker.dealtStamps);
+}
+
+/**
+ * Merge two stamp records, keeping the LATEST turn per kind. Used by the
+ * actor-loop write-backs: while an entity's acting copy runs, feedback
+ * damage (a victim's on_death spell, deflect) stamps the ORIGINAL array
+ * object — same window the externalHealthBefore merges protect. Stamps are
+ * monotonically increasing turn numbers, so per-key max is always safe and
+ * idempotent (merging identical references is a no-op).
+ */
+export function mergeHitStamps(a?: HitStamps, b?: HitStamps): HitStamps | undefined {
+  if (!a || a === b) return b ?? a;
+  if (!b) return a;
+  const out: HitStamps = { ...a };
+  for (const key of Object.keys(b) as Array<keyof HitStamps>) {
+    const stamp = b[key];
+    if (stamp !== undefined && stamp > (out[key] ?? -1)) out[key] = stamp;
+  }
+  return out;
+}
+
+/**
  * Helper to apply damage and handle sleep wake-up and shield absorption.
  * This is the centralized damage function - ALL damage should go through here
  * to ensure shields, invulnerability, and deflect are properly checked.
@@ -2901,7 +2945,8 @@ export function applyDamageToEntity(
   target: PlacedCharacter | PlacedEnemy,
   damage: number,
   gameState: GameState,
-  source?: PlacedCharacter | PlacedEnemy  // Who dealt the damage (for deflect)
+  source?: PlacedCharacter | PlacedEnemy,  // Who dealt the damage (for deflect + dealtStamps)
+  deliveryKind?: Exclude<HitStampKind, 'any'>  // Hit-stamp kind; undefined deliveries stamp 'any' only
 ): void {
   // Check for invulnerability - if invulnerable, take no damage
   if (isInvulnerable(target)) {
@@ -2919,7 +2964,9 @@ export function applyDamageToEntity(
     if (hasDeflect && remainingDamage > 0) {
       // Deflect all damage back to source (don't recurse - source can't deflect reflected damage)
       const sourceWasAlive = !source.dead;
-      applyDamageToEntityNoDeflect(source, remainingDamage, gameState);
+      // The bounced damage keeps its delivery kind (NoDeflect stamps the
+      // source's hitStamps with it — "your own blade came back at you").
+      applyDamageToEntityNoDeflect(source, remainingDamage, gameState, deliveryKind);
       // A deflect kill drops the source's loot (same as simulation's own
       // deflect helper) — NoDeflect itself never drops, its projectile/DOT
       // callers handle their own.
@@ -2929,6 +2976,13 @@ export function applyDamageToEntity(
       // Target takes no damage
       return;
     }
+  }
+
+  // Hit landed (past invulnerability + deflect): stamp both sides. The
+  // damage > 0 gate keeps the combined-lethality applyDamageToEntity(x, 0)
+  // bookkeeping calls in simulation.ts from counting as hits.
+  if (damage > 0) {
+    stampHitLanded(target, source, deliveryKind, gameState);
   }
 
   // Check for shield effects and absorb damage
@@ -3017,11 +3071,19 @@ export function applyDamageToEntity(
 export function applyDamageToEntityNoDeflect(
   target: PlacedCharacter | PlacedEnemy,
   damage: number,
-  gameState: GameState
+  gameState: GameState,
+  deliveryKind?: Exclude<HitStampKind, 'any'>  // Hit-stamp kind; undefined deliveries stamp 'any' only
 ): void {
   // Check for invulnerability - if invulnerable, take no damage
   if (isInvulnerable(target)) {
     return;
+  }
+
+  // Victim-side hit stamp. Attacker dealtStamps for projectile deliveries
+  // are handled at the applyEntityHit call sites (the caster must be looked
+  // up in live state — this function has no source param).
+  if (damage > 0) {
+    stampHitLanded(target, undefined, deliveryKind, gameState);
   }
 
   let remainingDamage = damage;
@@ -3909,7 +3971,8 @@ export function checkTriggerCondition(
   event: TriggerEvent,
   eventRange: number | undefined,
   gameState: GameState,
-  eventValue?: number // numeric parameter for the value-based conditions (% / turn / count)
+  eventValue?: number, // numeric parameter for the value-based conditions (% / turn / count)
+  eventWindow?: HitStampWindow // freshness window for the hit-stamp conditions
 ): boolean {
   // Proximity events are TEAM-RELATIVE, resolved against the holder's BASE
   // party — charm-blind, like the finders in engine/party.ts ("opposing"
@@ -3944,7 +4007,29 @@ export function checkTriggerCondition(
 
   const ADJACENT = 1.42; // sqrt(2) for diagonal adjacency
 
+  // Hit-stamp freshness (user design 2026-07-14). 'previous_action' spans
+  // this turn AND the one before — projectiles resolve after actions, so a
+  // turn-N bolt hit must still be reactable during turn N+1's action phase.
+  // 'this_cycle' measures from the last REPEAT / REPEAT_UNTIL loop-back
+  // (unset = 0, i.e. since the game started). 'ever' is sticky.
+  const stampFresh = (stamp: number | undefined): boolean => {
+    if (stamp === undefined) return false;
+    switch (eventWindow ?? 'previous_action') {
+      case 'ever': return true;
+      case 'this_cycle': return stamp >= (character.cycleStartTurn ?? 0);
+      case 'previous_action': return stamp >= gameState.currentTurn - 1;
+    }
+  };
+
   switch (resolveTriggerEvent(event, !getCharacter(character.characterId))) {
+    case 'hit_by_melee':        return stampFresh(character.hitStamps?.melee);
+    case 'hit_by_projectile':   return stampFresh(character.hitStamps?.projectile);
+    case 'hit_by_contact':      return stampFresh(character.hitStamps?.contact);
+    case 'hit_by_any':          return stampFresh(character.hitStamps?.any);
+    case 'landed_melee_hit':      return stampFresh(character.dealtStamps?.melee);
+    case 'landed_projectile_hit': return stampFresh(character.dealtStamps?.projectile);
+    case 'landed_contact_hit':    return stampFresh(character.dealtStamps?.contact);
+    case 'landed_any_hit':        return stampFresh(character.dealtStamps?.any);
     case 'opposing_adjacent':
       return anyWithin(opposingMembers(), ADJACENT);
 
@@ -4100,7 +4185,8 @@ export function evaluateTriggers(
         action.trigger.event,
         action.trigger.eventRange,
         gameState,
-        action.trigger.eventValue
+        action.trigger.eventValue,
+        action.trigger.eventWindow
       );
 
       if (triggered) {
