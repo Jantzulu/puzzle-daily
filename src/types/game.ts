@@ -187,13 +187,25 @@ export type TriggerEvent =
   | 'enemy_adjacent' | 'enemy_in_range' | 'contact_with_enemy'
   | 'character_adjacent' | 'character_in_range' | 'contact_with_character'
   // Non-proximity events, unchanged.
-  | 'wall_ahead' | 'health_below_50' | 'on_death';
+  | 'wall_ahead' | 'health_below_50' | 'on_death'
+  // Rich condition vocabulary (2026-07-14) — pure predicates of game state,
+  // shared by parallel event triggers and REPEAT_UNTIL. Numeric parameter
+  // rides in TriggerConfig.eventValue / CharacterAction.untilValue.
+  | 'health_below_pct'           // own health below eventValue % (default 50)
+  | 'same_team_health_below_pct' // any TEAMMATE (self excluded) below eventValue %
+  | 'noble_in_danger'            // an opposing entity within eventRange tiles of a same-team Noble
+  | 'turn_reached'               // currentTurn >= eventValue
+  | 'opposing_count_at_most'     // living opposing entities <= eventValue (0 = all defeated)
+  | 'same_team_count_at_most'    // living teammates (self excluded) <= eventValue
+  | 'standing_on_goal'           // holder stands on a GOAL tile
+  | 'repeated_times';            // REPEAT_UNTIL only: segment has run untilValue times (handled in the loop branch, false elsewhere)
 
 export interface TriggerConfig {
   mode: TriggerMode;
   intervalMs?: number;        // For interval mode
   event?: TriggerEvent;       // For event mode
-  eventRange?: number;        // For 'enemy_in_range' event - how far to detect (tiles)
+  eventRange?: number;        // For the *_in_range / noble_in_danger events - how far to detect (tiles)
+  eventValue?: number;        // Numeric parameter for the value-based events (% / turn / count)
 }
 
 export interface CharacterAction {
@@ -217,7 +229,8 @@ export interface CharacterAction {
   // sequential control flow, and evaluateTriggers must never fire it as a
   // parallel event action. Shares checkTriggerCondition's vocabulary.
   untilEvent?: TriggerEvent;      // Condition that breaks the loop (falls through when met)
-  untilEventRange?: number;       // Range for the *_in_range conditions (tiles)
+  untilEventRange?: number;       // Range for the *_in_range / noble_in_danger conditions (tiles)
+  untilValue?: number;            // Numeric parameter for the value-based conditions (% / turn / count / times)
 
   // For SPELL action type
   spellId?: string;             // Reference to spell in library
@@ -386,6 +399,7 @@ export interface PlacedEnemy {
   contactHaltTurn?: number; // Thorns/Trample haltMovementOnContact: movement suppressed while currentTurn === this (stamped when the holder's contact damage fires)
   contactHaltForever?: boolean; // Thorns/Trample haltMovementMode 'forever': movement suppressed permanently
   instanceKey?: string; // Deterministic per-INSTANCE identity ('enemy#<index>'), stamped by executeTurn each turn (arrays are append-only, so the index is stable). Needed where ids don't cut it: same-asset entities share enemyId (damage-once tile dedupe, audit sweep 9)
+  repeatUntilCounts?: Record<number, number>; // Completed segment passes per REPEAT_UNTIL block (keyed by action index). Only maintained for the 'repeated_times' condition; reset on fall-through. Plain JSON — survives replay snapshots.
   statusEffects?: StatusEffectInstance[]; // Active status effects on this enemy
   spellCooldowns?: Record<string, number>; // Spell ID -> turns remaining on cooldown
   spellUseCounts?: Record<string, number>; // Spell ID -> number of times used this game (for maxUsesPerGame)
@@ -670,6 +684,7 @@ export interface PlacedCharacter {
   contactHaltTurn?: number; // Thorns/Trample haltMovementOnContact: movement suppressed while currentTurn === this (stamped when the holder's contact damage fires)
   contactHaltForever?: boolean; // Thorns/Trample haltMovementMode 'forever': movement suppressed permanently
   instanceKey?: string; // Deterministic per-INSTANCE identity ('char#<index>'), stamped by executeTurn each turn — see the PlacedEnemy field
+  repeatUntilCounts?: Record<number, number>; // See the PlacedEnemy field — 'repeated_times' bookkeeping
   statusEffects?: StatusEffectInstance[]; // Active status effects on this character
   spellCooldowns?: Record<string, number>; // Spell ID -> turns remaining on cooldown
   spellUseCounts?: Record<string, number>; // Spell ID -> number of times used this game (for maxUsesPerGame)

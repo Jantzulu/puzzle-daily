@@ -11,14 +11,30 @@ const ACTION_TYPES = Object.values(ActionType);
 // Team-relative trigger/condition vocabulary — one list for both contexts,
 // resolved against the holder's party at runtime. Shared by the parallel
 // trigger config and the REPEAT UNTIL condition picker (which drops
-// on_death: a loop can't outlive its owner).
-const TRIGGER_EVENT_OPTIONS = [
+// on_death — a loop can't outlive its owner — and adds repeated_times).
+// rangeParam writes eventRange/untilEventRange; valueParam writes
+// eventValue/untilValue.
+interface TriggerOptionMeta {
+  value: string;
+  label: string;
+  rangeParam?: { label: string; default: number };
+  valueParam?: { label: string; default: number; min: number; max?: number };
+}
+
+const TRIGGER_EVENT_OPTIONS: TriggerOptionMeta[] = [
   { value: 'opposing_adjacent', label: 'Opposing Adjacent' },
-  { value: 'opposing_in_range', label: 'Opposing in Range' },
+  { value: 'opposing_in_range', label: 'Opposing in Range', rangeParam: { label: 'Range (tiles)', default: 2 } },
   { value: 'contact_with_opposing', label: 'Overlap with Opposing' },
   { value: 'same_team_adjacent', label: 'Same Team Adjacent' },
-  { value: 'same_team_in_range', label: 'Same Team in Range' },
+  { value: 'same_team_in_range', label: 'Same Team in Range', rangeParam: { label: 'Range (tiles)', default: 2 } },
   { value: 'contact_with_same_team', label: 'Overlap with Same Team' },
+  { value: 'noble_in_danger', label: 'Noble in Danger', rangeParam: { label: 'Danger range (tiles)', default: 2 } },
+  { value: 'health_below_pct', label: 'Own Health Below %', valueParam: { label: 'Percent', default: 50, min: 1, max: 100 } },
+  { value: 'same_team_health_below_pct', label: 'Teammate Health Below %', valueParam: { label: 'Percent', default: 50, min: 1, max: 100 } },
+  { value: 'opposing_count_at_most', label: 'Opposing Left (At Most)', valueParam: { label: 'Count', default: 0, min: 0 } },
+  { value: 'same_team_count_at_most', label: 'Teammates Left (At Most)', valueParam: { label: 'Count', default: 0, min: 0 } },
+  { value: 'turn_reached', label: 'Turn Number Reached', valueParam: { label: 'Turn', default: 5, min: 1 } },
+  { value: 'standing_on_goal', label: 'Standing on Goal Tile' },
   { value: 'wall_ahead', label: 'Wall Ahead' },
   { value: 'health_below_50', label: 'Health Below 50%' },
 ];
@@ -386,38 +402,69 @@ const ActionNodeContent: React.FC<ActionNodeContentProps> = ({
 
 // ─── Repeat Until Config ───────────────────────────────────────────
 
-const RepeatUntilConfig: React.FC<{ action: CharacterAction; onUpdate: (a: CharacterAction) => void }> = ({ action, onUpdate }) => (
-  <div className="ml-8 space-y-2">
-    <div className="flex items-center gap-2">
-      <label className="text-xs text-stone-400">Until:</label>
-      <select
-        value={action.untilEvent || 'opposing_adjacent'}
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        onChange={(e) => onUpdate({ ...action, untilEvent: e.target.value as any })}
-        className="flex-1 px-2 py-1 bg-stone-600 rounded text-xs"
-      >
-        {TRIGGER_EVENT_OPTIONS.map(opt => (
-          <option key={opt.value} value={opt.value}>{opt.label}</option>
-        ))}
-      </select>
-    </div>
-    {(action.untilEvent === 'opposing_in_range' || action.untilEvent === 'same_team_in_range') && (
+const REPEAT_UNTIL_OPTIONS: TriggerOptionMeta[] = [
+  ...TRIGGER_EVENT_OPTIONS,
+  { value: 'repeated_times', label: 'Repeated N Times', valueParam: { label: 'Times', default: 3, min: 1 } },
+];
+
+const RepeatUntilConfig: React.FC<{ action: CharacterAction; onUpdate: (a: CharacterAction) => void }> = ({ action, onUpdate }) => {
+  const meta = REPEAT_UNTIL_OPTIONS.find(o => o.value === (action.untilEvent || 'opposing_adjacent'));
+  return (
+    <div className="ml-8 space-y-2">
       <div className="flex items-center gap-2">
-        <label className="text-xs text-stone-400">Range (tiles):</label>
-        <input type="number" min="1" max="10"
-          value={action.untilEventRange || 2}
-          onChange={(e) => onUpdate({ ...action, untilEventRange: parseInt(e.target.value) || 2 })}
-          className="w-16 px-2 py-1 bg-stone-600 rounded text-xs" />
+        <label className="text-xs text-stone-400">Until:</label>
+        <select
+          value={action.untilEvent || 'opposing_adjacent'}
+          onChange={(e) => {
+            // Stamp the option's param defaults so what the inputs display
+            // is what the engine reads (engine fallbacks differ per event).
+            const newMeta = REPEAT_UNTIL_OPTIONS.find(o => o.value === e.target.value);
+            onUpdate({
+              ...action,
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              untilEvent: e.target.value as any,
+              untilEventRange: newMeta?.rangeParam ? (action.untilEventRange || newMeta.rangeParam.default) : undefined,
+              untilValue: newMeta?.valueParam ? newMeta.valueParam.default : undefined,
+            });
+          }}
+          className="flex-1 px-2 py-1 bg-stone-600 rounded text-xs"
+        >
+          {REPEAT_UNTIL_OPTIONS.map(opt => (
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
+          ))}
+        </select>
       </div>
-    )}
-    <p className="text-[10px] text-stone-500 leading-tight">
-      Repeats the actions above it (back to the previous REPEAT UNTIL, or the
-      start) until the condition is met — then continues with the actions
-      below. Stack several to stage behavior: patrol until spotted, chase
-      until adjacent, then attack.
-    </p>
-  </div>
-);
+      {meta?.rangeParam && (
+        <div className="flex items-center gap-2">
+          <label className="text-xs text-stone-400">{meta.rangeParam.label}:</label>
+          <input type="number" min="1" max="10"
+            value={action.untilEventRange || meta.rangeParam.default}
+            onChange={(e) => onUpdate({ ...action, untilEventRange: parseInt(e.target.value) || meta.rangeParam!.default })}
+            className="w-16 px-2 py-1 bg-stone-600 rounded text-xs" />
+        </div>
+      )}
+      {meta?.valueParam && (
+        <div className="flex items-center gap-2">
+          <label className="text-xs text-stone-400">{meta.valueParam.label}:</label>
+          <input type="number" min={meta.valueParam.min}
+            {...(meta.valueParam.max !== undefined ? { max: meta.valueParam.max } : {})}
+            value={action.untilValue ?? meta.valueParam.default}
+            onChange={(e) => {
+              const v = parseInt(e.target.value);
+              onUpdate({ ...action, untilValue: Number.isFinite(v) ? v : undefined });
+            }}
+            className="w-16 px-2 py-1 bg-stone-600 rounded text-xs" />
+        </div>
+      )}
+      <p className="text-[10px] text-stone-500 leading-tight">
+        Repeats the actions above it (back to the previous REPEAT UNTIL, or the
+        start) until the condition is met — then continues with the actions
+        below. Stack several to stage behavior: patrol until spotted, chase
+        until adjacent, then attack.
+      </p>
+    </div>
+  );
+};
 
 // ─── Movement Config ───────────────────────────────────────────────
 
@@ -657,10 +704,18 @@ const SpellConfig: React.FC<SpellConfigProps> = ({ action, spell, context, onUpd
                       const isInRange = newEvent === 'opposing_in_range' || newEvent === 'same_team_in_range';
                       const eventRange = action.trigger?.eventRange ?? 2;
                       const shouldSeed = isInRange && !action.autoTargetRange;
+                      // Stamp the option's param defaults so what the inputs
+                      // display is what the engine reads.
+                      const newMeta = eventOptions.find(o => o.value === newEvent);
                       onUpdate({
                         ...action,
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                        trigger: { ...action.trigger!, event: newEvent as any },
+                        trigger: {
+                          ...action.trigger!,
+                          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                          event: newEvent as any,
+                          eventRange: newMeta?.rangeParam ? (action.trigger?.eventRange || newMeta.rangeParam.default) : undefined,
+                          eventValue: newMeta?.valueParam ? newMeta.valueParam.default : undefined,
+                        },
                         ...(shouldSeed ? { autoTargetRange: eventRange } : {}),
                       });
                     }}
@@ -669,29 +724,55 @@ const SpellConfig: React.FC<SpellConfigProps> = ({ action, spell, context, onUpd
                       <option key={opt.value} value={opt.value}>{opt.label}</option>
                     ))}
                   </select>
-                  {(displayedEvent === 'opposing_in_range' || displayedEvent === 'same_team_in_range') && (
-                    <div className="flex items-center gap-2 mt-1">
-                      <label className="text-xs text-stone-400">Range (tiles):</label>
-                      <input type="number" min="1" max="10"
-                        value={action.trigger.eventRange || 2}
-                        onChange={(e) => {
-                          // While autoTargetRange is "in sync" with eventRange
-                          // (either unset or equal to the previous eventRange),
-                          // keep them syncing as eventRange changes. Once dev
-                          // sets a different autoTargetRange explicitly, this
-                          // sync stops — their explicit value wins.
-                          const newRange = parseInt(e.target.value) || 2;
-                          const oldRange = action.trigger?.eventRange ?? 2;
-                          const isAutoSeeded = !action.autoTargetRange || action.autoTargetRange === oldRange;
-                          onUpdate({
-                            ...action,
-                            trigger: { ...action.trigger!, eventRange: newRange },
-                            ...(isAutoSeeded ? { autoTargetRange: newRange } : {}),
-                          });
-                        }}
-                        className="w-16 px-2 py-1 bg-stone-600 rounded text-xs" />
-                    </div>
-                  )}
+                  {(() => {
+                    const meta = eventOptions.find(o => o.value === displayedEvent);
+                    return (
+                      <>
+                        {meta?.rangeParam && (
+                          <div className="flex items-center gap-2 mt-1">
+                            <label className="text-xs text-stone-400">{meta.rangeParam.label}:</label>
+                            <input type="number" min="1" max="10"
+                              value={action.trigger.eventRange || meta.rangeParam.default}
+                              onChange={(e) => {
+                                // While autoTargetRange is "in sync" with eventRange
+                                // (either unset or equal to the previous eventRange),
+                                // keep them syncing as eventRange changes. Once dev
+                                // sets a different autoTargetRange explicitly, this
+                                // sync stops — their explicit value wins. Only the
+                                // in-range events seed (their range IS a targeting
+                                // range; noble_in_danger's is not).
+                                const newRange = parseInt(e.target.value) || meta.rangeParam!.default;
+                                const oldRange = action.trigger?.eventRange ?? 2;
+                                const isInRangeEvent = displayedEvent === 'opposing_in_range' || displayedEvent === 'same_team_in_range';
+                                const isAutoSeeded = isInRangeEvent && (!action.autoTargetRange || action.autoTargetRange === oldRange);
+                                onUpdate({
+                                  ...action,
+                                  trigger: { ...action.trigger!, eventRange: newRange },
+                                  ...(isAutoSeeded ? { autoTargetRange: newRange } : {}),
+                                });
+                              }}
+                              className="w-16 px-2 py-1 bg-stone-600 rounded text-xs" />
+                          </div>
+                        )}
+                        {meta?.valueParam && (
+                          <div className="flex items-center gap-2 mt-1">
+                            <label className="text-xs text-stone-400">{meta.valueParam.label}:</label>
+                            <input type="number" min={meta.valueParam.min}
+                              {...(meta.valueParam.max !== undefined ? { max: meta.valueParam.max } : {})}
+                              value={action.trigger.eventValue ?? meta.valueParam.default}
+                              onChange={(e) => {
+                                const v = parseInt(e.target.value);
+                                onUpdate({
+                                  ...action,
+                                  trigger: { ...action.trigger!, eventValue: Number.isFinite(v) ? v : undefined },
+                                });
+                              }}
+                              className="w-16 px-2 py-1 bg-stone-600 rounded text-xs" />
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
                 </>
               )}
             </div>

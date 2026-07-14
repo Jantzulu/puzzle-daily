@@ -3908,7 +3908,8 @@ export function checkTriggerCondition(
   character: PlacedCharacter,
   event: TriggerEvent,
   eventRange: number | undefined,
-  gameState: GameState
+  gameState: GameState,
+  eventValue?: number // numeric parameter for the value-based conditions (% / turn / count)
 ): boolean {
   // Proximity events are TEAM-RELATIVE, resolved against the holder's BASE
   // party — charm-blind, like the finders in engine/party.ts ("opposing"
@@ -3962,6 +3963,71 @@ export function checkTriggerCondition(
     case 'contact_with_same_team':
       return anyOnMyTile(sameTeamMembers());
 
+    case 'health_below_pct': {
+      // Parameterized generalization of health_below_50 (same id fallback;
+      // combatId also tolerates a raw PlacedEnemy holder).
+      const pct = eventValue ?? 50;
+      const holderId = combatId(character);
+      const maxHealth = getCharacter(holderId)?.health ?? getEnemy(holderId)?.health;
+      if (maxHealth === undefined) return false;
+      return character.currentHealth < maxHealth * (pct / 100);
+    }
+
+    case 'same_team_health_below_pct': {
+      // Any TEAMMATE (self excluded — combine with health_below_pct for
+      // self) under the threshold. Raw list entities, so shape-based asset
+      // lookup is safe here (wrappers never appear in the state arrays).
+      const pct = eventValue ?? 50;
+      return sameTeamMembers().some(t => {
+        const maxHealth = 'enemyId' in t
+          ? getEnemy(t.enemyId)?.health
+          : (getCharacter(t.characterId)?.health ?? getEnemy(t.characterId)?.health);
+        if (maxHealth === undefined) return false;
+        return t.currentHealth < maxHealth * (pct / 100);
+      });
+    }
+
+    case 'noble_in_danger': {
+      // An opposing entity within eventRange tiles of any living SAME-TEAM
+      // Noble (asset isNoble — hero Characters and allies; mirrors
+      // getPlacedNobles in simulation.ts). Nobles are a hero-party concept,
+      // so enemy-side holders simply never fire this. Threats are
+      // stealth-filtered like all opposing sensing.
+      const dangerRange = eventRange || 2;
+      const nobles = livingMembers(holderSide).filter(t =>
+        'enemyId' in t ? !!getEnemy(t.enemyId)?.isNoble : !!getCharacter(t.characterId)?.isNoble
+      );
+      if (nobles.length === 0) return false;
+      const threats = opposingMembers();
+      return nobles.some(noble =>
+        threats.some(t => calculateDistance(noble.x, noble.y, t.x, t.y) <= dangerRange)
+      );
+    }
+
+    case 'turn_reached':
+      // currentTurn increments at the top of executeTurn, so "turn N" fires
+      // during turn N's processing — the author-facing turn number.
+      return gameState.currentTurn >= (eventValue ?? 1);
+
+    case 'opposing_count_at_most':
+      // Board-state census, not a sense — stealth does NOT hide from counts
+      // (0 = "all opponents defeated" must be truthful).
+      return livingMembers(opposingSide).length <= (eventValue ?? 0);
+
+    case 'same_team_count_at_most':
+      // Self excluded, consistent with all same-team vocabulary.
+      return livingMembers(holderSide).filter(t => !isSelf(t)).length <= (eventValue ?? 0);
+
+    case 'standing_on_goal':
+      return gameState.puzzle.tiles[character.y]?.[character.x]?.type === TileType.GOAL;
+
+    case 'repeated_times':
+      // REPEAT_UNTIL-only: needs the block's pass counter, which lives on
+      // the entity keyed by action index — the loop branches in
+      // simulation.ts resolve it there. False everywhere else (a parallel
+      // trigger can't meaningfully ask it).
+      return false;
+
     case 'wall_ahead': {
       // Check if there's a wall in front of the character (includes custom wall tiles)
       const { dx, dy } = getDirectionOffset(character.facing);
@@ -3980,8 +4046,8 @@ export function checkTriggerCondition(
       // fallback: enemy wrappers carry enemyId as characterId, so the
       // character-only lookup silently returned false for every enemy,
       // ally, and vessel (same shape-check bug as the heal-cap fix).
-      const maxHealth = getCharacter(character.characterId)?.health
-        ?? getEnemy(character.characterId)?.health;
+      const holderId = combatId(character);
+      const maxHealth = getCharacter(holderId)?.health ?? getEnemy(holderId)?.health;
       if (maxHealth === undefined) return false;
       return character.currentHealth < maxHealth * 0.5;
     }
@@ -4033,7 +4099,8 @@ export function evaluateTriggers(
         character,
         action.trigger.event,
         action.trigger.eventRange,
-        gameState
+        gameState,
+        action.trigger.eventValue
       );
 
       if (triggered) {

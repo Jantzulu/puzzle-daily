@@ -1662,6 +1662,44 @@ function planRepeatUntil(
 }
 
 /**
+ * Evaluate a REPEAT_UNTIL block's condition, including 'repeated_times' —
+ * the one condition checkTriggerCondition can't answer because it needs the
+ * block's pass counter, which lives on the entity keyed by action index.
+ * Counter semantics: "the segment has run N times" — on arrival the pass
+ * just completed counts, so N=3 runs the segment exactly three times before
+ * falling through. Looping stores the new count; falling through resets it,
+ * so an outer REPEAT re-entering the block starts a fresh count.
+ */
+function evaluateRepeatUntil(
+  entity: { repeatUntilCounts?: Record<number, number> },
+  conditionHolder: PlacedCharacter,
+  action: CharacterAction,
+  blockIndex: number,
+  gameState: GameState
+): boolean {
+  let conditionMet: boolean;
+  if (!action.untilEvent) {
+    conditionMet = true; // unconfigured block never loops — plain fall-through
+  } else if (action.untilEvent === 'repeated_times') {
+    const passes = (entity.repeatUntilCounts?.[blockIndex] ?? 0) + 1;
+    conditionMet = passes >= (action.untilValue ?? 1);
+    if (!conditionMet) {
+      // New object, not in-place: replay snapshots deep-copy state, and a
+      // shared reference would leak this turn's count into older snapshots.
+      entity.repeatUntilCounts = { ...(entity.repeatUntilCounts ?? {}), [blockIndex]: passes };
+    }
+  } else {
+    conditionMet = checkTriggerCondition(
+      conditionHolder, action.untilEvent, action.untilEventRange, gameState, action.untilValue
+    );
+  }
+  if (conditionMet && entity.repeatUntilCounts?.[blockIndex]) {
+    entity.repeatUntilCounts = { ...entity.repeatUntilCounts, [blockIndex]: 0 };
+  }
+  return conditionMet;
+}
+
+/**
  * Execute one turn of the simulation
  * Modifies gameState in place and returns it
  */
@@ -1783,9 +1821,9 @@ export function executeTurn(gameState: GameState): GameState {
       // this SEGMENT until the condition fires, then fall through. Uses the
       // shared trigger vocabulary via checkTriggerCondition — untilEvent, NOT
       // the parallel-trigger plumbing.
-      const conditionMet = currentAction.untilEvent
-        ? checkTriggerCondition(newCharacter, currentAction.untilEvent, currentAction.untilEventRange, gameState)
-        : true; // unconfigured block never loops — acts as a plain fall-through
+      const conditionMet = evaluateRepeatUntil(
+        newCharacter, newCharacter, currentAction, newCharacter.actionIndex, gameState
+      );
       const plan = planRepeatUntil(charData.behavior, newCharacter.actionIndex, conditionMet);
       newCharacter.actionIndex = plan.pointerIndex;
       if (plan.executeIndex !== null) {
@@ -2106,9 +2144,9 @@ export function executeTurn(gameState: GameState): GameState {
         instanceKey: newEnemy.instanceKey,
         statusEffects: newEnemy.statusEffects,
       };
-      const conditionMet = currentAction.untilEvent
-        ? checkTriggerCondition(conditionHolder, currentAction.untilEvent, currentAction.untilEventRange, gameState)
-        : true; // unconfigured block never loops — acts as a plain fall-through
+      const conditionMet = evaluateRepeatUntil(
+        newEnemy, conditionHolder, currentAction, newEnemy.actionIndex || 0, gameState
+      );
       const plan = planRepeatUntil(pattern, newEnemy.actionIndex || 0, conditionMet);
       newEnemy.actionIndex = plan.pointerIndex;
       if (plan.executeIndex !== null) {
