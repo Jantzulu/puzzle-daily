@@ -224,11 +224,15 @@ do, complementary to [`feature-roadmap.md`](../../puzzle-game/feature-roadmap.md
   sync (needs the asset-kind plumbing checked). *Captured 2026-04-27,
   redesigned 2026-07-11.*
 
-- [ ] **Team-relative trigger events + REPEAT_UNTIL behavior block.**
-  *Captured 2026-07-13 (user-prioritized: NEXT ENGINE SESSION). Two
-  coupled pieces — the trigger vocabulary redesign is the foundation,
-  REPEAT_UNTIL rides it. Full session brief in CLAUDE_HANDOFF.md
-  "Next session — start here".*
+- [x] **Team-relative trigger events + REPEAT_UNTIL behavior block —
+  SHIPPED 2026-07-14** (`c919888` relative events + read-time mapping,
+  `2602197` REPEAT_UNTIL with segment semantics, `4ce8d7e` rich condition
+  vocabulary — health/noble/counts/turn/goal/repeated_times). The ally
+  triggered-action bug is fixed. Remaining follow-up, pre-briefed in
+  CLAUDE_HANDOFF.md "Next session — start here": **hit-stamp conditions**
+  ("hit by / landed a melee/projectile/contact hit" with previous-action /
+  this-cycle / ever freshness windows — user design 2026-07-14; touches the
+  shared damage path, own session). Original spec below for reference.*
 
   **Part 1 — team-relative trigger events (bug-driven).** Trigger EVENTS
   are hard-wired to absolute parties (`checkTriggerCondition`,
