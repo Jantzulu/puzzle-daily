@@ -184,9 +184,18 @@ export function findPathBFS(
 }
 
 /**
- * For grid homing with hit-along-path: check each tile for non-target entities and apply damage
+ * For grid/pathfinding homing with hit-along-path: check each tile for
+ * non-target entities and apply damage. Runs in BOTH modes (the mode split
+ * mirrors applyEntityHit): damage, dedup, and replay events are shared;
+ * mode='visual' defers deaths (pendingProjectileDeath + pendingVisualDamage
+ * + pendingVisualDecrements for the health-bar sync), mode='headless'
+ * commits deaths immediately with the same diedOnTurn=N+1 stamp.
+ *
+ * Along-path hits deliberately ignore stealth (stealth blocks targeting,
+ * not a bolt physically crossing the tile) and skip deflect — both pinned
+ * in audit-parity.test.ts.
  */
-function checkHomingPathForHits(proj: Projectile, tiles: Array<{x: number; y: number}>, gameState: GameState): void {
+function checkHomingPathForHits(proj: Projectile, tiles: Array<{x: number; y: number}>, gameState: GameState, mode: HitMode): void {
   if (!proj.hitEntityIds) proj.hitEntityIds = [];
   if (!proj.hitEnemyIndices) proj.hitEnemyIndices = [];
   const isHealingProjectile = proj.attackData.healing !== undefined;
@@ -228,31 +237,41 @@ function checkHomingPathForHits(proj: Projectile, tiles: Array<{x: number; y: nu
             `hpBefore=${hitEnemy.currentHealth} pendingVisDmg=${hitEnemy.pendingVisualDamage ?? 0}→${(hitEnemy.pendingVisualDamage ?? 0) + damage}`
           );
         }
-        hitEnemy.pendingVisualDamage = (hitEnemy.pendingVisualDamage ?? 0) + damage;
+        if (mode === 'visual') hitEnemy.pendingVisualDamage = (hitEnemy.pendingVisualDamage ?? 0) + damage;
         applyDamageToEntityNoDeflect(hitEnemy, damage, gameState);
         if (hitEnemy.dead) {
-          hitEnemy.dead = false;
-          hitEnemy.pendingProjectileDeath = true;
-          // Bump diedOnTurn to the turn the visual death will play
-          // (one turn later, since the bolt takes a turn to arrive).
-          // applyDamageToEntityNoDeflect stamped `currentTurn`; override
-          // now that we know this is a deferred death.
-          hitEnemy.diedOnTurn = gameState.currentTurn + 1;
-          if (isHomingDebug()) console.log(`[DEATH-MUT enemy] idx=${hitEnemyIndex} id=${hitEnemy.enemyId.slice(-6)}@(${hitEnemy.x},${hitEnemy.y}) → pendingDeath (from checkEntityCollisions, proj=${proj.id.slice(-6)})`);
+          if (mode === 'visual') {
+            hitEnemy.dead = false;
+            hitEnemy.pendingProjectileDeath = true;
+            // Bump diedOnTurn to the turn the visual death will play
+            // (one turn later, since the bolt takes a turn to arrive).
+            // applyDamageToEntityNoDeflect stamped `currentTurn`; override
+            // now that we know this is a deferred death.
+            hitEnemy.diedOnTurn = gameState.currentTurn + 1;
+            if (isHomingDebug()) console.log(`[DEATH-MUT enemy] idx=${hitEnemyIndex} id=${hitEnemy.enemyId.slice(-6)}@(${hitEnemy.x},${hitEnemy.y}) → pendingDeath (from checkEntityCollisions, proj=${proj.id.slice(-6)})`);
+          } else {
+            // Headless: death commits immediately, but the death-VISUAL
+            // turn is still next turn — same stamp as applyEntityHit's
+            // headless branch (audit sweep 7).
+            hitEnemy.diedOnTurn = gameState.currentTurn + 1;
+            handleEntityDeathDrop(hitEnemy, true, gameState);
+          }
         }
-        // Pierce pass-through — stage a decrement with this tile's index
-        // in the incoming `tiles` array, which is about to become
-        // proj.tilePath this turn. The decrement fires when the visual
-        // sprite reaches this tile (mid-turn), matching how other spells
-        // apply damage on visual contact.
-        if (!proj.pendingVisualDecrements) proj.pendingVisualDecrements = [];
-        proj.pendingVisualDecrements.push({
-          targetEntityId: hitEnemy.enemyId,
-          targetIsEnemy: true,
-          targetIndex: hitEnemyIndex,
-          damage,
-          hitTileIndex: tileIdx,
-        });
+        if (mode === 'visual') {
+          // Pierce pass-through — stage a decrement with this tile's index
+          // in the incoming `tiles` array, which is about to become
+          // proj.tilePath this turn. The decrement fires when the visual
+          // sprite reaches this tile (mid-turn), matching how other spells
+          // apply damage on visual contact.
+          if (!proj.pendingVisualDecrements) proj.pendingVisualDecrements = [];
+          proj.pendingVisualDecrements.push({
+            targetEntityId: hitEnemy.enemyId,
+            targetIsEnemy: true,
+            targetIndex: hitEnemyIndex,
+            damage,
+            hitTileIndex: tileIdx,
+          });
+        }
         if (isPierceDebug()) {
           console.log(
             `[PIERCE-CAPTURE-HOMING ${proj.id.slice(-6)}] turn=${gameState.currentTurn} ` +
@@ -301,20 +320,27 @@ function checkHomingPathForHits(proj: Projectile, tiles: Array<{x: number; y: nu
             `hpBefore=${hitChar.currentHealth} pendingVisDmg=${hitChar.pendingVisualDamage ?? 0}→${(hitChar.pendingVisualDamage ?? 0) + damage}`
           );
         }
-        hitChar.pendingVisualDamage = (hitChar.pendingVisualDamage ?? 0) + damage;
+        if (mode === 'visual') hitChar.pendingVisualDamage = (hitChar.pendingVisualDamage ?? 0) + damage;
         applyDamageToEntityNoDeflect(hitChar, damage, gameState);
         if (hitChar.dead) {
-          hitChar.dead = false;
-          hitChar.pendingProjectileDeath = true;
-          hitChar.diedOnTurn = gameState.currentTurn + 1;
+          if (mode === 'visual') {
+            hitChar.dead = false;
+            hitChar.pendingProjectileDeath = true;
+            hitChar.diedOnTurn = gameState.currentTurn + 1;
+          } else {
+            hitChar.diedOnTurn = gameState.currentTurn + 1;
+            handleEntityDeathDrop(hitChar, false, gameState);
+          }
         }
-        if (!proj.pendingVisualDecrements) proj.pendingVisualDecrements = [];
-        proj.pendingVisualDecrements.push({
-          targetEntityId: hitChar.characterId,
-          targetIsEnemy: false,
-          damage,
-          hitTileIndex: tileIdx,
-        });
+        if (mode === 'visual') {
+          if (!proj.pendingVisualDecrements) proj.pendingVisualDecrements = [];
+          proj.pendingVisualDecrements.push({
+            targetEntityId: hitChar.characterId,
+            targetIsEnemy: false,
+            damage,
+            hitTileIndex: tileIdx,
+          });
+        }
         if (isPierceDebug()) {
           console.log(
             `[PIERCE-CAPTURE-HOMING ${proj.id.slice(-6)}] turn=${gameState.currentTurn} ` +
@@ -4729,7 +4755,7 @@ function resolveProjectiles(gameState: GameState): void {
           }
 
           if (proj.homingHitAlongPath && (proj.homingPathStyle === 'grid' || proj.homingPathStyle === 'pathfinding')) {
-            checkHomingPathForHits(proj, turnTiles, gameState);
+            checkHomingPathForHits(proj, turnTiles, gameState, 'visual');
           }
 
           proj.tilePath = turnTiles;
@@ -5232,6 +5258,15 @@ function updateProjectilesHeadless(gameState: GameState): void {
           // Advance toward the target — position math from the shared plan
           // (BFS partial path for pathfinding, clamped fractional move
           // otherwise; segLen computed against the pre-move position).
+          //
+          // Along-path hits run BEFORE the position mutation (the scan skips
+          // the pre-move start tile), on the SAME plan.turnTiles real mode
+          // scans — residual divergence #1 fix: this check used to exist
+          // only in resolveProjectiles, so the solver missed pass-through
+          // hits entirely.
+          if (proj.homingHitAlongPath && (proj.homingPathStyle === 'grid' || proj.homingPathStyle === 'pathfinding')) {
+            checkHomingPathForHits(proj, plan.turnTiles, gameState, 'headless');
+          }
           proj.pathTraveled = (proj.pathTraveled ?? 0) + plan.segLen;
           proj.logicalX = plan.newX;
           proj.logicalY = plan.newY;

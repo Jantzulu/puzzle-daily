@@ -28,7 +28,7 @@ import {
   createEmptyGrid,
   setTile,
 } from './helpers';
-import { Direction, ActionType, SpellTemplate, TileType } from '../../types/game';
+import { Direction, ActionType, SpellTemplate, TileType, StatusEffectType } from '../../types/game';
 import type { GameState, PlacedEnemy, PlacedCharacter } from '../../types/game';
 import { executeTurn } from '../simulation';
 
@@ -370,5 +370,117 @@ describe('headless/visual parity', () => {
     // untouched in both modes. (Pre-fix headless killed it by turn ~3.)
     expect(final.enemies[0].health).toBe(5);
     expect(final.enemies[0].dead).toBe(false);
+  });
+});
+
+// ==========================================
+// Homing hit-along-path parity — residual divergence #1
+// (docs/projectile-refactor-plan.md §Phase E). checkHomingPathForHits used
+// to run ONLY in resolveProjectiles, so the solver missed every pass-through
+// hit a homingHitAlongPath bolt lands in the live game.
+// ==========================================
+
+describe('homing hit-along-path parity', () => {
+  const spellBase = { description: '', thumbnailIcon: '', sprites: {} };
+  // Stealth keeps the bystander OFF the auto-target list while it sits
+  // directly on the bolt's path. The along-path scan deliberately ignores
+  // stealth (current live behavior, pinned as-is): stealth hides you from
+  // targeting, not from a bolt physically crossing your tile.
+  const stealth = () => ({
+    id: 'stealth-1', type: StatusEffectType.STEALTH, statusAssetId: 'stealth-asset',
+    duration: 99, appliedOnTurn: 0,
+  });
+  const registerPathBolt = () =>
+    registerTestSpell('path-bolt', {
+      id: 'path-bolt', name: 'Path Bolt', ...spellBase,
+      templateType: SpellTemplate.LINEAR, directionMode: 'current_facing',
+      damage: 2, projectileSpeed: 1, range: 8, cooldown: 10,
+    });
+
+  /**
+   * Speed-1 hitAlongPath bolt from a mage at (0,2) to the nearest VISIBLE
+   * enemy (goblin at (4,2)). The stealthed lurker at (2,2) sits on the path
+   * and gets crossed on turn 2 — a MOVE TOWARD turn, so this pins the
+   * along-path scan, not the reach leg. Cooldown 10 = exactly one bolt.
+   */
+  const alongPathScenario = (style: 'grid' | 'pathfinding') => {
+    registerPathBolt();
+    regChar(createTestCharacterDef({
+      id: 'path-mage', health: 10,
+      behavior: [{
+        type: ActionType.SPELL, spellId: 'path-bolt',
+        autoTargetNearestEnemy: true, homing: true, homingPathStyle: style,
+        homingHitAlongPath: true,
+      }, { type: ActionType.REPEAT }] as never,
+    }));
+    regEnemy(createTestEnemyDef({ id: 'lurker', health: 4 }));
+    return () => baseState({
+      enemies: [
+        createTestEnemy({
+          enemyId: 'goblin-1', x: 4, y: 2, currentHealth: 5,
+          actionIndex: 0, active: true,
+        }),
+        createTestEnemy({
+          enemyId: 'lurker', x: 2, y: 2, currentHealth: 4,
+          actionIndex: 0, active: true,
+          statusEffects: [stealth() as never],
+        }),
+      ],
+      heroes: [createTestCharacter({
+        characterId: 'path-mage', x: 0, y: 2, facing: Direction.EAST,
+        currentHealth: 10, actionIndex: 0, active: true,
+      })],
+    });
+  };
+
+  it('grid style: a bystander on the path is damaged in BOTH modes', () => {
+    const final = expectParity(alongPathScenario('grid'), 5);
+    expect(final.enemies[1].health).toBe(2); // lurker: 4 - 2 along-path hit
+    expect(final.enemies[0].health).toBe(3); // goblin: 5 - 2 on reach
+  });
+
+  it('pathfinding style: a bystander on the BFS path is damaged in BOTH modes', () => {
+    const final = expectParity(alongPathScenario('pathfinding'), 5);
+    expect(final.enemies[1].health).toBe(2);
+    expect(final.enemies[0].health).toBe(3);
+  });
+
+  it('enemy caster: a stealthed hero on the path is damaged in BOTH modes', () => {
+    // The character-side scan is a shape-split duplicate of the enemy-side
+    // scan inside checkHomingPathForHits — pin it separately.
+    registerPathBolt();
+    regEnemy(createTestEnemyDef({
+      id: 'warlock', health: 10,
+      behavior: {
+        type: 'active',
+        pattern: [{
+          type: ActionType.SPELL, spellId: 'path-bolt',
+          autoTargetNearestCharacter: true, homing: true, homingPathStyle: 'grid',
+          homingHitAlongPath: true,
+        }, { type: ActionType.REPEAT }],
+        defaultFacing: Direction.EAST,
+      },
+    }));
+    regChar(createTestCharacterDef({ id: 'knight', health: 10 }));
+    regChar(createTestCharacterDef({ id: 'rogue', health: 10 }));
+    const final = expectParity(() => baseState({
+      enemies: [createTestEnemy({
+        enemyId: 'warlock', x: 0, y: 2, currentHealth: 10,
+        actionIndex: 0, active: true, facing: Direction.EAST,
+      })],
+      heroes: [
+        createTestCharacter({
+          characterId: 'knight', x: 4, y: 2, facing: Direction.WEST,
+          currentHealth: 10, actionIndex: 0, active: true,
+        }),
+        createTestCharacter({
+          characterId: 'rogue', x: 2, y: 2, facing: Direction.WEST,
+          currentHealth: 10, actionIndex: 0, active: true,
+          statusEffects: [stealth() as never],
+        }),
+      ],
+    }), 5);
+    expect(final.heroes[1].health).toBe(8); // rogue: crossed on turn 2
+    expect(final.heroes[0].health).toBe(8); // knight: reached on turn 4
   });
 });
