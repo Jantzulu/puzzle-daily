@@ -1,6 +1,6 @@
 # Claude Handoff Document - Puzzle Daily
 
-Last Updated: June 30, 2026 (facing/targeting + contact-damage session — wall-placement fix, FACE_DIRECTION nearest-target, face-on-cast, contact-damage reaction; prior: integer-zoom board quantization — pixel-perfect board sprites)
+Last Updated: July 13, 2026 (homing hit-along-path session — solver parity fix + reach-leg scan, pending task #6 closed. NOTE: the July 1–12 work — engine audit sweeps 1–10, summon/necromancy/vessels, Phase E homing helpers, strafe actions, contact redesign — is chronicled in the user-memory `in-progress.md`, not here; this doc's session log resumes at June 30 below.)
 
 ## Doc Map — Where to Find What
 
@@ -10,7 +10,7 @@ Last Updated: June 30, 2026 (facing/targeting + contact-damage session — wall-
 | **Approved feature roadmap** | `~/.claude/projects/.../memory/feature-roadmap.md` (user memory) | Formally approved features, shipped + outstanding. Categorized by priority. The curated list. |
 | **Captured-in-the-wild backlog** | `docs/feature-backlog.md` | Raw ideas + bug observations as they come up, triaged into tiers (launch-blocking → launch-adjacent → post-launch). New items land here; graduate to roadmap when scoped. |
 | **Deferred plan: offscreen sprite cache** | `docs/offscreen-sprite-cache-plan.md` | The biggest perf lever still on the table. Documented but blocked on validation infra (dual-render diff harness). Pick up when mobile perf becomes a bottleneck. |
-| **Deferred plan: projectile refactor** | `docs/projectile-refactor-plan.md` | Phased plan for paying down projectile tech debt. Phases A–E shipped; Phase D-b (entity-owned deferred-visual pair) optional. |
+| **Completed plan: projectile refactor** | `docs/projectile-refactor-plan.md` | COMPLETE — all phases shipped or resolved (D-b rejected, see "Phase D-b lite" below). Two low-value residual divergences remain documented under its Phase E section. |
 | **Won't-do: native-resolution rendering** | `docs/native-resolution-rendering-plan.md` | Phase 2 reverted; reasoning preserved so it's not reattempted naively. |
 | **Determinism / audit summary** | `docs/audit-summary.md` | Living roadmap of determinism + audit work. |
 | **Player app vision/architecture** | `docs/PLAYER_APP_VISION.md`, `docs/PLAYER_APP_ARCHITECTURE.md` | Player site separation reference. |
@@ -250,7 +250,7 @@ _(none currently)_
 
 5. **Replay projectile polish** — minor edge cases (melee VFX timing, etc.). Slow projectile replay is now in good shape after the multi-session projectile work.
 
-6. **Homing + along-path + pierce: REACHED TARGET turn skips along-path hits.** `checkHomingPathForHits` only runs in the MOVE TOWARD branch, not REACHED TARGET. If the bolt reaches its main target on the same turn it would have pierced through other enemies along the path, those enemies don't get hit. Pre-existing structural gap in how the homing branches are split. Fix likely involves running `checkHomingPathForHits` (with a slice of `tilesToTarget`) in the REACHED TARGET branch too.
+6. ~~**Homing + along-path + pierce: REACHED TARGET turn skips along-path hits.**~~ — **Done 2026-07-13** (commit `9854020`). The shared `planHomingTick` reach plan now carries `reachTiles`; both real and headless modes run `checkHomingPathForHits` on the final leg before the target hit lands. Shipped alongside the solver-parity fix (`881f153`) that gave `checkHomingPathForHits` the `HitMode` param — headless was missing along-path hits entirely. 5 pins in `audit-parity.test.ts`.
 
 7. **Homing + along-path + pierce: stale `hitTileIndex` if animation lags past turn boundary.** `pendingVisualDecrements` populated in `checkHomingPathForHits` carry `hitTileIndex` valid for the current turn's tilePath. Homing tilePath is replaced each turn, so any decrement not consumed during this turn's animation window would fire at the wrong tile (or be swept by the batch-consume safety net at landing). In normal play this should not happen — animations are sized to fit `TURN_INTERVAL_MS`. Mitigation if it ever surfaces: force-fire any leftover `pendingVisualDecrements` at the moment `proj.tilePath` is replaced in the homing MOVE TOWARD branch (~5 lines). Standard linear pierce confirmed clean visually 2026-04-24, so this is preventative only.
 
@@ -303,6 +303,15 @@ That deviation was the root problem. The singleton's lack of ownership boundarie
 ### Won't-do (decided)
 
 - **Native-resolution rendering Phase 2 (game board), and Phase 3 / Phase 4 with it.** Attempted on 2026-04-17 (commit `f2de97f`), reverted same day (commit `257c50b`). The "shrink the canvas buffer + CSS-upscale" approach is incompatible with the per-sheet `scale` and fractional `sprite.size` knobs the board needs for cross-sheet entity normalization. See [docs/native-resolution-rendering-plan.md](docs/native-resolution-rendering-plan.md) Phase 2 section for full reasoning. Don't reattempt without revisiting that doc. **NOTE (2026-06-30):** board pixel-perfection was *later achieved by a different, much smaller change* — see "Recently completed (June 30, 2026 — integer-zoom board quantization)" below. The "half-pixels are an accepted tax" framing in that plan doc is now superseded for the board.
+
+### Recently completed (July 13, 2026 — homing hit-along-path: solver parity + reach-leg scan)
+
+Closes the last substantive projectile item. Two isolated commits, each with failing-first pins in `audit-parity.test.ts`; 475/475 tests, corpus goldens unchanged (no corpus case uses `homingHitAlongPath`).
+
+- **Solver parity** ([`881f153`](https://github.com/Jantzulu/puzzle-daily/commit/881f153)) — `checkHomingPathForHits` ran only in `resolveProjectiles`, so the validator missed every pass-through hit a `homingHitAlongPath` bolt (grid/pathfinding) lands live. It now takes the `HitMode` param mirroring `applyEntityHit`: damage/dedup/replay events shared; 'visual' defers deaths, 'headless' commits them with the same `diedOnTurn = N+1` stamp. Headless advance branch scans the same `plan.turnTiles`.
+- **Reach-leg scan** ([`9854020`](https://github.com/Jantzulu/puzzle-daily/commit/9854020)) — pending task #6. `planHomingTick`'s reach plan gained `reachTiles` (rounded pre-move position → target; full BFS path for pathfinding — the same formulas the reach-turn tilePath uses, keeping `pendingVisualDecrements.hitTileIndex` aligned). Both modes scan it before the target hit. **Deliberate live-behavior change:** bolts now bite bystanders on the final leg. ⚠️ Deploy spot-check if any authored spell uses hit-along-path.
+- **Pinned as deliberate:** along-path hits ignore stealth (stealth blocks targeting, not a bolt crossing your tile) and skip deflect. Test trick worth reusing: a stealthed bystander sits on the bolt's path without disturbing nearest-visible auto-targeting.
+- Remaining (accepted, low-value): homing reflect return-leg timing; THROW_PLACE landing-tile fallback in wall-edge layouts — both under the plan doc's Phase E section.
 
 ### Recently completed (June 30, 2026 — facing/targeting features + contact-damage reaction)
 

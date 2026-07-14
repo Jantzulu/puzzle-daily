@@ -1,6 +1,6 @@
 # Projectile System Refactor Plan
 
-**Status:** COMPLETE — all phases shipped or resolved. **CLAUDE_HANDOFF.md is the authoritative record** ("Phase C progress" table + "Phase D-b lite" section); this doc went stale twice by not consulting it. Timeline: A+B+C shipped April 2026 (C-1 `48f8549`, C-2 `ab45367`, C-3 `7881e15` — after one reverted attempt, retro in the handoff doc); D-a shipped April (`4f9076d`, `pendingDeactivation` folded into `hitResult`); D-b investigated 2026-04-30 and **REJECTED** (entity-side flags are O(1) caches, not redundancy — lite version `isEntityFunctional` shipped `a70e3ab` instead); E shipped in two waves (April: shared collision walkers `0c88664`/`26fabcb`/`8ece3e5`; 2026-07-12: homing helpers `7edb4a7`/`7d0203e`/`75df15e`). F resolved as a side effect of April polish (no separate visual path needed). **Only remaining work: the three residual divergences documented under Phase E.**
+**Status:** COMPLETE — all phases shipped or resolved. **CLAUDE_HANDOFF.md is the authoritative record** ("Phase C progress" table + "Phase D-b lite" section); this doc went stale twice by not consulting it. Timeline: A+B+C shipped April 2026 (C-1 `48f8549`, C-2 `ab45367`, C-3 `7881e15` — after one reverted attempt, retro in the handoff doc); D-a shipped April (`4f9076d`, `pendingDeactivation` folded into `hitResult`); D-b investigated 2026-04-30 and **REJECTED** (entity-side flags are O(1) caches, not redundancy — lite version `isEntityFunctional` shipped `a70e3ab` instead); E shipped in two waves (April: shared collision walkers `0c88664`/`26fabcb`/`8ece3e5`; 2026-07-12: homing helpers `7edb4a7`/`7d0203e`/`75df15e`). F resolved as a side effect of April polish (no separate visual path needed). **Remaining: two residual divergences under Phase E (#1 fixed 2026-07-13), both accepted low-value edge cases.**
 **Scope:** `src/engine/simulation.ts`, `src/engine/actions.ts`, `src/types/game.ts`
 **Goal:** Pay down the technical debt from the March 2026 deterministic-projectile refactor without changing observable gameplay.
 
@@ -151,14 +151,15 @@ in `audit-parity.test.ts` ("homing wall check" case; no corpus case
 covered it). Note the flag defaults to TRUE (pass through walls), so
 only opt-out spells were affected.
 
-**Residual known divergences (documented, deliberately NOT fixed here):**
+**Residual known divergences:**
 
-- **`checkHomingPathForHits` is real-mode only** — homing bolts with
-  `homingHitAlongPath` (grid/pathfinding styles) damage entities they
-  pass in the live game but not in the solver. Fixing it requires a
-  `HitMode` param on a §8 do-not-touch function (it hard-codes
-  pendingVisualDamage / pendingProjectileDeath bookkeeping). Same bug
-  class as the wall check; needs its own careful session.
+- ✅ **`checkHomingPathForHits` is real-mode only** — **FIXED 2026-07-13**
+  (`881f153`): the function took the `HitMode` param (mirroring
+  `applyEntityHit`); headless scans the same `plan.turnTiles`. Ridealong
+  (`9854020`): handoff task #6 — reach turns now scan the final leg
+  (`plan.reachTiles`) in BOTH modes, a deliberate live-behavior change
+  for `homingHitAlongPath` spells. 5 pins in audit-parity.test.ts,
+  including the deliberate "along-path hits ignore stealth" behavior.
 - **Homing reflect timing** — real mode resolves the reflected return
   leg in the SAME turn (immediate walk); headless re-targets the caster
   and flies back over subsequent turns. Final outcomes converge in
