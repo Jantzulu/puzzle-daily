@@ -23,6 +23,10 @@ const SECTION_INFO: Record<HelpSectionId, { icon: string; description: string }>
     icon: '👹',
     description: 'Help for the "Enemies" information box',
   },
+  allies: {
+    icon: '🛡️',
+    description: 'Help for the "Allies" information box',
+  },
   items: {
     icon: '⭐',
     description: 'Help for the "Items" information box',

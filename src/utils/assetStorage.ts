@@ -1414,6 +1414,7 @@ const HELP_CONTENT_KEY = 'puzzle_game_help_content';
 // Help content section IDs
 export type HelpSectionId =
   | 'enemies'
+  | 'allies'
   | 'items'
   | 'status_effects'
   | 'special_tiles'
@@ -1454,6 +1455,12 @@ const defaultHelpContent: HelpContentStorage = {
       id: 'enemies',
       title: 'Enemies',
       content: '<p>Enemies are obstacles that can harm your characters.</p><ul><li>Each enemy has its own behavior pattern</li><li>Some enemies can be defeated in combat</li><li>Watch out for their attacks!</li></ul>',
+      updatedAt: new Date().toISOString(),
+    },
+    {
+      id: 'allies',
+      title: 'Allies',
+      content: '<p>Allies are friendly units already in the dungeon — they fight on your side.</p><ul><li>Each ally follows its own behavior pattern</li><li>Enemies can attack and defeat them</li><li>An ally marked with a crown is a <strong>Noble</strong> — if the quest requires protecting them, their death means defeat</li></ul>',
       updatedAt: new Date().toISOString(),
     },
     {

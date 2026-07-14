@@ -3264,6 +3264,15 @@ export const Game: React.FC<GameProps> = ({
                   noPanel
                 />
 
+                {/* Allies Display — hero-party units placed by the creator;
+                    renders nothing when the puzzle has none */}
+                <EnemyDisplay
+                  side="ally"
+                  enemies={gameState.puzzle.enemies}
+                  themeAssets={themeAssets}
+                  noPanel
+                />
+
                 {/* Items Display - only shown if puzzle has items */}
                 <ItemsDisplay puzzle={gameState.puzzle} noPanel />
 

@@ -29,6 +29,13 @@ interface EnemyDisplayProps {
   themeAssets?: ThemeAssets;
   className?: string;
   noPanel?: boolean;
+  /**
+   * Which party's units this instance tallies from puzzle.enemies.
+   * 'enemy' (default) draws the Dungeon Details lintel and shows the
+   * kill-target roster; 'ally' lists hero-party units (placed allies) and
+   * renders nothing when the puzzle has none.
+   */
+  side?: 'enemy' | 'ally';
 }
 
 export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
@@ -38,7 +45,9 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
   themeAssets = {},
   className = '',
   noPanel = false,
+  side = 'enemy',
 }) => {
+  const isAllySide = side === 'ally';
   // Info panel animation state — grid 0fr→1fr so easing applies to real content height.
   // Double rAF ensures browser paints the closed (0fr) state before opening.
   const [selectedEnemyId, setSelectedEnemyId] = useState<string | null>(null);
@@ -78,12 +87,11 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
     // Expired summons left the board without dying — drop them from the
     // tally entirely instead of counting them as slain.
     if (enemy.despawned) continue;
-    // Hero-party entities living in the enemies array (placed allies,
-    // hero-side summons) are not kill targets — keep them out of the
-    // enemy tally. Explicit stamp check: the quest label does the full
-    // entityParty derivation, but everything hero-party here carries the
-    // explicit field.
-    if (enemy.party === 'hero') continue;
+    // Party split: the enemy tally shows kill targets only; the ally tally
+    // shows hero-party units (placed allies, hero-side summons). Explicit
+    // stamp check: the quest label does the full entityParty derivation,
+    // but everything hero-party here carries the explicit field.
+    if (isAllySide ? enemy.party !== 'hero' : enemy.party === 'hero') continue;
     const existing = enemyGroups.get(enemy.enemyId);
     if (existing) {
       existing.totalCount++;
@@ -149,14 +157,17 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
   const hasActionSteps = actionSteps.length > 0;
   const hasAttributes = (renderedEnemyData?.attributes?.length ?? 0) > 0;
 
-  // Selected glow — red variant matching enemy colour scheme
-  const selectedGlow =
-    'drop-shadow(0 0 2px rgba(0,0,0,1)) drop-shadow(0 0 3px rgba(180,50,50,0.9)) drop-shadow(0 0 7px rgba(180,50,50,0.5))';
+  // Selected glow — red for enemies, warm gold for allies
+  const selectedGlow = isAllySide
+    ? 'drop-shadow(0 0 2px rgba(0,0,0,1)) drop-shadow(0 0 3px rgba(214,158,70,0.9)) drop-shadow(0 0 7px rgba(214,158,70,0.5))'
+    : 'drop-shadow(0 0 2px rgba(0,0,0,1)) drop-shadow(0 0 3px rgba(180,50,50,0.9)) drop-shadow(0 0 7px rgba(180,50,50,0.5))';
 
   // "Dungeon Details" threshold shown in noPanel mode — a course of hewn
   // stone blocks (LintelMesh) marking the doorway between the heroes'
-  // panel and the dungeon, with the label engraved on the stone
-  const divider = noPanel ? (
+  // panel and the dungeon, with the label engraved on the stone.
+  // Only the ENEMY instance draws it — it opens the whole section; the
+  // ally instance renders below it as a sibling box.
+  const divider = noPanel && !isAllySide ? (
     <div className="dungeon-lintel mt-2 mb-2">
       <LintelMesh />
       <span className="dungeon-lintel-text font-medieval">
@@ -177,7 +188,9 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
     </div>
   ) : null;
 
-  // Empty state
+  // Empty state. No allies is the NORM — the ally instance disappears
+  // entirely rather than announcing an empty box.
+  if (uniqueEnemyIds.length === 0 && isAllySide) return null;
   if (uniqueEnemyIds.length === 0) {
     const emptyContent = (
       <>
@@ -241,9 +254,11 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
         </div>
         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center">
           <div className="absolute right-full mr-1">
-            <HelpButton sectionId="enemies" />
+            <HelpButton sectionId={isAllySide ? 'allies' : 'enemies'} />
           </div>
-          <h3 className="carved-header carved-header-blood font-medieval text-lg lg:text-xl">Enemies</h3>
+          <h3 className={`carved-header ${isAllySide ? 'carved-header-parchment' : 'carved-header-blood'} font-medieval text-lg lg:text-xl`}>
+            {isAllySide ? 'Allies' : 'Enemies'}
+          </h3>
         </div>
         <span className="text-sm lg:text-base text-stone-400">
           {totalLiving} remaining
@@ -267,7 +282,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
               onClick={() => setSelectedEnemyId(isSelected ? null : enemyId)}
               className={`flex-1 flex flex-col items-center px-1 pt-1 pb-0.5 relative transition-colors cursor-pointer ${
                 isSelected
-                  ? 'bg-blood-900/15'
+                  ? (isAllySide ? 'bg-copper-900/15' : 'bg-blood-900/15')
                   : '[@media(hover:hover)]:hover:bg-stone-700/30'
               } ${allDead ? 'opacity-50' : ''}`}
             >
