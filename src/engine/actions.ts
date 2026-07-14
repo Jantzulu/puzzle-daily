@@ -940,13 +940,13 @@ function resolveWalkInCollision(
   let moverHalted = false;
   const strikeThorns = () => {
     if (!thorns || defender.dead || mover.dead) return;
-    applyDamageToEntity(mover, thorns.damage, gameState, defender);
+    applyDamageToEntity(mover, thorns.damage, gameState, defender, 'contact');
     applyContactDamageReaction(defender, mover, thorns.effect, gameState);
     applyContactHaltFlags(defender, thorns.effect, gameState);
   };
   const strikeTrample = () => {
     if (!trample || mover.dead || defender.dead) return;
-    applyDamageToEntity(defender, trample.damage, gameState, mover);
+    applyDamageToEntity(defender, trample.damage, gameState, mover, 'contact');
     applyContactHaltFlags(mover, trample.effect, gameState);
     if (mover.contactHaltForever || mover.contactHaltTurn === gameState.currentTurn) {
       moverHalted = true;

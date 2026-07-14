@@ -385,6 +385,82 @@ describe('projectile stamps (slice 2)', () => {
   });
 });
 
+describe('contact stamps (slice 3)', () => {
+  const contact = (type: StatusEffectType, value: number): StatusEffectInstance => ({
+    id: `${type}-inst`, type, statusAssetId: `${type}-asset`,
+    duration: 99, value, currentStacks: 1, appliedOnTurn: 0,
+    sourceEntityId: 'test', sourceIsEnemy: false, movementSkipCounter: 0,
+  } as StatusEffectInstance);
+
+  it('Thorns: the walker is stamped as victim, the spiky defender gets dealt credit', () => {
+    regChar(createTestCharacterDef({
+      id: 'brawler', health: 10,
+      behavior: [{ type: ActionType.MOVE_FORWARD }, { type: ActionType.REPEAT }] as never,
+    }));
+    const gs = baseState({
+      enemies: [createTestEnemy({
+        enemyId: 'goblin-1', x: 3, y: 2, currentHealth: 5,
+        statusEffects: [contact(StatusEffectType.CONTACT_DAMAGE, 3)],
+      })],
+      heroes: [createTestCharacter({ characterId: 'brawler', x: 2, y: 2, facing: Direction.EAST, currentHealth: 10 })],
+    });
+    executeTurn(gs); // hero walks into the spikes
+    expect(gs.placedCharacters[0].hitStamps).toEqual({ contact: 1, any: 1 });
+    expect(gs.puzzle.enemies[0].dealtStamps).toEqual({ contact: 1, any: 1 });
+  });
+
+  it('Trample from an ENEMY walker: both stamps survive the wrapper copy-back', () => {
+    regChar(createTestCharacterDef({
+      id: 'victim', health: 10,
+      behavior: [{ type: ActionType.WAIT }, { type: ActionType.REPEAT }] as never,
+    }));
+    regEnemy(createTestEnemyDef({
+      id: 'bull', health: 5,
+      behavior: {
+        type: 'active',
+        pattern: [{ type: ActionType.MOVE_FORWARD }, { type: ActionType.REPEAT }],
+        defaultFacing: Direction.WEST,
+      },
+    }));
+    const gs = baseState({
+      enemies: [createTestEnemy({
+        enemyId: 'bull', x: 3, y: 2, currentHealth: 5, actionIndex: 0, active: true,
+        facing: Direction.WEST,
+        statusEffects: [contact(StatusEffectType.TRAMPLE, 3)],
+      })],
+      heroes: [createTestCharacter({ characterId: 'victim', x: 2, y: 2, currentHealth: 10 })],
+    });
+    executeTurn(gs); // bull gores the hero it walks into
+    expect(gs.placedCharacters[0].hitStamps).toEqual({ contact: 1, any: 1 });
+    expect(gs.puzzle.enemies[0].dealtStamps).toEqual({ contact: 1, any: 1 }); // rides the tempChar copy-back
+  });
+
+  it('enemy walker bitten by hero thorns: victim stamp rides the wrapper copy-back', () => {
+    regChar(createTestCharacterDef({
+      id: 'spiky', health: 10,
+      behavior: [{ type: ActionType.WAIT }, { type: ActionType.REPEAT }] as never,
+    }));
+    regEnemy(createTestEnemyDef({
+      id: 'walker', health: 5,
+      behavior: {
+        type: 'active',
+        pattern: [{ type: ActionType.MOVE_FORWARD }, { type: ActionType.REPEAT }],
+        defaultFacing: Direction.WEST,
+      },
+    }));
+    const gs = baseState({
+      enemies: [createTestEnemy({ enemyId: 'walker', x: 3, y: 2, currentHealth: 5, actionIndex: 0, active: true, facing: Direction.WEST })],
+      heroes: [createTestCharacter({
+        characterId: 'spiky', x: 2, y: 2, currentHealth: 10,
+        statusEffects: [contact(StatusEffectType.CONTACT_DAMAGE, 2)],
+      })],
+    });
+    executeTurn(gs); // walker tries to walk onto the spiky hero
+    expect(gs.puzzle.enemies[0].hitStamps).toEqual({ contact: 1, any: 1 }); // rides the tempChar copy-back
+    expect(gs.placedCharacters[0].dealtStamps).toEqual({ contact: 1, any: 1 });
+  });
+});
+
 describe('fresh runs', () => {
   it('initializeGameState strips stamps and cycle bookkeeping from placements', () => {
     const stale = createTestEnemy({
