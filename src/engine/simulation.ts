@@ -1034,6 +1034,10 @@ function processEntityStatusEffects(
 
       case StatusEffectType.DISPEL:
       case StatusEffectType.CLEANSE: {
+        // Safety net only since 2026-07-14: spell/projectile applications
+        // strip INSTANTLY via applyInstantStatusStrip and never push an
+        // instance. This branch still catches instances that arrive by
+        // other paths (e.g. authored initial status effects).
         const isDispel = effect.type === StatusEffectType.DISPEL;
         const targetPolarity = isDispel ? 'positive' : 'negative';
         const immuneKey = isDispel ? 'immuneToDispel' : 'immuneToCleanse';
@@ -1116,6 +1120,46 @@ const STATUS_EFFECT_POLARITY: Record<StatusEffectType, 'positive' | 'negative' |
   [StatusEffectType.PRIORITY]:        'neutral',
   [StatusEffectType.STURDY]:          'neutral',
 };
+
+/**
+ * DISPEL/CLEANSE strip, INSTANT on application (user decision 2026-07-14 —
+ * shrinks the hit→vulnerability beat of "immune until struck" entities to
+ * its minimum: a self-cast dispel fired from the trigger phase strips
+ * BEFORE the same turn's projectile resolution, so the very next bolt
+ * lands). Matches the StatusEffectEditor's own "Instantly strips…" text,
+ * which the old next-turn-start processing quietly contradicted.
+ *
+ * Returns true when the asset is a DISPEL/CLEANSE it fully handled — the
+ * caller must then NOT push an instance (nothing lingers). Mutates
+ * statusEffects strictly IN PLACE (splice, never reassignment): the target
+ * may be an enemy→character wrapper sharing the array by REFERENCE, and a
+ * reassignment would strand the strip on the wrapper (statusEffects is not
+ * in the copy-back lists).
+ */
+export function applyInstantStatusStrip(
+  target: PlacedCharacter | PlacedEnemy,
+  effectAsset: { type: StatusEffectType; targetEffectTypes?: 'all' | StatusEffectType[];
+                 immuneToDispel?: boolean; immuneToCleanse?: boolean }
+): boolean {
+  if (effectAsset.type !== StatusEffectType.DISPEL && effectAsset.type !== StatusEffectType.CLEANSE) {
+    return false;
+  }
+  const isDispel = effectAsset.type === StatusEffectType.DISPEL;
+  const targetPolarity = isDispel ? 'positive' : 'negative';
+  const immuneKey = isDispel ? 'immuneToDispel' : 'immuneToCleanse';
+  const targetTypes = effectAsset.targetEffectTypes;
+  const arr = target.statusEffects;
+  if (!arr) return true;
+  for (let i = arr.length - 1; i >= 0; i--) {
+    const other = arr[i];
+    const otherAsset = loadStatusEffectAsset(other.statusAssetId);
+    if (otherAsset?.[immuneKey]) continue;
+    if (STATUS_EFFECT_POLARITY[other.type] !== targetPolarity) continue;
+    if (targetTypes && targetTypes !== 'all' && !targetTypes.includes(other.type)) continue;
+    arr.splice(i, 1);
+  }
+  return true;
+}
 
 /**
  * Check if an entity can perform actions based on status effects
@@ -1411,6 +1455,10 @@ function applyStatusEffectFromProjectile(
     return;
   }
 
+  // DISPEL/CLEANSE are instant: strip now, never push an instance.
+  if (applyInstantStatusStrip(target, effectAsset)) {
+    return;
+  }
 
   // Initialize status effects array if needed
   if (!target.statusEffects) {

@@ -468,13 +468,17 @@ describe('contact stamps (slice 3)', () => {
 });
 
 describe('authorable archetype: immune until struck', () => {
-  it('an invulnerable warden self-dispels its ward when hit by a projectile, then takes damage', () => {
+  it('an invulnerable warden self-dispels its ward when hit by a projectile — the very NEXT bolt lands', () => {
     // The design the connection-stamp semantics exist for (user, 2026-07-14):
     // permanent Invulnerable + a hit_by_projectile trigger self-casting a
     // spell whose status rider is a DISPEL targeting invulnerable. The bolt
-    // deals no damage but stamps the hit; the trigger fires next turn; the
-    // DISPEL processes at the FOLLOWING turn start and strips the ward.
-    // Zero bespoke engine code — pinned so the recipe keeps working.
+    // deals no damage but stamps the hit; the trigger fires next turn and
+    // the DISPEL strips INSTANTLY (same-day user decision) — during that
+    // turn's trigger phase, BEFORE its projectile resolution — so a mage
+    // bolting every turn lands the very next bolt. The minimum possible
+    // beat: the triggering hit itself must stay blocked, or it wasn't
+    // invulnerable. Zero bespoke engine code — pinned so the recipe keeps
+    // working.
     registerTestStatusEffect('break-ward', {
       id: 'break-ward', name: 'Break Ward',
       type: StatusEffectType.DISPEL,
@@ -493,12 +497,7 @@ describe('authorable archetype: immune until struck', () => {
     });
     regChar(createTestCharacterDef({
       id: 'mage', health: 10,
-      // Bolts on turns 1 and 5 (REPEAT re-swings on the 5th turn).
-      behavior: [
-        { type: ActionType.SPELL, spellId: 'bolt' },
-        { type: ActionType.WAIT }, { type: ActionType.WAIT }, { type: ActionType.WAIT },
-        { type: ActionType.REPEAT },
-      ] as never,
+      behavior: [{ type: ActionType.SPELL, spellId: 'bolt' }, { type: ActionType.REPEAT }] as never,
     }));
     regEnemy(createTestEnemyDef({
       id: 'warden', health: 5,
@@ -524,13 +523,14 @@ describe('authorable archetype: immune until struck', () => {
     executeTurn(gs); // turn 1: bolt connects — no damage, but the hit stamps
     expect(gs.puzzle.enemies[0].currentHealth).toBe(5);
     expect(gs.puzzle.enemies[0].hitStamps).toEqual({ projectile: 1, any: 1 });
+    expect(gs.puzzle.enemies[0].statusEffects?.some(e => e.type === StatusEffectType.INVULNERABLE)).toBe(true);
 
-    executeTurn(gs); // turn 2: trigger fires, warden self-casts the dispel rider
-    executeTurn(gs); // turn 3: DISPEL processes at turn start — ward stripped
+    // Turn 2: mage bolts again (action phase) → trigger fires and the ward
+    // strips instantly (trigger phase) → THIS turn's bolt already lands
+    // (projectile resolution runs last).
+    executeTurn(gs);
     expect(gs.puzzle.enemies[0].statusEffects?.some(e => e.type === StatusEffectType.INVULNERABLE)).toBe(false);
-
-    executeTurn(gs); // turn 4: quiet
-    executeTurn(gs); // turn 5: REPEAT re-bolts — damage now lands
+    expect(gs.puzzle.enemies[0].statusEffects?.some(e => e.type === StatusEffectType.DISPEL)).toBe(false); // nothing lingers
     expect(gs.puzzle.enemies[0].currentHealth).toBe(3);
   });
 });

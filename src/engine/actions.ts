@@ -38,7 +38,7 @@ import { isEntityCharmed, effectiveParty, entityParty, isAttackTarget, combatId 
 import { spawnEnemyMidGame } from './spawning';
 import type { EntityParty } from '../types/game';
 import type { CollectibleEffectConfig, PlacedCollectible } from '../types/game';
-import { canEntityAct, canEntityCastSpell, canEntityMove, hasHasteBonus, isHomingDebug, handleEntityDeathDrop } from './simulation';
+import { canEntityAct, canEntityCastSpell, canEntityMove, hasHasteBonus, isHomingDebug, handleEntityDeathDrop, applyInstantStatusStrip } from './simulation';
 import { wakeFromSleep } from './simulation';
 
 // ── Trait helpers ────────────────────────────────────────────────────────────
@@ -2808,6 +2808,11 @@ function applyStatusEffectFromSpell(
   const effectAsset = loadStatusEffectAsset(effectConfig.statusAssetId);
   if (!effectAsset) {
     console.warn(`Status effect asset not found: ${effectConfig.statusAssetId}`);
+    return;
+  }
+
+  // DISPEL/CLEANSE are instant: strip now, never push an instance.
+  if (applyInstantStatusStrip(target, effectAsset)) {
     return;
   }
 
