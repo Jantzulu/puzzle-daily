@@ -3,10 +3,13 @@
  * sacred damage path + the MELEE delivery kind + freshness windows +
  * cycleStartTurn bookkeeping.
  *
- * Mechanism pinned here: when damage lands (past invulnerability and
- * deflect; shield absorption still counts), applyDamageToEntity stamps the
- * victim's hitStamps and the attacker's dealtStamps with the turn number
- * under the delivery kind plus 'any'. Stamps are new-object writes; they
+
+ * Mechanism pinned here: stamps record CONNECTION, not damage-got-through
+ * (user decision 2026-07-14 — enables "immune until struck" designs).
+ * applyDamageToEntity stamps the victim's hitStamps and the attacker's
+ * dealtStamps with the turn number under the delivery kind plus 'any',
+ * BEFORE invulnerability, deflect, and reflect resolve; only zero-damage
+ * deliveries never stamp. Stamps are new-object writes; they
  * ride the enemy→character wrapper copy-backs both directions, and the
  * actor-loop write-backs merge feedback stamps from the original (per-key
  * latest). Windows: 'previous_action' (>= currentTurn - 1), 'this_cycle'
@@ -155,17 +158,18 @@ describe('stamp gates on the damage path', () => {
     expect(gob.hitStamps).toEqual({ melee: 3, any: 3 });
   });
 
-  it('an invulnerable target is never stamped', () => {
+  it('an invulnerable target is still stamped — immunity gates damage, not the hit', () => {
     const gob = createTestEnemy({
       enemyId: 'goblin-1', x: 3, y: 2, currentHealth: 5,
       statusEffects: [statusInst(StatusEffectType.INVULNERABLE)],
     });
     const gs = baseState({ enemies: [gob], currentTurn: 3 });
     applyDamageToEntity(gob, 2, gs, undefined, 'melee');
-    expect(gob.hitStamps).toBeUndefined();
+    expect(gob.currentHealth).toBe(5); // no damage got through...
+    expect(gob.hitStamps).toEqual({ melee: 3, any: 3 }); // ...but the hit connected
   });
 
-  it('a deflected attacker gets no dealt credit; the bounced damage stamps the attacker as victim', () => {
+  it('a deflecting target is stamped and the attacker credited; the bounce also stamps the attacker as victim', () => {
     const attacker = createTestCharacter({ characterId: 'hero-1', x: 2, y: 2, currentHealth: 10 });
     const deflector = createTestEnemy({
       enemyId: 'goblin-1', x: 3, y: 2, currentHealth: 5,
@@ -173,9 +177,10 @@ describe('stamp gates on the damage path', () => {
     });
     const gs = baseState({ enemies: [deflector], heroes: [attacker], currentTurn: 3 });
     applyDamageToEntity(deflector, 2, gs, attacker, 'melee');
-    expect(deflector.hitStamps).toBeUndefined();   // took no damage
-    expect(attacker.dealtStamps).toBeUndefined();  // landed nothing
-    expect(attacker.hitStamps).toEqual({ melee: 3, any: 3 }); // own blade came back
+    expect(deflector.currentHealth).toBe(5); // deflected the damage...
+    expect(deflector.hitStamps).toEqual({ melee: 3, any: 3 }); // ...but was struck
+    expect(attacker.dealtStamps).toEqual({ melee: 3, any: 3 }); // connected
+    expect(attacker.hitStamps).toEqual({ melee: 3, any: 3 });   // own blade came back
   });
 });
 
@@ -373,15 +378,15 @@ describe('projectile stamps (slice 2)', () => {
     expect(gs.puzzle.enemies[0].dealtStamps).toBeUndefined(); // shared enemyId — index precision
   });
 
-  it('reflected bolts credit no one; the returning hit stamps the caster as victim', () => {
+  it('reflect: the strike stamps the reflector and credits the caster; the RETURN hit credits no one', () => {
     const gs = boltScene();
     // Unregistered reflect asset = reflect from all directions.
     gs.puzzle.enemies[0].statusEffects = [statusInst(StatusEffectType.REFLECT)];
     for (let i = 0; i < 5 && !gs.placedCharacters[0].hitStamps; i++) executeTurn(gs);
-    expect(gs.placedCharacters[0].hitStamps?.projectile).toBeDefined(); // own bolt came back
-    expect(gs.puzzle.enemies[0].hitStamps).toBeUndefined();   // reflected before damage
-    expect(gs.puzzle.enemies[0].dealtStamps).toBeUndefined(); // reflector gets no credit
-    expect(gs.placedCharacters[0].dealtStamps).toBeUndefined(); // neither does the caster
+    expect(gs.puzzle.enemies[0].hitStamps?.projectile).toBeDefined();    // struck, then bounced it
+    expect(gs.placedCharacters[0].dealtStamps?.projectile).toBeDefined(); // the caster connected
+    expect(gs.placedCharacters[0].hitStamps?.projectile).toBeDefined();  // own bolt came back
+    expect(gs.puzzle.enemies[0].dealtStamps).toBeUndefined(); // reflecting is passive — no credit for the return hit
   });
 });
 

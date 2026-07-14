@@ -2899,10 +2899,14 @@ function isSteadfast(entity: PlacedCharacter | PlacedEnemy): boolean {
  * Hit-stamp bookkeeping on the sacred damage path (2026-07-14). Stamps the
  * victim's hitStamps (and the attacker's dealtStamps when known) with the
  * current turn under the delivery kind plus 'any'. New-object writes only —
- * replay snapshots and wrapper copies share references. Called once per
- * landed delivery AFTER invulnerability and deflect resolve: a fully
- * shield-absorbed blow still stamps (the hit connected), an invulnerable or
- * deflecting target does not (and a deflected attacker gets no dealt credit).
+ * replay snapshots and wrapper copies share references.
+ *
+ * Stamps record CONNECTION, not damage-got-through (user decision
+ * 2026-07-14): invulnerable, deflecting, reflecting, and shield-absorbed
+ * targets are all stamped, and the attacker gets dealt credit — mitigation
+ * gates the damage, not the hit. This is what makes "immune until struck
+ * by a projectile" entities authorable. Only zero-damage deliveries never
+ * stamp (combined-lethality bookkeeping, healing/redirect projectiles).
  */
 export function stampHitLanded(
   victim: PlacedCharacter | PlacedEnemy,
@@ -2965,6 +2969,14 @@ export function applyDamageToEntity(
   source?: PlacedCharacter | PlacedEnemy,  // Who dealt the damage (for deflect + dealtStamps)
   deliveryKind?: Exclude<HitStampKind, 'any'>  // Hit-stamp kind; undefined deliveries stamp 'any' only
 ): void {
+  // Hit stamps record CONNECTION — before invulnerability and deflect, so
+  // mitigated hits still stamp both sides (see stampHitLanded). The
+  // damage > 0 gate keeps the combined-lethality applyDamageToEntity(x, 0)
+  // bookkeeping calls in simulation.ts from counting as hits.
+  if (damage > 0) {
+    stampHitLanded(target, source, deliveryKind, gameState);
+  }
+
   // Check for invulnerability - if invulnerable, take no damage
   if (isInvulnerable(target)) {
     return;
@@ -2993,13 +3005,6 @@ export function applyDamageToEntity(
       // Target takes no damage
       return;
     }
-  }
-
-  // Hit landed (past invulnerability + deflect): stamp both sides. The
-  // damage > 0 gate keeps the combined-lethality applyDamageToEntity(x, 0)
-  // bookkeeping calls in simulation.ts from counting as hits.
-  if (damage > 0) {
-    stampHitLanded(target, source, deliveryKind, gameState);
   }
 
   // Check for shield effects and absorb damage
@@ -3091,16 +3096,17 @@ export function applyDamageToEntityNoDeflect(
   gameState: GameState,
   deliveryKind?: Exclude<HitStampKind, 'any'>  // Hit-stamp kind; undefined deliveries stamp 'any' only
 ): void {
+  // Victim-side hit stamp — before invulnerability, since stamps record
+  // connection, not damage-got-through. Attacker dealtStamps for projectile
+  // deliveries are handled at the applyEntityHit call sites (the caster
+  // must be looked up in live state — this function has no source param).
+  if (damage > 0) {
+    stampHitLanded(target, undefined, deliveryKind, gameState);
+  }
+
   // Check for invulnerability - if invulnerable, take no damage
   if (isInvulnerable(target)) {
     return;
-  }
-
-  // Victim-side hit stamp. Attacker dealtStamps for projectile deliveries
-  // are handled at the applyEntityHit call sites (the caster must be looked
-  // up in live state — this function has no source param).
-  if (damage > 0) {
-    stampHitLanded(target, undefined, deliveryKind, gameState);
   }
 
   let remainingDamage = damage;

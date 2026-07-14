@@ -3,7 +3,7 @@ import type { GameState, PlacedCharacter, PlacedEnemy, ParallelActionTracker, St
 import { ActionType, Direction, StatusEffectType, TileType as TileTypeEnum } from '../types/game';
 import { getCharacter } from '../data/characters';
 import { getEnemy } from '../data/enemies';
-import { executeAction, executeAOEAttack, evaluateTriggers, executeDeathTriggers, applyDamageToEntity, applyDamageToEntityNoDeflect, placeCollectibleFromSpell, checkTriggerCondition, mergeHitStamps, stampDealtHit } from './actions';
+import { executeAction, executeAOEAttack, evaluateTriggers, executeDeathTriggers, applyDamageToEntity, applyDamageToEntityNoDeflect, placeCollectibleFromSpell, checkTriggerCondition, mergeHitStamps, stampDealtHit, stampHitLanded } from './actions';
 import { loadStatusEffectAsset, loadSpellAsset, loadCollectible, loadEnemy, loadCharacter, loadTileType, loadVessel } from '../utils/assetStorage';
 import { spawnEnemyMidGame } from './spawning';
 import { turnLeft, turnRight, turnAround, getDirectionOffset, calculateDirectionTo, isAttackFromBehind, isEntityFunctional } from './utils';
@@ -3735,6 +3735,16 @@ function applyEntityHit(
   // 1. Reflect check
   if (hasReflect(target) && !proj.reflected && canReflectDirection(target, proj.direction)) {
     if (isHomingDebug()) console.log(`[APPLY-HIT ${proj.id.slice(-6)}] → REFLECT branch`);
+    // Connection stamp: the bolt STRUCK the reflector even though it
+    // bounced (stamps record connection, not damage-got-through — enables
+    // "immune/reflect until first struck" designs). The caster connected,
+    // so they get dealt credit; reflect only fires on damage spells, but
+    // gate on damage anyway for symmetry with the damage branch.
+    if ((proj.attackData.damage ?? 0) > 0) {
+      stampHitLanded(target, undefined, 'projectile', gameState);
+      const attacker = findProjectileAttacker(proj, gameState);
+      if (attacker) stampDealtHit(attacker, 'projectile', gameState);
+    }
     reflectProjectile(proj, target, gameState, Date.now());
     return { reflected: true };
   }
@@ -3762,6 +3772,17 @@ function applyEntityHit(
   const baseDmg = proj.attackData.damage ?? 0;
   const isCrit = proj.attackData.backstabEnabled && isAttackFromBehind(proj.direction, target.facing || Direction.SOUTH);
   const damage = isCrit ? baseDmg * 2 : baseDmg;
+
+  // Connection stamps before deflect/invulnerability resolve — a deflected
+  // or invulnerable target was still STRUCK, and the caster still
+  // connected (both modes run this, so solver parity is free). The
+  // non-deflected path re-stamps the victim inside
+  // applyDamageToEntityNoDeflect — same-turn overwrite, harmless.
+  if (damage > 0) {
+    stampHitLanded(target, undefined, 'projectile', gameState);
+    const attacker = findProjectileAttacker(proj, gameState);
+    if (attacker) stampDealtHit(attacker, 'projectile', gameState);
+  }
 
   const hpBeforeDeflect = target.currentHealth;
   const wasDeflected = applyProjectileDamageWithDeflect(
@@ -3791,13 +3812,6 @@ function applyEntityHit(
       }
     }
     applyDamageToEntityNoDeflect(target, damage, gameState, 'projectile');
-    // Attacker-side hit stamp — the caster looked up in live state (both
-    // modes run this, so solver parity is free). Reflected bolts credit
-    // no one (findProjectileAttacker).
-    if (damage > 0) {
-      const attacker = findProjectileAttacker(proj, gameState);
-      if (attacker) stampDealtHit(attacker, 'projectile', gameState);
-    }
     if (target.dead) {
       if (mode === 'visual') {
         target.dead = false;
