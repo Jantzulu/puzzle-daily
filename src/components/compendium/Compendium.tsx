@@ -4,6 +4,8 @@ import {
   getCustomEnemies,
   getCustomVessels,
   vesselToEnemyAsset,
+  getCustomAllies,
+  allyToEnemyAsset,
   getStatusEffectAssets,
   getCustomTileTypes,
   getCustomCollectibles,
@@ -26,7 +28,7 @@ import {
   ItemDetail,
 } from './EntryDetails';
 
-type TabId = 'characters' | 'enemies' | 'vessels' | 'status_effects' | 'special_tiles' | 'items';
+type TabId = 'characters' | 'allies' | 'enemies' | 'vessels' | 'status_effects' | 'special_tiles' | 'items';
 
 interface TabConfig {
   id: TabId;
@@ -37,6 +39,7 @@ interface TabConfig {
 
 const TABS: TabConfig[] = [
   { id: 'characters', label: 'Heroes', defaultIcon: '⚔️', themeIconKey: 'iconTabHeroes' },
+  { id: 'allies', label: 'Allies', defaultIcon: '🛡️', themeIconKey: 'iconTabAllies' },
   { id: 'enemies', label: 'Enemies', defaultIcon: '👹', themeIconKey: 'iconTabEnemies' },
   { id: 'vessels', label: 'Vessels', defaultIcon: '🛢️', themeIconKey: 'iconTabVessels' },
   { id: 'status_effects', label: 'Status Effects', defaultIcon: '✨', themeIconKey: 'iconTabEnchantments' },
@@ -46,6 +49,7 @@ const TABS: TabConfig[] = [
 
 const TAB_LABELS: Record<TabId, { plural: string; singular: string }> = {
   characters: { plural: 'Heroes', singular: 'hero' },
+  allies: { plural: 'Allies', singular: 'ally' },
   enemies: { plural: 'Enemies', singular: 'enemy' },
   vessels: { plural: 'Vessels', singular: 'vessel' },
   status_effects: { plural: 'Status Effects', singular: 'status effect' },
@@ -77,6 +81,8 @@ export const Compendium: React.FC = () => {
   const enemies = useMemo(() => getCustomEnemies(), []);
   // Vessels render through the enemy adapter — same card/detail components
   const vessels = useMemo(() => getCustomVessels().map(vesselToEnemyAsset), []);
+  // Allies too — full enemy-shaped assets on the hero side
+  const allies = useMemo(() => getCustomAllies().map(allyToEnemyAsset), []);
   const statusEffects = useMemo(() => getStatusEffectAssets().filter(e => !e.isBuiltIn), []);
   const tiles = useMemo(() => getCustomTileTypes().filter(t =>
     t.behaviors.length > 0 || t.preventPlacement || t.baseType === 'wall' ||
@@ -97,6 +103,10 @@ export const Compendium: React.FC = () => {
     vessels.filter(v => v.name.toLowerCase().includes(searchQuery.toLowerCase())),
     [vessels, searchQuery]
   );
+  const filteredAllies = useMemo(() =>
+    allies.filter(a => a.name.toLowerCase().includes(searchQuery.toLowerCase())),
+    [allies, searchQuery]
+  );
   const filteredStatusEffects = useMemo(() =>
     statusEffects.filter(e => e.name.toLowerCase().includes(searchQuery.toLowerCase())),
     [statusEffects, searchQuery]
@@ -114,6 +124,7 @@ export const Compendium: React.FC = () => {
   const selectedCharacter = selectedId ? characters.find(c => c.id === selectedId) : null;
   const selectedEnemy = selectedId ? enemies.find(e => e.id === selectedId) : null;
   const selectedVessel = selectedId ? vessels.find(v => v.id === selectedId) : null;
+  const selectedAlly = selectedId ? allies.find(a => a.id === selectedId) : null;
   const selectedEffect = selectedId ? statusEffects.find(e => e.id === selectedId) : null;
   const selectedTile = selectedId ? tiles.find(t => t.id === selectedId) : null;
   const selectedItem = selectedId ? items.find(i => i.id === selectedId) : null;
@@ -121,6 +132,7 @@ export const Compendium: React.FC = () => {
   // Counts
   const counts: Record<TabId, number> = {
     characters: filteredCharacters.length,
+    allies: filteredAllies.length,
     enemies: filteredEnemies.length,
     vessels: filteredVessels.length,
     status_effects: filteredStatusEffects.length,
@@ -133,13 +145,14 @@ export const Compendium: React.FC = () => {
   const currentEntries: Array<{ id: string }> = useMemo(() => {
     switch (activeTab) {
       case 'characters': return filteredCharacters;
+      case 'allies': return filteredAllies;
       case 'enemies': return filteredEnemies;
       case 'vessels': return filteredVessels;
       case 'status_effects': return filteredStatusEffects;
       case 'special_tiles': return filteredTiles;
       case 'items': return filteredItems;
     }
-  }, [activeTab, filteredCharacters, filteredEnemies, filteredVessels, filteredStatusEffects, filteredTiles, filteredItems]);
+  }, [activeTab, filteredCharacters, filteredAllies, filteredEnemies, filteredVessels, filteredStatusEffects, filteredTiles, filteredItems]);
 
   const selectedIndex = selectedId ? currentEntries.findIndex(e => e.id === selectedId) : -1;
   const canPrev = selectedIndex > 0;
@@ -203,6 +216,7 @@ export const Compendium: React.FC = () => {
   // Slab aura takes the active chapter's accent color (see index.css)
   const TAB_THEME: Record<TabId, string> = {
     characters: 'compendium-theme-heroes',
+    allies: 'compendium-theme-heroes', // hero-side accent until a style pass differentiates it
     enemies: 'compendium-theme-enemies',
     vessels: 'compendium-theme-enemies', // shares the enemies accent until a style pass differentiates it
     status_effects: 'compendium-theme-enchantments',
@@ -248,6 +262,9 @@ export const Compendium: React.FC = () => {
     }
     if (activeTab === 'vessels' && selectedVessel) {
       return <EnemyDetail enemy={selectedVessel} />;
+    }
+    if (activeTab === 'allies' && selectedAlly) {
+      return <EnemyDetail enemy={selectedAlly} />;
     }
     if (activeTab === 'status_effects' && selectedEffect) {
       return <StatusEffectDetail effect={selectedEffect} />;
@@ -302,6 +319,14 @@ export const Compendium: React.FC = () => {
             enemy={vessel}
             onClick={() => handleSelect(vessel.id)}
             isSelected={selectedId === vessel.id}
+          />
+        ))}
+        {activeTab === 'allies' && filteredAllies.map((ally) => (
+          <EnemyCard
+            key={ally.id}
+            enemy={ally}
+            onClick={() => handleSelect(ally.id)}
+            isSelected={selectedId === ally.id}
           />
         ))}
         {activeTab === 'status_effects' && filteredStatusEffects.map((effect) => (

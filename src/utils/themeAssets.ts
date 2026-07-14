@@ -91,6 +91,7 @@ export interface ThemeAssets {
 
   // Compendium Tab Icons (emoji/text)
   iconTabHeroes?: string;       // Icon for Heroes tab (default: ⚔️)
+  iconTabAllies?: string;       // Icon for Allies tab (default: 🛡️)
   iconTabEnemies?: string;      // Icon for Enemies tab (default: 👹)
   iconTabVessels?: string;      // Icon for Vessels tab (default: 🛢️)
   iconTabEnchantments?: string; // Icon for Enchantments tab (default: ✨)
@@ -284,6 +285,7 @@ export const THEME_ASSET_CONFIG: Record<ThemeAssetKey, { label: string; descript
   iconNavAssets: { label: 'Assets Nav Icon', description: 'Icon/emoji for Assets button in navbar (default: 📦)', category: 'icons', inputType: 'text' },
   iconBugReport: { label: 'Bug Report Icon', description: 'Icon/emoji shown on the Report Bug link (default: 🐛)', category: 'icons', inputType: 'text' },
   iconTabHeroes: { label: 'Heroes Tab Icon', description: 'Icon/emoji for Heroes tab in Compendium (default: ⚔️)', category: 'icons', inputType: 'text' },
+  iconTabAllies: { label: 'Allies Tab Icon', description: 'Icon/emoji for Allies tab in Compendium (default: 🛡️)', category: 'icons', inputType: 'text' },
   iconTabEnemies: { label: 'Enemies Tab Icon', description: 'Icon/emoji for Enemies tab in Compendium (default: 👹)', category: 'icons', inputType: 'text' },
   iconTabVessels: { label: 'Vessels Tab Icon', description: 'Icon/emoji for Vessels tab in Compendium (default: 🛢️)', category: 'icons', inputType: 'text' },
   iconTabEnchantments: { label: 'Status Effects Tab Icon', description: 'Icon/emoji for Status Effects tab in Compendium (default: ✨)', category: 'icons', inputType: 'text' },

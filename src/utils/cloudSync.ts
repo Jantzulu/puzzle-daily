@@ -33,6 +33,7 @@ import type {
   CustomCharacter,
   CustomEnemy,
   CustomVessel,
+  CustomAlly,
 } from './assetStorage';
 import type { PuzzleSkin, SpellAsset, StatusEffectAsset } from '../types/game';
 import {
@@ -41,6 +42,7 @@ import {
   getCustomCharacters,
   getCustomEnemies,
   getCustomVessels,
+  getCustomAllies,
   getPuzzleSkins,
   getSpellAssets,
   getStatusEffectAssets,
@@ -57,6 +59,7 @@ import {
   saveCharacter,
   saveEnemy,
   saveVessel,
+  saveAlly,
   savePuzzleSkin,
   saveSpellAsset,
   saveStatusEffectAsset,
@@ -72,6 +75,7 @@ import {
   deleteCharacter,
   deleteEnemy,
   deleteVessel,
+  deleteAlly,
   deletePuzzleSkin,
   deleteSpellAsset,
   deleteStatusEffectAsset,
@@ -195,6 +199,13 @@ export async function pushAllToCloud(): Promise<{ success: boolean; errors: stri
     for (const vessel of vessels) {
       const success = await saveAssetToCloud(vessel.id, 'vessel', vessel.name, vessel as unknown as CustomVessel);
       if (!success) errors.push(`Failed to upload vessel: ${vessel.name}`);
+    }
+
+    // Push allies
+    const allies = getCustomAllies();
+    for (const ally of allies) {
+      const success = await saveAssetToCloud(ally.id, 'ally', ally.name, ally as unknown as CustomAlly);
+      if (!success) errors.push(`Failed to upload ally: ${ally.name}`);
     }
 
     // Push characters
@@ -352,6 +363,7 @@ export async function pushAllToCloud(): Promise<{ success: boolean; errors: stri
       ...tileTypes.map(t => t.id),
       ...enemies.map(e => e.id),
       ...vessels.map(v => v.id),
+      ...allies.map(a => a.id),
       ...characters.map(c => c.id),
       ...objects.map(o => o.id),
       ...skins.filter(s => !s.isBuiltIn).map(s => s.id),
@@ -400,6 +412,7 @@ export async function pullFromCloud(): Promise<{ success: boolean; errors: strin
       ...cloudData.tileTypes,
       ...cloudData.enemies,
       ...cloudData.vessels,
+      ...cloudData.allies,
       ...cloudData.characters,
       ...cloudData.objects,
       ...cloudData.skins,
@@ -486,6 +499,25 @@ export async function pullFromCloud(): Promise<{ success: boolean; errors: strin
         }
       } catch {
         errors.push(`Failed to import vessel: ${asset.name}`);
+      }
+    }
+
+    // Import allies (or delete if soft-deleted)
+    for (const asset of cloudData.allies) {
+      if (conflictedIds.has(asset.id)) continue;
+      try {
+        if (asset.deleted_at) {
+          deleteAlly(asset.id);
+          console.log(`[CloudSync] Deleted ally locally: ${asset.name}`);
+        } else {
+          const ally = asset.data as unknown as CustomAlly;
+          const saved = saveAlly(ally);
+          if (!saved) {
+            errors.push(`Storage full - failed to save ally: ${asset.name}`);
+          }
+        }
+      } catch {
+        errors.push(`Failed to import ally: ${asset.name}`);
       }
     }
 
