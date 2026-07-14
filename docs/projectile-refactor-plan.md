@@ -1,6 +1,6 @@
 # Projectile System Refactor Plan
 
-**Status:** IN PROGRESS — Phases A+B+E done (E landed 2026-07-12); Phase C next, then D
+**Status:** COMPLETE — all phases shipped or resolved. **CLAUDE_HANDOFF.md is the authoritative record** ("Phase C progress" table + "Phase D-b lite" section); this doc went stale twice by not consulting it. Timeline: A+B+C shipped April 2026 (C-1 `48f8549`, C-2 `ab45367`, C-3 `7881e15` — after one reverted attempt, retro in the handoff doc); D-a shipped April (`4f9076d`, `pendingDeactivation` folded into `hitResult`); D-b investigated 2026-04-30 and **REJECTED** (entity-side flags are O(1) caches, not redundancy — lite version `isEntityFunctional` shipped `a70e3ab` instead); E shipped in two waves (April: shared collision walkers `0c88664`/`26fabcb`/`8ece3e5`; 2026-07-12: homing helpers `7edb4a7`/`7d0203e`/`75df15e`). F resolved as a side effect of April polish (no separate visual path needed). **Only remaining work: the three residual divergences documented under Phase E.**
 **Scope:** `src/engine/simulation.ts`, `src/engine/actions.ts`, `src/types/game.ts`
 **Goal:** Pay down the technical debt from the March 2026 deterministic-projectile refactor without changing observable gameplay.
 
@@ -63,7 +63,18 @@ Each helper returns `{ newX, newY, reachedTarget }`. `updateProjectiles` now dis
 
 **Pure code motion.** Same math, same side effects, same branch predicates. No behavior change. 198/198 tests pass, and `tsc -b --noEmit` reports zero new errors attributable to Phase B (pre-existing errors unchanged).
 
-### Phase C — Move visual fields to a side-table — MEDIUM RISK
+### ✅ Phase C — Move visual fields to a side-table (done 2026-04-20)
+
+> **SHIPPED April 2026** — C-1 `48f8549` (visualPastReflectPoint), C-2 `ab45367`
+> (x/y removed; `logicalX`/`logicalY` added; side-table
+> `projectileVisualStateRef` in AnimatedGameBoard keyed on `proj.id`), C-3
+> `7881e15` (per-frame currentTileIndex write removed; flows via
+> `ProjectileMovementResult.visualTileIndex`). Deviation from the text below:
+> `startTime`/`tileEntryTime`/`homingVisualStart*` were reclassified BRIDGE
+> and stay on `Projectile` — resolveProjectiles/reflectProjectile read+write
+> them at turn boundaries only, so deep copies capture correct values. See
+> CLAUDE_HANDOFF.md "Phase C progress" for the attempt-1 retro (module-level
+> singleton map — don't repeat it).
 
 **Goal:** fix D1 (visual mutation captured by deep copy).
 
@@ -80,7 +91,18 @@ Each helper returns `{ newX, newY, reachedTarget }`. `updateProjectiles` now dis
 - Manual test: every projectile variant, plus replay playback (deep-copy path).
 - Explicitly verify that `JSON.stringify(gameState)` no longer contains `x`/`y`/`currentTileIndex` on projectiles.
 
-### Phase D — Unify overlapping flags — MEDIUM RISK
+### ✅ Phase D — Unify overlapping flags (D-a done April 2026; D-b rejected 2026-04-30)
+
+> **RESOLVED** — D-a: `pendingDeactivation` unified into `hitResult`
+> (`4f9076d`); `visualPastReflectPoint` already moved by C-1. D-b (moving
+> `pendingProjectileDeath`/`visualHealth` off the entities into a
+> `ProjectileDeferred` record) was investigated and **rejected**: the
+> entity-side flags are O(1) caches over `hitResult.deferredDeathEntityId`
+> (source of truth); moving them forces 17+ call sites to scan projectiles.
+> Lite version shipped instead: `isEntityFunctional` helper, 21 call sites
+> (`a70e3ab`). Do not reattempt without new evidence — see CLAUDE_HANDOFF.md
+> "Phase D-b lite". Remaining bridge flags (`hitResult`, `pendingReflectVfx`)
+> are legitimate logic→visual signals, not debt.
 
 **Goal:** collapse D3 into a single coherent state machine.
 
@@ -203,7 +225,8 @@ These are correct-as-is and tempting to "while I'm in there" modify — don't:
 3. OPEN: `ProjectileDeferred` per-projectile vs per-turn — decide when
    Phase D starts.
 
-Execution order (settled 2026-07-12, per §7): **E → C → D**, one phase
-per session, full suite + corpus green between steps, no combining.
-E landed 2026-07-12 — **Phase C is next** (visual fields → side-table
-in AnimatedGameBoard, keyed on the stable `proj.id`).
+~~Execution order (settled 2026-07-12, per §7): E → C → D.~~
+**OBSOLETE (2026-07-13):** the 2026-07-12 session didn't consult
+CLAUDE_HANDOFF.md — C and D had already shipped in April 2026 (see Status
+header). Nothing left to execute; only the Phase E residual divergences
+remain as candidate work.
