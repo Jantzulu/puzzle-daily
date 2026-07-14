@@ -126,6 +126,7 @@ function normalizeActionType(type: string): ActionType {
     'WAIT': ActionType.WAIT,
     'TELEPORT': ActionType.TELEPORT,
     'REPEAT': ActionType.REPEAT,
+    'REPEAT_UNTIL': ActionType.REPEAT_UNTIL,
   };
 
   return enumKeyToValue[type] || (type as ActionType);
@@ -266,7 +267,8 @@ export function executeAction(
       return handleIfWall(updatedCharacter, action, gameState);
 
     case ActionType.REPEAT:
-      // REPEAT is handled at the simulation level, not here
+    case ActionType.REPEAT_UNTIL:
+      // Control-flow actions are handled at the simulation level, not here
       return updatedCharacter;
 
     case ActionType.SPELL:

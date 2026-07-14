@@ -42,6 +42,8 @@ export const formatActionSequence = (behavior: CharacterAction[] | undefined): s
         return `${num}. Wait (skip turn)`;
       case ActionType.REPEAT:
         return `${num}. Repeat from start`;
+      case ActionType.REPEAT_UNTIL:
+        return `${num}. Repeat until condition`;
       case ActionType.TELEPORT:
         return `${num}. Teleport`;
       case ActionType.IF_WALL:
@@ -106,6 +108,7 @@ export const summarizeBehavior = (behavior: CharacterAction[] | undefined): stri
         hasWait = true;
         break;
       case ActionType.REPEAT:
+      case ActionType.REPEAT_UNTIL:
         hasRepeat = true;
         break;
     }

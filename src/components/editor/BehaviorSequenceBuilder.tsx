@@ -8,6 +8,21 @@ import { DirectionCompass } from './DirectionCompass';
 
 const ACTION_TYPES = Object.values(ActionType);
 
+// Team-relative trigger/condition vocabulary — one list for both contexts,
+// resolved against the holder's party at runtime. Shared by the parallel
+// trigger config and the REPEAT UNTIL condition picker (which drops
+// on_death: a loop can't outlive its owner).
+const TRIGGER_EVENT_OPTIONS = [
+  { value: 'opposing_adjacent', label: 'Opposing Adjacent' },
+  { value: 'opposing_in_range', label: 'Opposing in Range' },
+  { value: 'contact_with_opposing', label: 'Overlap with Opposing' },
+  { value: 'same_team_adjacent', label: 'Same Team Adjacent' },
+  { value: 'same_team_in_range', label: 'Same Team in Range' },
+  { value: 'contact_with_same_team', label: 'Overlap with Same Team' },
+  { value: 'wall_ahead', label: 'Wall Ahead' },
+  { value: 'health_below_50', label: 'Health Below 50%' },
+];
+
 interface BehaviorSequenceBuilderProps {
   actions: CharacterAction[];
   onChange: (actions: CharacterAction[]) => void;
@@ -180,6 +195,7 @@ export const BehaviorSequenceBuilder: React.FC<BehaviorSequenceBuilderProps> = (
                 index={index}
                 canLink={
                   action.type !== ActionType.REPEAT &&
+                  action.type !== ActionType.REPEAT_UNTIL &&
                   action.executionMode !== 'parallel'
                 }
                 onToggleLink={() => toggleLinkedToNext(index)}
@@ -196,7 +212,7 @@ export const BehaviorSequenceBuilder: React.FC<BehaviorSequenceBuilderProps> = (
       )}
 
       <p className="text-xs text-stone-400 mt-2">
-        Tip: Add REPEAT at the end to loop. Drag ⠿ to reorder. Click ⛓ to link actions on the same turn.
+        Tip: Add REPEAT at the end to loop, or REPEAT UNTIL to loop until a condition is met. Drag ⠿ to reorder. Click ⛓ to link actions on the same turn.
       </p>
     </div>
   );
@@ -349,6 +365,11 @@ const ActionNodeContent: React.FC<ActionNodeContentProps> = ({
         </div>
       )}
 
+      {/* Repeat Until config */}
+      {action.type === ActionType.REPEAT_UNTIL && (
+        <RepeatUntilConfig action={action} onUpdate={onUpdate} />
+      )}
+
       {/* Spell config */}
       {action.type === ActionType.SPELL && (
         <SpellConfig
@@ -362,6 +383,41 @@ const ActionNodeContent: React.FC<ActionNodeContentProps> = ({
     </>
   );
 };
+
+// ─── Repeat Until Config ───────────────────────────────────────────
+
+const RepeatUntilConfig: React.FC<{ action: CharacterAction; onUpdate: (a: CharacterAction) => void }> = ({ action, onUpdate }) => (
+  <div className="ml-8 space-y-2">
+    <div className="flex items-center gap-2">
+      <label className="text-xs text-stone-400">Until:</label>
+      <select
+        value={action.untilEvent || 'opposing_adjacent'}
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        onChange={(e) => onUpdate({ ...action, untilEvent: e.target.value as any })}
+        className="flex-1 px-2 py-1 bg-stone-600 rounded text-xs"
+      >
+        {TRIGGER_EVENT_OPTIONS.map(opt => (
+          <option key={opt.value} value={opt.value}>{opt.label}</option>
+        ))}
+      </select>
+    </div>
+    {(action.untilEvent === 'opposing_in_range' || action.untilEvent === 'same_team_in_range') && (
+      <div className="flex items-center gap-2">
+        <label className="text-xs text-stone-400">Range (tiles):</label>
+        <input type="number" min="1" max="10"
+          value={action.untilEventRange || 2}
+          onChange={(e) => onUpdate({ ...action, untilEventRange: parseInt(e.target.value) || 2 })}
+          className="w-16 px-2 py-1 bg-stone-600 rounded text-xs" />
+      </div>
+    )}
+    <p className="text-[10px] text-stone-500 leading-tight">
+      Repeats the actions above it (back to the previous REPEAT UNTIL, or the
+      start) until the condition is met — then continues with the actions
+      below. Stack several to stage behavior: patrol until spotted, chase
+      until adjacent, then attack.
+    </p>
+  </div>
+);
 
 // ─── Movement Config ───────────────────────────────────────────────
 
@@ -430,20 +486,12 @@ const SpellConfig: React.FC<SpellConfigProps> = ({ action, spell, context, onUpd
   const navigate = useNavigate();
   const turnEquivalent = (ms: number) => Math.round((ms / TURN_INTERVAL_MS) * 10) / 10;
 
-  // Team-relative event vocabulary — one list for both contexts, resolved
-  // against the holder's party at runtime (so ally behaviors mean what they
-  // say). Legacy absolute events on existing assets display through the
-  // same read-time mapping the engine uses (resolveTriggerEvent) and are
-  // re-saved as relative values on the next edit.
+  // Team-relative event vocabulary (TRIGGER_EVENT_OPTIONS + on_death, which
+  // only makes sense for event triggers). Legacy absolute events on existing
+  // assets display through the same read-time mapping the engine uses
+  // (resolveTriggerEvent) and are re-saved as relative values on next edit.
   const eventOptions = [
-    { value: 'opposing_adjacent', label: 'Opposing Adjacent' },
-    { value: 'opposing_in_range', label: 'Opposing in Range' },
-    { value: 'contact_with_opposing', label: 'Overlap with Opposing' },
-    { value: 'same_team_adjacent', label: 'Same Team Adjacent' },
-    { value: 'same_team_in_range', label: 'Same Team in Range' },
-    { value: 'contact_with_same_team', label: 'Overlap with Same Team' },
-    { value: 'wall_ahead', label: 'Wall Ahead' },
-    { value: 'health_below_50', label: 'Health Below 50%' },
+    ...TRIGGER_EVENT_OPTIONS,
     { value: 'on_death', label: 'On Death' },
   ];
 

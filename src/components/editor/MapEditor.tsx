@@ -85,6 +85,8 @@ const formatActionSequence = (behavior: CharacterAction[] | undefined): string[]
         return `${num}. Wait`;
       case ActionType.REPEAT:
         return `${num}. Repeat`;
+      case ActionType.REPEAT_UNTIL:
+        return `${num}. Repeat Until`;
       default:
         return `${num}. ${action.type}`;
     }

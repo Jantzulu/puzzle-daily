@@ -3,7 +3,7 @@ import type { GameState, PlacedCharacter, PlacedEnemy, ParallelActionTracker, St
 import { ActionType, Direction, StatusEffectType, TileType as TileTypeEnum } from '../types/game';
 import { getCharacter } from '../data/characters';
 import { getEnemy } from '../data/enemies';
-import { executeAction, executeAOEAttack, evaluateTriggers, executeDeathTriggers, applyDamageToEntity, applyDamageToEntityNoDeflect, placeCollectibleFromSpell } from './actions';
+import { executeAction, executeAOEAttack, evaluateTriggers, executeDeathTriggers, applyDamageToEntity, applyDamageToEntityNoDeflect, placeCollectibleFromSpell, checkTriggerCondition } from './actions';
 import { loadStatusEffectAsset, loadSpellAsset, loadCollectible, loadEnemy, loadCharacter, loadTileType, loadVessel } from '../utils/assetStorage';
 import { spawnEnemyMidGame } from './spawning';
 import { turnLeft, turnRight, turnAround, getDirectionOffset, calculateDirectionTo, isAttackFromBehind, isEntityFunctional } from './utils';
@@ -1604,6 +1604,64 @@ function resetHeldTriggerGroups(gameState: GameState): void {
 }
 
 /**
+ * REPEAT_UNTIL control decision — segment semantics (user design 2026-07-14).
+ * The block repeats the actions of its SEGMENT — everything after the
+ * previous REPEAT_UNTIL (or the list start) — until its condition fires,
+ * then falls through to the actions below it. Multiple blocks partition the
+ * list into staged phases ("patrol until spotted → chase until adjacent →
+ * attack"). Mirrors REPEAT's same-turn semantics: the turn that loops
+ * executes the segment-start action, the turn that falls through executes
+ * the next action below.
+ *
+ * Returns the index of the sequential action to execute THIS turn (null to
+ * idle) plus the actionIndex to leave the pointer on BEFORE the caller's
+ * trailing ++. Both the character and enemy loops consume this; the headless
+ * solver runs the same executeTurn, so parity is free.
+ */
+function planRepeatUntil(
+  behavior: CharacterAction[],
+  repeatUntilIndex: number,
+  conditionMet: boolean
+): { executeIndex: number | null; pointerIndex: number } {
+  if (conditionMet) {
+    // Fall through: run the next sequential action this same turn.
+    let next = repeatUntilIndex + 1;
+    while (next < behavior.length && behavior[next].executionMode === 'parallel') next++;
+    const nextAction = behavior[next];
+    if (!nextAction) {
+      // Nothing below — leave the pointer past the end (the no-more-actions
+      // path deactivates the entity next turn).
+      return { executeIndex: null, pointerIndex: next };
+    }
+    if (nextAction.type === ActionType.REPEAT || nextAction.type === ActionType.REPEAT_UNTIL) {
+      // Control action below: don't execute it mid-plan — land ON it next
+      // turn so it gets its own evaluation.
+      return { executeIndex: null, pointerIndex: next - 1 };
+    }
+    return { executeIndex: next, pointerIndex: next };
+  }
+
+  // Loop: jump to the segment start — the action after the previous
+  // REPEAT_UNTIL (or index 0), skipping parallel actions.
+  let segStart = 0;
+  for (let j = repeatUntilIndex - 1; j >= 0; j--) {
+    if (behavior[j].type === ActionType.REPEAT_UNTIL) {
+      segStart = j + 1;
+      break;
+    }
+  }
+  while (segStart < repeatUntilIndex && behavior[segStart].executionMode === 'parallel') segStart++;
+  const segAction = behavior[segStart];
+  if (segStart >= repeatUntilIndex || !segAction ||
+      segAction.type === ActionType.REPEAT || segAction.type === ActionType.REPEAT_UNTIL) {
+    // Empty segment: idle in place and re-check next turn (pointer returns
+    // to this REPEAT_UNTIL after the trailing ++).
+    return { executeIndex: null, pointerIndex: repeatUntilIndex - 1 };
+  }
+  return { executeIndex: segStart, pointerIndex: segStart };
+}
+
+/**
  * Execute one turn of the simulation
  * Modifies gameState in place and returns it
  */
@@ -1720,7 +1778,34 @@ export function executeTurn(gameState: GameState): GameState {
 
     // Handle REPEAT action - loop back to beginning AND execute first action
     // Check for both enum value and string key
-    if (currentAction.type === ActionType.REPEAT) {
+    if (currentAction.type === ActionType.REPEAT_UNTIL) {
+      // Segment control flow (user design 2026-07-14): repeat the actions of
+      // this SEGMENT until the condition fires, then fall through. Uses the
+      // shared trigger vocabulary via checkTriggerCondition — untilEvent, NOT
+      // the parallel-trigger plumbing.
+      const conditionMet = currentAction.untilEvent
+        ? checkTriggerCondition(newCharacter, currentAction.untilEvent, currentAction.untilEventRange, gameState)
+        : true; // unconfigured block never loops — acts as a plain fall-through
+      const plan = planRepeatUntil(charData.behavior, newCharacter.actionIndex, conditionMet);
+      newCharacter.actionIndex = plan.pointerIndex;
+      if (plan.executeIndex !== null) {
+        const planned = charData.behavior[plan.executeIndex];
+        const updatedCharacter = executeAction(newCharacter, planned, gameState);
+        Object.assign(newCharacter, updatedCharacter);
+
+        // Execute linkedToNext chain — same-turn semantics as everywhere else
+        while (charData.behavior[newCharacter.actionIndex]?.linkedToNext) {
+          newCharacter.actionIndex++;
+          const linkedAction = charData.behavior[newCharacter.actionIndex];
+          if (linkedAction && linkedAction.executionMode !== 'parallel') {
+            const linkedResult = executeAction(newCharacter, linkedAction, gameState);
+            Object.assign(newCharacter, linkedResult);
+          } else {
+            break;
+          }
+        }
+      }
+    } else if (currentAction.type === ActionType.REPEAT) {
       // Reset to beginning
       newCharacter.actionIndex = 0;
 
@@ -2001,7 +2086,36 @@ export function executeTurn(gameState: GameState): GameState {
     const externalHealthBefore = enemy.currentHealth;
 
     // Handle REPEAT action - loop back to beginning AND execute first action
-    if (currentAction.type === ActionType.REPEAT) {
+    if (currentAction.type === ActionType.REPEAT_UNTIL) {
+      // Segment control flow — see planRepeatUntil and the character loop.
+      // The condition holder is a lite wrapper: checkTriggerCondition only
+      // reads identity (characterId for authoring side, party/instanceKey
+      // for relative sensing + self-exclusion), position/facing, health,
+      // and statusEffects (stealth/charm are target-side only, but keep the
+      // reference for future conditions).
+      const conditionHolder: PlacedCharacter = {
+        characterId: newEnemy.enemyId,
+        party: newEnemy.party,
+        x: newEnemy.x,
+        y: newEnemy.y,
+        facing: newEnemy.facing || Direction.SOUTH,
+        currentHealth: newEnemy.currentHealth,
+        actionIndex: newEnemy.actionIndex || 0,
+        active: newEnemy.active || true,
+        dead: newEnemy.dead,
+        instanceKey: newEnemy.instanceKey,
+        statusEffects: newEnemy.statusEffects,
+      };
+      const conditionMet = currentAction.untilEvent
+        ? checkTriggerCondition(conditionHolder, currentAction.untilEvent, currentAction.untilEventRange, gameState)
+        : true; // unconfigured block never loops — acts as a plain fall-through
+      const plan = planRepeatUntil(pattern, newEnemy.actionIndex || 0, conditionMet);
+      newEnemy.actionIndex = plan.pointerIndex;
+      if (plan.executeIndex !== null) {
+        executeEnemyAction(pattern[plan.executeIndex]);
+        executeEnemyLinkedChain();
+      }
+    } else if (currentAction.type === ActionType.REPEAT) {
       // Reset to beginning
       newEnemy.actionIndex = 0;
 

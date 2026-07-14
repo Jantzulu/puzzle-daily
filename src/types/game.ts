@@ -160,6 +160,7 @@ export enum ActionType {
   WAIT = 'wait',
   TELEPORT = 'teleport',
   REPEAT = 'repeat',
+  REPEAT_UNTIL = 'repeat_until', // repeats its SEGMENT (since the previous REPEAT_UNTIL or the list start) until untilEvent fires, then falls through
 }
 
 export type WallCollisionBehavior = 'stop' | 'turn_left' | 'turn_right' | 'turn_around' | 'continue';
@@ -211,6 +212,12 @@ export interface CharacterAction {
   executionMode?: ExecutionMode;  // Default: 'sequential'
   trigger?: TriggerConfig;        // For parallel actions
   linkedToNext?: boolean;         // If true, the next sequential action executes on the same turn
+
+  // For REPEAT_UNTIL — deliberately NOT the `trigger` field: this is
+  // sequential control flow, and evaluateTriggers must never fire it as a
+  // parallel event action. Shares checkTriggerCondition's vocabulary.
+  untilEvent?: TriggerEvent;      // Condition that breaks the loop (falls through when met)
+  untilEventRange?: number;       // Range for the *_in_range conditions (tiles)
 
   // For SPELL action type
   spellId?: string;             // Reference to spell in library
