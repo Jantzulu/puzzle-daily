@@ -23,6 +23,7 @@ import {
   registerTestCharacter as regChar,
   registerTestEnemy as regEnemy,
   registerTestSpell,
+  registerTestStatusEffect,
   createTestPuzzle,
   createTestCharacterDef,
   createTestEnemyDef,
@@ -463,6 +464,74 @@ describe('contact stamps (slice 3)', () => {
     executeTurn(gs); // walker tries to walk onto the spiky hero
     expect(gs.puzzle.enemies[0].hitStamps).toEqual({ contact: 1, any: 1 }); // rides the tempChar copy-back
     expect(gs.placedCharacters[0].dealtStamps).toEqual({ contact: 1, any: 1 });
+  });
+});
+
+describe('authorable archetype: immune until struck', () => {
+  it('an invulnerable warden self-dispels its ward when hit by a projectile, then takes damage', () => {
+    // The design the connection-stamp semantics exist for (user, 2026-07-14):
+    // permanent Invulnerable + a hit_by_projectile trigger self-casting a
+    // spell whose status rider is a DISPEL targeting invulnerable. The bolt
+    // deals no damage but stamps the hit; the trigger fires next turn; the
+    // DISPEL processes at the FOLLOWING turn start and strips the ward.
+    // Zero bespoke engine code — pinned so the recipe keeps working.
+    registerTestStatusEffect('break-ward', {
+      id: 'break-ward', name: 'Break Ward',
+      type: StatusEffectType.DISPEL,
+      targetEffectTypes: [StatusEffectType.INVULNERABLE],
+      defaultDuration: 1,
+    });
+    registerTestSpell('bolt', {
+      id: 'bolt', name: 'Bolt', ...spellBase,
+      templateType: SpellTemplate.LINEAR, directionMode: 'current_facing',
+      damage: 2, projectileSpeed: 4, range: 6,
+    });
+    registerTestSpell('ward-break', {
+      id: 'ward-break', name: 'Ward Break', ...spellBase,
+      templateType: SpellTemplate.MELEE, directionMode: 'current_facing',
+      appliesStatusEffect: { statusAssetId: 'break-ward', durationOverride: 1 },
+    });
+    regChar(createTestCharacterDef({
+      id: 'mage', health: 10,
+      // Bolts on turns 1 and 5 (REPEAT re-swings on the 5th turn).
+      behavior: [
+        { type: ActionType.SPELL, spellId: 'bolt' },
+        { type: ActionType.WAIT }, { type: ActionType.WAIT }, { type: ActionType.WAIT },
+        { type: ActionType.REPEAT },
+      ] as never,
+    }));
+    regEnemy(createTestEnemyDef({
+      id: 'warden', health: 5,
+      behavior: {
+        type: 'active',
+        pattern: [{
+          type: ActionType.SPELL, spellId: 'ward-break',
+          targetSelfOnly: true,
+          executionMode: 'parallel',
+          trigger: { mode: 'on_event', event: 'hit_by_projectile', eventWindow: 'previous_action' },
+        }],
+        defaultFacing: Direction.WEST,
+      },
+    }));
+    const gs = baseState({
+      enemies: [createTestEnemy({
+        enemyId: 'warden', x: 4, y: 2, currentHealth: 5, actionIndex: 0, active: true,
+        statusEffects: [statusInst(StatusEffectType.INVULNERABLE)],
+      })],
+      heroes: [createTestCharacter({ characterId: 'mage', x: 2, y: 2, facing: Direction.EAST, currentHealth: 10 })],
+    });
+
+    executeTurn(gs); // turn 1: bolt connects — no damage, but the hit stamps
+    expect(gs.puzzle.enemies[0].currentHealth).toBe(5);
+    expect(gs.puzzle.enemies[0].hitStamps).toEqual({ projectile: 1, any: 1 });
+
+    executeTurn(gs); // turn 2: trigger fires, warden self-casts the dispel rider
+    executeTurn(gs); // turn 3: DISPEL processes at turn start — ward stripped
+    expect(gs.puzzle.enemies[0].statusEffects?.some(e => e.type === StatusEffectType.INVULNERABLE)).toBe(false);
+
+    executeTurn(gs); // turn 4: quiet
+    executeTurn(gs); // turn 5: REPEAT re-bolts — damage now lands
+    expect(gs.puzzle.enemies[0].currentHealth).toBe(3);
   });
 });
 
