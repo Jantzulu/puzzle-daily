@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router';
 import { Direction, ActionType, TURN_INTERVAL_MS } from '../../types/game';
-import type { CharacterAction, ExecutionMode, TriggerConfig, RelativeDirection } from '../../types/game';
+import type { CharacterAction, ExecutionMode, TriggerConfig, RelativeDirection, HitStampWindow } from '../../types/game';
 import { loadSpellAsset, loadStatusEffectAsset } from '../../utils/assetStorage';
 import { resolveTriggerEvent } from '../../engine/actions';
 import { DirectionCompass } from './DirectionCompass';
@@ -19,7 +19,16 @@ interface TriggerOptionMeta {
   label: string;
   rangeParam?: { label: string; default: number };
   valueParam?: { label: string; default: number; min: number; max?: number };
+  windowParam?: boolean; // hit-stamp conditions: show the freshness-window picker (writes eventWindow/untilWindow)
 }
+
+// Freshness windows for the hit-stamp conditions (engine default is
+// previous_action; selection always stamps an explicit value).
+const WINDOW_OPTIONS: Array<{ value: HitStampWindow; label: string }> = [
+  { value: 'previous_action', label: 'Last turn (reactive)' },
+  { value: 'this_cycle', label: 'This behavior cycle' },
+  { value: 'ever', label: 'Ever (sticky)' },
+];
 
 const TRIGGER_EVENT_OPTIONS: TriggerOptionMeta[] = [
   { value: 'opposing_adjacent', label: 'Opposing Adjacent' },
@@ -35,6 +44,14 @@ const TRIGGER_EVENT_OPTIONS: TriggerOptionMeta[] = [
   { value: 'same_team_count_at_most', label: 'Teammates Left (At Most)', valueParam: { label: 'Count', default: 0, min: 0 } },
   { value: 'turn_reached', label: 'Turn Number Reached', valueParam: { label: 'Turn', default: 5, min: 1 } },
   { value: 'standing_on_goal', label: 'Standing on Goal Tile' },
+  { value: 'hit_by_melee', label: 'Hit by Melee', windowParam: true },
+  { value: 'hit_by_projectile', label: 'Hit by Projectile', windowParam: true },
+  { value: 'hit_by_contact', label: 'Hit by Contact (Thorns/Trample)', windowParam: true },
+  { value: 'hit_by_any', label: 'Hit by Anything', windowParam: true },
+  { value: 'landed_melee_hit', label: 'Landed a Melee Hit', windowParam: true },
+  { value: 'landed_projectile_hit', label: 'Landed a Projectile Hit', windowParam: true },
+  { value: 'landed_contact_hit', label: 'Landed a Contact Hit', windowParam: true },
+  { value: 'landed_any_hit', label: 'Landed Any Hit', windowParam: true },
   { value: 'wall_ahead', label: 'Wall Ahead' },
   { value: 'health_below_50', label: 'Health Below 50%' },
 ];
@@ -425,6 +442,7 @@ const RepeatUntilConfig: React.FC<{ action: CharacterAction; onUpdate: (a: Chara
               untilEvent: e.target.value as any,
               untilEventRange: newMeta?.rangeParam ? (action.untilEventRange || newMeta.rangeParam.default) : undefined,
               untilValue: newMeta?.valueParam ? newMeta.valueParam.default : undefined,
+              untilWindow: newMeta?.windowParam ? (action.untilWindow ?? 'previous_action') : undefined,
             });
           }}
           className="flex-1 px-2 py-1 bg-stone-600 rounded text-xs"
@@ -454,6 +472,19 @@ const RepeatUntilConfig: React.FC<{ action: CharacterAction; onUpdate: (a: Chara
               onUpdate({ ...action, untilValue: Number.isFinite(v) ? v : undefined });
             }}
             className="w-16 px-2 py-1 bg-stone-600 rounded text-xs" />
+        </div>
+      )}
+      {meta?.windowParam && (
+        <div className="flex items-center gap-2">
+          <label className="text-xs text-stone-400">Window:</label>
+          <select
+            value={action.untilWindow ?? 'previous_action'}
+            onChange={(e) => onUpdate({ ...action, untilWindow: e.target.value as HitStampWindow })}
+            className="flex-1 px-2 py-1 bg-stone-600 rounded text-xs">
+            {WINDOW_OPTIONS.map(opt => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
         </div>
       )}
       <p className="text-[10px] text-stone-500 leading-tight">
@@ -715,6 +746,7 @@ const SpellConfig: React.FC<SpellConfigProps> = ({ action, spell, context, onUpd
                           event: newEvent as any,
                           eventRange: newMeta?.rangeParam ? (action.trigger?.eventRange || newMeta.rangeParam.default) : undefined,
                           eventValue: newMeta?.valueParam ? newMeta.valueParam.default : undefined,
+                          eventWindow: newMeta?.windowParam ? (action.trigger?.eventWindow ?? 'previous_action') : undefined,
                         },
                         ...(shouldSeed ? { autoTargetRange: eventRange } : {}),
                       });
@@ -768,6 +800,22 @@ const SpellConfig: React.FC<SpellConfigProps> = ({ action, spell, context, onUpd
                                 });
                               }}
                               className="w-16 px-2 py-1 bg-stone-600 rounded text-xs" />
+                          </div>
+                        )}
+                        {meta?.windowParam && (
+                          <div className="flex items-center gap-2 mt-1">
+                            <label className="text-xs text-stone-400">Window:</label>
+                            <select
+                              value={action.trigger.eventWindow ?? 'previous_action'}
+                              onChange={(e) => onUpdate({
+                                ...action,
+                                trigger: { ...action.trigger!, eventWindow: e.target.value as HitStampWindow },
+                              })}
+                              className="flex-1 px-2 py-1 bg-stone-600 rounded text-xs">
+                              {WINDOW_OPTIONS.map(opt => (
+                                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                              ))}
+                            </select>
                           </div>
                         )}
                       </>
