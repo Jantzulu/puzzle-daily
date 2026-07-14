@@ -1,6 +1,6 @@
 # Projectile System Refactor Plan
 
-**Status:** COMPLETE — all phases shipped or resolved. **CLAUDE_HANDOFF.md is the authoritative record** ("Phase C progress" table + "Phase D-b lite" section); this doc went stale twice by not consulting it. Timeline: A+B+C shipped April 2026 (C-1 `48f8549`, C-2 `ab45367`, C-3 `7881e15` — after one reverted attempt, retro in the handoff doc); D-a shipped April (`4f9076d`, `pendingDeactivation` folded into `hitResult`); D-b investigated 2026-04-30 and **REJECTED** (entity-side flags are O(1) caches, not redundancy — lite version `isEntityFunctional` shipped `a70e3ab` instead); E shipped in two waves (April: shared collision walkers `0c88664`/`26fabcb`/`8ece3e5`; 2026-07-12: homing helpers `7edb4a7`/`7d0203e`/`75df15e`). F resolved as a side effect of April polish (no separate visual path needed). **Remaining: two residual divergences under Phase E (#1 fixed 2026-07-13), both accepted low-value edge cases.**
+**Status:** COMPLETE — all phases shipped or resolved. **CLAUDE_HANDOFF.md is the authoritative record** ("Phase C progress" table + "Phase D-b lite" section); this doc went stale twice by not consulting it. Timeline: A+B+C shipped April 2026 (C-1 `48f8549`, C-2 `ab45367`, C-3 `7881e15` — after one reverted attempt, retro in the handoff doc); D-a shipped April (`4f9076d`, `pendingDeactivation` folded into `hitResult`); D-b investigated 2026-04-30 and **REJECTED** (entity-side flags are O(1) caches, not redundancy — lite version `isEntityFunctional` shipped `a70e3ab` instead); E shipped in two waves (April: shared collision walkers `0c88664`/`26fabcb`/`8ece3e5`; 2026-07-12: homing helpers `7edb4a7`/`7d0203e`/`75df15e`). F resolved as a side effect of April polish (no separate visual path needed). **Remaining: ONE residual divergence under Phase E — homing-reflect return-leg timing (📌 PINNED by the user 2026-07-13 for a future session; see the Phase E section and user-memory in-progress.md). #1 and #3 fixed 2026-07-13.**
 **Scope:** `src/engine/simulation.ts`, `src/engine/actions.ts`, `src/types/game.ts`
 **Goal:** Pay down the technical debt from the March 2026 deterministic-projectile refactor without changing observable gameplay.
 
@@ -160,15 +160,28 @@ only opt-out spells were affected.
   (`plan.reachTiles`) in BOTH modes, a deliberate live-behavior change
   for `homingHitAlongPath` spells. 5 pins in audit-parity.test.ts,
   including the deliberate "along-path hits ignore stealth" behavior.
-- **Homing reflect timing** — real mode resolves the reflected return
-  leg in the SAME turn (immediate walk); headless re-targets the caster
-  and flies back over subsequent turns. Final outcomes converge in
-  practice (gate is green) but intermediate turn timing differs; a kill
-  decided by a reflected homing bolt could land on different turns.
-- **THROW_PLACE landing tile** — real places at the last valid tile of
-  the visual tilePath with a fall-back to the previous tile if the last
-  is a wall; headless places at `floor(logical)` with a wall check but
-  no fall-back. Divergence only reachable in edge layouts.
+- 📌 **Homing reflect timing** — **PINNED by the user 2026-07-13 for a
+  future session (do not lose this).** Real mode resolves the reflected
+  return leg in the SAME turn (immediate combined-path walk, a
+  visual-driven structure); headless re-targets the caster and flies
+  back over subsequent turns. Final outcomes converge in practice (gate
+  is green) but the TURN the return hit lands differs — kill timing,
+  turn-count/score, and solvability under tight turn limits can
+  diverge, and headless gives the caster extra turns to move/die/change
+  status mid-return. Right fix direction: make headless resolve
+  same-turn so logic matches live; entangled with the combined-path
+  bookkeeping, needs its own session. Revisit when a puzzle design
+  leans on reflect + homing.
+- ✅ **THROW_PLACE landing tile** — **FIXED 2026-07-13** (`717be08`).
+  Turned out worse than documented: headless skips the walker position
+  update on hitWall turns, so a wall-stopped throw placed the item at
+  the bolt's PRE-TURN position (caster's tile for a first-turn wall) —
+  wrong tile, not just missing fallback. Both modes now share
+  `resolveThrowPlaceLandingTile` (verbatim extraction of real mode's
+  tilePath-end rule; zero live behavior change). Pinned in
+  audit-parity.test.ts. Known residual corner: a BOUNCING thrown item
+  would still diverge (headless never refreshes tilePath on bounce) —
+  only relevant if bounce ever becomes authorable on THROW_PLACE.
 
 **Verification:** 470 tests green (full suite + 22-case Phase E gate +
 corpus goldens + new pin). `tsc -b` clean. (Memory notes commit `ea1d488`
