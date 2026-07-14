@@ -174,7 +174,19 @@ export const TURN_INTERVAL_MS = 800;
 
 export type TriggerMode = 'interval' | 'on_event';
 
-export type TriggerEvent = 'enemy_adjacent' | 'enemy_in_range' | 'contact_with_enemy' | 'wall_ahead' | 'health_below_50' | 'character_adjacent' | 'character_in_range' | 'contact_with_character' | 'on_death';
+export type TriggerEvent =
+  // Team-relative proximity events — resolved against the holder's BASE party
+  // (charm-blind). "Opposing" = the other side, "same team" = the holder's own
+  // side EXCLUDING the holder itself. The vocabulary the editor writes.
+  | 'opposing_adjacent' | 'opposing_in_range' | 'contact_with_opposing'
+  | 'same_team_adjacent' | 'same_team_in_range' | 'contact_with_same_team'
+  // Legacy ABSOLUTE proximity events — still valid on stored assets. Never
+  // migrated; the engine and editor map them to the relative vocabulary at
+  // read time by authoring side (engine/actions.ts resolveTriggerEvent).
+  | 'enemy_adjacent' | 'enemy_in_range' | 'contact_with_enemy'
+  | 'character_adjacent' | 'character_in_range' | 'contact_with_character'
+  // Non-proximity events, unchanged.
+  | 'wall_ahead' | 'health_below_50' | 'on_death';
 
 export interface TriggerConfig {
   mode: TriggerMode;

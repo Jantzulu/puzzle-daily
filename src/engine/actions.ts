@@ -3878,6 +3878,28 @@ function executeNecromancy(
 // ==========================================
 
 /**
+ * Map legacy ABSOLUTE trigger events to the team-relative vocabulary, by
+ * AUTHORING SIDE — the same convention authored auto-target flags resolve
+ * with (enemy-authored "NearestCharacter" = opposing): hero Characters wrote
+ * "enemy_*" to mean opponents; enemy-shaped assets (enemies, allies, vessels)
+ * wrote "character_*" to mean opponents. Read-time only — stored assets keep
+ * their legacy values, nothing is migrated. This is also what fixes allies:
+ * an ally's enemy-shaped "character_adjacent" now senses its OPPONENTS
+ * instead of the hero party it fights for.
+ */
+export function resolveTriggerEvent(event: TriggerEvent, authoredAsEnemy: boolean): TriggerEvent {
+  switch (event) {
+    case 'enemy_adjacent':         return authoredAsEnemy ? 'same_team_adjacent'    : 'opposing_adjacent';
+    case 'enemy_in_range':         return authoredAsEnemy ? 'same_team_in_range'    : 'opposing_in_range';
+    case 'contact_with_enemy':     return authoredAsEnemy ? 'contact_with_same_team' : 'contact_with_opposing';
+    case 'character_adjacent':     return authoredAsEnemy ? 'opposing_adjacent'      : 'same_team_adjacent';
+    case 'character_in_range':     return authoredAsEnemy ? 'opposing_in_range'      : 'same_team_in_range';
+    case 'contact_with_character': return authoredAsEnemy ? 'contact_with_opposing'  : 'contact_with_same_team';
+    default: return event;
+  }
+}
+
+/**
  * Check if a trigger condition is met for a character
  */
 export function checkTriggerCondition(
@@ -3886,62 +3908,57 @@ export function checkTriggerCondition(
   eventRange: number | undefined,
   gameState: GameState
 ): boolean {
-  // Living, visible members of a base party. Proximity triggers are
-  // party-aware (engine/party.ts) the same way the finders are: by BASE
-  // party, charm-blind ("enemy_adjacent" senses the enemy team, whoever
-  // it currently fights for). Stealth hides an entity from ALL proximity
-  // triggers, both sides. No self-exclusion — an enemy with an
-  // enemy_adjacent trigger senses itself at distance 0, as it always has.
-  const visiblePartyMembers = (side: EntityParty): Array<PlacedCharacter | PlacedEnemy> =>
+  // Proximity events are TEAM-RELATIVE, resolved against the holder's BASE
+  // party — charm-blind, like the finders in engine/party.ts ("opposing"
+  // senses whoever the holder really fights, charmed or not). Legacy
+  // absolute events map through resolveTriggerEvent by authoring side so
+  // existing assets keep their meaning. Same-team events EXCLUDE the holder
+  // itself (else they are always true — the ally bug this redesign fixed)
+  // and DO see stealthed teammates; opposing events never see stealthed
+  // entities. Both match the findNearestTeamMembers stealth baseline.
+  const holderSide = entityParty(character, gameState);
+  const opposingSide: EntityParty = holderSide === 'hero' ? 'enemy' : 'hero';
+
+  // Self-identity across the enemy→character wrapper boundary: instanceKey
+  // when both sides carry the executeTurn stamp (duplicate same-asset
+  // entities share ids, so ids cannot discriminate), reference equality as
+  // the fallback for direct calls with the real entity object.
+  const isSelf = (t: PlacedCharacter | PlacedEnemy): boolean =>
+    t === (character as PlacedCharacter | PlacedEnemy) ||
+    (!!character.instanceKey && t.instanceKey === character.instanceKey);
+
+  const livingMembers = (side: EntityParty): Array<PlacedCharacter | PlacedEnemy> =>
     [...gameState.placedCharacters, ...gameState.puzzle.enemies].filter(t =>
-      isEntityFunctional(t) && !isEntityStealthed(t) && entityParty(t, gameState) === side
+      isEntityFunctional(t) && entityParty(t, gameState) === side
     );
+  const opposingMembers = () => livingMembers(opposingSide).filter(t => !isEntityStealthed(t));
+  const sameTeamMembers = () => livingMembers(holderSide).filter(t => !isSelf(t));
 
-  switch (event) {
-    case 'enemy_adjacent':
-      // Check if any enemy-party entity is within 1 tile (including diagonals)
-      return visiblePartyMembers('enemy').some(enemy => {
-        const distance = calculateDistance(character.x, character.y, enemy.x, enemy.y);
-        return distance <= 1.42; // sqrt(2) for diagonal adjacency
-      });
+  const anyWithin = (targets: Array<PlacedCharacter | PlacedEnemy>, maxDistance: number) =>
+    targets.some(t => calculateDistance(character.x, character.y, t.x, t.y) <= maxDistance);
+  const anyOnMyTile = (targets: Array<PlacedCharacter | PlacedEnemy>) =>
+    targets.some(t => t.x === character.x && t.y === character.y);
 
-    case 'enemy_in_range':
-      // Check if any enemy-party entity is within specified range
-      const enemyRange = eventRange || 3; // Default to 3 if not specified
-      return visiblePartyMembers('enemy').some(enemy => {
-        const distance = calculateDistance(character.x, character.y, enemy.x, enemy.y);
-        return distance <= enemyRange;
-      });
+  const ADJACENT = 1.42; // sqrt(2) for diagonal adjacency
 
-    case 'contact_with_enemy':
-      // Check if character is on the same tile as an enemy-party entity
-      return visiblePartyMembers('enemy').some(enemy =>
-        enemy.x === character.x && enemy.y === character.y
-      );
+  switch (resolveTriggerEvent(event, !getCharacter(character.characterId))) {
+    case 'opposing_adjacent':
+      return anyWithin(opposingMembers(), ADJACENT);
 
-    case 'character_adjacent':
-      // Check if any hero-party entity is within 1 tile (including diagonals)
-      // Used by enemies to detect nearby characters
-      return visiblePartyMembers('hero').some(char => {
-        const distance = calculateDistance(character.x, character.y, char.x, char.y);
-        return distance <= 1.42; // sqrt(2) for diagonal adjacency
-      });
+    case 'opposing_in_range':
+      return anyWithin(opposingMembers(), eventRange || 3);
 
-    case 'character_in_range':
-      // Check if any hero-party entity is within specified range
-      // Used by enemies to detect characters at a distance
-      const charRange = eventRange || 3; // Default to 3 if not specified
-      return visiblePartyMembers('hero').some(char => {
-        const distance = calculateDistance(character.x, character.y, char.x, char.y);
-        return distance <= charRange;
-      });
+    case 'contact_with_opposing':
+      return anyOnMyTile(opposingMembers());
 
-    case 'contact_with_character':
-      // Check if entity is on the same tile as a hero-party entity
-      // Used by enemies to detect characters in melee range
-      return visiblePartyMembers('hero').some(char =>
-        char.x === character.x && char.y === character.y
-      );
+    case 'same_team_adjacent':
+      return anyWithin(sameTeamMembers(), ADJACENT);
+
+    case 'same_team_in_range':
+      return anyWithin(sameTeamMembers(), eventRange || 3);
+
+    case 'contact_with_same_team':
+      return anyOnMyTile(sameTeamMembers());
 
     case 'wall_ahead': {
       // Check if there's a wall in front of the character (includes custom wall tiles)
@@ -3956,11 +3973,16 @@ export function checkTriggerCondition(
       return isTileBlockingMovement(gameState.puzzle.tiles[checkY]?.[checkX], gameState);
     }
 
-    case 'health_below_50':
-      // Check if character health is below 50%
-      const charData = getCharacter(character.characterId);
-      if (!charData) return false;
-      return character.currentHealth < charData.health * 0.5;
+    case 'health_below_50': {
+      // Check if the holder's health is below 50%. Char-then-enemy id
+      // fallback: enemy wrappers carry enemyId as characterId, so the
+      // character-only lookup silently returned false for every enemy,
+      // ally, and vessel (same shape-check bug as the heal-cap fix).
+      const maxHealth = getCharacter(character.characterId)?.health
+        ?? getEnemy(character.characterId)?.health;
+      if (maxHealth === undefined) return false;
+      return character.currentHealth < maxHealth * 0.5;
+    }
 
     case 'on_death':
       // Death trigger is handled specially via executeDeathTriggers()

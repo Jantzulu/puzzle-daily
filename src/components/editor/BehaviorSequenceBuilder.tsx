@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router';
 import { Direction, ActionType, TURN_INTERVAL_MS } from '../../types/game';
 import type { CharacterAction, ExecutionMode, TriggerConfig, RelativeDirection } from '../../types/game';
 import { loadSpellAsset, loadStatusEffectAsset } from '../../utils/assetStorage';
+import { resolveTriggerEvent } from '../../engine/actions';
 import { DirectionCompass } from './DirectionCompass';
 
 const ACTION_TYPES = Object.values(ActionType);
@@ -429,28 +430,29 @@ const SpellConfig: React.FC<SpellConfigProps> = ({ action, spell, context, onUpd
   const navigate = useNavigate();
   const turnEquivalent = (ms: number) => Math.round((ms / TURN_INTERVAL_MS) * 10) / 10;
 
-  // Event options differ by context
-  const eventOptions = context === 'character'
-    ? [
-        { value: 'enemy_adjacent', label: 'Enemy Adjacent' },
-        { value: 'enemy_in_range', label: 'Enemy in Range' },
-        { value: 'contact_with_enemy', label: 'Overlap with Enemy' },
-        { value: 'character_adjacent', label: 'Character Adjacent' },
-        { value: 'character_in_range', label: 'Character in Range' },
-        { value: 'contact_with_character', label: 'Overlap with Character' },
-        { value: 'wall_ahead', label: 'Wall Ahead' },
-        { value: 'health_below_50', label: 'Health Below 50%' },
-        { value: 'on_death', label: 'On Death' },
-      ]
-    : [
-        { value: 'character_adjacent', label: 'Character Adjacent' },
-        { value: 'character_in_range', label: 'Character in Range' },
-        { value: 'enemy_in_range', label: 'Enemy in Range' },
-        { value: 'wall_ahead', label: 'Wall Ahead' },
-        { value: 'health_below_50', label: 'Health Below 50%' },
-      ];
+  // Team-relative event vocabulary — one list for both contexts, resolved
+  // against the holder's party at runtime (so ally behaviors mean what they
+  // say). Legacy absolute events on existing assets display through the
+  // same read-time mapping the engine uses (resolveTriggerEvent) and are
+  // re-saved as relative values on the next edit.
+  const eventOptions = [
+    { value: 'opposing_adjacent', label: 'Opposing Adjacent' },
+    { value: 'opposing_in_range', label: 'Opposing in Range' },
+    { value: 'contact_with_opposing', label: 'Overlap with Opposing' },
+    { value: 'same_team_adjacent', label: 'Same Team Adjacent' },
+    { value: 'same_team_in_range', label: 'Same Team in Range' },
+    { value: 'contact_with_same_team', label: 'Overlap with Same Team' },
+    { value: 'wall_ahead', label: 'Wall Ahead' },
+    { value: 'health_below_50', label: 'Health Below 50%' },
+    { value: 'on_death', label: 'On Death' },
+  ];
 
-  const defaultEvent = context === 'character' ? 'enemy_adjacent' : 'character_adjacent';
+  const defaultEvent = 'opposing_adjacent';
+  // Legacy events display as their relative resolution (never written back
+  // unless the dev changes the selection).
+  const displayedEvent = action.trigger?.event
+    ? resolveTriggerEvent(action.trigger.event, context === 'enemy')
+    : defaultEvent;
 
   // Check if any auto-targeting is active (used for direction override visibility)
   const hasAutoTarget = action.autoTargetNearestEnemy || action.autoTargetNearestCharacter || action.autoTargetNearestDeadAlly;
@@ -595,7 +597,7 @@ const SpellConfig: React.FC<SpellConfigProps> = ({ action, spell, context, onUpd
 
               {action.trigger?.mode === 'on_event' && (
                 <>
-                  <select value={action.trigger.event || defaultEvent}
+                  <select value={displayedEvent}
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     onChange={(e) => {
                       // Switching event type: when the new event is "in range"
@@ -604,7 +606,7 @@ const SpellConfig: React.FC<SpellConfigProps> = ({ action, spell, context, onUpd
                       // two start in sync. Dev edits to autoTargetRange after
                       // are sticky.
                       const newEvent = e.target.value;
-                      const isInRange = newEvent === 'enemy_in_range' || newEvent === 'character_in_range';
+                      const isInRange = newEvent === 'opposing_in_range' || newEvent === 'same_team_in_range';
                       const eventRange = action.trigger?.eventRange ?? 2;
                       const shouldSeed = isInRange && !action.autoTargetRange;
                       onUpdate({
@@ -619,7 +621,7 @@ const SpellConfig: React.FC<SpellConfigProps> = ({ action, spell, context, onUpd
                       <option key={opt.value} value={opt.value}>{opt.label}</option>
                     ))}
                   </select>
-                  {(action.trigger.event === 'character_in_range' || action.trigger.event === 'enemy_in_range') && (
+                  {(displayedEvent === 'opposing_in_range' || displayedEvent === 'same_team_in_range') && (
                     <div className="flex items-center gap-2 mt-1">
                       <label className="text-xs text-stone-400">Range (tiles):</label>
                       <input type="number" min="1" max="10"
