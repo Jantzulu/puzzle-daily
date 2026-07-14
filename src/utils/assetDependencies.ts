@@ -13,10 +13,10 @@ import {
 } from './assetStorage';
 import type { CharacterAction } from '../types/game';
 
-export type AssetType = 'character' | 'enemy' | 'vessel' | 'spell' | 'tile_type' | 'collectible' | 'object' | 'skin' | 'sound' | 'status_effect';
+export type AssetType = 'character' | 'enemy' | 'vessel' | 'ally' | 'spell' | 'tile_type' | 'collectible' | 'object' | 'skin' | 'sound' | 'status_effect';
 
 export interface AssetUsage {
-  type: 'puzzle' | 'character' | 'enemy' | 'vessel' | 'spell' | 'collectible' | 'skin';
+  type: 'puzzle' | 'character' | 'enemy' | 'vessel' | 'ally' | 'spell' | 'collectible' | 'skin';
   id: string;
   name: string;
   detail: string; // e.g. "used as placed enemy", "referenced in behavior"
@@ -64,6 +64,17 @@ export function findAssetUsages(assetType: AssetType, assetId: string): AssetUsa
 
     case 'vessel': {
       // Vessels are placed into puzzle.enemies under their own id
+      for (const p of puzzles) {
+        if (p.enemies?.some(e => e.enemyId === assetId)) {
+          usages.push({ type: 'puzzle', id: p.id, name: p.name || p.id, detail: 'placed on map' });
+        }
+      }
+      break;
+    }
+
+    case 'ally': {
+      // Allies are placed into puzzle.enemies under their own id (stamped
+      // party: 'hero' at placement)
       for (const p of puzzles) {
         if (p.enemies?.some(e => e.enemyId === assetId)) {
           usages.push({ type: 'puzzle', id: p.id, name: p.name || p.id, detail: 'placed on map' });

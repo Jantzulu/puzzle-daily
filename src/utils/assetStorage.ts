@@ -145,7 +145,7 @@ export const isAssetHidden = (assetId: string): boolean => {
 
 const FOLDERS_STORAGE_KEY = 'asset_folders';
 
-export type AssetCategory = 'characters' | 'enemies' | 'spells' | 'tiles' | 'skins' | 'objects' | 'collectibles' | 'status_effects';
+export type AssetCategory = 'characters' | 'enemies' | 'allies' | 'spells' | 'tiles' | 'skins' | 'objects' | 'collectibles' | 'status_effects';
 
 export interface AssetFolder {
   id: string;

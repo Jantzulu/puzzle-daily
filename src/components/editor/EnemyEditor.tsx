@@ -5,7 +5,7 @@ import { scaledNameClass } from '../../utils/textScale';
 import { Direction } from '../../types/game';
 import type { CharacterAction, EnemyBehavior } from '../../types/game';
 import type { CustomEnemy, CustomSprite } from '../../utils/assetStorage';
-import { saveEnemy, deleteEnemy, getFolders, getSoundAssets, getAllCollectibles, loadStatusEffectAsset, loadSpellAsset } from '../../utils/assetStorage';
+import { saveEnemy, deleteEnemy, saveAlly, deleteAlly, getCustomAllies, getFolders, getSoundAssets, getAllCollectibles, loadStatusEffectAsset, loadSpellAsset } from '../../utils/assetStorage';
 import { getAllEnemies } from '../../data/enemies';
 import { SpriteEditor } from './SpriteEditor';
 import { SpriteThumbnail } from './SpriteThumbnail';
@@ -21,9 +21,31 @@ import { AssetEditorLayout } from './AssetEditorLayout';
 import { CollapsiblePanel } from './CollapsiblePanel';
 import { useIsMobile } from '../../hooks/useMediaQuery';
 
-export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSelectedId }) => {
+/**
+ * Edits enemy-shaped assets. assetKind='ally' serves the separate Ally asset
+ * type (user design 2026-07-13) through the same editor — allies are full
+ * enemy-shaped assets (behavior tree, sprites, spells, loot) in their own
+ * storage namespace, placed on maps as hero-party combatants. Kind-coupled
+ * seams (storage fns, id prefix, labels, Boss↔Noble marker, folder/usage
+ * namespaces) all route through the KIND config below.
+ */
+export const EnemyEditor: React.FC<{ initialSelectedId?: string; assetKind?: 'enemy' | 'ally' }> = ({ initialSelectedId, assetKind = 'enemy' }) => {
   const isMobile = useIsMobile();
-  const refreshEnemies = () => getAllEnemies().map(e => ({
+  const isAlly = assetKind === 'ally';
+  const KIND = isAlly
+    ? {
+        label: 'Ally', plural: 'Allies', lower: 'ally', lowerPlural: 'allies',
+        idPrefix: 'ally_', save: saveAlly, remove: deleteAlly,
+        folderCategory: 'allies' as const, usageType: 'ally' as const,
+        exportFile: 'allies-export.json',
+      }
+    : {
+        label: 'Enemy', plural: 'Enemies', lower: 'enemy', lowerPlural: 'enemies',
+        idPrefix: 'enemy_', save: saveEnemy, remove: deleteEnemy,
+        folderCategory: 'enemies' as const, usageType: 'enemy' as const,
+        exportFile: 'enemies-export.json',
+      };
+  const refreshEnemies = () => (isAlly ? getCustomAllies() : getAllEnemies()).map(e => ({
     ...e,
     isCustom: true,
     createdAt: (e as { createdAt?: string }).createdAt || new Date().toISOString(),
@@ -65,8 +87,8 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
 
   const handleNew = () => {
     const newEnemy: CustomEnemy = {
-      id: 'enemy_' + Date.now(),
-      name: 'New Enemy',
+      id: KIND.idPrefix + Date.now(),
+      name: `New ${KIND.label}`,
       spriteId: 'custom_sprite_' + Date.now(),
       health: 1,
       behavior: { type: 'static', defaultFacing: Direction.SOUTH, pattern: [] },
@@ -91,7 +113,7 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
 
   const handleSave = () => {
     if (!editing) return;
-    saveEnemy(editing);
+    KIND.save(editing);
     setEnemies(refreshEnemies());
     setSelectedId(editing.id);
     setIsCreating(false);
@@ -99,10 +121,10 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
   };
 
   const handleDelete = (id: string) => {
-    const usages = findAssetUsages('enemy', id);
+    const usages = findAssetUsages(KIND.usageType, id);
     const warning = usages.length > 0 ? `\n\n${formatUsageWarning(usages)}` : '';
-    if (!confirm(`Delete this enemy?${warning}`)) return;
-    deleteEnemy(id);
+    if (!confirm(`Delete this ${KIND.lower}?${warning}`)) return;
+    KIND.remove(id);
     setEnemies(refreshEnemies());
     if (selectedId === id) {
       setSelectedId(null);
@@ -113,7 +135,7 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
   const handleFolderChange = (enemyId: string, folderId: string | undefined) => {
     const enemy = enemies.find(e => e.id === enemyId);
     if (enemy) {
-      saveEnemy({ ...enemy, folderId });
+      KIND.save({ ...enemy, folderId });
       setEnemies(refreshEnemies());
       if (editing && editing.id === enemyId) {
         setEditing({ ...editing, folderId });
@@ -125,7 +147,7 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
     e.stopPropagation();
     const duplicated: CustomEnemy = {
       ...enemy,
-      id: 'enemy_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+      id: KIND.idPrefix + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
       name: enemy.name + ' (Copy)',
       behavior: enemy.behavior ? { ...enemy.behavior, pattern: [...(enemy.behavior.pattern || [])] } : undefined,
       customSprite: enemy.customSprite ? { ...enemy.customSprite, id: 'sprite_' + Date.now() } : undefined,
@@ -167,11 +189,11 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
       <AssetEditorLayout
         isEditing={!!editing}
         onBack={handleBack}
-        listTitle="Enemies"
+        listTitle={KIND.plural}
         listPanel={
           <>
             <div className="flex justify-between items-center">
-              <h2 className="text-xl font-bold font-medieval text-copper-400">Enemies</h2>
+              <h2 className="text-xl font-bold font-medieval text-copper-400">{KIND.plural}</h2>
               <button onClick={handleNew} className="dungeon-btn-success text-sm">
                 + New
               </button>
@@ -188,7 +210,7 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
 
             {/* Folder Filter */}
             <FolderDropdown
-              category="enemies"
+              category={KIND.folderCategory}
               selectedFolderId={selectedFolderId}
               onFolderSelect={setSelectedFolderId}
             />
@@ -200,20 +222,20 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
               onClear={bulk.clear}
               onDelete={() => {
                 const nameMap = new Map(enemies.map(e => [e.id, e.name]));
-                const deleted = bulkDelete([...bulk.selectedIds], 'enemy', deleteEnemy, nameMap);
+                const deleted = bulkDelete([...bulk.selectedIds], KIND.usageType, KIND.remove, nameMap);
                 if (deleted.length) { setEnemies(refreshEnemies()); bulk.clear(); if (selectedId && deleted.includes(selectedId)) { setSelectedId(null); setEditing(null); } }
               }}
               onMoveToFolder={() => {
-                bulkMoveToFolder([...bulk.selectedIds], 'enemies', (id: string) => enemies.find(e => e.id === id), saveEnemy);
+                bulkMoveToFolder([...bulk.selectedIds], KIND.folderCategory, (id: string) => enemies.find(e => e.id === id), KIND.save);
                 setEnemies(refreshEnemies()); bulk.clear();
               }}
               onExport={() => {
                 const items = enemies.filter(e => bulk.selectedIds.has(e.id));
-                bulkExport(items, 'enemies-export.json', 'enemy');
+                bulkExport(items, KIND.exportFile, KIND.lower);
               }}
               onImport={() => bulkImport({
-                assetType: 'enemy',
-                saveFn: saveEnemy,
+                assetType: KIND.lower,
+                saveFn: KIND.save,
                 existingIds: new Set(enemies.map(e => e.id)),
                 onComplete: () => { setEnemies(refreshEnemies()); bulk.clear(); },
               })}
@@ -222,7 +244,7 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
             <div className="space-y-2 max-h-[calc(100vh-350px)] overflow-y-auto overflow-x-hidden">
               {filteredEnemies.length === 0 ? (
                 <div className="dungeon-panel p-4 rounded text-center text-stone-400 text-sm">
-                  {searchTerm ? 'No enemies match your search.' : 'No enemies yet.'}
+                  {searchTerm ? `No ${KIND.lowerPlural} match your search.` : `No ${KIND.lowerPlural} yet.`}
                   <br />{!searchTerm && 'Click "+ New" to create one.'}
                 </div>
               ) : (
@@ -253,14 +275,15 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
                         <div className="min-w-0">
                           <h3 className={`font-bold ${scaledNameClass(enemy.name)}`}>{enemy.name}</h3>
                           <p className="text-xs text-stone-400">
-                            {enemy.isBoss && <span className="text-blood-300 font-medium mr-1">BOSS</span>}
+                            {!isAlly && enemy.isBoss && <span className="text-blood-300 font-medium mr-1">BOSS</span>}
+                            {isAlly && enemy.isNoble && <span className="text-copper-300 font-medium mr-1">NOBLE</span>}
                             HP: {enemy.health} • {enemy.behavior?.type || 'static'}
                           </p>
                         </div>
                       </div>
                       <div className="flex flex-col gap-0.5 flex-shrink-0">
                         <InlineFolderPicker
-                          category="enemies"
+                          category={KIND.folderCategory}
                           currentFolderId={enemy.folderId}
                           onFolderChange={(folderId) => handleFolderChange(enemy.id, folderId)}
                         />
@@ -298,10 +321,13 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
                         <h2 className="text-lg md:text-2xl font-bold font-medieval text-copper-400 truncate">
-                          {editing.name || 'Unnamed Enemy'}
+                          {editing.name || `Unnamed ${KIND.label}`}
                         </h2>
-                        {editing.isBoss && (
+                        {!isAlly && editing.isBoss && (
                           <span className="px-1.5 py-0.5 text-xs bg-blood-800 text-blood-200 rounded font-medium">BOSS</span>
+                        )}
+                        {isAlly && editing.isNoble && (
+                          <span className="px-1.5 py-0.5 text-xs bg-copper-800 text-copper-200 rounded font-medium">NOBLE</span>
                         )}
                       </div>
                       <p className="text-xs text-stone-400">HP: {editing.health} • {editing.behavior?.type || 'static'}</p>
@@ -310,7 +336,7 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
                   <div className="flex gap-1.5 md:gap-2 flex-shrink-0">
                     <button
                       onClick={async () => {
-                        const result = await createVersionSnapshot(editing.id, 'enemy', editing.name, editing as unknown as object);
+                        const result = await createVersionSnapshot(editing.id, KIND.lower, editing.name, editing as unknown as object);
                         if (result.success) toast.success(`Saved version #${result.versionNumber}`);
                         else toast.error('Failed to save version');
                       }}
@@ -329,7 +355,7 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
                     </button>
                     <button onClick={handleSave} className="dungeon-btn-success text-sm">
                       <span className="md:hidden">💾</span>
-                      <span className="hidden md:inline">Save Enemy</span>
+                      <span className="hidden md:inline">Save {KIND.label}</span>
                     </button>
                   </div>
                 </div>
@@ -340,7 +366,7 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
                   isOpen={showVersionHistory}
                   onClose={() => setShowVersionHistory(false)}
                   assetId={editing.id}
-                  assetType="enemy"
+                  assetType={KIND.lower}
                   assetName={editing.name}
                   currentData={editing as unknown as object}
                   onRestore={(data) => setEditing(data as unknown as CustomEnemy)}
@@ -392,7 +418,7 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
                       <RichTextEditor
                         value={editing.description || ''}
                         onChange={(value) => updateEnemy({ description: value || undefined })}
-                        placeholder="Enter enemy description..."
+                        placeholder={`Enter ${KIND.lower} description...`}
                         multiline
                       />
                     </div>
@@ -412,7 +438,7 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
                         </button>
                       </div>
                       <p className="text-xs text-stone-400 mb-2">
-                        Numbered steps describing what this enemy does. Each step can have sub-bullets for additional detail.
+                        Numbered steps describing what this {KIND.lower} does. Each step can have sub-bullets for additional detail.
                       </p>
                       <div className="space-y-3">
                         {(editing.actionSteps || []).map((step, index) => (
@@ -592,7 +618,7 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
                         onChange={(e) => updateEnemy({ folderId: e.target.value || undefined })}
                         className="w-full px-3 py-2 bg-stone-700 rounded">
                         <option value="">Uncategorized</option>
-                        {getFolders('enemies').map(folder => (
+                        {getFolders(KIND.folderCategory).map(folder => (
                           <option key={folder.id} value={folder.id}>{folder.name}</option>
                         ))}
                       </select>
@@ -609,12 +635,25 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
 
                   {/* Properties */}
                   <CollapsiblePanel title="Properties" className="space-y-2">
-                    <label className="flex items-center gap-2 p-2 rounded bg-blood-900/30 border border-blood-700/50">
-                      <input type="checkbox" checked={editing.isBoss || false}
-                        onChange={(e) => updateEnemy({ isBoss: e.target.checked })} className="w-4 h-4" />
-                      <span className="text-sm font-medium text-blood-300">Boss Enemy</span>
-                    </label>
-                    <p className="text-xs text-stone-400 ml-1">Boss enemies enable the "Defeat the Boss" win condition.</p>
+                    {isAlly ? (
+                      <>
+                        <label className="flex items-center gap-2 p-2 rounded bg-copper-900/30 border border-copper-700/50">
+                          <input type="checkbox" checked={editing.isNoble || false}
+                            onChange={(e) => updateEnemy({ isNoble: e.target.checked })} className="w-4 h-4" />
+                          <span className="text-sm font-medium text-copper-300">Noble</span>
+                        </label>
+                        <p className="text-xs text-stone-400 ml-1">Nobles power the noble win conditions — Protect the Noble, Keep the Noble alive for N turns, Guide the Noble to the Exit. If any noble condition is set, this ally dying means defeat.</p>
+                      </>
+                    ) : (
+                      <>
+                        <label className="flex items-center gap-2 p-2 rounded bg-blood-900/30 border border-blood-700/50">
+                          <input type="checkbox" checked={editing.isBoss || false}
+                            onChange={(e) => updateEnemy({ isBoss: e.target.checked })} className="w-4 h-4" />
+                          <span className="text-sm font-medium text-blood-300">Boss Enemy</span>
+                        </label>
+                        <p className="text-xs text-stone-400 ml-1">Boss enemies enable the "Defeat the Boss" win condition.</p>
+                      </>
+                    )}
                     <p className="text-xs text-stone-500 ml-1 mt-1">Other traits (Ghost, Wall, Halt, Priority, Sturdy, Thorns, Trample) are assigned via starting status effects.</p>
                   </CollapsiblePanel>
 
@@ -648,7 +687,7 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
 
                   {/* Death Drop */}
                   <CollapsiblePanel title="Death Drop">
-                    <p className="text-xs text-stone-400 mb-3">Select a collectible to drop when this enemy dies.</p>
+                    <p className="text-xs text-stone-400 mb-3">Select a collectible to drop when this {KIND.lower} dies.</p>
                     <select value={editing.droppedCollectibleId || ''}
                       onChange={(e) => updateEnemy({ droppedCollectibleId: e.target.value || undefined })}
                       className="w-full px-3 py-2 bg-stone-700 rounded">
@@ -661,7 +700,7 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
 
                   {/* Starting Status Effects */}
                   <CollapsiblePanel title="Starting Status Effects">
-                    <p className="text-xs text-stone-400 mb-3">Status effects applied when this enemy spawns on the board.</p>
+                    <p className="text-xs text-stone-400 mb-3">Status effects applied when this {KIND.lower} spawns on the board.</p>
                     {(editing.initialStatusEffects || []).length > 0 && (
                       <div className="space-y-2 mb-3">
                         {editing.initialStatusEffects!.map((ise, index) => {
@@ -769,7 +808,7 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
                     <div className="mt-3 pt-3 border-t border-stone-700">
                       <div className="text-sm text-stone-300 mb-1">Contact hit visual</div>
                       <p className="text-xs text-stone-400 mb-2">
-                        When this enemy&apos;s contact damage fires — from a starting effect above
+                        When this {KIND.lower}&apos;s contact damage fires — from a starting effect above
                         or one gained mid-game — show the chosen spell&apos;s landed-hit visuals
                         (projectile hop, melee sprite, damage effect). Overrides the status
                         effect&apos;s own default visual. Visuals only; no damage inherited.
@@ -882,12 +921,14 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
         }
         emptyState={
           <div className="dungeon-panel p-8 rounded text-center">
-            <h2 className="text-2xl font-bold font-medieval text-copper-400 mb-4">Enemy Editor</h2>
+            <h2 className="text-2xl font-bold font-medieval text-copper-400 mb-4">{KIND.label} Editor</h2>
             <p className="text-stone-400 mb-6">
-              Create and customize enemies with unique sprites and behaviors.
+              {isAlly
+                ? 'Create friendly units the creator places on the map — guards that fight beside the heroes, or Nobles to protect, escort, and keep alive.'
+                : 'Create and customize enemies with unique sprites and behaviors.'}
             </p>
             <button onClick={handleNew} className="dungeon-btn-success text-lg">
-              + Create New Enemy
+              + Create New {KIND.label}
             </button>
           </div>
         }

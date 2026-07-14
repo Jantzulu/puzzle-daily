@@ -668,7 +668,13 @@ export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ init
 
                     {/* Properties */}
                     <CollapsiblePanel title="Properties" className="space-y-2">
-                      <p className="text-xs text-stone-500 ml-1">Traits (Ghost, Wall, Halt, Sturdy, Thorns, Trample) are assigned via starting status effects.</p>
+                      <label className="flex items-center gap-2 p-2 rounded bg-copper-900/30 border border-copper-700/50">
+                        <input type="checkbox" checked={editing.isNoble || false}
+                          onChange={(e) => updateCharacter({ isNoble: e.target.checked })} className="w-4 h-4" />
+                        <span className="text-sm font-medium text-copper-300">Noble</span>
+                      </label>
+                      <p className="text-xs text-stone-400 ml-1">Nobles power the noble win conditions — Protect the Noble, Keep the Noble alive for N turns, Guide the Noble to the Exit. If any noble condition is set, this hero dying means defeat.</p>
+                      <p className="text-xs text-stone-500 ml-1 mt-1">Traits (Ghost, Wall, Halt, Sturdy, Thorns, Trample) are assigned via starting status effects.</p>
                     </CollapsiblePanel>
 
                     {/* Sound Effects */}
