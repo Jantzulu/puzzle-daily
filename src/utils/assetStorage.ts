@@ -77,7 +77,7 @@ let statusEffectsCache: StatusEffectAsset[] | null = null;
 
 export interface PendingDeletion {
   id: string;
-  type: 'tile_type' | 'enemy' | 'character' | 'object' | 'skin' | 'spell' | 'status_effect' | 'folder' | 'collectible_type' | 'collectible' | 'sound' | 'vessel';
+  type: 'tile_type' | 'enemy' | 'character' | 'object' | 'skin' | 'spell' | 'status_effect' | 'folder' | 'collectible_type' | 'collectible' | 'sound' | 'vessel' | 'ally';
   deletedAt: string;
 }
 
@@ -633,11 +633,15 @@ export const loadEnemy = (enemyId: string): CustomEnemy | null => {
   const enemies = getCustomEnemies();
   const direct = enemies.find(e => e.id === enemyId);
   if (direct) return direct;
-  // Vessels are enemy-compatible combatants (docs/feature-backlog.md):
-  // placed-entity lookups by id resolve them through the adapter so the
-  // engine, quest labels, and drops all work without knowing the kind.
+  // Vessels and allies are enemy-compatible combatants
+  // (docs/feature-backlog.md): placed-entity lookups by id resolve them
+  // through their adapters so the engine, quest labels, and drops all work
+  // without knowing the kind. Allies differ only in their placement's
+  // party: 'hero' stamp.
   const vessel = loadVessel(enemyId);
-  return vessel ? vesselToEnemyAsset(vessel) : null;
+  if (vessel) return vesselToEnemyAsset(vessel);
+  const ally = loadAlly(enemyId);
+  return ally ? allyToEnemyAsset(ally) : null;
 };
 
 // ============ VESSEL STORAGE ============
@@ -740,6 +744,83 @@ export const deleteVessel = (vesselId: string): void => {
 export const loadVessel = (vesselId: string): CustomVessel | null => {
   const vessels = getCustomVessels();
   return vessels.find(v => v.id === vesselId) || null;
+};
+
+// ============ ALLY STORAGE ============
+// Allies (user design 2026-07-13): a dedicated asset type for hero-party
+// combatants the CREATOR places on the map (the player doesn't place them) —
+// the King to protect, the Princess to save, a guard that fights alongside
+// the heroes. Full Enemy shape (behavior tree, sprites, spells, loot) with
+// its own storage/editor/Slab identity; at runtime a placement adapts into
+// the enemy pipeline as a PlacedEnemy stamped `party: 'hero'`, so targeting,
+// triggers, pickups, and win conditions all resolve through the shipped
+// party model (engine/party.ts). Spec: docs/feature-backlog.md.
+
+export interface CustomAlly extends CustomEnemy {}
+
+const ALLY_STORAGE_KEY = 'custom_allies';
+let alliesCache: CustomAlly[] | null = null;
+
+/**
+ * Adapt an ally to the Enemy shape the engine and game UI consume. Allies
+ * ARE enemy-shaped (unlike slim vessels), so this is an identity today —
+ * it exists as the deliberate seam where ally-only fields (e.g. the Noble
+ * marker) get mapped when they arrive, mirroring vesselToEnemyAsset.
+ */
+export const allyToEnemyAsset = (ally: CustomAlly): CustomEnemy => ally;
+
+export const saveAlly = (ally: CustomAlly): boolean => {
+  const allies = getCustomAllies();
+  const existingIndex = allies.findIndex(a => a.id === ally.id);
+  const isCreate = existingIndex < 0;
+
+  if (existingIndex >= 0) {
+    allies[existingIndex] = { ...ally, createdAt: new Date().toISOString() };
+  } else {
+    allies.push({ ...ally, createdAt: new Date().toISOString(), isCustom: true });
+  }
+
+  const success = safeLocalStorageSet(ALLY_STORAGE_KEY, JSON.stringify(allies));
+  if (success) {
+    alliesCache = null;
+    logActivity({ action: isCreate ? 'create' : 'update', asset_type: 'ally', asset_id: ally.id, asset_name: ally.name });
+  }
+  return success;
+};
+
+export const getCustomAllies = (): CustomAlly[] => {
+  if (alliesCache !== null) return alliesCache.slice();
+  const stored = localStorage.getItem(ALLY_STORAGE_KEY);
+  if (!stored) {
+    alliesCache = [];
+    return [];
+  }
+  try {
+    alliesCache = JSON.parse(stored);
+    return alliesCache!.slice();
+  } catch (e) {
+    console.error('Failed to parse custom allies:', e);
+    alliesCache = [];
+    return [];
+  }
+};
+
+export const deleteAlly = (allyId: string): void => {
+  const allies = getCustomAllies();
+  const ally = allies.find(a => a.id === allyId);
+  const filtered = allies.filter(a => a.id !== allyId);
+  localStorage.setItem(ALLY_STORAGE_KEY, JSON.stringify(filtered));
+  alliesCache = null;
+
+  // Track deletion for cloud sync (push/pull wiring is the cloud slice)
+  addPendingAssetDeletion(allyId, 'ally');
+
+  logActivity({ action: 'delete', asset_type: 'ally', asset_id: allyId, asset_name: ally?.name });
+};
+
+export const loadAlly = (allyId: string): CustomAlly | null => {
+  const allies = getCustomAllies();
+  return allies.find(a => a.id === allyId) || null;
 };
 
 // ============ TILE STORAGE ============

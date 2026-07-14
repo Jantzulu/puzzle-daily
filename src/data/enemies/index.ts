@@ -1,5 +1,5 @@
 import type { Enemy } from '../../types/game';
-import { getCustomEnemies, isAssetHidden, loadVessel, vesselToEnemyAsset, type CustomEnemy } from '../../utils/assetStorage';
+import { getCustomEnemies, isAssetHidden, loadVessel, vesselToEnemyAsset, loadAlly, allyToEnemyAsset, type CustomEnemy } from '../../utils/assetStorage';
 import { migrateActions } from '../../utils/actionMigration';
 import goblinData from './goblin.json';
 import targetDummyData from './target-dummy.json';
@@ -36,6 +36,14 @@ export const getEnemy = (id: string): EnemyWithSprite | undefined => {
   const vessel = loadVessel(id);
   if (vessel) {
     return vesselToEnemyAsset(vessel);
+  }
+
+  // Allies resolve the same way — full enemy-shaped assets whose placements
+  // carry party: 'hero' (docs/feature-backlog.md, Allies entity class)
+  const ally = loadAlly(id);
+  if (ally) {
+    if (ally.behavior?.pattern) ally.behavior.pattern = migrateActions(ally.behavior.pattern);
+    return allyToEnemyAsset(ally);
   }
 
   return undefined;

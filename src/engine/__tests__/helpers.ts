@@ -32,6 +32,9 @@ const spellRegistry = new Map<string, any>();
 const statusEffectRegistry = new Map<string, any>();
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const vesselRegistry = new Map<string, any>();
+// Allies are enemy-shaped assets whose PLACEMENTS carry party: 'hero' —
+// the registry stores them as-is (the real adapter is an identity today).
+const allyRegistry = new Map<string, Enemy>();
 
 // Mirror of assetStorage.vesselToEnemyAsset for the mocked modules: vessels
 // resolve as static Enemy-shaped assets (no behavior) through getEnemy/loadEnemy.
@@ -80,6 +83,10 @@ export function registerTestVessel(vessel: any) {
   vesselRegistry.set(vessel.id, vessel);
 }
 
+export function registerTestAlly(ally: Enemy) {
+  allyRegistry.set(ally.id, ally);
+}
+
 export function clearAllRegistries() {
   characterRegistry.clear();
   enemyRegistry.clear();
@@ -88,6 +95,7 @@ export function clearAllRegistries() {
   spellRegistry.clear();
   statusEffectRegistry.clear();
   vesselRegistry.clear();
+  allyRegistry.clear();
 }
 
 // ==========================================
@@ -105,7 +113,9 @@ vi.mock('../../data/enemies', () => ({
   // which misclassifies heroes as enemies in moveCharacter's combat branch.
   // Vessel fallback mirrors the real module.
   getEnemy: (id: string) =>
-    enemyRegistry.get(id) ?? (vesselRegistry.has(id) ? testVesselToEnemy(vesselRegistry.get(id)) : undefined),
+    enemyRegistry.get(id) ??
+    (vesselRegistry.has(id) ? testVesselToEnemy(vesselRegistry.get(id)) : undefined) ??
+    allyRegistry.get(id),
 }));
 
 vi.mock('../../utils/assetStorage', () => ({
@@ -114,14 +124,20 @@ vi.mock('../../utils/assetStorage', () => ({
   loadSpellAsset: (id: string) => spellRegistry.get(id) ?? null,
   loadStatusEffectAsset: (id: string) => statusEffectRegistry.get(id) ?? null,
   loadEnemy: (id: string) =>
-    enemyRegistry.get(id) ?? (vesselRegistry.has(id) ? testVesselToEnemy(vesselRegistry.get(id)) : null),
+    enemyRegistry.get(id) ??
+    (vesselRegistry.has(id) ? testVesselToEnemy(vesselRegistry.get(id)) : null) ??
+    allyRegistry.get(id) ??
+    null,
   loadCharacter: (id: string) => characterRegistry.get(id) ?? null,
   loadVessel: (id: string) => vesselRegistry.get(id) ?? null,
   vesselToEnemyAsset: testVesselToEnemy,
+  loadAlly: (id: string) => allyRegistry.get(id) ?? null,
+  allyToEnemyAsset: (ally: Enemy) => ally,
   isAssetHidden: () => false,
   getCustomCharacters: () => Array.from(characterRegistry.values()),
   getCustomEnemies: () => Array.from(enemyRegistry.values()),
   getCustomVessels: () => Array.from(vesselRegistry.values()),
+  getCustomAllies: () => Array.from(allyRegistry.values()),
 }));
 
 // ==========================================
