@@ -44,6 +44,25 @@ import { ReplaySlabMesh } from './ReplaySlabMesh';
 // Test mode types
 type TestMode = 'none' | 'enemies' | 'characters';
 
+// Distinct display names of every placed Noble (Noble-marked heroes +
+// hero-party allies), joined for quest text: "the King", "the King and
+// the Princess". Empty string when no Noble is placed.
+function nobleQuestNames(gameState: GameState): string {
+  const names: string[] = [];
+  for (const c of gameState.placedCharacters) {
+    const data = getCharacter(c.characterId);
+    if (data?.isNoble && !names.includes(data.name)) names.push(data.name);
+  }
+  for (const e of gameState.puzzle.enemies) {
+    if (entityParty(e, gameState) !== 'hero') continue;
+    const data = loadEnemy(e.enemyId);
+    if (data?.isNoble && !names.includes(data.name)) names.push(data.name);
+  }
+  if (names.length === 0) return '';
+  if (names.length === 1) return names[0];
+  return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+}
+
 // Deep copy GameState while preserving Map/Set structures that JSON.stringify destroys.
 // Used for replay history snapshots (both live capture and headless re-sim fallback).
 function deepCopyGameState(state: GameState): GameState {
@@ -3100,6 +3119,19 @@ export const Game: React.FC<GameProps> = ({
                           }
                           case 'reach_goal':
                             return 'Reach the Exit';
+                          case 'protect_noble': {
+                            const names = nobleQuestNames(gameState);
+                            return names ? `Protect ${names}` : 'Protect the Noble';
+                          }
+                          case 'noble_survives_turns': {
+                            const names = nobleQuestNames(gameState);
+                            const turns = wc.params?.turns ?? 10;
+                            return names ? `Keep ${names} alive for ${turns} Turns` : `Keep the Noble alive for ${turns} Turns`;
+                          }
+                          case 'noble_reaches_goal': {
+                            const names = nobleQuestNames(gameState);
+                            return names ? `Guide ${names} to the Exit` : 'Guide the Noble to the Exit';
+                          }
                           case 'survive_turns':
                             return `Survive ${wc.params?.turns ?? 10} Turns`;
                           case 'win_in_turns':

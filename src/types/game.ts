@@ -231,6 +231,7 @@ export interface Character {
   description: string;
   health: number;
   defaultFacing: Direction;
+  isNoble?: boolean; // Noble marker (backlog: heroes can be Nobles too) — this hero counts for the noble win/lose conditions when placed
   behavior: CharacterAction[];
   actionSteps?: ActionStep[]; // Numbered action steps displayed on play/playtest pages
   attributes?: string[];    // Attribute bullets displayed alongside action steps
@@ -287,6 +288,12 @@ export interface Enemy {
 
   // Boss configuration
   isBoss?: boolean; // If true, this enemy is a boss - enables 'defeat_boss' win condition
+
+  // Noble configuration (the friendly-side Boss equivalent — meaningful on
+  // ALLY assets, which share this Enemy shape via the adapter). A placed
+  // hero-party entity whose asset has isNoble participates in the
+  // protect_noble / noble_survives_turns / noble_reaches_goal conditions.
+  isNoble?: boolean;
 
   // Melee priority
   hasMeleePriority?: boolean; // If true, this enemy attacks before characters in melee exchanges (default: false)
@@ -420,7 +427,15 @@ export type WinConditionType =
   | 'survive_turns'         // Survive for X turns
   | 'win_in_turns'          // Complete all other conditions within X turns
   | 'max_characters'        // Complete using only X or fewer characters
-  | 'characters_alive';     // Keep at least X characters alive at the end
+  | 'characters_alive'      // Keep at least X characters alive at the end
+  // Noble conditions (user design 2026-07-13). A "Noble" is any placed
+  // hero-party entity whose asset carries isNoble (Noble-marked allies and
+  // heroes). UNIFORM IMPLIED-PROTECT RULE: authoring ANY noble condition
+  // makes a Noble's death an immediate defeat (checkDefeatConditions) — a
+  // dead King can't be protected, survive, or reach anything.
+  | 'protect_noble'         // Win requires all Nobles alive (pairs with other conditions: "kill everything without losing the King")
+  | 'noble_survives_turns'  // Nobles alive at end of turn X (params.turns) = victory
+  | 'noble_reaches_goal';   // A Noble standing on a GOAL tile = victory (reuses the goal-tile placement)
 
 /**
  * Parameters for different win condition types

@@ -2373,6 +2373,25 @@ function checkGameConditions(gameState: GameState): void {
 }
 
 /**
+ * Every placed Noble: heroes whose Character asset carries isNoble, plus
+ * hero-party entities in puzzle.enemies (allies) whose asset carries it.
+ * Base party, not effective — a charmed King is still the King. Consumed by
+ * the noble win/lose conditions (protect_noble / noble_survives_turns /
+ * noble_reaches_goal).
+ */
+function getPlacedNobles(gameState: GameState): Array<PlacedCharacter | PlacedEnemy> {
+  const nobles: Array<PlacedCharacter | PlacedEnemy> = [];
+  for (const char of gameState.placedCharacters) {
+    if (getCharacter(char.characterId)?.isNoble) nobles.push(char);
+  }
+  for (const enemy of gameState.puzzle.enemies) {
+    if (entityParty(enemy, gameState) !== 'hero') continue;
+    if (loadEnemy(enemy.enemyId)?.isNoble) nobles.push(enemy);
+  }
+  return nobles;
+}
+
+/**
  * Check if victory conditions are met
  * Exported so it can be called from animation loop when projectiles kill enemies
  */
@@ -2473,6 +2492,40 @@ export function checkVictoryConditions(gameState: GameState): boolean {
         if (aliveCount < minAlive) return false;
         break;
 
+      case 'protect_noble': {
+        // All placed Nobles must be alive at the moment of victory.
+        // Vacuously true with no Nobles placed (defeat_boss precedent) —
+        // the defeat half (any Noble death = instant defeat) lives in
+        // checkDefeatConditions under the uniform implied-protect rule.
+        const nobles = getPlacedNobles(gameState);
+        if (!nobles.every(isEntityFunctional)) return false;
+        break;
+      }
+
+      case 'noble_survives_turns': {
+        // Victory at the end of turn X with every Noble alive.
+        const nobleTurns = condition.params?.turns ?? 10;
+        if (gameState.currentTurn < nobleTurns) return false;
+        const nobles = getPlacedNobles(gameState);
+        if (!nobles.every(isEntityFunctional)) return false;
+        break;
+      }
+
+      case 'noble_reaches_goal': {
+        // A living Noble standing on a GOAL tile (reach_goal's escort twin —
+        // reuses the same goal-tile placement). With no Nobles placed this
+        // can never pass, mirroring reach_goal with no heroes on the goal;
+        // the editor slice warns about that authoring hole.
+        const nobles = getPlacedNobles(gameState);
+        const nobleReached = nobles.some(n => {
+          if (!isEntityFunctional(n)) return false;
+          const tile = gameState.puzzle.tiles[n.y]?.[n.x];
+          return tile?.type === TileType.GOAL;
+        });
+        if (!nobleReached) return false;
+        break;
+      }
+
       case 'collect_keys':
         // Must collect all collectibles that have win_key effects
         // Load collectible data to check which ones are keys
@@ -2511,6 +2564,18 @@ function checkDefeatConditions(gameState: GameState): boolean {
         const aliveCountDefeat = gameState.placedCharacters.filter(isEntityFunctional).length;
         if (aliveCountDefeat < minAliveDefeat) return true;
         break;
+
+      case 'protect_noble':
+      case 'noble_survives_turns':
+      case 'noble_reaches_goal': {
+        // Uniform implied-protect rule: authoring ANY noble condition makes
+        // a Noble's death an immediate defeat — a dead King can't be
+        // protected, survive N turns, or reach the goal, so don't make the
+        // player wait out the clock to find out.
+        const nobles = getPlacedNobles(gameState);
+        if (nobles.some(n => !isEntityFunctional(n))) return true;
+        break;
+      }
     }
   }
 
