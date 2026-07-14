@@ -155,17 +155,29 @@ do, complementary to [`feature-roadmap.md`](../../puzzle-game/feature-roadmap.md
   array are a shape landmine). Original spec: like resurrect, but for
   *opposing-party* dead units. *Captured 2026-04-27.*
 
-- [ ] **"Allies" entity class.** New entity class — friendly to heroes
-  (same team), placed on the puzzle from the start by the creator (like
-  enemies — player doesn't place them). Have their own behavior tree
-  (move/attack/buff/heal). Can be referenced by win conditions ("Prevent
-  King from Dying", "Save the Princess"). Substantial — touches entity
-  type system, win conditions, editor UI. *Captured 2026-04-27.*
+- [x] **"Allies" entity class.** — SHIPPED 2026-07-13 (`cbe3b5c`→`0863225`,
+  6 slices). Separate asset type (user's pick over an enemy flag):
+  CustomAlly in own storage namespace, vessel-precedent adapter into the
+  enemy pipeline, placements stamped `party: 'hero'` (the shipped party
+  model needed ZERO ally-specific engine code — pinned in allies.test.ts).
+  Parameterized EnemyEditor (assetKind='ally'), Allies tab in the asset
+  manager, Allies palette section in the map editor, Slab chapter (heroes
+  accent until style pass), cloud sync under 'ally' (no migration — 012
+  covers it). Original spec: friendly to heroes, creator-placed, own
+  behavior tree, win-condition references. *Captured 2026-04-27.*
 
-- [ ] **"Noble" marker for heroes/allies.** Equivalent of the existing
-  "Boss" marker but for the friendly side. Designates an entity as
-  significant for win conditions like "must win with Noble alive on the
-  board." Couples with the Allies class. *Captured 2026-04-27.*
+- [x] **"Noble" marker for heroes/allies.** — SHIPPED 2026-07-13 with the
+  Allies slices. isNoble on ally assets AND hero Characters (editor
+  checkboxes both places). Three authorable conditions (user's pick over
+  an auto-defeat marker): protect_noble, noble_survives_turns,
+  noble_reaches_goal (reuses the GOAL tile) — uniform implied-protect
+  rule: any noble condition makes a Noble death instant defeat. Quest
+  labels name the placed Nobles. Board markers: noble crown / ally shield
+  next to health bars (boss-skull mechanism generalized; placeholder
+  pixels + Panel Forge slots iconNobleHealthBar/iconAllyHealthBar await
+  real art). Known limitation: trigger-EVENT semantics in ally behaviors
+  are enemy-authored wording/logic — revisit if an ally needs reactive
+  triggers. *Captured 2026-04-27.*
 
 ### New gameplay mechanics
 
