@@ -224,6 +224,51 @@ do, complementary to [`feature-roadmap.md`](../../puzzle-game/feature-roadmap.md
   sync (needs the asset-kind plumbing checked). *Captured 2026-04-27,
   redesigned 2026-07-11.*
 
+- [ ] **Team-relative trigger events + REPEAT_UNTIL behavior block.**
+  *Captured 2026-07-13 (user-prioritized: NEXT ENGINE SESSION). Two
+  coupled pieces — the trigger vocabulary redesign is the foundation,
+  REPEAT_UNTIL rides it. Full session brief in CLAUDE_HANDOFF.md
+  "Next session — start here".*
+
+  **Part 1 — team-relative trigger events (bug-driven).** Trigger EVENTS
+  are hard-wired to absolute parties (`checkTriggerCondition`,
+  actions.ts ~3883): `character_adjacent`/`character_in_range`/
+  `contact_with_character` sense the base HERO party; `enemy_*` sense
+  the base ENEMY party. Auto-target FLAGS were made team-relative in
+  the July party work, but events were not. Consequence: an ALLY
+  (shipped 2026-07-13; enemy-shaped authoring) given a triggered action
+  gets the `character_*` events — which fire on its own teammates, and
+  since proximity has no self-exclusion, a `character_adjacent` trigger
+  on an ally is ALWAYS true (it senses itself at distance 0). Redesign:
+  events become team-relative ("Opposing adjacent" / "Same team
+  adjacent" / in-range / contact variants), resolved against the
+  HOLDER's party the way `findNearestTeamMembers` resolves flags.
+  Decisions to lock with the user: BASE vs effective party (existing
+  proximity is deliberately charm-blind BASE — recommend keeping);
+  self-exclusion for same-team events (required, else useless — a
+  deliberate behavior change to pin); legacy event migration (authored
+  `enemy_*`/`character_*` events on existing assets must keep meaning
+  what they meant — either a read-time mapping via authoring-side or a
+  one-time asset migration).
+
+  **Part 2 — REPEAT_UNTIL behavior block (user idea 2026-07-13).** A new
+  sequence action: repeats all behavior ABOVE it (like REPEAT) until a
+  trigger condition fires — then flow FALLS THROUGH to the actions
+  below it. Enables "patrol until you spot an enemy, then switch to
+  attacking", escort-walk-until-threatened, flee-below-half-health.
+  Should reuse the (redesigned) trigger-condition vocabulary via
+  `checkTriggerCondition` directly — NOT the parallel-trigger plumbing
+  (editor gotcha: trigger config currently only shows on parallel
+  actions; REPEAT_UNTIL is sequential flow). Available to heroes,
+  enemies, AND allies (same CharacterAction lists). User explicitly
+  wants a RICH condition set ("go crazy with these possible triggers
+  to open up more complicated behavior") — beyond the proximity set:
+  health thresholds (self/ally/noble), turn number reached, repeated N
+  times, standing on a tile type, collectible nearby/collected, wall
+  ahead, a Noble in danger, enemy/ally count thresholds... brainstorm
+  with the user before building; each condition must stay a pure,
+  deterministic function of game state (determinism rule).
+
 ### Profile / cosmetic
 
 - [ ] **Developer badge in profile.** Special badge shown next to a

@@ -1,6 +1,6 @@
 # Claude Handoff Document - Puzzle Daily
 
-Last Updated: July 13, 2026 (homing hit-along-path session — solver parity fix + reach-leg scan, pending task #6 closed. NOTE: the July 1–12 work — engine audit sweeps 1–10, summon/necromancy/vessels, Phase E homing helpers, strafe actions, contact redesign — is chronicled in the user-memory `in-progress.md`, not here; this doc's session log resumes at June 30 below.)
+Last Updated: July 13, 2026 (BIG day: projectile divergences closed + ALLIES & NOBLE shipped in full — see "Recently completed" entries. NEXT SESSION IS PRE-BRIEFED: team-relative trigger events + REPEAT_UNTIL — see "Next session — start here". NOTE: the July 1–12 work — engine audit sweeps 1–10, summon/necromancy/vessels, Phase E homing helpers, strafe actions, contact redesign — is chronicled in the user-memory `in-progress.md`, not here; this doc's session log resumes at June 30 below.)
 
 ## Doc Map — Where to Find What
 
@@ -194,7 +194,18 @@ The Reflect status effect bounces incoming projectiles back:
 
 ### Next session — start here
 
-**2026-04-28 session shipped a major architectural unification + a slew of cleanups.** Highlights:
+**USER-PRIORITIZED (2026-07-13): team-relative trigger events + REPEAT_UNTIL behavior block.** Full spec in `docs/feature-backlog.md` ("Team-relative trigger events + REPEAT_UNTIL"). Session brief:
+
+1. **The bug that motivates it.** Trigger EVENTS in `checkTriggerCondition` ([actions.ts ~3883](src/engine/actions.ts)) are hard-wired to ABSOLUTE base parties: `character_adjacent`/`character_in_range`/`contact_with_character` sense the hero party, `enemy_*` the enemy party. Auto-target FLAGS went team-relative in the July party work; events didn't. So an **Ally** (shipped 2026-07-13, enemy-shaped authoring) with a triggered action gets `character_*` events that fire on its OWN teammates — and with no proximity self-exclusion, `character_adjacent` on an ally is ALWAYS true (senses itself at distance 0). Until fixed: don't author triggered actions on allies (limitation noted in the Allies backlog entry).
+2. **The redesign.** Events become team-relative ("Opposing adjacent" / "Same team adjacent" + in-range/contact variants), resolved against the holder's party like `findNearestTeamMembers`. Lock with the user first: BASE vs effective party (existing proximity is deliberately charm-blind BASE — recommend keeping); self-exclusion for same-team events (required or they're useless; deliberate behavior change, pin it); legacy migration (existing authored `enemy_*`/`character_*` events must keep their meaning — read-time mapping via authoring side, or a one-time asset migration).
+3. **REPEAT_UNTIL rides the new vocabulary** (user idea, they're excited about it): a sequence action that repeats everything ABOVE it until a condition fires, then falls through to the actions BELOW — "patrol until you spot an enemy, then attack." Reuse `checkTriggerCondition` directly, NOT the parallel-trigger plumbing (editor only shows trigger config on parallel actions; this is sequential flow). Works for heroes, enemies, and allies. The user wants a RICH condition set — brainstorm beyond proximity (health thresholds, turn number, repeat-count, tile type underfoot, Noble in danger, entity-count thresholds...); every condition must be a pure deterministic function of game state.
+4. **Test seams that will bite** (rediscovered 2026-07-13, pinned in the test files): authored trigger actions are always executionMode 'parallel' in fixtures; `testMode: true` skips win/lose checks; zero-active-hero games end instantly (park a WAIT+REPEAT hero); explicit `tiles: undefined` clobbers `createTestPuzzle`'s default grid.
+
+**Decided the same day (do not relitigate):** allies collecting items + scoring like hero-party summons is the intended behavior — the user explicitly kept it.
+
+---
+
+**Prior "start here" (2026-04-28 session) kept for context.** Highlights:
 
 - **Playtest unification (5 commits, ~1,500 lines removed net).** MapEditor's playtest mode no longer runs its own embedded game loop — it mounts `<Game/>` directly with the in-progress puzzle. Game.tsx grew three optional escape-hatch props (`puzzle`, `onExitToEditor`, `onTurnExecuted`); MapEditor passes them when mounting playtest, PlayerApp doesn't (so player builds get zero editor-only chrome). Combat log returns as a floating button + modal in the quest panel (next to "Back to Editor"), driven by `onTurnExecuted` → `diffTurn` → modal. Future Game.tsx features automatically benefit playtest, no port tax.
 - **Daily-lock placement guard** — `handleTileClick` short-circuits when daily-lock is engaged so locked-out players can't place heroes (parallel to the existing `handlePlay` guard).
@@ -303,6 +314,17 @@ That deviation was the root problem. The singleton's lack of ownership boundarie
 ### Won't-do (decided)
 
 - **Native-resolution rendering Phase 2 (game board), and Phase 3 / Phase 4 with it.** Attempted on 2026-04-17 (commit `f2de97f`), reverted same day (commit `257c50b`). The "shrink the canvas buffer + CSS-upscale" approach is incompatible with the per-sheet `scale` and fractional `sprite.size` knobs the board needs for cross-sheet entity normalization. See [docs/native-resolution-rendering-plan.md](docs/native-resolution-rendering-plan.md) Phase 2 section for full reasoning. Don't reattempt without revisiting that doc. **NOTE (2026-06-30):** board pixel-perfection was *later achieved by a different, much smaller change* — see "Recently completed (June 30, 2026 — integer-zoom board quantization)" below. The "half-pixels are an accepted tax" framing in that plan doc is now superseded for the board.
+
+### Recently completed (July 13, 2026 — ALLIES + NOBLE, full feature)
+
+Shipped the same day as the projectile work below: `cbe3b5c`→`0863225` (6 slices) + `c1e9f88` (info panel), 490 tests green throughout. Design locked with the user: separate Ally asset type / authorable noble win conditions / badge-marker board visuals.
+
+- **Engine** — CustomAlly (enemy-shaped, own `custom_allies` namespace) adapts into the enemy pipeline vessel-style; a placement is a `PlacedEnemy` stamped `party: 'hero'`, and the shipped party model needed ZERO ally-specific engine code (pinned in `allies.test.ts`). Noble = `isNoble` asset flag on allies AND hero Characters. Three win conditions: `protect_noble`, `noble_survives_turns`, `noble_reaches_goal` (reuses GOAL tile), with the uniform implied-protect rule — any noble condition makes a Noble death instant defeat (`nobles.test.ts`).
+- **Editors** — EnemyEditor parameterized with `assetKind` (KIND config routes storage/labels/folders/usages; Boss↔Noble checkbox swap); Allies tab in the asset manager; Noble checkbox in CharacterEditor; map palette Allies section (placement stamps the party); noble conditions in the win-condition UI with a no-Noble-placed warning.
+- **Game page** — quest labels name the Nobles; EnemyDisplay is side-parameterized: enemy tally excludes hero-party units, and a separate Allies box (parchment header, copper selection, new 'allies' help section) lists them, rendering nothing when absent.
+- **Slab + cloud** — Allies chapter (heroes accent until a style pass; `iconTabAllies` Panel Forge key); sync under type 'ally', no migration (012 covers it).
+- **Board** — boss-skull mechanism generalized to `barIcon` ('boss'|'noble'|'ally'): ally shield / Noble crown next to health bars; placeholder 8x8 pixels + Panel Forge slots `iconNobleHealthBar`/`iconAllyHealthBar` awaiting the user's art.
+- **Known limitation → next session:** triggered actions on allies misfire (see "Next session — start here"). **Kept deliberately:** allies collect items + score like hero-party summons (user decision 2026-07-13).
 
 ### Recently completed (July 13, 2026 — homing hit-along-path: solver parity + reach-leg scan)
 
