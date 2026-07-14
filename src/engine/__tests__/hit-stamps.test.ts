@@ -301,6 +301,90 @@ describe('end-to-end: retaliation trigger with the previous_action window', () =
   });
 });
 
+describe('projectile stamps (slice 2)', () => {
+  beforeEach(() => {
+    registerTestSpell('bolt', {
+      id: 'bolt', name: 'Bolt', ...spellBase,
+      templateType: SpellTemplate.LINEAR, directionMode: 'current_facing',
+      damage: 2, projectileSpeed: 4, range: 6,
+    });
+  });
+
+  const boltScene = (opts?: { headless?: boolean }) => {
+    regChar(createTestCharacterDef({
+      id: 'mage', health: 10,
+      behavior: [{ type: ActionType.SPELL, spellId: 'bolt' }, { type: ActionType.WAIT }, { type: ActionType.REPEAT }] as never,
+    }));
+    return createTestGameState({
+      puzzle: createTestPuzzle({
+        width: 8, height: 5,
+        enemies: [createTestEnemy({ enemyId: 'goblin-1', x: 4, y: 2, currentHealth: 5 })],
+      }),
+      placedCharacters: [createTestCharacter({
+        characterId: 'mage', x: 2, y: 2, facing: Direction.EAST, currentHealth: 10,
+      })],
+      gameStatus: 'running',
+      currentTurn: 0,
+      testMode: true,
+      ...(opts?.headless ? { headlessMode: true } : {}),
+    });
+  };
+
+  it('stamps the victim (projectile + any) and credits the caster on resolve', () => {
+    const gs = boltScene();
+    executeTurn(gs); // cast + resolveProjectiles hits (speed 4, 2 tiles)
+    expect(gs.puzzle.enemies[0].hitStamps).toEqual({ projectile: 1, any: 1 });
+    expect(gs.placedCharacters[0].dealtStamps).toEqual({ projectile: 1, any: 1 });
+  });
+
+  it('headless mode produces identical stamps (solver parity)', () => {
+    const real = boltScene();
+    executeTurn(real);
+    const headless = boltScene({ headless: true });
+    executeTurn(headless);
+    expect(headless.puzzle.enemies[0].hitStamps).toEqual(real.puzzle.enemies[0].hitStamps);
+    expect(headless.placedCharacters[0].dealtStamps).toEqual(real.placedCharacters[0].dealtStamps);
+  });
+
+  it('duplicate same-asset enemy casters: only the FIRING instance gets dealt credit', () => {
+    regChar(createTestCharacterDef({
+      id: 'victim', health: 10,
+      behavior: [{ type: ActionType.WAIT }, { type: ActionType.REPEAT }] as never,
+    }));
+    regEnemy(createTestEnemyDef({
+      id: 'archer', health: 5,
+      behavior: {
+        type: 'active',
+        pattern: [{ type: ActionType.SPELL, spellId: 'bolt' }],
+        defaultFacing: Direction.WEST,
+      },
+    }));
+    const gs = baseState({
+      enemies: [
+        // Index 0 fires EAST into empty space; index 1 fires WEST into the hero.
+        createTestEnemy({ enemyId: 'archer', x: 5, y: 0, currentHealth: 5, actionIndex: 0, active: true, facing: Direction.EAST }),
+        createTestEnemy({ enemyId: 'archer', x: 4, y: 2, currentHealth: 5, actionIndex: 0, active: true, facing: Direction.WEST }),
+      ],
+      heroes: [createTestCharacter({ characterId: 'victim', x: 2, y: 2, currentHealth: 10 })],
+    });
+    executeTurn(gs);
+    expect(gs.placedCharacters[0].hitStamps).toEqual({ projectile: 1, any: 1 });
+    expect(gs.puzzle.enemies[1].dealtStamps).toEqual({ projectile: 1, any: 1 });
+    expect(gs.puzzle.enemies[0].dealtStamps).toBeUndefined(); // shared enemyId — index precision
+  });
+
+  it('reflected bolts credit no one; the returning hit stamps the caster as victim', () => {
+    const gs = boltScene();
+    // Unregistered reflect asset = reflect from all directions.
+    gs.puzzle.enemies[0].statusEffects = [statusInst(StatusEffectType.REFLECT)];
+    for (let i = 0; i < 5 && !gs.placedCharacters[0].hitStamps; i++) executeTurn(gs);
+    expect(gs.placedCharacters[0].hitStamps?.projectile).toBeDefined(); // own bolt came back
+    expect(gs.puzzle.enemies[0].hitStamps).toBeUndefined();   // reflected before damage
+    expect(gs.puzzle.enemies[0].dealtStamps).toBeUndefined(); // reflector gets no credit
+    expect(gs.placedCharacters[0].dealtStamps).toBeUndefined(); // neither does the caster
+  });
+});
+
 describe('fresh runs', () => {
   it('initializeGameState strips stamps and cycle bookkeeping from placements', () => {
     const stale = createTestEnemy({

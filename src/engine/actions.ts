@@ -2918,6 +2918,23 @@ export function stampHitLanded(
 }
 
 /**
+ * Attacker-only half of stampHitLanded — for deliveries where the victim
+ * stamp happens inside applyDamageToEntityNoDeflect but the attacker must
+ * be looked up separately (projectile hits: the caster is found in live
+ * state from the projectile's source fields at resolve time).
+ */
+export function stampDealtHit(
+  attacker: PlacedCharacter | PlacedEnemy,
+  kind: Exclude<HitStampKind, 'any'> | undefined,
+  gameState: GameState
+): void {
+  const turn = gameState.currentTurn;
+  attacker.dealtStamps = kind
+    ? { ...attacker.dealtStamps, [kind]: turn, any: turn }
+    : { ...attacker.dealtStamps, any: turn };
+}
+
+/**
  * Merge two stamp records, keeping the LATEST turn per kind. Used by the
  * actor-loop write-backs: while an entity's acting copy runs, feedback
  * damage (a victim's on_death spell, deflect) stamps the ORIGINAL array

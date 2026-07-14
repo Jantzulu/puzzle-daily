@@ -3,7 +3,7 @@ import type { GameState, PlacedCharacter, PlacedEnemy, ParallelActionTracker, St
 import { ActionType, Direction, StatusEffectType, TileType as TileTypeEnum } from '../types/game';
 import { getCharacter } from '../data/characters';
 import { getEnemy } from '../data/enemies';
-import { executeAction, executeAOEAttack, evaluateTriggers, executeDeathTriggers, applyDamageToEntity, applyDamageToEntityNoDeflect, placeCollectibleFromSpell, checkTriggerCondition, mergeHitStamps } from './actions';
+import { executeAction, executeAOEAttack, evaluateTriggers, executeDeathTriggers, applyDamageToEntity, applyDamageToEntityNoDeflect, placeCollectibleFromSpell, checkTriggerCondition, mergeHitStamps, stampDealtHit } from './actions';
 import { loadStatusEffectAsset, loadSpellAsset, loadCollectible, loadEnemy, loadCharacter, loadTileType, loadVessel } from '../utils/assetStorage';
 import { spawnEnemyMidGame } from './spawning';
 import { turnLeft, turnRight, turnAround, getDirectionOffset, calculateDirectionTo, isAttackFromBehind, isEntityFunctional } from './utils';
@@ -238,7 +238,11 @@ function checkHomingPathForHits(proj: Projectile, tiles: Array<{x: number; y: nu
           );
         }
         if (mode === 'visual') hitEnemy.pendingVisualDamage = (hitEnemy.pendingVisualDamage ?? 0) + damage;
-        applyDamageToEntityNoDeflect(hitEnemy, damage, gameState);
+        applyDamageToEntityNoDeflect(hitEnemy, damage, gameState, 'projectile');
+        if (damage > 0) {
+          const attacker = findProjectileAttacker(proj, gameState);
+          if (attacker) stampDealtHit(attacker, 'projectile', gameState);
+        }
         if (hitEnemy.dead) {
           if (mode === 'visual') {
             hitEnemy.dead = false;
@@ -321,7 +325,11 @@ function checkHomingPathForHits(proj: Projectile, tiles: Array<{x: number; y: nu
           );
         }
         if (mode === 'visual') hitChar.pendingVisualDamage = (hitChar.pendingVisualDamage ?? 0) + damage;
-        applyDamageToEntityNoDeflect(hitChar, damage, gameState);
+        applyDamageToEntityNoDeflect(hitChar, damage, gameState, 'projectile');
+        if (damage > 0) {
+          const attacker = findProjectileAttacker(proj, gameState);
+          if (attacker) stampDealtHit(attacker, 'projectile', gameState);
+        }
         if (hitChar.dead) {
           if (mode === 'visual') {
             hitChar.dead = false;
@@ -595,6 +603,31 @@ function reflectProjectile(
 }
 
 /**
+ * Resolve the live entity that fired a projectile, for attacker-side hit
+ * stamps (dealtStamps) at resolve time. Precise for enemies via
+ * sourceEnemyIndex (duplicate same-asset enemies share an enemyId — index
+ * is the instance identity, and the array is append-only so it stays
+ * stable across turns); characters by id; first-living-by-id as the legacy
+ * enemy fallback. Reflected bolts credit NO ONE: the original caster
+ * didn't land the hit (their bolt was turned) and the reflector's strike
+ * is passive.
+ */
+function findProjectileAttacker(
+  proj: Projectile,
+  gameState: GameState
+): PlacedCharacter | PlacedEnemy | undefined {
+  if (proj.reflected) return undefined;
+  if (proj.sourceEnemyIndex !== undefined) return gameState.puzzle.enemies[proj.sourceEnemyIndex];
+  if (proj.sourceCharacterId) {
+    return gameState.placedCharacters.find(c => c.characterId === proj.sourceCharacterId);
+  }
+  if (proj.sourceEnemyId) {
+    return gameState.puzzle.enemies.find(e => e.enemyId === proj.sourceEnemyId && !e.dead);
+  }
+  return undefined;
+}
+
+/**
  * Apply damage with deflect checking for projectiles.
  * Uses centralized damage function to respect shields.
  * Returns true if damage was deflected (and applied to source instead) OR if target is invulnerable
@@ -623,8 +656,10 @@ function applyProjectileDamageWithDeflect(
     }
 
     if (sourceEntity) {
-      // Apply damage to source using centralized function (no deflect to prevent loops)
-      applyDamageToEntityNoDeflect(sourceEntity, damage, gameState);
+      // Apply damage to source using centralized function (no deflect to
+      // prevent loops). The bounced damage keeps its 'projectile' kind for
+      // the source's hit stamp — their own bolt came back at them.
+      applyDamageToEntityNoDeflect(sourceEntity, damage, gameState, 'projectile');
 
       // Handle death drop if entity died
       if (sourceEntity.dead) {
@@ -3755,7 +3790,14 @@ function applyEntityHit(
         );
       }
     }
-    applyDamageToEntityNoDeflect(target, damage, gameState);
+    applyDamageToEntityNoDeflect(target, damage, gameState, 'projectile');
+    // Attacker-side hit stamp — the caster looked up in live state (both
+    // modes run this, so solver parity is free). Reflected bolts credit
+    // no one (findProjectileAttacker).
+    if (damage > 0) {
+      const attacker = findProjectileAttacker(proj, gameState);
+      if (attacker) stampDealtHit(attacker, 'projectile', gameState);
+    }
     if (target.dead) {
       if (mode === 'visual') {
         target.dead = false;
