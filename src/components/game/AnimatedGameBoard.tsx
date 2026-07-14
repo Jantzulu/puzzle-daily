@@ -3361,14 +3361,20 @@ function drawEnemy(
     // Draw health bar above the enemy
     const maxHealth = enemyData?.health || enemy.currentHealth;
     const isBoss = enemyData?.isBoss === true;
+    // Ally badge (user design 2026-07-13): hero-party entities living in the
+    // enemies array show the shield marker — crown when the asset is a
+    // Noble — instead of the boss skull. The party stamp is the signal.
+    const barIcon: BarIconKind | undefined = enemy.party === 'hero'
+      ? (enemyData?.isNoble ? 'noble' : 'ally')
+      : (isBoss ? 'boss' : undefined);
     const enemySpriteTop = hasCustomSprite ? getSpriteTopY(enemyData?.customSprite, py) : undefined;
     const barTopY = getHealthBarTopY(py, enemySpriteTop);
-    drawHealthBar(ctx, px, py, enemy.currentHealth + (enemy.pendingVisualDamage ?? 0), maxHealth, entityIndex ?? -1, 'enemy', enemy.statusEffects, now, isBoss, enemySpriteTop, homingGlowColor);
+    drawHealthBar(ctx, px, py, enemy.currentHealth + (enemy.pendingVisualDamage ?? 0), maxHealth, entityIndex ?? -1, 'enemy', enemy.statusEffects, now, barIcon, enemySpriteTop, homingGlowColor);
 
     // Draw direction indicator next to health bar — green if moving, grey for facing only
     if (enemyData) {
       const enemyHasMovement = enemyHasMovementActions(enemyData.behavior);
-      drawDirectionIndicator(ctx, px, barTopY, facing || Direction.SOUTH, isBoss, enemyHasMovement);
+      drawDirectionIndicator(ctx, px, barTopY, facing || Direction.SOUTH, barIcon, enemyHasMovement);
     }
 
     // Draw status effect icons above health bar
@@ -3477,15 +3483,18 @@ function getHealthBarKey(entityType: 'enemy' | 'character', instanceIndex: numbe
   return `${entityType}:${instanceIndex}`;
 }
 
-// Cache for boss icon image
-let bossIconImage: HTMLImageElement | null = null;
-let bossIconLoading = false;
-let lastBossIconUrl: string | null = null;
-let defaultBossIconGenerated: string | null = null;
+// Health-bar marker icons: boss skull (enemies), noble crown, ally shield
+// (hero-party units living in the enemies array). Each has a Panel Forge
+// slot (iconBossHealthBar / iconNobleHealthBar / iconAllyHealthBar); the
+// canvas pixel art below is the placeholder until the user's art lands.
+type BarIconKind = 'boss' | 'noble' | 'ally';
+const barIconCache = new Map<BarIconKind, { img: HTMLImageElement | null; loading: boolean; lastUrl: string | null }>();
+const defaultBarIconCache = new Map<BarIconKind, string>();
 
-// Generate a default skull icon using canvas (8x8 pixel art skull)
-function generateDefaultBossIcon(): string {
-  if (defaultBossIconGenerated) return defaultBossIconGenerated;
+// Generate default 8x8 pixel-art marker icons on a canvas
+function generateDefaultBarIcon(kind: BarIconKind): string {
+  const cached = defaultBarIconCache.get(kind);
+  if (cached) return cached;
 
   const canvas = document.createElement('canvas');
   canvas.width = 8;
@@ -3493,66 +3502,100 @@ function generateDefaultBossIcon(): string {
   const ctx = canvas.getContext('2d');
   if (!ctx) return '';
 
-  // Draw a simple 8x8 skull pixel art
-  ctx.fillStyle = '#ffffff';
-  // Row 0: top of skull
-  ctx.fillRect(2, 0, 4, 1);
-  // Row 1: wider skull
-  ctx.fillRect(1, 1, 6, 1);
-  // Row 2: full width with eyes
-  ctx.fillRect(0, 2, 8, 1);
-  ctx.fillStyle = '#000000';
-  ctx.fillRect(1, 2, 2, 1); // left eye
-  ctx.fillRect(5, 2, 2, 1); // right eye
-  // Row 3: skull with nose
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 3, 8, 1);
-  ctx.fillStyle = '#000000';
-  ctx.fillRect(3, 3, 2, 1); // nose
-  // Row 4: upper jaw
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(1, 4, 6, 1);
-  // Row 5: teeth row
-  ctx.fillRect(1, 5, 6, 1);
-  ctx.fillStyle = '#000000';
-  ctx.fillRect(2, 5, 1, 1); // tooth gap
-  ctx.fillRect(5, 5, 1, 1); // tooth gap
-  // Row 6: lower teeth
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(2, 6, 4, 1);
-  ctx.fillStyle = '#000000';
-  ctx.fillRect(3, 6, 2, 1); // gap
-  // Row 7: jaw bottom
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(3, 7, 2, 1);
-
-  defaultBossIconGenerated = canvas.toDataURL('image/png');
-  return defaultBossIconGenerated;
-}
-
-// Helper to load boss icon
-function loadBossIcon(): HTMLImageElement | null {
-  const customIconUrl = getThemeAsset('iconBossHealthBar');
-  const iconUrl = customIconUrl || generateDefaultBossIcon();
-
-  // Check if we need to reload (URL changed)
-  if (iconUrl !== lastBossIconUrl) {
-    bossIconImage = null;
-    bossIconLoading = false;
-    lastBossIconUrl = iconUrl;
+  if (kind === 'boss') {
+    // 8x8 skull
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(2, 0, 4, 1); // top of skull
+    ctx.fillRect(1, 1, 6, 1); // wider skull
+    ctx.fillRect(0, 2, 8, 1); // full width with eyes
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(1, 2, 2, 1); // left eye
+    ctx.fillRect(5, 2, 2, 1); // right eye
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 3, 8, 1); // skull with nose
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(3, 3, 2, 1); // nose
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(1, 4, 6, 1); // upper jaw
+    ctx.fillRect(1, 5, 6, 1); // teeth row
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(2, 5, 1, 1); // tooth gap
+    ctx.fillRect(5, 5, 1, 1); // tooth gap
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(2, 6, 4, 1); // lower teeth
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(3, 6, 2, 1); // gap
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(3, 7, 2, 1); // jaw bottom
+  } else if (kind === 'noble') {
+    // 8x8 gold crown with a jewel
+    ctx.fillStyle = '#f5c542';
+    ctx.fillRect(3, 0, 2, 1); // center spike tip
+    ctx.fillRect(0, 1, 1, 1); // left spike tip
+    ctx.fillRect(7, 1, 1, 1); // right spike tip
+    ctx.fillRect(3, 1, 2, 1); // center spike
+    ctx.fillRect(0, 2, 2, 1); // left spike widens
+    ctx.fillRect(3, 2, 2, 1);
+    ctx.fillRect(6, 2, 2, 1); // right spike widens
+    ctx.fillRect(0, 3, 8, 1); // spikes meet
+    ctx.fillRect(0, 4, 8, 1); // band
+    ctx.fillRect(0, 5, 8, 1); // band
+    ctx.fillStyle = '#dc2626';
+    ctx.fillRect(3, 4, 2, 1); // jewel
+    ctx.fillStyle = '#a16207';
+    ctx.fillRect(0, 6, 8, 1); // band shadow / rim
+  } else {
+    // 8x8 steel shield with a copper chevron
+    ctx.fillStyle = '#cbd5e1';
+    ctx.fillRect(1, 0, 6, 1);
+    ctx.fillRect(0, 1, 8, 1);
+    ctx.fillRect(0, 2, 8, 1);
+    ctx.fillRect(0, 3, 8, 1);
+    ctx.fillRect(1, 4, 6, 1);
+    ctx.fillRect(2, 5, 4, 1);
+    ctx.fillRect(3, 6, 2, 1);
+    ctx.fillRect(3, 7, 2, 1);
+    ctx.fillStyle = '#b87333';
+    ctx.fillRect(3, 1, 2, 1); // chevron point
+    ctx.fillRect(2, 2, 4, 1);
+    ctx.fillRect(1, 3, 6, 1); // chevron base
   }
 
-  if (bossIconImage) return bossIconImage;
-  if (bossIconLoading) return null;
+  const url = canvas.toDataURL('image/png');
+  defaultBarIconCache.set(kind, url);
+  return url;
+}
 
-  bossIconLoading = true;
+// Load a health-bar marker icon (custom Panel Forge art or default pixels)
+function loadBarIcon(kind: BarIconKind): HTMLImageElement | null {
+  const themeKey = kind === 'boss' ? 'iconBossHealthBar' : kind === 'noble' ? 'iconNobleHealthBar' : 'iconAllyHealthBar';
+  const customIconUrl = getThemeAsset(themeKey);
+  const iconUrl = customIconUrl || generateDefaultBarIcon(kind);
+
+  let entry = barIconCache.get(kind);
+  if (!entry) {
+    entry = { img: null, loading: false, lastUrl: null };
+    barIconCache.set(kind, entry);
+  }
+
+  // Check if we need to reload (URL changed)
+  if (iconUrl !== entry.lastUrl) {
+    entry.img = null;
+    entry.loading = false;
+    entry.lastUrl = iconUrl;
+  }
+
+  if (entry.img) return entry.img;
+  if (entry.loading) return null;
+
+  entry.loading = true;
   const img = new Image();
   img.onload = () => {
-    bossIconImage = img;
-    bossIconLoading = false;
+    entry.img = img;
+    entry.loading = false;
   };
   img.onerror = () => {
-    bossIconLoading = false;
+    entry.loading = false;
   };
   img.src = iconUrl;
   return null;
@@ -3630,7 +3673,7 @@ function drawHealthBar(
   entityType: 'enemy' | 'character',
   statusEffects?: StatusEffectInstance[],
   now: number = Date.now(),
-  isBoss: boolean = false,
+  barIcon?: BarIconKind,
   spriteTopY?: number,
   homingGlowColor?: string
 ) {
@@ -3638,20 +3681,20 @@ function drawHealthBar(
   const barHeight = HEALTH_BAR_HEIGHT;
   const innerHeight = 3; // Height of the colored bar inside the border
 
-  // Boss icon dimensions
+  // Marker icon dimensions (boss skull / noble crown / ally shield)
   const bossIconSize = 7; // Small icon size
   const bossIconGap = 2; // Gap between icon and health bar
 
   // Position: centered above the sprite
-  // If boss, shift the bar right to make room for the icon
-  const totalWidth = isBoss ? barWidth + bossIconSize + bossIconGap : barWidth;
-  const startX = px + (TILE_SIZE - totalWidth) / 2 + (isBoss ? bossIconSize + bossIconGap : 0);
+  // If marked, shift the bar right to make room for the icon
+  const totalWidth = barIcon ? barWidth + bossIconSize + bossIconGap : barWidth;
+  const startX = px + (TILE_SIZE - totalWidth) / 2 + (barIcon ? bossIconSize + bossIconGap : 0);
   // Place healthbar above the sprite's top edge, or near tile top if sprite fits in tile
   const startY = getHealthBarTopY(py, spriteTopY);
 
-  // Draw boss icon if this is a boss
-  if (isBoss) {
-    const icon = loadBossIcon();
+  // Draw the marker icon (boss skull, noble crown, or ally shield)
+  if (barIcon) {
+    const icon = loadBarIcon(barIcon);
     if (icon) {
       const iconX = startX - bossIconSize - bossIconGap;
       const iconY = startY + (barHeight - bossIconSize) / 2; // Center vertically with health bar
@@ -4264,14 +4307,16 @@ function drawCharacter(
   if (!character.dead) {
     // Draw health bar above the character
     const maxHealth = charData?.health || character.currentHealth;
+    // Noble heroes carry the crown marker (same slot bosses use for the skull)
+    const charBarIcon: BarIconKind | undefined = charData?.isNoble ? 'noble' : undefined;
     const charSpriteTop = hasCustomSprite ? getSpriteTopY(charData?.customSprite, py) : undefined;
     const barTopY = getHealthBarTopY(py, charSpriteTop);
-    drawHealthBar(ctx, px, py, character.currentHealth + (character.pendingVisualDamage ?? 0), maxHealth, entityIndex ?? -1, 'character', character.statusEffects, now, false, charSpriteTop, homingGlowColor);
+    drawHealthBar(ctx, px, py, character.currentHealth + (character.pendingVisualDamage ?? 0), maxHealth, entityIndex ?? -1, 'character', character.statusEffects, now, charBarIcon, charSpriteTop, homingGlowColor);
 
     // Draw direction indicator next to health bar — green if moving, grey for facing only
     if (charData) {
       const charHasMovement = hasMovementActions(charData.behavior || []);
-      drawDirectionIndicator(ctx, px, barTopY, facing, false, charHasMovement);
+      drawDirectionIndicator(ctx, px, barTopY, facing, charBarIcon, charHasMovement);
     }
 
     // Draw status effect icons above health bar
@@ -4285,7 +4330,7 @@ function drawDirectionIndicator(
   px: number,
   barTopY: number,
   direction: Direction,
-  isBoss: boolean = false,
+  barIcon?: BarIconKind,
   isMoving: boolean = true
 ) {
   const arrowSize = 3; // Small arrow
@@ -4294,8 +4339,8 @@ function drawDirectionIndicator(
   const bossIconGap = 2;
 
   // Calculate position to the right of the health bar
-  const totalBarWidth = isBoss ? barWidth + bossIconSize + bossIconGap : barWidth;
-  const barStartX = px + (TILE_SIZE - totalBarWidth) / 2 + (isBoss ? bossIconSize + bossIconGap : 0);
+  const totalBarWidth = barIcon ? barWidth + bossIconSize + bossIconGap : barWidth;
+  const barStartX = px + (TILE_SIZE - totalBarWidth) / 2 + (barIcon ? bossIconSize + bossIconGap : 0);
   const barEndX = barStartX + barWidth;
 
   // Position arrow to the right of health bar, vertically centered with it
