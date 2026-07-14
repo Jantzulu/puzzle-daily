@@ -537,3 +537,63 @@ describe('homing hit-along-path parity', () => {
     expect(final.enemies[0].health).toBe(3);
   });
 });
+
+// ==========================================
+// THROW_PLACE landing parity — residual divergence #3
+// (docs/projectile-refactor-plan.md §Phase E). Real mode places at the end
+// of the wall-truncated tilePath; headless used floor(logicalX/Y), and on a
+// wall hit the walker's position update is skipped entirely — so a throw
+// stopped by a wall mid-turn placed the item at the bolt's PRE-TURN
+// position (the caster's own tile for a first-turn wall), not the tile in
+// front of the wall the live game uses.
+// ==========================================
+
+describe('THROW_PLACE landing parity', () => {
+  const registerThrow = (range: number) =>
+    registerTestSpell('throw-gold', {
+      id: 'throw-gold', name: 'Throw Gold', description: '', thumbnailIcon: '',
+      templateType: SpellTemplate.THROW_PLACE, directionMode: 'current_facing',
+      spawnCollectibleId: 'gold', range, projectileSpeed: 4, cooldown: 10,
+      sprites: {},
+    });
+  const registerThrower = () =>
+    regChar(createTestCharacterDef({
+      id: 'thrower', health: 10,
+      behavior: [{ type: ActionType.SPELL, spellId: 'throw-gold' },
+                 { type: ActionType.REPEAT }] as never,
+    }));
+
+  it('a throw stopped by a wall lands in front of the wall in BOTH modes', () => {
+    registerThrow(6);
+    registerThrower();
+    const final = expectParity(() => {
+      const tiles = createEmptyGrid(8, 5);
+      setTile(tiles, 3, 2, TileType.WALL);
+      return createTestGameState({
+        puzzle: createTestPuzzle({ width: 8, height: 5, tiles, enemies: [] }),
+        placedCharacters: [createTestCharacter({
+          characterId: 'thrower', x: 0, y: 2, facing: Direction.EAST,
+          currentHealth: 10, actionIndex: 0, active: true,
+        })],
+        gameStatus: 'running',
+        currentTurn: 0,
+        testMode: true,
+      });
+    }, 1);
+    expect(final.collectibles).toHaveLength(1);
+    expect(final.collectibles[0]).toMatchObject({ x: 2, y: 2, collected: false });
+  });
+
+  it('an open-field throw lands at max range in BOTH modes', () => {
+    registerThrow(3);
+    registerThrower();
+    const final = expectParity(() => baseState({
+      heroes: [createTestCharacter({
+        characterId: 'thrower', x: 0, y: 2, facing: Direction.EAST,
+        currentHealth: 10, actionIndex: 0, active: true,
+      })],
+    }), 1);
+    expect(final.collectibles).toHaveLength(1);
+    expect(final.collectibles[0]).toMatchObject({ x: 3, y: 2, collected: false });
+  });
+});

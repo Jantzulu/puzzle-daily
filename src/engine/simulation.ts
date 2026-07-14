@@ -778,6 +778,31 @@ function computeTilePathWithWallLookahead(
 }
 
 /**
+ * Where a THROW_PLACE projectile's item lands: the last tile of the bolt's
+ * tilePath. Spawn-time paths are wall-truncated (see spawnProjectile /
+ * computeTilePathWithWallLookahead), so the final tile is normally the last
+ * open tile; the step-back branch covers refreshed or degenerate paths whose
+ * final tile is blocked. SHARED by resolveProjectiles and
+ * updateProjectilesHeadless (residual divergence #3 fix) so the solver
+ * certifies the same landing tile the live game uses. Returns null when no
+ * valid tile exists (single-tile blocked path) — no item spawns.
+ */
+function resolveThrowPlaceLandingTile(
+  tilePath: Array<{ x: number; y: number }>,
+  gameState: GameState,
+): { x: number; y: number } | null {
+  let placeTile: { x: number; y: number } | null = tilePath[tilePath.length - 1];
+  if (placeTile) {
+    const placeTileData = gameState.puzzle.tiles[placeTile.y]?.[placeTile.x];
+    if (!placeTileData || placeTileData.type === TileTypeEnum.WALL ||
+        !isInBounds(placeTile.x, placeTile.y, gameState.puzzle.width, gameState.puzzle.height)) {
+      placeTile = tilePath.length > 1 ? tilePath[tilePath.length - 2] : null;
+    }
+  }
+  return placeTile;
+}
+
+/**
  * Mark an entity as dead, executing death triggers BEFORE setting the dead flag
  * This ensures on_death spell triggers fire while the entity is still "alive"
  */
@@ -5107,16 +5132,7 @@ function resolveProjectiles(gameState: GameState): void {
     // on `turnTiles`. Found via TS error squash on 2026-04-30.
     const tilePath = proj.tilePath;
     if (shouldRemove && proj.throwPlaceConfig && tilePath && tilePath.length > 0) {
-      // Find the last valid (non-wall) tile to place the item
-      let placeTile: { x: number; y: number } | null = tilePath[tilePath.length - 1];
-      // If the last tile in tilePath is a wall, use the one before it
-      if (placeTile) {
-        const placeTileData = gameState.puzzle.tiles[placeTile.y]?.[placeTile.x];
-        if (!placeTileData || placeTileData.type === TileTypeEnum.WALL ||
-            !isInBounds(placeTile.x, placeTile.y, gameState.puzzle.width, gameState.puzzle.height)) {
-          placeTile = tilePath.length > 1 ? tilePath[tilePath.length - 2] : null;
-        }
-      }
+      const placeTile = resolveThrowPlaceLandingTile(tilePath, gameState);
 
       if (placeTile) {
         placeCollectibleFromSpell(placeTile.x, placeTile.y, proj.throwPlaceConfig, gameState);
@@ -5398,16 +5414,16 @@ function updateProjectilesHeadless(gameState: GameState): void {
       }
     }
 
-    // THROW_PLACE: place item when headless projectile reaches destination
-    if (shouldRemove && proj.throwPlaceConfig) {
-      const placeX = Math.floor(proj.logicalX);
-      const placeY = Math.floor(proj.logicalY);
-      // Verify it's a valid tile (not wall, in bounds)
-      if (isInBounds(placeX, placeY, gameState.puzzle.width, gameState.puzzle.height)) {
-        const placeTile = gameState.puzzle.tiles[placeY]?.[placeX];
-        if (placeTile && placeTile.type !== TileTypeEnum.WALL) {
-          placeCollectibleFromSpell(placeX, placeY, proj.throwPlaceConfig, gameState);
-        }
+    // THROW_PLACE: place item when headless projectile reaches destination.
+    // Same landing rule as real mode (residual divergence #3 fix): the end
+    // of the wall-truncated tilePath. The old floor(logicalX/Y) rule was
+    // wrong on wall stops — the walker's position update is skipped on
+    // hitWall turns, so logical still held the PRE-TURN position and the
+    // item landed at the caster's tile instead of in front of the wall.
+    if (shouldRemove && proj.throwPlaceConfig && proj.tilePath && proj.tilePath.length > 0) {
+      const placeTile = resolveThrowPlaceLandingTile(proj.tilePath, gameState);
+      if (placeTile) {
+        placeCollectibleFromSpell(placeTile.x, placeTile.y, proj.throwPlaceConfig, gameState);
       }
     }
 
