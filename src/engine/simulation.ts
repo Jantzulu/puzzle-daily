@@ -4264,7 +4264,19 @@ function resolveHomingTargetEntity(
 type HomingTickPlan =
   | { kind: 'out_of_range' }
   | { kind: 'wall_blocked'; wallX: number; wallY: number }
-  | { kind: 'reach'; hitX: number; hitY: number }
+  | {
+      kind: 'reach';
+      hitX: number;
+      hitY: number;
+      /**
+       * The final leg's tiles, from the ROUNDED pre-move logical position to
+       * the target (pathfinding: the full BFS path). Same formulas real mode
+       * uses to build the reach-turn tilePath for grid/pathfinding, so the
+       * along-path scan and the visual traverse the same tiles. Consumed by
+       * both modes for hit-along-path on the reach turn (handoff task #6).
+       */
+      reachTiles: Array<{ x: number; y: number }>;
+    }
   | {
       kind: 'advance';
       newX: number;
@@ -4318,7 +4330,12 @@ function planHomingTick(
   }
 
   if (distance <= effectiveReach || pathfindingReachesThisTurn) {
-    return { kind: 'reach', hitX: target.x, hitY: target.y };
+    const reachTiles = proj.homingPathStyle === 'pathfinding'
+      ? bfsFullPath!
+      : getTilesAlongLine(
+          Math.round(proj.logicalX), Math.round(proj.logicalY),
+          target.x, target.y);
+    return { kind: 'reach', hitX: target.x, hitY: target.y, reachTiles };
   }
 
   const pathStartX = Math.round(proj.logicalX);
@@ -4506,6 +4523,16 @@ function resolveProjectiles(gameState: GameState): void {
           let deferredDeathIsEnemy: boolean | undefined;
           let deferredDeathIndex: number | undefined;
           let damageForHit = 0;
+
+          // Along-path hits on the FINAL leg, before the target hit lands
+          // (the bolt physically passes them first). Pre-fix the scan only
+          // ran on MOVE TOWARD turns, so a bolt reaching its target skipped
+          // every bystander on the way in (handoff task #6). plan.reachTiles
+          // matches the reach-turn tilePath built below for grid/pathfinding,
+          // so pendingVisualDecrements' hitTileIndex stays aligned.
+          if (proj.homingHitAlongPath && (proj.homingPathStyle === 'grid' || proj.homingPathStyle === 'pathfinding')) {
+            checkHomingPathForHits(proj, plan.reachTiles, gameState, 'visual');
+          }
 
           const isHostileHit = isHostileHomingHit(proj);
 
@@ -5210,6 +5237,12 @@ function updateProjectilesHeadless(gameState: GameState): void {
         }
 
         if (plan.kind === 'reach') {
+          // Final-leg along-path hits — same scan, same tiles, same order
+          // as real mode (before the target hit lands).
+          if (proj.homingHitAlongPath && (proj.homingPathStyle === 'grid' || proj.homingPathStyle === 'pathfinding')) {
+            checkHomingPathForHits(proj, plan.reachTiles, gameState, 'headless');
+          }
+
           const isHostileHit = isHostileHomingHit(proj);
 
           if (isHostileHit) {

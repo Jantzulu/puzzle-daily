@@ -483,4 +483,57 @@ describe('homing hit-along-path parity', () => {
     expect(final.heroes[1].health).toBe(8); // rogue: crossed on turn 2
     expect(final.heroes[0].health).toBe(8); // knight: reached on turn 4
   });
+
+  /**
+   * REACH-turn along-path hits (CLAUDE_HANDOFF.md pending task #6): a bolt
+   * fast enough to reach its target on the same turn it passes a bystander
+   * used to skip the along-path scan entirely — the scan only ran on MOVE
+   * TOWARD turns. Now the reach leg (plan.reachTiles) is scanned in both
+   * modes before the target hit lands.
+   */
+  const reachLegScenario = (style: 'grid' | 'pathfinding') => {
+    registerTestSpell('reach-bolt', {
+      id: 'reach-bolt', name: 'Reach Bolt', ...spellBase,
+      templateType: SpellTemplate.LINEAR, directionMode: 'current_facing',
+      damage: 2, projectileSpeed: 4, range: 8, cooldown: 10,
+    });
+    regChar(createTestCharacterDef({
+      id: 'reach-mage', health: 10,
+      behavior: [{
+        type: ActionType.SPELL, spellId: 'reach-bolt',
+        autoTargetNearestEnemy: true, homing: true, homingPathStyle: style,
+        homingHitAlongPath: true,
+      }, { type: ActionType.REPEAT }] as never,
+    }));
+    regEnemy(createTestEnemyDef({ id: 'lurker', health: 4 }));
+    return () => baseState({
+      enemies: [
+        createTestEnemy({
+          enemyId: 'goblin-1', x: 4, y: 2, currentHealth: 5,
+          actionIndex: 0, active: true,
+        }),
+        createTestEnemy({
+          enemyId: 'lurker', x: 3, y: 2, currentHealth: 4,
+          actionIndex: 0, active: true,
+          statusEffects: [stealth() as never],
+        }),
+      ],
+      heroes: [createTestCharacter({
+        characterId: 'reach-mage', x: 0, y: 2, facing: Direction.EAST,
+        currentHealth: 10, actionIndex: 0, active: true,
+      })],
+    });
+  };
+
+  it('reach turn, grid: a bystander on the final leg is hit in BOTH modes', () => {
+    const final = expectParity(reachLegScenario('grid'), 2);
+    expect(final.enemies[1].health).toBe(2); // lurker: hit on the reach leg
+    expect(final.enemies[0].health).toBe(3); // goblin: the target hit itself
+  });
+
+  it('reach turn, pathfinding: a bystander on the final BFS leg is hit in BOTH modes', () => {
+    const final = expectParity(reachLegScenario('pathfinding'), 2);
+    expect(final.enemies[1].health).toBe(2);
+    expect(final.enemies[0].health).toBe(3);
+  });
 });
