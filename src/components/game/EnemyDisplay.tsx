@@ -78,6 +78,12 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
     // Expired summons left the board without dying — drop them from the
     // tally entirely instead of counting them as slain.
     if (enemy.despawned) continue;
+    // Hero-party entities living in the enemies array (placed allies,
+    // hero-side summons) are not kill targets — keep them out of the
+    // enemy tally. Explicit stamp check: the quest label does the full
+    // entityParty derivation, but everything hero-party here carries the
+    // explicit field.
+    if (enemy.party === 'hero') continue;
     const existing = enemyGroups.get(enemy.enemyId);
     if (existing) {
       existing.totalCount++;

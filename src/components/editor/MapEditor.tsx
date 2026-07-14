@@ -10,7 +10,7 @@ import { playBackgroundMusic, stopMusic } from '../../utils/gameSounds';
 import { savePuzzle, getSavedPuzzles, deletePuzzle, loadPuzzle, type SavedPuzzle } from '../../utils/puzzleStorage';
 import { cacheEditorState, getCachedEditorState, clearCachedEditorState } from '../../utils/editorState';
 import { writeAutoSave, readAutoSave, clearAutoSave, AUTOSAVE_INTERVAL_MS, type AutoSaveData } from '../../utils/autoSave';
-import { getAllPuzzleSkins, loadPuzzleSkin, getCustomTileTypes, loadTileType, loadSpellAsset, getAllObjects, loadObject, getAllCollectibles, loadCollectible, getSoundAssets, resolveImageSource, getCustomVessels, vesselToEnemyAsset, type CustomObject } from '../../utils/assetStorage';
+import { getAllPuzzleSkins, loadPuzzleSkin, getCustomTileTypes, loadTileType, loadSpellAsset, getAllObjects, loadObject, getAllCollectibles, loadCollectible, getSoundAssets, resolveImageSource, getCustomVessels, vesselToEnemyAsset, getCustomAllies, allyToEnemyAsset, type CustomObject } from '../../utils/assetStorage';
 import { collectPuzzleAssetUrls } from '../../utils/spritePreload';
 import { preloadImages } from '../../utils/imageLoader';
 import type { PuzzleSkin, SoundAsset } from '../../types/game';
@@ -684,7 +684,11 @@ export const MapEditor: React.FC = () => {
   // Vessels place exactly like enemies (they live in puzzle.enemies and
   // resolve through the enemy adapter) — shown as their own palette section.
   const allVessels = getCustomVessels().map(vesselToEnemyAsset);
-  const placeableEnemyTypes = [...allEnemies, ...allVessels];
+  // Allies ride the same pipeline; placement stamps party: 'hero' (that
+  // stamp is what makes a placed ally an ally — engine/party.ts).
+  const allAllies = getCustomAllies().map(allyToEnemyAsset);
+  const allyIds = new Set(allAllies.map(a => a.id));
+  const placeableEnemyTypes = [...allEnemies, ...allVessels, ...allAllies];
   const allCharacters = getAllCharacters();
   const allObjects = getAllObjects();
   const allCollectibles = getAllCollectibles();
@@ -967,6 +971,10 @@ export const MapEditor: React.FC = () => {
             facing: enemyType.behavior?.defaultFacing || Direction.EAST,
             actionIndex: 0,
             active: enemyType.behavior?.type === 'active',
+            // The party stamp is what makes a placed ally an ally: the
+            // engine's party model reads it everywhere (targeting, win
+            // conditions, pickups). Enemies/vessels leave it absent.
+            ...(allyIds.has(enemyType.id) ? { party: 'hero' as const } : {}),
           };
           return { ...prev, enemies: [...prev.enemies, newEnemy] };
         }
@@ -2361,6 +2369,40 @@ export const MapEditor: React.FC = () => {
                       </>
                     );
                   })()}
+
+                  {/* Allies — hero-party units, placed exactly like enemies
+                      (placement stamps party: 'hero') */}
+                  {allAllies.length > 0 && (() => {
+                    const searchFilteredAllies = allAllies.filter(a =>
+                      a.name.toLowerCase().includes(toolSearchTerm.toLowerCase())
+                    );
+                    if (searchFilteredAllies.length === 0) return null;
+                    return (
+                      <>
+                        <h3 className="text-sm font-bold mt-4 mb-2 text-copper-300">🛡️ Allies</h3>
+                        <div className="space-y-2 max-h-48 overflow-y-auto">
+                          {searchFilteredAllies.map(ally => (
+                            <button
+                              key={ally.id}
+                              onClick={() => setSelectedEnemyId(ally.id)}
+                              className={`w-full p-2 rounded text-left flex items-center gap-2 ${
+                                selectedEnemyId === ally.id ? 'bg-blue-600' : 'bg-stone-700 hover:bg-stone-600'
+                              }`}
+                            >
+                              <SpriteThumbnail sprite={ally.customSprite} size={32} previewType="entity" />
+                              <div className="flex-1 min-w-0">
+                                <div className="text-sm font-medium truncate">
+                                  {ally.name}
+                                  {ally.isNoble && <span className="ml-1 text-xs text-copper-300 font-medium">NOBLE</span>}
+                                </div>
+                                <div className="text-xs text-stone-400">HP: {ally.health}</div>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
               )}
 
@@ -3095,10 +3137,30 @@ export const MapEditor: React.FC = () => {
                                 <option value="win_in_turns">Win Within X Turns</option>
                                 <option value="max_characters">Use Max X Characters</option>
                                 <option value="characters_alive">Keep X Characters Alive</option>
+                                <option value="protect_noble">Protect the Noble</option>
+                                <option value="noble_survives_turns">Noble Survives X Turns</option>
+                                <option value="noble_reaches_goal">Noble Reaches Goal Tile</option>
                               </select>
 
+                              {/* Noble conditions: warn when nothing placed can satisfy them.
+                                  Any noble condition also makes a Noble death instant defeat
+                                  (engine implied-protect rule). */}
+                              {(condition.type === 'protect_noble' || condition.type === 'noble_survives_turns' || condition.type === 'noble_reaches_goal') && (() => {
+                                const hasPlacedNoble =
+                                  state.enemies.some(e => e.party === 'hero' && getEnemy(e.enemyId)?.isNoble) ||
+                                  state.availableCharacters.some(cid => getCharacter(cid)?.isNoble);
+                                return (
+                                  <>
+                                    {!hasPlacedNoble && (
+                                      <p className="text-xs text-amber-400 italic">No Noble on this map — place a Noble ally or add a Noble hero</p>
+                                    )}
+                                    <p className="text-xs text-stone-500">If the Noble dies, the puzzle is lost.</p>
+                                  </>
+                                );
+                              })()}
+
                               {/* Params for conditions that need them */}
-                              {(condition.type === 'survive_turns' || condition.type === 'win_in_turns') && (
+                              {(condition.type === 'survive_turns' || condition.type === 'win_in_turns' || condition.type === 'noble_survives_turns') && (
                                 <div className="flex items-center gap-2">
                                   <label className="text-xs text-stone-400">Turns:</label>
                                   <input
