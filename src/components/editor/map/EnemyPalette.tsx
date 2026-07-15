@@ -1,5 +1,6 @@
-// Enemy palette: folder filter + search + selectable enemy list with spell
-// tooltips. Extracted verbatim from MapEditor.tsx (Phase 1, 2026-07-14).
+// Enemy palette: folder filter + search + a dense card grid (sprite, name,
+// HP, spell icons — details live on hover). Cards auto-fill the available
+// width, so the palette gets more columns exactly when the canvas is narrow.
 import React from 'react';
 import type { EnemyWithSprite } from '../../../data/enemies';
 import { FolderDropdown } from '../FolderDropdown';
@@ -46,31 +47,30 @@ export const EnemyPalette: React.FC<EnemyPaletteProps> = ({
         {totalEnemyCount === 0 ? 'No enemies available. Create enemies in Asset Manager!' : searchTerm ? 'No enemies match your search.' : 'No enemies in this folder.'}
       </p>
     ) : (
-      <div className="space-y-2 max-h-64 overflow-y-auto mt-2">
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(96px,1fr))] gap-1.5 max-h-80 overflow-y-auto mt-2">
         {enemies.map(enemy => {
           const spells = getAllSpells(enemy.behavior?.pattern);
           return (
             <ActionTooltip key={enemy.id} actions={enemy.behavior?.pattern}>
               <button
                 onClick={() => onSelect(enemy.id)}
-                className={`w-full p-2 rounded text-left flex items-center gap-2 ${
+                className={`w-full h-full rounded p-1.5 flex flex-col items-center ${
                   selectedEnemyId === enemy.id ? 'bg-blue-600' : 'bg-stone-700 hover:bg-stone-600'
                 }`}
+                title={`${enemy.name} — HP ${enemy.health}`}
               >
-                <SpriteThumbnail sprite={enemy.customSprite} size={32} previewType="entity" />
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium truncate">{enemy.name}</div>
-                  <div className="text-xs text-stone-400">HP: {enemy.health}</div>
-                </div>
+                <SpriteThumbnail sprite={enemy.customSprite} size={40} previewType="entity" />
+                <span className="text-[11px] leading-tight truncate w-full text-center mt-1">{enemy.name}</span>
+                <span className="text-[10px] text-stone-400">HP {enemy.health}</span>
                 {spells.length > 0 && (
-                  <div className="flex gap-1 flex-shrink-0">
-                    {spells.map(spell => (
+                  <div className="flex gap-0.5 mt-0.5">
+                    {spells.slice(0, 3).map(spell => (
                       <SpellTooltip key={spell.id} spell={spell}>
-                        <div className="w-6 h-6 rounded overflow-hidden cursor-help">
+                        <div className="w-4 h-4 rounded overflow-hidden cursor-help">
                           {spell.thumbnailIcon ? (
                             <img src={spell.thumbnailIcon} alt={spell.name} className="w-full h-full object-cover" loading="lazy" decoding="async" />
                           ) : (
-                            <div className="w-full h-full bg-arcane-600 flex items-center justify-center text-xs">S</div>
+                            <div className="w-full h-full bg-arcane-600 flex items-center justify-center text-[9px]">S</div>
                           )}
                         </div>
                       </SpellTooltip>
@@ -83,6 +83,5 @@ export const EnemyPalette: React.FC<EnemyPaletteProps> = ({
         })}
       </div>
     )}
-
   </div>
 );

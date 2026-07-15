@@ -1,6 +1,6 @@
-// Tile palette: built-in Void/Empty/Wall rows, custom tile list (skin-aware
-// thumbnails), and the pressure-plate trigger-group selector.
-// Extracted verbatim from MapEditor.tsx (Phase 1 decomposition, 2026-07-14).
+// Tile palette — dense card grid: Void/Empty/Wall built-ins first, then
+// custom tiles (skin-aware thumbnails), plus the pressure-plate
+// trigger-group selector for the selected custom tile.
 import React from 'react';
 import { loadPuzzleSkin, loadTileType, resolveImageSource } from '../../../utils/assetStorage';
 import type { CustomTileType } from '../../../utils/assetStorage';
@@ -55,84 +55,57 @@ export const TilePalette: React.FC<TilePaletteProps> = ({
     return resolveImageSource(tileType.customSprite?.idleImageData, tileType.customSprite?.idleImageUrl);
   };
 
+  const builtinCard = (
+    tool: ToolType,
+    label: string,
+    subtext: string,
+    fullText: string,
+    thumbBg: string,
+    sprite: string | undefined,
+    fallbackGlyph: React.ReactNode,
+  ) => (
+    <button
+      onClick={() => onSelectTool(tool)}
+      className={`w-full h-full rounded p-1.5 flex flex-col items-center ${
+        selectedTool === tool ? 'bg-blue-600' : 'bg-stone-700 hover:bg-stone-600'
+      }`}
+      title={fullText}
+    >
+      <div className={`w-10 h-10 ${thumbBg} rounded flex items-center justify-center overflow-hidden`}>
+        {sprite ? (
+          <img src={sprite} alt="" className="w-full h-full object-cover" style={{ imageRendering: 'pixelated' }} loading="lazy" decoding="async" />
+        ) : (
+          fallbackGlyph
+        )}
+      </div>
+      <span className="text-[11px] leading-tight mt-1">{label}</span>
+      <span className="text-[10px] text-stone-400">{subtext}</span>
+    </button>
+  );
+
   return (
     <div className="bg-stone-800 p-4 rounded">
       <h2 className="text-lg font-bold mb-3">Tile Type</h2>
-      <div className="space-y-2">
-        {/* Built-in tiles: Void at top */}
-        <button
-          onClick={() => onSelectTool('void')}
-          className={`w-full p-2 rounded text-left flex items-center gap-2 ${
-            selectedTool === 'void' ? 'bg-blue-600' : 'bg-stone-700 hover:bg-stone-600'
-          }`}
-        >
-          <div className="w-8 h-8 bg-stone-900 rounded flex items-center justify-center overflow-hidden">
-            {skinVoidSprite ? (
-              <img src={skinVoidSprite} alt="" className="w-full h-full object-cover" style={{ imageRendering: 'pixelated' }} loading="lazy" decoding="async" />
-            ) : (
-              <span className="text-stone-600">✕</span>
-            )}
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="text-sm font-medium">Void</div>
-            <div className="text-xs text-stone-400">Empty space (no tile)</div>
-          </div>
-        </button>
-        <button
-          onClick={() => onSelectTool('empty')}
-          className={`w-full p-2 rounded text-left flex items-center gap-2 ${
-            selectedTool === 'empty' ? 'bg-blue-600' : 'bg-stone-700 hover:bg-stone-600'
-          }`}
-        >
-          <div className="w-8 h-8 bg-stone-600 rounded flex items-center justify-center overflow-hidden">
-            {skinEmptySprite ? (
-              <img src={skinEmptySprite} alt="" className="w-full h-full object-cover" style={{ imageRendering: 'pixelated' }} loading="lazy" decoding="async" />
-            ) : (
-              <span className="text-stone-400">⬜</span>
-            )}
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="text-sm font-medium">Empty</div>
-            <div className="text-xs text-stone-400">Walkable floor tile</div>
-          </div>
-        </button>
-        <button
-          onClick={() => onSelectTool('wall')}
-          className={`w-full p-2 rounded text-left flex items-center gap-2 ${
-            selectedTool === 'wall' ? 'bg-blue-600' : 'bg-stone-700 hover:bg-stone-600'
-          }`}
-        >
-          <div className="w-8 h-8 bg-stone-500 rounded flex items-center justify-center overflow-hidden">
-            {skinWallSprite ? (
-              <img src={skinWallSprite} alt="" className="w-full h-full object-cover" style={{ imageRendering: 'pixelated' }} loading="lazy" decoding="async" />
-            ) : (
-              <span className="text-parchment-300">▓</span>
-            )}
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="text-sm font-medium">Wall</div>
-            <div className="text-xs text-stone-400">Impassable barrier</div>
-          </div>
-        </button>
-
-        {/* Divider if custom tiles exist */}
-        {customTileTypes.length > 0 && (
-          <div className="border-t border-stone-600 my-2 pt-2">
-            <div className="text-xs text-stone-400 mb-2">Custom Tiles</div>
-            <FolderDropdown
-              category="tiles"
-              selectedFolderId={tileFolderId}
-              onFolderSelect={onTileFolderSelect}
-            />
-            <input
-              type="text"
-              placeholder="Search custom tiles..."
-              value={searchTerm}
-              onChange={e => onSearchChange(e.target.value)}
-              className="w-full bg-stone-700 rounded px-2 py-1 text-sm placeholder-stone-500 mt-2"
-            />
-          </div>
-        )}
+      {customTileTypes.length > 0 && (
+        <div className="mb-2">
+          <FolderDropdown
+            category="tiles"
+            selectedFolderId={tileFolderId}
+            onFolderSelect={onTileFolderSelect}
+          />
+          <input
+            type="text"
+            placeholder="Search custom tiles..."
+            value={searchTerm}
+            onChange={e => onSearchChange(e.target.value)}
+            className="w-full bg-stone-700 rounded px-2 py-1 text-sm placeholder-stone-500 mt-2"
+          />
+        </div>
+      )}
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(96px,1fr))] gap-1.5 max-h-80 overflow-y-auto">
+        {builtinCard('void', 'Void', 'No tile', 'Empty space (no tile)', 'bg-stone-900', skinVoidSprite, <span className="text-stone-600">✕</span>)}
+        {builtinCard('empty', 'Empty', 'Walkable', 'Walkable floor tile', 'bg-stone-600', skinEmptySprite, <span className="text-stone-400">⬜</span>)}
+        {builtinCard('wall', 'Wall', 'Blocks', 'Impassable barrier', 'bg-stone-500', skinWallSprite, <span className="text-parchment-300">▓</span>)}
 
         {/* Custom tiles */}
         {filteredTileTypes.map(tileType => {
@@ -152,11 +125,12 @@ export const TilePalette: React.FC<TilePaletteProps> = ({
             <button
               key={tileType.id}
               onClick={() => onSelectCustomTile(tileType.id)}
-              className={`w-full p-2 rounded text-left flex items-center gap-2 ${
+              className={`w-full h-full rounded p-1.5 flex flex-col items-center ${
                 isSelected ? 'bg-blue-600' : 'bg-stone-700 hover:bg-stone-600'
               }`}
+              title={`${tileType.name} — ${tileType.baseType}${behaviorIcons ? ` ${behaviorIcons}` : ''}`}
             >
-              <div className="w-8 h-8 bg-stone-600 rounded flex items-center justify-center overflow-hidden">
+              <div className="w-10 h-10 bg-stone-600 rounded flex items-center justify-center overflow-hidden">
                 {(() => {
                   const thumbSrc = getCustomTileThumbnail(tileType.id, tileType);
                   return thumbSrc ? (
@@ -172,58 +146,56 @@ export const TilePalette: React.FC<TilePaletteProps> = ({
                   );
                 })()}
               </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium truncate">{tileType.name}</div>
-                <div className="text-xs text-stone-400">
-                  {tileType.baseType} • {behaviorIcons}
-                </div>
-              </div>
+              <span className="text-[11px] leading-tight truncate w-full text-center mt-1">{tileType.name}</span>
+              <span className="text-[10px] text-stone-400 truncate w-full text-center">
+                {behaviorIcons || tileType.baseType}
+              </span>
             </button>
           );
         })}
-
-        {/* Message when no tiles in folder or no tiles at all */}
-        {customTileTypes.length === 0 ? (
-          <p className="text-xs text-stone-400 mt-2">
-            Create custom tiles in{' '}
-            <a href="/assets" className="text-blue-400 hover:underline">
-              Asset Manager → Tiles
-            </a>
-          </p>
-        ) : filteredTileTypes.length === 0 && (
-          <p className="text-xs text-stone-400 mt-2">{searchTerm ? 'No tiles match your search.' : 'No tiles in this folder.'}</p>
-        )}
-
-        {/* Trigger Group Selector - Shows for any selected custom tile */}
-        {selectedCustomTileTypeId && (() => {
-          const tileType = loadTileType(selectedCustomTileTypeId);
-          if (!tileType) return null;
-          const hasOnOffStates = tileType.cadence?.enabled || tileType.canBeTriggered || tileType.offStateSprite;
-          const hasPressurePlate = tileType.behaviors?.some(b => b.type === 'pressure_plate');
-          return (
-            <div className="mt-3 p-2 bg-stone-700 rounded">
-              <label className="text-sm text-stone-300 block mb-1">Trigger Group</label>
-              <p className="text-xs text-stone-400 mb-2">
-                {hasPressurePlate
-                  ? 'Tiles in the same group will be toggled when this pressure plate is activated'
-                  : hasOnOffStates
-                    ? 'Assign to a group to control this tile with pressure plates'
-                    : 'Assign to a group to link this tile with pressure plates'}
-              </p>
-              <select
-                value={selectedTriggerGroupId}
-                onChange={e => onTriggerGroupChange(e.target.value)}
-                className="w-full bg-stone-600 rounded px-2 py-1 text-sm"
-              >
-                <option value="">None{hasOnOffStates ? ' (uses cadence)' : ''}</option>
-                {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map(group => (
-                  <option key={group} value={group}>Group {group}</option>
-                ))}
-              </select>
-            </div>
-          );
-        })()}
       </div>
+
+      {/* Message when no tiles in folder or no tiles at all */}
+      {customTileTypes.length === 0 ? (
+        <p className="text-xs text-stone-400 mt-2">
+          Create custom tiles in{' '}
+          <a href="/assets" className="text-blue-400 hover:underline">
+            Asset Manager → Tiles
+          </a>
+        </p>
+      ) : filteredTileTypes.length === 0 && (
+        <p className="text-xs text-stone-400 mt-2">{searchTerm ? 'No tiles match your search.' : 'No tiles in this folder.'}</p>
+      )}
+
+      {/* Trigger Group Selector - Shows for any selected custom tile */}
+      {selectedCustomTileTypeId && (() => {
+        const tileType = loadTileType(selectedCustomTileTypeId);
+        if (!tileType) return null;
+        const hasOnOffStates = tileType.cadence?.enabled || tileType.canBeTriggered || tileType.offStateSprite;
+        const hasPressurePlate = tileType.behaviors?.some(b => b.type === 'pressure_plate');
+        return (
+          <div className="mt-3 p-2 bg-stone-700 rounded">
+            <label className="text-sm text-stone-300 block mb-1">Trigger Group</label>
+            <p className="text-xs text-stone-400 mb-2">
+              {hasPressurePlate
+                ? 'Tiles in the same group will be toggled when this pressure plate is activated'
+                : hasOnOffStates
+                  ? 'Assign to a group to control this tile with pressure plates'
+                  : 'Assign to a group to link this tile with pressure plates'}
+            </p>
+            <select
+              value={selectedTriggerGroupId}
+              onChange={e => onTriggerGroupChange(e.target.value)}
+              className="w-full bg-stone-600 rounded px-2 py-1 text-sm"
+            >
+              <option value="">None{hasOnOffStates ? ' (uses cadence)' : ''}</option>
+              {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map(group => (
+                <option key={group} value={group}>Group {group}</option>
+              ))}
+            </select>
+          </div>
+        );
+      })()}
     </div>
   );
 };

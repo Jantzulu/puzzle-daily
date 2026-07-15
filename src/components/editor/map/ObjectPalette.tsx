@@ -1,6 +1,4 @@
-// Object palette: folder filter + search + selectable object list with
-// info tooltips and effect badges. Extracted verbatim from MapEditor.tsx
-// (Phase 1 decomposition, 2026-07-14).
+// Object palette — dense card grid with info tooltips and effect badges.
 import React from 'react';
 import type { CustomObject } from '../../../utils/assetStorage';
 import { FolderDropdown } from '../FolderDropdown';
@@ -54,29 +52,27 @@ export const ObjectPalette: React.FC<ObjectPaletteProps> = ({
         )}
       </div>
     ) : (
-      <div className="space-y-2 max-h-64 overflow-y-auto mt-2">
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(96px,1fr))] gap-1.5 max-h-80 overflow-y-auto mt-2">
         {objects.map(obj => (
           <ObjectTooltip key={obj.id} object={obj}>
             <button
               onClick={() => onSelect(obj.id)}
-              className={`w-full p-2 rounded text-left flex items-center gap-2 ${
+              className={`w-full h-full rounded p-1.5 flex flex-col items-center ${
                 selectedObjectId === obj.id ? 'bg-blue-600' : 'bg-stone-700 hover:bg-stone-600'
               }`}
+              title={obj.name}
             >
-              <SpriteThumbnail sprite={obj.customSprite} size={32} previewType="asset" />
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium truncate">{obj.name}</div>
-                <div className="text-xs text-stone-400 capitalize">
-                  {obj.collisionType.replace('_', ' ')}
-                  {obj.effects.length > 0 && ` • ${obj.effects.length} effect${obj.effects.length > 1 ? 's' : ''}`}
-                </div>
-              </div>
+              <SpriteThumbnail sprite={obj.customSprite} size={40} previewType="asset" />
+              <span className="text-[11px] leading-tight truncate w-full text-center mt-1">{obj.name}</span>
+              <span className="text-[10px] text-stone-400 capitalize truncate w-full text-center">
+                {obj.collisionType.replace('_', ' ')}
+              </span>
               {obj.effects.length > 0 && (
-                <div className="flex gap-1 flex-shrink-0">
+                <div className="flex gap-0.5 mt-0.5">
                   {obj.effects.slice(0, 2).map((effect, i) => (
                     <span
                       key={i}
-                      className={`text-xs px-1.5 py-0.5 rounded ${
+                      className={`text-[9px] px-1 py-0.5 rounded leading-none ${
                         effect.type === 'damage' ? 'bg-red-900 text-red-300' :
                         effect.type === 'heal' ? 'bg-green-900 text-green-300' :
                         'bg-blue-900 text-blue-300'

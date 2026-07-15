@@ -1,6 +1,5 @@
-// Heroes palette: folder filter + search + checkbox list choosing which
-// heroes players can use (capped at 5). Extracted verbatim from
-// MapEditor.tsx (Phase 1 decomposition, 2026-07-14).
+// Heroes palette — dense card grid choosing which heroes players can use
+// (capped at 5). Clicking a card toggles it; a ✓ badge marks selected.
 import React from 'react';
 import type { CharacterWithSprite } from '../../../data/characters';
 import { FolderDropdown } from '../FolderDropdown';
@@ -29,8 +28,8 @@ export const HeroesPalette: React.FC<HeroesPaletteProps> = ({
   onToggleCharacter,
 }) => (
   <div className="bg-stone-800 p-4 rounded">
-    <h2 className="text-lg font-bold mb-3">Available Heroes</h2>
-    <p className="text-xs text-stone-400 mb-3">Select which heroes players can use</p>
+    <h2 className="text-lg font-bold mb-1">Available Heroes</h2>
+    <p className="text-xs text-stone-400 mb-3">Click to toggle which heroes players can use (max 5)</p>
     <FolderDropdown
       category="characters"
       selectedFolderId={characterFolderId}
@@ -48,7 +47,7 @@ export const HeroesPalette: React.FC<HeroesPaletteProps> = ({
         {totalCharacterCount === 0 ? 'No characters available' : searchTerm ? 'No heroes match your search.' : 'No characters in this folder.'}
       </p>
     ) : (
-      <div className="space-y-2 max-h-80 overflow-y-auto mt-2">
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(96px,1fr))] gap-1.5 max-h-96 overflow-y-auto mt-2">
         {characters.map(char => {
           const spells = getAllSpells(char.behavior);
           const isSelected = availableCharacters.includes(char.id);
@@ -56,35 +55,40 @@ export const HeroesPalette: React.FC<HeroesPaletteProps> = ({
 
           return (
             <ActionTooltip key={char.id} actions={char.behavior}>
-              <label className={`flex items-center gap-2 p-2 bg-stone-700 rounded ${isAtCap ? 'opacity-50 cursor-not-allowed' : 'hover:bg-stone-600 cursor-pointer'}`}>
-                <input
-                  type="checkbox"
-                  checked={isSelected}
-                  disabled={isAtCap}
-                  onChange={(e) => onToggleCharacter(char.id, e.target.checked)}
-                  className="w-4 h-4"
-                />
-                <SpriteThumbnail sprite={char.customSprite} size={32} previewType="entity" />
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium truncate">{char.name}</div>
-                  <div className="text-xs text-stone-400">HP: {char.health}</div>
-                </div>
+              <button
+                onClick={() => onToggleCharacter(char.id, !isSelected)}
+                disabled={isAtCap}
+                className={`relative w-full h-full rounded p-1.5 flex flex-col items-center ${
+                  isSelected
+                    ? 'bg-blue-600'
+                    : isAtCap
+                      ? 'bg-stone-700 opacity-50 cursor-not-allowed'
+                      : 'bg-stone-700 hover:bg-stone-600'
+                }`}
+                title={`${char.name} — HP ${char.health}${isAtCap ? ' (hero cap reached)' : ''}`}
+              >
+                {isSelected && (
+                  <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-moss-600 text-[10px] flex items-center justify-center">✓</span>
+                )}
+                <SpriteThumbnail sprite={char.customSprite} size={40} previewType="entity" />
+                <span className="text-[11px] leading-tight truncate w-full text-center mt-1">{char.name}</span>
+                <span className="text-[10px] text-stone-400">HP {char.health}</span>
                 {spells.length > 0 && (
-                  <div className="flex gap-1 flex-shrink-0">
-                    {spells.map(spell => (
+                  <div className="flex gap-0.5 mt-0.5">
+                    {spells.slice(0, 3).map(spell => (
                       <SpellTooltip key={spell.id} spell={spell}>
-                        <div className="w-6 h-6 rounded overflow-hidden cursor-help">
+                        <div className="w-4 h-4 rounded overflow-hidden cursor-help">
                           {spell.thumbnailIcon ? (
                             <img src={spell.thumbnailIcon} alt={spell.name} className="w-full h-full object-cover" loading="lazy" decoding="async" />
                           ) : (
-                            <div className="w-full h-full bg-arcane-600 flex items-center justify-center text-xs">S</div>
+                            <div className="w-full h-full bg-arcane-600 flex items-center justify-center text-[9px]">S</div>
                           )}
                         </div>
                       </SpellTooltip>
                     ))}
                   </div>
                 )}
-              </label>
+              </button>
             </ActionTooltip>
           );
         })}
