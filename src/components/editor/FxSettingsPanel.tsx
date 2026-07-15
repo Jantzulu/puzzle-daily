@@ -7,6 +7,7 @@ import { blobShadowsEnabled, setBlobShadowsEnabled } from '../game/blobShadows';
 import { lightGlowEnabled, setLightGlowEnabled } from '../game/lightGlow';
 import { staticBakeEnabled, setStaticBakeEnabled } from '../game/staticBake';
 import { atmosphereEnabled, setAtmosphereEnabled } from '../game/atmosphere';
+import { perfHudEnabled, setPerfHudEnabled } from '../game/frameProfiler';
 
 interface FxToggle {
   key: string;
@@ -44,6 +45,13 @@ const TOGGLES: FxToggle[] = [
     description: 'Caches border + tiles + wall AO to an offscreen canvas per turn instead of repainting every frame. Leave ON — off exists only for A/B comparison.',
     get: staticBakeEnabled,
     set: setStaticBakeEnabled,
+  },
+  {
+    key: 'perf_hud',
+    label: 'Frame profiler HUD',
+    description: 'On-screen frame-time breakdown of the render loop (avg | p95 ms per phase) while a level is running. Also reachable via ?perf=1 on the URL. Diagnostic only.',
+    get: perfHudEnabled,
+    set: setPerfHudEnabled,
   },
 ];
 

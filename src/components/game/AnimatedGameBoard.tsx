@@ -17,6 +17,7 @@ import { drawLightGlow } from './lightGlow';
 import { wallAOEnabled, drawWallAO, AO_VOID_OCCLUDES } from './wallAO';
 import { staticBakeEnabled } from './staticBake';
 import { atmosphereEnabled } from './atmosphere';
+import { profFrameStart, profPhase, profFrameEnd } from './frameProfiler';
 
 // Movement action types - entities with these actions should show direction arrow
 const MOVEMENT_ACTIONS = new Set([
@@ -1570,6 +1571,8 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
 
+      profFrameStart(); // no-op unless the perf HUD is enabled
+
       // Get device pixel ratio for high-DPI rendering (capped — see MAX_DPR)
       const dpr = Math.min(window.devicePixelRatio || 1, MAX_DPR);
 
@@ -1624,6 +1627,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       ctx.save();
       ctx.translate(offsetX, offsetY);
 
+      profPhase('logic');
       // Execute parallel actions (time-based, runs independently of turns)
       // Skip during replay freeze to prevent melee/spell VFX spam
       if (gameState.gameStatus === 'running' && !replayFrozen) {
@@ -1644,6 +1648,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
         onProjectileKill();
       }
 
+      profPhase('static');
       // Static layers (border + tiles + wall AO) change per turn, not per
       // frame — bake to an offscreen canvas once and blit. The signature
       // holds everything that shapes the raster. tileStates is CONTENT-
@@ -1703,6 +1708,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
         ctx.restore();
       }
 
+      profPhase('items');
       // Draw objects below entities (sorted by y for proper layering)
       placedObjectsBelow.forEach(obj => {
         drawPlacedObject(ctx, obj.objectId, obj.x, obj.y);
@@ -1721,6 +1727,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
         }
       });
 
+      profPhase('projectiles');
       // Draw projectiles (Phase 2 - between tiles and entities).
       // Replay seek/step invalidation: when the turn has changed since the
       // previous draw AND we're frozen (updateProjectiles won't refresh vs),
@@ -1745,6 +1752,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
         });
       }
 
+      profPhase('particles');
       // Draw particles (Phase 2 - effects layer). Particles flagged
       // aboveEntities (summon materialize overlays) skip this pass and draw
       // after the entity render queue instead.
@@ -1768,6 +1776,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       // Stash this puzzle's reflective tiles for drawEnemy/drawCharacter.
       reflectiveTilesNow = reflectiveTileSet;
 
+      profPhase('entities');
       // Render all entities in z-order. renderQueue is memoized at component
       // scope (rebuilt only when entity arrays' references change at turn
       // boundaries) — see useMemo above.
@@ -2028,6 +2037,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
         }
       });
 
+      profPhase('overlays');
       // Overlay particles — summon materialize effects draw ON TOP of the
       // entity they cover (portal-tile style), so this pass runs after the
       // entity render queue.
@@ -2137,6 +2147,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       // Restore context (undo translate offset)
       ctx.restore();
 
+      profPhase('vignette');
       // Draw vignette effect on puzzle edges (after all rendering, follows puzzle shape).
       // The static half (edge + inner darkening) is a pure function of board
       // shape — baked once, composited with ONE source-atop drawImage per
@@ -2175,6 +2186,8 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
 
       // Restore context (undo dpr scaling)
       ctx.restore();
+
+      profFrameEnd(canvas.width, canvas.height, dpr, integerZoom);
 
       animationRef.current = requestAnimationFrame(animate);
     };
