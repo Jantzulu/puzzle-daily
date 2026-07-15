@@ -194,12 +194,15 @@ The Reflect status effect bounces incoming projectiles back:
 
 ### Next session — start here
 
-**MOBILE RENDER PERF (user-felt, bisected, 2026-07-15).** The user's phone shows jitter on a SIMPLE level at DPR 2. The July-15 cheap wins shipped (gradient caches, vignette bake, atmosphere toggle — see "Recently completed July 15") and the user then bisected with the Settings → ⚡ Effects tab: **flipping blob shadows, light glow, atmosphere, AND static bake produced no noticeable smoothness change.** Conclusion: the cost is in the untoggleable baseline, which is some mix of:
-- **Per-entity sprite draw stacks** (save → setTransform → shadow state → drawImage → restore, every entity every frame) — the documented big lever, [docs/offscreen-sprite-cache-plan.md](docs/offscreen-sprite-cache-plan.md). NOTE the plan wants validation infra (dual-render diff harness) before the cache itself.
-- **Per-frame logic in the animate loop**: `executeParallelActions`, `updateProjectiles`, `updateParticles` run every frame; plus render-queue rebuilds, health bars, souls, reflective tiles, entrance/death animation bookkeeping.
-- Possibly not fill-bound at all: GC churn from per-frame allocations, or React re-renders racing the rAF loop.
+**MOBILE RENDER PERF (profiled on-device 2026-07-15 — JS EXONERATED, awaiting round-2 numbers).** The user's phone shows jitter on a SIMPLE level at DPR 2. History: July-15 cheap wins shipped (gradient caches, vignette bake, atmosphere toggle), user bisected via the ⚡ Effects tab — no toggle changed smoothness. This session built the **frame profiler HUD** (`?perf=1` / Effects tab / `togglePerfHud()`; `frameProfiler.ts`, marks in AnimatedGameBoard's animate loop; commit `845019d`) because the test iPhone can't be remote-profiled from Windows.
 
-**START BY PROFILING, not guessing** — remote-debug the user's phone (chrome://inspect for Android / Safari Web Inspector for iPhone) or approximate with desktop DevTools + 6× CPU throttle on the deployed site, and get a flame chart of one janky second. Let the trace pick between the sprite-cache plan and a logic-side fix. One caveat from the July-15 session: don't re-propose the static-layer bake or gradient caches — they exist; and don't re-raise MAX_DPR (measured regression, see the constant's comment).
+**Round-1 result (user's iPhone 15 Pro, deployed site, canvas 624×720 dpr2 zoom3, 48fps):** the ENTIRE animate loop costs **0.2ms/frame** — `entities` (sprite draw stacks) avg **0.10ms**, p95 1.0ms; every other phase ~0. **`other` = 20.7ms of the 20.9ms interval.** Conclusions:
+- **The offscreen sprite cache is DEAD as the fix for this jank** — its target is 0.1ms. Do not build it for perf ([docs/offscreen-sprite-cache-plan.md](docs/offscreen-sprite-cache-plan.md) stays shelved; its validation-infra reasoning is still sound if it's ever wanted for other reasons).
+- 48fps ≈ the exact 240/5 ProMotion tier and intervals are near-uniform (hitch only 3%) — smells like Safari frame-rate tiering or compositor cost, not JS spikes.
+
+**Round-2 instruments shipped (`5b6844b`), awaiting the user's numbers:** `mainlag` HUD row (MessageChannel probe — main-thread busy time outside the loop: React/GC/other rAF loops), `rafs/frame` row (page-wide rAF census — nav torch + SpriteThumbnail cards run their own loops), and **Freeze board drawing** (Effects tab — loop paces but never touches the canvas; fps recovering under freeze pins the per-frame canvas update/tier-drop, fps staying low points at the rest of the page or OS). Also worth asking: is **Low Power Mode** on. Read the branches: high mainlag → hunt main-thread work (rafs count says where); low mainlag + freeze recovers → canvas raster/composite or tier; low mainlag + freeze doesn't recover → page CSS layers / OS throttling.
+
+Caveats that still stand: don't re-propose the static-layer bake or gradient caches (they exist) and don't re-raise MAX_DPR (measured regression, see the constant's comment).
 
 ---
 
