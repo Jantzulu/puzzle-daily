@@ -75,10 +75,15 @@ const DROP_PLACE_OFFSET = 0.4; // tiles above final position (subtle)
 const ITEM_SPAWN_DURATION = 400; // ms for collectible scale-up animation (thrown/placed items)
 const ITEM_DESPAWN_DURATION = 400; // ms for collectible scale-down animation (duration expiry)
 
-// Cap device pixel ratio to limit canvas backbuffer size on high-DPI mobile (e.g.
-// iPhone 15 Pro DPR=3 = 9x fragment cost vs DPR=1). DPR=2 is what most retina
-// desktops use anyway, and `image-rendering: pixelated` cleans up the upscale.
-const MAX_DPR = 2;
+// Cap device pixel ratio to bound canvas backbuffer size (a few rare Androids
+// report DPR 3.5–4). Raised 2 → 3 on 2026-07-14: on DPR-3 phones the integer-
+// zoom quantizer then steps in 8 CSS px per tile instead of 12, landing much
+// closer to the container width (~11% bigger board on an iPhone for 8-wide
+// puzzles), and the compositor no longer has to pixelated-upscale 1.5× every
+// frame. Fill cost is 2.25× vs the old cap — fine on modern GPUs; drop back
+// to 2 if a low-end device ever shows jank in busy scenes (glow/shadow passes
+// are the fill-heavy parts).
+const MAX_DPR = 3;
 
 const COLORS = {
   empty: '#2a2a2a',
