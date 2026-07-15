@@ -4,6 +4,7 @@ import { resolveImageSource, resolveSpriteSheetSource } from '../../utils/assetS
 import { drawSprite } from './SpriteEditor';
 import { getPreviewBgColor, getPreviewBgImageUrl, getPreviewBgTiled, type PreviewType } from '../../utils/themeAssets';
 import { loadImage, isImageReady, subscribeToImageLoads } from '../../utils/imageLoader';
+import { satellitesPaused } from '../game/frameProfiler';
 
 // ─── Game-card animation helpers ───────────────────────────────────────────
 // Drives the hero/enemy SELECTOR CARD sprites (opt-in via the `cardRole` prop).
@@ -375,7 +376,7 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
           frameIndex = Math.floor(elapsed / frameDuration);
           if (frameIndex >= frameCount) frameIndex = phase.loop ? frameIndex % frameCount : frameCount - 1;
         }
-        if (phaseIndex !== lastDrawnPhase || frameIndex !== lastDrawnFrame) {
+        if ((phaseIndex !== lastDrawnPhase || frameIndex !== lastDrawnFrame) && !satellitesPaused()) {
           lastDrawnPhase = phaseIndex;
           lastDrawnFrame = frameIndex;
           drawSpriteFrame(img, frameIndex, frameCount, frameWidth, frameHeight, phase.anchorX, phase.anchorY, phase.offsetX, phase.offsetY);
@@ -461,7 +462,7 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
               lastFrameTime = now;
             }
 
-            if (frameIndex !== lastDrawnFrame) {
+            if (frameIndex !== lastDrawnFrame && !satellitesPaused()) {
               lastDrawnFrame = frameIndex;
               drawSpriteFrame(img, frameIndex, frameCount, frameWidth, frameHeight, sheetAx, sheetAy, sheetOx, sheetOy);
             }

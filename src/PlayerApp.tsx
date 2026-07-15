@@ -13,6 +13,7 @@ import { RouteFade } from './components/shared/RouteFade';
 import { ErrorBoundary } from './components/shared/ErrorBoundary';
 import { applyThemeAssets, subscribeToThemeAssets, loadThemeAssets, fetchThemeAssetsFromCloud, type ThemeAssets } from './utils/themeAssets';
 import { applyNavTorchLight } from './components/shared/navTorchLight';
+import { satellitesPaused } from './components/game/frameProfiler';
 import { GateBeamMesh } from './components/shared/GateMesh';
 import { PortcullisMesh } from './components/game/PortcullisMesh';
 import { getLatestPostTimestamp } from './services/newsService';
@@ -118,7 +119,7 @@ function AnimatedLogo({ src, alt, frameCount, frameRate, className }: {
           frameIndexRef.current = (frameIndexRef.current + 1) % frameCount;
           lastFrameTimeRef.current = now;
         }
-        if (frameIndexRef.current !== lastDrawnFrame) {
+        if (frameIndexRef.current !== lastDrawnFrame && !satellitesPaused()) {
           lastDrawnFrame = frameIndexRef.current;
           ctx.clearRect(0, 0, frameWidth, frameHeight);
           ctx.drawImage(img, frameIndexRef.current * frameWidth, 0, frameWidth, frameHeight, 0, 0, frameWidth, frameHeight);

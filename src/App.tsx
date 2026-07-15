@@ -9,6 +9,7 @@ import { RouteFade } from './components/shared/RouteFade';
 import { ErrorBoundary } from './components/shared/ErrorBoundary';
 import { applyThemeAssets, subscribeToThemeAssets, loadThemeAssets, fetchThemeAssetsFromCloud, type ThemeAssets } from './utils/themeAssets';
 import { applyNavTorchLight } from './components/shared/navTorchLight';
+import { satellitesPaused } from './components/game/frameProfiler';
 import { GateBeamMesh } from './components/shared/GateMesh';
 import { PortcullisMesh } from './components/game/PortcullisMesh';
 import { getLatestPostTimestamp } from './services/newsService';
@@ -165,7 +166,7 @@ function AnimatedLogo({ src, alt, frameCount, frameRate, className }: {
           lastFrameTimeRef.current = now;
         }
 
-        if (frameIndexRef.current !== lastDrawnFrame) {
+        if (frameIndexRef.current !== lastDrawnFrame && !satellitesPaused()) {
           lastDrawnFrame = frameIndexRef.current;
           // Clear and draw current frame
           ctx.clearRect(0, 0, frameWidth, frameHeight);

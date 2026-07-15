@@ -42,6 +42,9 @@ export const PROF_PHASES = [
 export type ProfPhase = (typeof PROF_PHASES)[number];
 
 let toggleCache: boolean | null = null;
+// Set by ?perfsweep=1; consumed in profFrameEnd once the board has produced
+// enough frames to be warmed up.
+let autoSweepPending = false;
 
 export function perfHudEnabled(): boolean {
   if (toggleCache === null) {
@@ -62,14 +65,20 @@ export function setPerfHudEnabled(on: boolean): void {
   if (!on) removeHud();
 }
 
-// URL flag — checked once at module load. ?perf=1 turns the HUD on and
+// URL flags — checked once at module load. ?perf=1 turns the HUD on and
 // persists it (so it survives SPA navigation and the next visit); ?perf=0
-// turns it off again.
+// turns it off again. ?perfsweep=1 additionally auto-runs the bisection
+// sweep once the board has been animating for ~a second.
 if (typeof window !== 'undefined') {
   try {
-    const flag = new URLSearchParams(window.location.search).get('perf');
+    const params = new URLSearchParams(window.location.search);
+    const flag = params.get('perf');
     if (flag === '1') setPerfHudEnabled(true);
     else if (flag === '0') setPerfHudEnabled(false);
+    if (params.get('perfsweep') === '1') {
+      setPerfHudEnabled(true);
+      autoSweepPending = true;
+    }
   } catch { /* ignore malformed URLs */ }
   (window as unknown as Record<string, unknown>).togglePerfHud = () => {
     setPerfHudEnabled(!perfHudEnabled());
@@ -88,8 +97,13 @@ if (typeof window !== 'undefined') {
 
 const FREEZE_KEY = 'freeze_draws';
 let freezeCache: boolean | null = null;
+// Volatile overrides used by the perf sweep — never persisted, so an
+// interrupted sweep can't leave the board frozen after a reload.
+let sweepFreeze = false;
+let sweepSatPause = false;
 
 export function drawFreezeEnabled(): boolean {
+  if (sweepFreeze) return true;
   if (freezeCache === null) {
     try {
       freezeCache = localStorage.getItem(FREEZE_KEY) === 'on';
@@ -98,6 +112,12 @@ export function drawFreezeEnabled(): boolean {
     }
   }
   return freezeCache;
+}
+
+/** True while the perf sweep wants satellite canvas loops (nav torch,
+ * sprite-card thumbnails) to stop drawing. Checked inside those loops. */
+export function satellitesPaused(): boolean {
+  return sweepSatPause;
 }
 
 export function setDrawFreezeEnabled(on: boolean): void {
@@ -224,6 +244,133 @@ export function profFrameEnd(canvasW: number, canvasH: number, dpr: number, zoom
     updateHud(canvasW, canvasH, dpr, zoom);
   }
   sendLagPing();
+
+  // ?perfsweep=1 auto-run: wait until the board has been animating for ~1s
+  // so the sweep samples a warmed-up page.
+  if (autoSweepPending && ringCount >= 60 && !sweepActive) {
+    autoSweepPending = false;
+    runPerfSweep();
+  }
+}
+
+// --- perf sweep ---------------------------------------------------------------
+// Automated bisection: cycles through configurations for ~5s each and
+// records fps + hitch% per configuration, so one run (one screenshot)
+// apportions the frame budget across the board canvas, the satellite canvas
+// loops, SMIL SVG animation (the quest banner's cloth ripple re-runs its
+// filter chain every tick), CSS animations, and static SVG compositing.
+// Trigger: ?perfsweep=1 (auto-runs once the board is warm) or
+// runPerfSweep() in the console. All overrides are volatile — an aborted
+// sweep leaves nothing behind after a reload.
+
+const SWEEP_SETTLE_MS = 800; // let the config take effect before sampling
+const SWEEP_SAMPLE_MS = 4200;
+
+let cssPauseStyle: HTMLStyleElement | null = null;
+let svgHideStyle: HTMLStyleElement | null = null;
+
+function setStyleOverride(current: HTMLStyleElement | null, on: boolean, css: string): HTMLStyleElement | null {
+  if (on) {
+    if (current) return current;
+    const el = document.createElement('style');
+    el.textContent = css;
+    document.head.appendChild(el);
+    return el;
+  }
+  current?.remove();
+  return null;
+}
+
+function setCssAnimsPaused(on: boolean): void {
+  cssPauseStyle = setStyleOverride(
+    cssPauseStyle, on,
+    '*, *::before, *::after { animation-play-state: paused !important; transition: none !important; }'
+  );
+}
+
+function setSvgsHidden(on: boolean): void {
+  svgHideStyle = setStyleOverride(svgHideStyle, on, 'svg { visibility: hidden !important; }');
+}
+
+function setSmilPaused(on: boolean): void {
+  document.querySelectorAll('svg').forEach(svg => {
+    try {
+      if (on) svg.pauseAnimations();
+      else svg.unpauseAnimations();
+    } catch { /* detached or foreign svg */ }
+  });
+}
+
+interface SweepConfig {
+  key: string;
+  on: () => void;
+  off: () => void;
+}
+
+const SWEEP_CONFIGS: SweepConfig[] = [
+  { key: 'base', on: () => {}, off: () => {} },
+  { key: '-board', on: () => { sweepFreeze = true; }, off: () => { sweepFreeze = false; } },
+  { key: '-sat', on: () => { sweepSatPause = true; }, off: () => { sweepSatPause = false; } },
+  { key: '-smil', on: () => setSmilPaused(true), off: () => setSmilPaused(false) },
+  { key: '-css', on: () => setCssAnimsPaused(true), off: () => setCssAnimsPaused(false) },
+  { key: '-svg', on: () => setSvgsHidden(true), off: () => setSvgsHidden(false) },
+  {
+    key: 'bare',
+    on: () => { sweepFreeze = true; sweepSatPause = true; setSmilPaused(true); setCssAnimsPaused(true); setSvgsHidden(true); },
+    off: () => { sweepFreeze = false; sweepSatPause = false; setSmilPaused(false); setCssAnimsPaused(false); setSvgsHidden(false); },
+  },
+];
+
+let sweepActive = false;
+let sweepStatusLine: string | null = null;
+let sweepResultLines: string[] = [];
+
+function resetWindow(): void {
+  ringCursor = 0;
+  ringCount = 0;
+}
+
+function sampleWindow(): string {
+  const n = ringCount;
+  if (n < 10) return 'n/a';
+  const [avgInterval] = avgAndP95(intervalRing, n);
+  let longFrames = 0;
+  for (let i = 0; i < n; i++) if (intervalRing[i] > 25) longFrames++;
+  const fps = avgInterval > 0 ? 1000 / avgInterval : 0;
+  return `${fps.toFixed(0)}fps ${(100 * longFrames / n).toFixed(0)}%h`;
+}
+
+export function runPerfSweep(): void {
+  if (sweepActive || typeof window === 'undefined') return;
+  if (!perfHudEnabled()) setPerfHudEnabled(true);
+  sweepActive = true;
+  sweepResultLines = [];
+
+  const step = (idx: number): void => {
+    if (idx >= SWEEP_CONFIGS.length) {
+      sweepActive = false;
+      sweepStatusLine = null;
+      // Results stay on the HUD until the next sweep or HUD toggle-off.
+      console.log('[perf sweep]', sweepResultLines.join('  '));
+      return;
+    }
+    const config = SWEEP_CONFIGS[idx];
+    sweepStatusLine = `sweep ${idx + 1}/${SWEEP_CONFIGS.length}: ${config.key}…`;
+    config.on();
+    window.setTimeout(() => {
+      resetWindow();
+      window.setTimeout(() => {
+        sweepResultLines.push(`${config.key.padEnd(11)} ${sampleWindow()}`);
+        config.off();
+        step(idx + 1);
+      }, SWEEP_SAMPLE_MS);
+    }, SWEEP_SETTLE_MS);
+  };
+  step(0);
+}
+
+if (typeof window !== 'undefined') {
+  (window as unknown as Record<string, unknown>).runPerfSweep = runPerfSweep;
 }
 
 // --- stats + HUD -------------------------------------------------------------
@@ -327,6 +474,8 @@ function updateHud(canvasW: number, canvasH: number, dpr: number, zoom: number):
   lines.push(`${'mainlag'.padEnd(11)} ${lagAvg.toFixed(2).padStart(5)} | ${lagP95.toFixed(2).padStart(5)}`);
   lines.push(`${'rafs/frame'.padEnd(11)} ${rafsAvg.toFixed(1).padStart(5)} |     -`);
   if (drawFreezeEnabled()) lines.push('** DRAWS FROZEN (diagnostic) **');
+  if (sweepStatusLine) lines.push(sweepStatusLine);
+  for (const l of sweepResultLines) lines.push(l);
 
   ensureHud().textContent = lines.join('\n');
 }
