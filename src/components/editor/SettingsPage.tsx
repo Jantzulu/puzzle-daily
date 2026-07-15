@@ -3,13 +3,15 @@ import { useSearchParams } from 'react-router-dom';
 import { ThemeAssetsEditor } from './ThemeAssetsEditor';
 import { HelpContentEditor } from './HelpContentEditor';
 import { ActivityFeed } from './ActivityFeed';
+import { FxSettingsPanel } from './FxSettingsPanel';
 
-type SettingsTab = 'theme' | 'help' | 'activity';
+type SettingsTab = 'theme' | 'help' | 'activity' | 'fx';
 
 const TABS: { id: SettingsTab; label: string; icon: string }[] = [
   { id: 'theme', label: 'Theme', icon: '\uD83D\uDDBC\uFE0F' },
   { id: 'help', label: 'Help', icon: '\u2753' },
   { id: 'activity', label: 'Activity', icon: '\uD83D\uDCDC' },
+  { id: 'fx', label: 'Effects', icon: '\u26A1' },
 ];
 
 const VALID_TABS = TABS.map(t => t.id);
@@ -61,6 +63,11 @@ export const SettingsPage: React.FC = () => {
         {activeTab === 'activity' && (
           <div className="max-w-2xl mx-auto px-4 md:px-8 py-4 md:py-6">
             <ActivityFeed />
+          </div>
+        )}
+        {activeTab === 'fx' && (
+          <div className="max-w-2xl mx-auto px-4 md:px-8 py-4 md:py-6">
+            <FxSettingsPanel />
           </div>
         )}
       </div>
