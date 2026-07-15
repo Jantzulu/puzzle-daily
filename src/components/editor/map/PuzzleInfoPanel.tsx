@@ -1,0 +1,605 @@
+// Puzzle Info panel: name/description/tags, skin + music pickers, hero/turn/
+// lives limits, training-arena toggle, win conditions (incl. per-type kill
+// curation + noble warnings), par, and side quests.
+// Extracted verbatim from MapEditor.tsx (Phase 1 decomposition, 2026-07-14).
+// State stays in MapEditor; `state`/`setState` pass through under the same
+// names so every functional update below is unchanged.
+import React from 'react';
+import { toast } from '../../shared/Toast';
+import type { Puzzle, PuzzleSkin, SoundAsset, WinConditionType, SideQuestType } from '../../../types/game';
+import { getCharacter } from '../../../data/characters';
+import { getEnemy } from '../../../data/enemies';
+import { TagInput } from '../../shared/TagInput';
+import { suggestTags } from '../../../utils/puzzleTagSuggestions';
+import type { EditorState } from './editorState';
+
+interface PuzzleInfoPanelProps {
+  isOpen: boolean;
+  onToggleOpen: () => void;
+  state: EditorState;
+  setState: React.Dispatch<React.SetStateAction<EditorState>>;
+  availableSkins: PuzzleSkin[];
+  availableSounds: SoundAsset[];
+  onRefreshSkins: () => void;
+  onRefreshSounds: () => void;
+  knownTags: string[];
+  getCurrentPuzzle: () => Puzzle;
+}
+
+export const PuzzleInfoPanel: React.FC<PuzzleInfoPanelProps> = ({
+  isOpen,
+  onToggleOpen,
+  state,
+  setState,
+  availableSkins,
+  availableSounds,
+  onRefreshSkins,
+  onRefreshSounds,
+  knownTags,
+  getCurrentPuzzle,
+}) => (
+  <div className="bg-stone-800 p-4 rounded">
+    <button
+      onClick={onToggleOpen}
+      className="w-full flex items-center justify-between text-lg font-bold"
+    >
+      <span>Puzzle Info</span>
+      <span className="text-lg text-stone-400">{isOpen ? '▾' : '▸'}</span>
+    </button>
+    {isOpen && <div className="space-y-3 mt-3">
+      <div>
+        <label className="block text-sm mb-1">Name</label>
+        <input
+          type="text"
+          value={state.puzzleName}
+          onChange={(e) => setState(prev => ({ ...prev, puzzleName: e.target.value }))}
+          className="w-full px-3 py-2 bg-stone-700 rounded"
+        />
+      </div>
+      <div>
+        <label className="block text-sm mb-1">Description</label>
+        <textarea
+          value={state.description}
+          onChange={(e) => setState(prev => ({ ...prev, description: e.target.value }))}
+          placeholder="Short description for the library..."
+          rows={2}
+          className="w-full px-3 py-2 bg-stone-700 rounded text-sm resize-none"
+        />
+      </div>
+      <div>
+        <div className="flex items-center justify-between mb-1">
+          <label className="text-sm">Tags</label>
+          <button
+            type="button"
+            onClick={() => {
+              const puzzle = getCurrentPuzzle();
+              const suggested = suggestTags(puzzle);
+              const newTags = suggested.filter(t => !state.tags.includes(t));
+              if (newTags.length === 0) {
+                toast.info('No new tags to suggest');
+              } else {
+                setState(prev => ({ ...prev, tags: [...prev.tags, ...newTags] }));
+                toast.success(`Added ${newTags.length} suggested tag${newTags.length > 1 ? 's' : ''}`);
+              }
+            }}
+            className="text-xs text-copper-400 hover:text-copper-300"
+          >
+            ✨ Auto-suggest
+          </button>
+        </div>
+        <TagInput
+          tags={state.tags}
+          onChange={(tags) => setState(prev => ({ ...prev, tags }))}
+          knownTags={knownTags}
+          placeholder="Add tag..."
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm mb-1">Visual Skin</label>
+        <select
+          value={state.skinId || 'builtin_dungeon'}
+          onChange={(e) => {
+            setState(prev => ({ ...prev, skinId: e.target.value }));
+            onRefreshSkins(); // Refresh in case new skins were added
+          }}
+          className="w-full px-3 py-2 bg-stone-700 rounded text-parchment-100"
+        >
+          {availableSkins.map((skin) => (
+            <option key={skin.id} value={skin.id}>
+              {skin.name} {skin.isBuiltIn ? '(Built-in)' : ''}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div>
+        <label className="block text-sm mb-1">Background Music</label>
+        <select
+          value={state.backgroundMusicId || ''}
+          onChange={(e) => {
+            setState(prev => ({ ...prev, backgroundMusicId: e.target.value || undefined }));
+            onRefreshSounds(); // Refresh in case new sounds were added
+          }}
+          className="w-full px-3 py-2 bg-stone-700 rounded text-parchment-100"
+        >
+          <option value="">Use Global Config</option>
+          {availableSounds.map((sound) => (
+            <option key={sound.id} value={sound.id}>
+              {sound.name}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <label className="block text-sm mb-1">Available Heroes</label>
+          <input
+            type="number"
+            min="1"
+            max="10"
+            value={state.maxCharacters}
+            onChange={(e) => setState(prev => ({ ...prev, maxCharacters: Number(e.target.value) }))}
+            className="w-full px-3 py-2 bg-stone-700 rounded"
+            title="Max heroes in the pool (solver uses this)"
+          />
+        </div>
+        <div>
+          <label className="block text-sm mb-1">Max Placeable</label>
+          <input
+            type="number"
+            min="1"
+            max={state.maxCharacters}
+            value={state.maxPlaceableCharacters ?? state.maxCharacters}
+            onChange={(e) => {
+              const val = Number(e.target.value);
+              setState(prev => ({
+                ...prev,
+                maxPlaceableCharacters: val === prev.maxCharacters ? undefined : val
+              }));
+            }}
+            className="w-full px-3 py-2 bg-stone-700 rounded"
+            title="Max heroes player can place (can be less than available)"
+          />
+        </div>
+      </div>
+      <p className="text-xs text-stone-400 mt-1">Player can place up to {state.maxPlaceableCharacters ?? state.maxCharacters} of {state.maxCharacters} available heroes</p>
+      <div className="grid grid-cols-2 gap-2 mt-2">
+        <div>
+          <label className="block text-sm mb-1">Max Turns</label>
+          <input
+            type="number"
+            min="10"
+            max="1000"
+            value={state.maxTurns}
+            onChange={(e) => setState(prev => ({ ...prev, maxTurns: Number(e.target.value) }))}
+            className="w-full px-3 py-2 bg-stone-700 rounded"
+          />
+        </div>
+        <div>
+          <label className="block text-sm mb-1">Lives</label>
+          <input
+            type="number"
+            min="0"
+            max="99"
+            value={state.lives ?? 3}
+            onChange={(e) => setState(prev => ({ ...prev, lives: Number(e.target.value) }))}
+            className="w-full px-3 py-2 bg-stone-700 rounded"
+            title="Number of attempts (0 = unlimited)"
+          />
+        </div>
+      </div>
+      <p className="text-xs text-stone-400 mt-1">Lives: 0 = unlimited attempts</p>
+
+      {/* Training Arena toggle */}
+      <label className="flex items-center gap-2 mt-2 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={state.isTraining}
+          onChange={(e) => setState(prev => ({ ...prev, isTraining: e.target.checked }))}
+          className="w-4 h-4 accent-copper-500"
+        />
+        <span className="text-sm">Training Arena</span>
+      </label>
+      <p className="text-xs text-stone-400 mt-0.5">Show in Training Grounds page</p>
+
+      {/* Win Conditions - moved into Puzzle Info */}
+      <div className="pt-3 border-t border-stone-700">
+        <h3 className="text-sm font-semibold mb-2">Win Conditions</h3>
+        <div className="space-y-2">
+          {state.winConditions.map((condition, index) => (
+            <div key={index} className="bg-stone-700 p-2 rounded">
+              <div className="flex justify-between items-start gap-2">
+                <div className="flex-1 min-w-0">
+                  <select
+                    value={condition.type}
+                    onChange={(e) => {
+                      const newType = e.target.value as WinConditionType;
+                      setState(prev => {
+                        const newConditions = [...prev.winConditions];
+                        newConditions[index] = { type: newType, params: {} };
+                        return { ...prev, winConditions: newConditions };
+                      });
+                    }}
+                    className="w-full px-2 py-1 bg-stone-600 rounded text-sm mb-1"
+                  >
+                    <option value="defeat_all_enemies">Defeat All Enemies</option>
+                    <option value="defeat_boss">Defeat the Boss</option>
+                    <option value="collect_all">Collect All Items</option>
+                    <option value="collect_keys">Collect All Keys</option>
+                    <option value="reach_goal">Reach Goal Tile</option>
+                    <option value="survive_turns">Survive X Turns</option>
+                    <option value="win_in_turns">Win Within X Turns</option>
+                    <option value="max_characters">Use Max X Characters</option>
+                    <option value="characters_alive">Keep X Characters Alive</option>
+                    <option value="protect_noble">Protect the Noble</option>
+                    <option value="noble_survives_turns">Noble Survives X Turns</option>
+                    <option value="noble_reaches_goal">Noble Reaches Goal Tile</option>
+                  </select>
+
+                  {/* Noble conditions: warn when nothing placed can satisfy them.
+                      Any noble condition also makes a Noble death instant defeat
+                      (engine implied-protect rule). */}
+                  {(condition.type === 'protect_noble' || condition.type === 'noble_survives_turns' || condition.type === 'noble_reaches_goal') && (() => {
+                    const hasPlacedNoble =
+                      state.enemies.some(e => e.party === 'hero' && getEnemy(e.enemyId)?.isNoble) ||
+                      state.availableCharacters.some(cid => getCharacter(cid)?.isNoble);
+                    return (
+                      <>
+                        {!hasPlacedNoble && (
+                          <p className="text-xs text-amber-400 italic">No Noble on this map — place a Noble ally or add a Noble hero</p>
+                        )}
+                        <p className="text-xs text-stone-500">If the Noble dies, the puzzle is lost.</p>
+                      </>
+                    );
+                  })()}
+
+                  {/* Params for conditions that need them */}
+                  {(condition.type === 'survive_turns' || condition.type === 'win_in_turns' || condition.type === 'noble_survives_turns') && (
+                    <div className="flex items-center gap-2">
+                      <label className="text-xs text-stone-400">Turns:</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="999"
+                        value={condition.params?.turns ?? 10}
+                        onChange={(e) => {
+                          setState(prev => {
+                            const newConditions = [...prev.winConditions];
+                            newConditions[index] = {
+                              ...newConditions[index],
+                              params: { ...newConditions[index].params, turns: parseInt(e.target.value) || 10 }
+                            };
+                            return { ...prev, winConditions: newConditions };
+                          });
+                        }}
+                        className="w-20 px-2 py-1 bg-stone-600 rounded text-sm"
+                      />
+                    </div>
+                  )}
+
+                  {/* Per-type kill-requirement curation (user design 2026-07-11):
+                      every enemy type placed on the map gets a checkbox; unchecked
+                      types go into params.excludedEnemyIds — they neither block
+                      victory nor appear in the player's quest text. */}
+                  {condition.type === 'defeat_all_enemies' && (() => {
+                    const placedTypes = Array.from(new Set(state.enemies.map(e => e.enemyId)));
+                    if (placedTypes.length === 0) return (
+                      <p className="text-xs text-stone-500 italic">Place enemies to choose which count</p>
+                    );
+                    const excluded = condition.params?.excludedEnemyIds ?? [];
+                    return (
+                      <div className="space-y-1 mt-1">
+                        <p className="text-xs text-stone-400">Counts toward the quest:</p>
+                        {placedTypes.map(enemyId => {
+                          const counts = !excluded.includes(enemyId);
+                          const name = getEnemy(enemyId)?.name ?? enemyId;
+                          return (
+                            <label key={enemyId} className="flex items-center gap-2 text-xs cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={counts}
+                                onChange={(e) => {
+                                  const next = e.target.checked
+                                    ? excluded.filter(id => id !== enemyId)
+                                    : [...excluded, enemyId];
+                                  setState(prev => {
+                                    const newConditions = [...prev.winConditions];
+                                    newConditions[index] = {
+                                      ...newConditions[index],
+                                      params: {
+                                        ...newConditions[index].params,
+                                        excludedEnemyIds: next.length > 0 ? next : undefined,
+                                      },
+                                    };
+                                    return { ...prev, winConditions: newConditions };
+                                  });
+                                }}
+                                className="w-3.5 h-3.5"
+                              />
+                              <span className={counts ? '' : 'text-stone-500 line-through'}>{name}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
+
+                  {(condition.type === 'max_characters' || condition.type === 'characters_alive') && (
+                    <div className="flex items-center gap-2">
+                      <label className="text-xs text-stone-400">Characters:</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="10"
+                        value={condition.params?.characterCount ?? 1}
+                        onChange={(e) => {
+                          setState(prev => {
+                            const newConditions = [...prev.winConditions];
+                            newConditions[index] = {
+                              ...newConditions[index],
+                              params: { ...newConditions[index].params, characterCount: parseInt(e.target.value) || 1 }
+                            };
+                            return { ...prev, winConditions: newConditions };
+                          });
+                        }}
+                        className="w-20 px-2 py-1 bg-stone-600 rounded text-sm"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* Remove button (only if more than 1 condition) */}
+                {state.winConditions.length > 1 && (
+                  <button
+                    onClick={() => {
+                      setState(prev => ({
+                        ...prev,
+                        winConditions: prev.winConditions.filter((_, i) => i !== index)
+                      }));
+                    }}
+                    className="px-2 py-1 bg-blood-600 rounded text-xs hover:bg-blood-700"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+
+          {/* Add condition button */}
+          <button
+            onClick={() => {
+              setState(prev => ({
+                ...prev,
+                winConditions: [...prev.winConditions, { type: 'defeat_all_enemies' }]
+              }));
+            }}
+            className="w-full px-2 py-1 bg-stone-600 rounded text-xs hover:bg-stone-500"
+          >
+            + Add Condition
+          </button>
+        </div>
+      </div>
+
+      {/* Par (for Trophy Rating) */}
+      <div className="pt-3 border-t border-stone-700">
+        <h3 className="text-sm font-semibold mb-2">Par (for Trophy Rating)</h3>
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label className="block text-xs text-stone-400 mb-1">Character Par</label>
+            <input
+              type="number"
+              min="1"
+              max={state.maxCharacters}
+              value={state.parCharacters ?? ''}
+              placeholder="Auto"
+              onChange={(e) => setState(prev => ({
+                ...prev,
+                parCharacters: e.target.value ? Number(e.target.value) : undefined
+              }))}
+              className="w-full px-2 py-1 bg-stone-700 rounded text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-stone-400 mb-1">Turn Par</label>
+            <input
+              type="number"
+              min="1"
+              max={state.maxTurns || 100}
+              value={state.parTurns ?? ''}
+              placeholder="Auto"
+              onChange={(e) => setState(prev => ({
+                ...prev,
+                parTurns: e.target.value ? Number(e.target.value) : undefined
+              }))}
+              className="w-full px-2 py-1 bg-stone-700 rounded text-sm"
+            />
+          </div>
+        </div>
+        <p className="text-xs text-stone-500 mt-1">
+          Run validator to auto-suggest. 🏆 Gold = meet both pars.
+        </p>
+      </div>
+
+      {/* Side Quests (Bonus Objectives) */}
+      <div className="pt-3 border-t border-stone-700">
+        <h3 className="text-sm font-semibold mb-2">Side Quests (Bonus Objectives)</h3>
+        <div className="space-y-2">
+          {state.sideQuests.map((quest, index) => (
+            <div key={quest.id} className="bg-stone-700 p-2 rounded">
+              <div className="flex justify-between items-start gap-2">
+                <div className="flex-1 min-w-0 space-y-1">
+                  {/* Title */}
+                  <input
+                    type="text"
+                    value={quest.title}
+                    placeholder="Quest title"
+                    onChange={(e) => {
+                      setState(prev => {
+                        const newQuests = [...prev.sideQuests];
+                        newQuests[index] = { ...newQuests[index], title: e.target.value };
+                        return { ...prev, sideQuests: newQuests };
+                      });
+                    }}
+                    className="w-full px-2 py-1 bg-stone-600 rounded text-sm"
+                  />
+
+                  {/* Type dropdown */}
+                  <select
+                    value={quest.type}
+                    onChange={(e) => {
+                      setState(prev => {
+                        const newQuests = [...prev.sideQuests];
+                        newQuests[index] = { ...newQuests[index], type: e.target.value as SideQuestType, params: {} };
+                        return { ...prev, sideQuests: newQuests };
+                      });
+                    }}
+                    className="w-full px-2 py-1 bg-stone-600 rounded text-sm"
+                  >
+                    <option value="collect_all_items">Collect All Items</option>
+                    <option value="no_damage_taken">No Damage Taken</option>
+                    <option value="no_deaths">No Deaths</option>
+                    <option value="speed_run">Speed Run (X Turns)</option>
+                    <option value="minimalist">Minimalist (X Characters)</option>
+                    <option value="use_specific_character">Use Specific Character</option>
+                    <option value="avoid_character">Avoid Character</option>
+                    <option value="custom">Custom (Manual)</option>
+                  </select>
+
+                  {/* Params for speed_run */}
+                  {quest.type === 'speed_run' && (
+                    <div className="flex items-center gap-2">
+                      <label className="text-xs text-stone-400">Max Turns:</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="999"
+                        value={quest.params?.turns ?? 5}
+                        onChange={(e) => {
+                          setState(prev => {
+                            const newQuests = [...prev.sideQuests];
+                            newQuests[index] = {
+                              ...newQuests[index],
+                              params: { ...newQuests[index].params, turns: parseInt(e.target.value) || 5 }
+                            };
+                            return { ...prev, sideQuests: newQuests };
+                          });
+                        }}
+                        className="w-16 px-2 py-1 bg-stone-600 rounded text-sm"
+                      />
+                    </div>
+                  )}
+
+                  {/* Params for minimalist */}
+                  {quest.type === 'minimalist' && (
+                    <div className="flex items-center gap-2">
+                      <label className="text-xs text-stone-400">Max Characters:</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="10"
+                        value={quest.params?.characterCount ?? 1}
+                        onChange={(e) => {
+                          setState(prev => {
+                            const newQuests = [...prev.sideQuests];
+                            newQuests[index] = {
+                              ...newQuests[index],
+                              params: { ...newQuests[index].params, characterCount: parseInt(e.target.value) || 1 }
+                            };
+                            return { ...prev, sideQuests: newQuests };
+                          });
+                        }}
+                        className="w-16 px-2 py-1 bg-stone-600 rounded text-sm"
+                      />
+                    </div>
+                  )}
+
+                  {/* Params for use_specific_character / avoid_character */}
+                  {(quest.type === 'use_specific_character' || quest.type === 'avoid_character') && (
+                    <div className="flex items-center gap-2">
+                      <label className="text-xs text-stone-400">Character:</label>
+                      <select
+                        value={quest.params?.characterId ?? ''}
+                        onChange={(e) => {
+                          setState(prev => {
+                            const newQuests = [...prev.sideQuests];
+                            newQuests[index] = {
+                              ...newQuests[index],
+                              params: { ...newQuests[index].params, characterId: e.target.value }
+                            };
+                            return { ...prev, sideQuests: newQuests };
+                          });
+                        }}
+                        className="flex-1 px-2 py-1 bg-stone-600 rounded text-sm"
+                      >
+                        <option value="">Select...</option>
+                        {state.availableCharacters.filter(id => getCharacter(id) != null).map(charId => {
+                          const char = getCharacter(charId)!;
+                          return (
+                            <option key={charId} value={charId}>
+                              {char.name}
+                            </option>
+                          );
+                        })}
+                      </select>
+                    </div>
+                  )}
+
+                  {/* Bonus points */}
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs text-stone-400">Bonus Pts:</label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="9999"
+                      value={quest.bonusPoints}
+                      onChange={(e) => {
+                        setState(prev => {
+                          const newQuests = [...prev.sideQuests];
+                          newQuests[index] = { ...newQuests[index], bonusPoints: parseInt(e.target.value) || 0 };
+                          return { ...prev, sideQuests: newQuests };
+                        });
+                      }}
+                      className="w-20 px-2 py-1 bg-stone-600 rounded text-sm"
+                    />
+                  </div>
+                </div>
+
+                {/* Remove button */}
+                <button
+                  onClick={() => {
+                    setState(prev => ({
+                      ...prev,
+                      sideQuests: prev.sideQuests.filter((_, i) => i !== index)
+                    }));
+                  }}
+                  className="px-2 py-1 bg-blood-600 rounded text-xs hover:bg-blood-700"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+          ))}
+
+          {/* Add side quest button */}
+          <button
+            onClick={() => {
+              setState(prev => ({
+                ...prev,
+                sideQuests: [...prev.sideQuests, {
+                  id: 'quest_' + Date.now(),
+                  type: 'collect_all_items',
+                  title: 'New Quest',
+                  bonusPoints: 100
+                }]
+              }));
+            }}
+            className="w-full px-2 py-1 bg-stone-600 rounded text-xs hover:bg-stone-500"
+          >
+            + Add Side Quest
+          </button>
+        </div>
+      </div>
+    </div>}
+  </div>
+);
