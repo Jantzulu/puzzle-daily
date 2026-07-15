@@ -82,6 +82,8 @@ const FONT_OPTIONS = [
   { value: 'germania', label: 'Germania One' },
   { value: 'jacquard', label: 'Jacquard 24' },
   { value: 'jacquarda', label: 'Jacquarda Bastarda 9' },
+  { value: 'jacquard12', label: 'Jacquard 12' },
+  { value: 'metamorphous', label: 'Metamorphous' },
   { value: 'amarante', label: 'Amarante' },
   { value: 'faculty', label: 'Faculty Glyphic' },
 ];
@@ -707,6 +709,8 @@ const StyleSelector: React.FC<StyleSelectorProps> = ({ assetKey, value, onChange
                   'germania': "'Germania One', sans-serif",
                   'jacquard': "'Jacquard 24', serif",
                   'jacquarda': "'Jacquarda Bastarda 9', serif",
+                  'jacquard12': "'Jacquard 12', serif",
+                  'metamorphous': "'Metamorphous', serif",
                   'amarante': "'Amarante', serif",
                   'faculty': "'Faculty Glyphic', serif",
                 };

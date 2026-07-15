@@ -739,6 +739,8 @@ export function getThemeAssetsCSSProperties(): Record<string, string> {
     'germania': "'Germania One', sans-serif",
     'jacquard': "'Jacquard 24', serif",
     'jacquarda': "'Jacquarda Bastarda 9', serif",
+    'jacquard12': "'Jacquard 12', serif",
+    'metamorphous': "'Metamorphous', serif",
     'amarante': "'Amarante', serif",
     'faculty': "'Faculty Glyphic', serif",
   };

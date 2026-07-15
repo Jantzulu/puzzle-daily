@@ -15,7 +15,7 @@
     <!-- Google Fonts - loaded in head for reliability -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Almendra:wght@400;700&family=Amarante&family=Caveat:wght@400;500;600;700&family=Cinzel:wght@400;500;600;700&family=Crimson+Text:wght@400;600;700&family=Faculty+Glyphic&family=Germania+One&family=Grenze+Gotisch:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Jacquard+24&family=Jacquarda+Bastarda+9&family=MedievalSharp&family=Press+Start+2P&family=UnifrakturCook:wght@700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Almendra:wght@400;700&family=Amarante&family=Caveat:wght@400;500;600;700&family=Cinzel:wght@400;500;600;700&family=Crimson+Text:wght@400;600;700&family=Faculty+Glyphic&family=Germania+One&family=Grenze+Gotisch:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Jacquard+12&family=Jacquard+24&family=Jacquarda+Bastarda+9&family=MedievalSharp&family=Metamorphous&family=Press+Start+2P&family=UnifrakturCook:wght@700&display=swap" rel="stylesheet">
   </head>
     <style>
       /* Pre-hydration splash — fades in after a beat so fast loads never see
@@ -39,7 +39,7 @@
         try{
           var a=JSON.parse(localStorage.getItem('theme_assets')||'{}');
           /* Same option→CSS map as themeAssets.ts fontMap */
-          var F={medieval:"'Almendra', serif",pixel:"'Press Start 2P', monospace",fantasy:"'MedievalSharp', cursive",handwritten:"'Caveat', cursive",serif:"'Crimson Text', Georgia, serif",gothic:"'UnifrakturCook', cursive",runic:"'Noto Sans Runic', sans-serif",elegant:"'Cinzel', serif",grenze:"'Grenze Gotisch', serif",germania:"'Germania One', sans-serif",jacquard:"'Jacquard 24', serif",jacquarda:"'Jacquarda Bastarda 9', serif",amarante:"'Amarante', serif",faculty:"'Faculty Glyphic', serif"};
+          var F={medieval:"'Almendra', serif",pixel:"'Press Start 2P', monospace",fantasy:"'MedievalSharp', cursive",handwritten:"'Caveat', cursive",serif:"'Crimson Text', Georgia, serif",gothic:"'UnifrakturCook', cursive",runic:"'Noto Sans Runic', sans-serif",elegant:"'Cinzel', serif",grenze:"'Grenze Gotisch', serif",germania:"'Germania One', sans-serif",jacquard:"'Jacquard 24', serif",jacquarda:"'Jacquarda Bastarda 9', serif",jacquard12:"'Jacquard 12', serif",metamorphous:"'Metamorphous', serif",amarante:"'Amarante', serif",faculty:"'Faculty Glyphic', serif"};
           var f=F[a.fontFamilyHeading]||F[a.fontFamily];
           var t=document.querySelector('#splash .t');
           if(a.siteTitle)t.textContent=a.siteTitle;
