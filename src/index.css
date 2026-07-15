@@ -1575,8 +1575,30 @@ html body.theme-font-active,
   transform: translate(50%, -50%);
 }
 
+/* Mobile banner cloth sway — transform-only, so it composites on the GPU.
+   Replaces the SMIL wind on phones: every SMIL tick re-ran the cloth's
+   filter chain (feDropShadow + turbulence grain) on the CPU and, together
+   with the title glimmer, held iOS Safari at its 40Hz tier whenever the
+   banner was visible (perf sweep 2026-07-15). Top pinned near the rod so
+   the hem swings while the pinned edge barely moves — same flag physics
+   as the desktop skew. */
+.quest-banner-cloth-sway {
+  will-change: transform;
+  transform-origin: 50% 9%;
+  animation: banner-cloth-sway 7s ease-in-out infinite;
+}
+
+@keyframes banner-cloth-sway {
+  0%, 100% { transform: skewX(0deg); }
+  38% { transform: skewX(-1.4deg); }
+  72% { transform: skewX(0.95deg); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .quest-banner {
+    animation: none;
+  }
+  .quest-banner-cloth-sway {
     animation: none;
   }
 }
@@ -2150,27 +2172,42 @@ body.menu-gate-instant .quest-panel-sticky {
 /* Title glimmers out of the dark — a breathing gold glow that rides the
    same slow, uneven rhythm as the lintel's torch pool (7s, both flicker
    rather than pulse). All viewports: desktop keeps its flat bar, but the
-   title and sprite carry the torch scene there too. */
+   title and sprite carry the torch scene there too.
+
+   IMPLEMENTATION (perf, 2026-07-15): animating text-shadow itself forced
+   the title to REPAINT every frame on every page — one of the two costs
+   holding iPhones at Safari's 40Hz tier. The element now keeps a STATIC
+   trough-pose shadow, and the bright pose lives on a transparent-text
+   ::after duplicate (content from data-text) whose OPACITY breathes —
+   opacity composites on the GPU. Same 7s uneven rhythm. The element also
+   carries the base dungeon drop-shadow here (don't add text-shadow-dungeon
+   alongside — text-shadow doesn't merge across rules, one stack must win). */
 .nav-title-glimmer {
-  animation: nav-title-glimmer 7s ease-in-out infinite;
+  position: relative;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5), 0 0 8px rgba(228, 185, 106, 0.22), 0 0 20px rgba(212, 165, 116, 0.10);
 }
 
-@keyframes nav-title-glimmer {
-  0%, 100% {
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5), 0 0 8px rgba(228, 185, 106, 0.22), 0 0 20px rgba(212, 165, 116, 0.10);
-  }
-  14% {
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5), 0 0 12px rgba(228, 185, 106, 0.38), 0 0 26px rgba(212, 165, 116, 0.18);
-  }
-  28% {
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5), 0 0 9px rgba(228, 185, 106, 0.26), 0 0 22px rgba(212, 165, 116, 0.12);
-  }
-  57% {
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5), 0 0 13px rgba(228, 185, 106, 0.42), 0 0 30px rgba(212, 165, 116, 0.20);
-  }
-  71% {
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5), 0 0 8px rgba(228, 185, 106, 0.24), 0 0 20px rgba(212, 165, 116, 0.11);
-  }
+.nav-title-glimmer::after {
+  /* "/ ''" marks the duplicate as decorative for screen readers; browsers
+     without alt-text support skip the declaration and just lose the
+     breathing (static glow remains). */
+  content: attr(data-text) / '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  color: transparent;
+  pointer-events: none;
+  text-shadow: 0 0 12px rgba(228, 185, 106, 0.32), 0 0 28px rgba(212, 165, 116, 0.16);
+  animation: nav-title-glimmer-breathe 7s ease-in-out infinite;
+  will-change: opacity;
+}
+
+@keyframes nav-title-glimmer-breathe {
+  0%, 100% { opacity: 0; }
+  14% { opacity: 0.6; }
+  28% { opacity: 0.18; }
+  57% { opacity: 0.85; }
+  71% { opacity: 0.08; }
 }
 
 /* The gate menu (every width): the portcullis lattice (GateBeamMesh) —

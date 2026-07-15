@@ -11,6 +11,9 @@ import React from 'react';
 // Alive: an animated turbulence-displacement filter warps the hanging cloth
 // continuously (wind), plus a SMIL two-pose hem ripple. The rod and the
 // pinned loops stay rigid — mounted iron doesn't sway.
+//
+// DESKTOP ONLY — mobile renders a static cloth (filters cached) swayed by a
+// composited CSS transform instead; see the early return in the component.
 
 const VIEW_W = 1000;
 const VIEW_H = 240;
@@ -71,9 +74,9 @@ const drapePose = (seed: number, ampX: number, ampY: number): Array<[number, num
     ];
   });
 
-// Mobile runs the ripple/sway HOTTER: with no turbulence layer underneath,
-// the morphs are the entire wind there — and the banner is under half the
-// physical size, so equal amplitudes read as half the motion.
+// Mobile takes the static-cloth branch in the component (measured 2026-07-15:
+// SMIL-through-filters cost a third of the phone's frame budget); this hook
+// picks the branch and re-picks on rotation/resize.
 const useIsMobile = (): boolean => {
   const [mobile, setMobile] = React.useState<boolean>(
     () => typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches
@@ -113,15 +116,71 @@ export const BannerMesh: React.FC = () => {
   const windId = `wind${uid}`;
   const isMobile = useIsMobile();
   const ripA = pts(OUTER);
-  const ripB = React.useMemo(
-    () => pts(drapePose(80, isMobile ? 36 : 26, isMobile ? 22 : 16)),
-    [isMobile]
-  );
-  const ripC = React.useMemo(
-    () => pts(drapePose(130, isMobile ? 36 : 26, isMobile ? 22 : 16)),
-    [isMobile]
-  );
-  const swayValues = isMobile ? '0;-2.6;1.8;0' : '0;-1.8;1.2;0';
+  const ripB = React.useMemo(() => pts(drapePose(80, 26, 16)), []);
+  const ripC = React.useMemo(() => pts(drapePose(130, 26, 16)), []);
+  const swayValues = '0;-1.8;1.2;0';
+
+  // MOBILE: no SMIL at all. Profiled on-device 2026-07-15: every SMIL tick
+  // (points ripple + skew sway) re-ran the cloth's filter chain — feDropShadow
+  // σ6 over the full banner width plus the turbulence grain — on the CPU,
+  // and together with the title glimmer it held the whole page at iOS
+  // Safari's 40Hz tier whenever the banner was on screen (perf sweep:
+  // pausing SMIL alone recovered a locked 60fps). Here the cloth geometry
+  // and filters are fully static — WebKit renders them once and caches —
+  // and ALL motion is a composited CSS skew sway on the cloth's own svg
+  // (.quest-banner-cloth-sway, transform-only). The rod stays rigid in a
+  // separate static svg stacked above.
+  if (isMobile) {
+    return (
+      <>
+        <svg
+          className="quest-banner-mesh quest-banner-cloth-sway"
+          viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
+          preserveAspectRatio="none"
+          aria-hidden="true"
+        >
+          <defs>
+            <clipPath id={clipId}>
+              <polygon points={ripA} />
+            </clipPath>
+            <filter id={grainId}>
+              <feTurbulence type="fractalNoise" baseFrequency="1.1" numOctaves="2" stitchTiles="stitch" result="n" />
+              <feColorMatrix
+                in="n"
+                type="matrix"
+                values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.06 0"
+              />
+              <feComposite operator="in" in2="SourceGraphic" />
+            </filter>
+            <filter id={windId} x="-6%" y="-15%" width="112%" height="130%">
+              <feDropShadow dx="0" dy="6" stdDeviation="6" floodColor="rgba(0, 0, 0, 0.55)" />
+            </filter>
+          </defs>
+          <g filter={`url(#${windId})`}>
+            <polygon points={ripA} fill="#451614" />
+            <g clipPath={`url(#${clipId})`}>
+              <polygon points={ripA} fill="none" stroke="rgba(0,0,0,0.4)" strokeWidth="16" />
+            </g>
+            <polygon points={ripA} fill="#fff" filter={`url(#${grainId})`} />
+          </g>
+        </svg>
+        <svg
+          className="quest-banner-mesh"
+          viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
+          preserveAspectRatio="none"
+          aria-hidden="true"
+        >
+          <rect x="2" y="4" width="996" height="14" rx="7" fill="#211d19" />
+          <rect x="4" y="6" width="992" height="10" rx="5" fill="#403a32" />
+          <rect x="4" y="6" width="992" height="4" rx="2" fill="rgba(255, 235, 200, 0.24)" />
+          {LOOPS.map((lx, i) => (
+            <rect key={i} x={lx - 16} y="0" width="32" height="26" rx="4" fill="#3a1210" stroke="rgba(0,0,0,0.35)" strokeWidth="1.5" />
+          ))}
+        </svg>
+      </>
+    );
+  }
+
   return (
     <svg
       className="quest-banner-mesh"
@@ -145,38 +204,28 @@ export const BannerMesh: React.FC = () => {
           <feComposite operator="in" in2="SourceGraphic" />
         </filter>
         {/* Wind: animated turbulence displaces the hanging cloth organically.
-            DESKTOP ONLY: WebKit never animates the turbulence, so on iOS the
-            displacement is a frozen warp — invisible next to the hand-torn
-            hem — yet the ripple/sway animating the cloth THROUGH this chain
-            forced turbulence + displacement + blur to re-run every frame.
-            Mobile keeps just the in-chain shadow. */}
+            This whole return is DESKTOP ONLY (mobile takes the static-cloth
+            early return above — SMIL through a filter chain was a measured
+            frame-budget killer on iOS). */}
         <filter id={windId} x="-6%" y="-15%" width="112%" height="130%">
-          {!isMobile && (
-            <feTurbulence type="fractalNoise" baseFrequency="0.004 0.015" numOctaves="1" seed="7" result="w">
-              {/* One octave, LOW frequency: a couple of long slow
-                  undulations. Higher frequencies made many small waves —
-                  jelly-wiggle, not cloth billow. */}
-              <animate
-                attributeName="baseFrequency"
-                values="0.004 0.015;0.006 0.024;0.004 0.015"
-                dur="8s"
-                repeatCount="indefinite"
-              />
-            </feTurbulence>
-          )}
-          {!isMobile && (
-            <feDisplacementMap in="SourceGraphic" in2="w" scale="22" xChannelSelector="R" yChannelSelector="G" result="cloth" />
-          )}
+          <feTurbulence type="fractalNoise" baseFrequency="0.004 0.015" numOctaves="1" seed="7" result="w">
+            {/* One octave, LOW frequency: a couple of long slow
+                undulations. Higher frequencies made many small waves —
+                jelly-wiggle, not cloth billow. */}
+            <animate
+              attributeName="baseFrequency"
+              values="0.004 0.015;0.006 0.024;0.004 0.015"
+              dur="8s"
+              repeatCount="indefinite"
+            />
+          </feTurbulence>
+          <feDisplacementMap in="SourceGraphic" in2="w" scale="22" xChannelSelector="R" yChannelSelector="G" result="cloth" />
           {/* Shadows live INSIDE this filter chain: a CSS drop-shadow on the
               svg used the internal filter's rectangular REGION as its alpha
               source, ghosting a faint box around the banner. In-chain
               feDropShadow computes from the actual cloth alpha. */}
           {/* Black shadow only — a gold glow layer was tried and rejected */}
-          {isMobile ? (
-            <feDropShadow dx="0" dy="6" stdDeviation="6" floodColor="rgba(0, 0, 0, 0.55)" />
-          ) : (
-            <feDropShadow in="cloth" dx="0" dy="6" stdDeviation="6" floodColor="rgba(0, 0, 0, 0.55)" />
-          )}
+          <feDropShadow in="cloth" dx="0" dy="6" stdDeviation="6" floodColor="rgba(0, 0, 0, 0.55)" />
         </filter>
       </defs>
 

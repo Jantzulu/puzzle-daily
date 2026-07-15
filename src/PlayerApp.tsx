@@ -324,7 +324,12 @@ function PlayerNavigation() {
             <span className="text-xl">⚔️</span>
           )}
           <div className="flex flex-col leading-tight">
-            <h1 className="text-base xs:text-lg md:text-xl font-medieval font-bold text-copper-400 text-shadow-dungeon nav-title-glimmer tracking-wide whitespace-nowrap">
+            {/* text-shadow-dungeon deliberately absent: nav-title-glimmer owns
+                the full static shadow stack (its ::after breathes the glow) */}
+            <h1
+              className="text-base xs:text-lg md:text-xl font-medieval font-bold text-copper-400 nav-title-glimmer tracking-wide whitespace-nowrap"
+              data-text={themeAssets.siteTitle || DEFAULT_SITE_NAME}
+            >
               {themeAssets.siteTitle || DEFAULT_SITE_NAME}
             </h1>
             {themeAssets.siteSubtitle && (

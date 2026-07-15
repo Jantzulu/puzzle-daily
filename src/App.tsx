@@ -438,7 +438,12 @@ function Navigation() {
           })()}
           {/* Title and subtitle - stacked vertically */}
           <div className="flex flex-col leading-tight">
-            <h1 className="text-base xs:text-lg md:text-xl font-medieval font-bold text-copper-400 text-shadow-dungeon nav-title-glimmer tracking-wide whitespace-nowrap">
+            {/* text-shadow-dungeon deliberately absent: nav-title-glimmer owns
+                the full static shadow stack (its ::after breathes the glow) */}
+            <h1
+              className="text-base xs:text-lg md:text-xl font-medieval font-bold text-copper-400 nav-title-glimmer tracking-wide whitespace-nowrap"
+              data-text={themeAssets.siteTitle || 'Puzzle Daily'}
+            >
               {themeAssets.siteTitle || 'Puzzle Daily'}
             </h1>
             {themeAssets.siteSubtitle && (
