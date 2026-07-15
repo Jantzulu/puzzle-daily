@@ -16,6 +16,7 @@ import { blobShadowsEnabled, drawBlobShadow, drawDeathBlobShadow, drawProjectile
 import { drawLightGlow } from './lightGlow';
 import { wallAOEnabled, drawWallAO, AO_VOID_OCCLUDES } from './wallAO';
 import { staticBakeEnabled } from './staticBake';
+import { atmosphereEnabled } from './atmosphere';
 
 // Movement action types - entities with these actions should show direction arrow
 const MOVEMENT_ACTIONS = new Set([
@@ -2167,7 +2168,9 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
         ctx.drawImage(vignetteBakeRef.current!.canvas, 0, 0);
         ctx.restore();
 
-        drawAtmosphericEffects(ctx, gameState.puzzle.tiles, gameState.puzzle.width, gameState.puzzle.height, offsetX, offsetY, timestamp);
+        if (atmosphereEnabled()) {
+          drawAtmosphericEffects(ctx, gameState.puzzle.tiles, gameState.puzzle.width, gameState.puzzle.height, offsetX, offsetY, timestamp);
+        }
       }
 
       // Restore context (undo dpr scaling)

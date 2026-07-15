@@ -6,6 +6,7 @@ import React, { useState } from 'react';
 import { blobShadowsEnabled, setBlobShadowsEnabled } from '../game/blobShadows';
 import { lightGlowEnabled, setLightGlowEnabled } from '../game/lightGlow';
 import { staticBakeEnabled, setStaticBakeEnabled } from '../game/staticBake';
+import { atmosphereEnabled, setAtmosphereEnabled } from '../game/atmosphere';
 
 interface FxToggle {
   key: string;
@@ -29,6 +30,13 @@ const TOGGLES: FxToggle[] = [
     description: 'Additive halos behind glowing sprites (torch flicker). Off skips the pass entirely.',
     get: lightGlowEnabled,
     set: setLightGlowEnabled,
+  },
+  {
+    key: 'atmosphere',
+    label: 'Atmosphere (fog + dust)',
+    description: 'The drifting mist wisps and twinkling dust specks over the board. Off skips the pass entirely.',
+    get: atmosphereEnabled,
+    set: setAtmosphereEnabled,
   },
   {
     key: 'static_bake',
