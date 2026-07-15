@@ -1098,6 +1098,16 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
     skinOverride: unknown;
   } | null>(null);
 
+  // Offscreen bake of the vignette's STATIC half (edge shadows + inner
+  // darkening) — a pure function of board shape, previously rebuilt with 5
+  // gradients + a clip path and composited in 5 source-atop fills EVERY
+  // frame. Now one source-atop drawImage per frame; fog/dust stay live.
+  const vignetteBakeRef = useRef<{
+    canvas: HTMLCanvasElement;
+    sig: string;
+    tiles: unknown;
+  } | null>(null);
+
   // Force re-render after puzzle loads to ensure images are displayed
   // This handles the case where images finish loading before the component subscribes
   useEffect(() => {
@@ -2126,9 +2136,38 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       // Restore context (undo translate offset)
       ctx.restore();
 
-      // Draw vignette effect on puzzle edges (after all rendering, follows puzzle shape)
+      // Draw vignette effect on puzzle edges (after all rendering, follows puzzle shape).
+      // The static half (edge + inner darkening) is a pure function of board
+      // shape — baked once, composited with ONE source-atop drawImage per
+      // frame. Fog + dust remain live (animated, already cheap).
       if (hasBorder) {
-        drawPuzzleVignette(ctx, gameState.puzzle.tiles, gameState.puzzle.width, gameState.puzzle.height, offsetX, offsetY, timestamp);
+        const vSig = [
+          canvas.width, canvas.height, quantizedScale,
+          gameState.puzzle.width, gameState.puzzle.height, offsetX, offsetY,
+        ].join('|');
+        const vPrev = vignetteBakeRef.current;
+        if (!vPrev || vPrev.sig !== vSig || vPrev.tiles !== gameState.puzzle.tiles) {
+          const vCanvas = vPrev?.canvas ?? document.createElement('canvas');
+          if (vCanvas.width !== canvas.width) vCanvas.width = canvas.width;
+          if (vCanvas.height !== canvas.height) vCanvas.height = canvas.height;
+          const vCtx = vCanvas.getContext('2d');
+          if (vCtx) {
+            vCtx.clearRect(0, 0, vCanvas.width, vCanvas.height);
+            vCtx.save();
+            vCtx.scale(quantizedScale, quantizedScale);
+            drawStaticVignetteOverlay(vCtx, gameState.puzzle.tiles, gameState.puzzle.width, gameState.puzzle.height, offsetX, offsetY);
+            vCtx.restore();
+          }
+          vignetteBakeRef.current = { canvas: vCanvas, sig: vSig, tiles: gameState.puzzle.tiles };
+        }
+        // Blit in raw physical pixels — exact 1:1, no resampling.
+        ctx.save();
+        ctx.globalCompositeOperation = 'source-atop';
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.drawImage(vignetteBakeRef.current!.canvas, 0, 0);
+        ctx.restore();
+
+        drawAtmosphericEffects(ctx, gameState.puzzle.tiles, gameState.puzzle.width, gameState.puzzle.height, offsetX, offsetY, timestamp);
       }
 
       // Restore context (undo dpr scaling)
@@ -5319,14 +5358,20 @@ function getFogNoiseTexture(): HTMLCanvasElement {
   return tex;
 }
 
-function drawPuzzleVignette(
+// Static half of the puzzle vignette: edge shadows + inner darkening. A pure
+// function of the board shape, so the animate loop bakes it to an offscreen
+// overlay (vignetteBakeRef) and composites it with ONE source-atop drawImage
+// per frame — sequential source-atop fills are equivalent to compositing the
+// merged overlay (source-over is associative), so the result is
+// pixel-identical to the old five-fills-per-frame path. Drawn plain
+// source-over here onto the bake's transparent canvas.
+function drawStaticVignetteOverlay(
   ctx: CanvasRenderingContext2D,
   tiles: (import('../../types/game').TileOrNull)[][],
   gridWidth: number,
   gridHeight: number,
   offsetX: number,
   offsetY: number,
-  timestamp: number = 0
 ) {
   // Edge shadow depths proportional to border thickness for consistent appearance
   const shadowOpacity = 0.6; // Maximum darkness at outer edges
@@ -5334,10 +5379,6 @@ function drawPuzzleVignette(
   const horizontalShadowDepth = SIDE_BORDER_SIZE * 1.2; // For left/right walls (16 * 1.2 = ~19px)
 
   ctx.save();
-
-  // Use 'source-atop' composite mode - this only draws on existing non-transparent pixels
-  // This prevents darkening of transparent areas in wall sprites
-  ctx.globalCompositeOperation = 'source-atop';
 
   // Calculate the total canvas area including borders
   const totalWidth = gridWidth * TILE_SIZE + (SIDE_BORDER_SIZE * 2);
@@ -5433,9 +5474,32 @@ function drawPuzzleVignette(
     ctx.fillRect(gameAreaX, gameAreaY, gameAreaWidth, gameAreaHeight);
   }
 
-  // ==========================================
-  // ATMOSPHERIC EFFECTS (fog and dust particles)
-  // ==========================================
+  ctx.restore();
+}
+
+// ==========================================
+// ATMOSPHERIC EFFECTS (fog and dust particles)
+// ==========================================
+// The animated half of the old drawPuzzleVignette: drifting fog and floating
+// dust. Per-frame by nature and already cheap (texture drawImages + tiny
+// fillRects); still composited source-atop like before.
+function drawAtmosphericEffects(
+  ctx: CanvasRenderingContext2D,
+  tiles: (import('../../types/game').TileOrNull)[][],
+  gridWidth: number,
+  gridHeight: number,
+  offsetX: number,
+  offsetY: number,
+  timestamp: number = 0
+) {
+  ctx.save();
+  ctx.globalCompositeOperation = 'source-atop';
+
+  const gameAreaX = offsetX;
+  const gameAreaY = offsetY;
+  const gameAreaWidth = gridWidth * TILE_SIZE;
+  const gameAreaHeight = gridHeight * TILE_SIZE;
+  const hasVoidTiles = hasIrregularShape(tiles, gridWidth, gridHeight);
 
   // Helper to clip effects to playable tiles only
   const clipToPlayableTiles = (callback: () => void) => {
