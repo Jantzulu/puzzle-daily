@@ -1731,15 +1731,6 @@ export const MapEditor: React.FC = () => {
               />
             </div>
 
-            {/* Status bar: active tool + cursor tile (Phase 2) */}
-            <div
-              className="flex items-center justify-between bg-stone-800 rounded px-3 py-1.5 text-xs text-stone-400"
-              style={{ maxWidth: scaledCanvasWidth }}
-            >
-              <span className="truncate">{activeToolLabel}</span>
-              <span className="flex-shrink-0 tabular-nums">{cursorTile ? `(${cursorTile.x + 1}, ${cursorTile.y + 1})` : '—'}</span>
-            </div>
-
             {/* Selected Heroes - Shows selected available heroes with sprites */}
             <div className="bg-stone-800 p-4 rounded" style={{ maxWidth: scaledCanvasWidth }}>
               <h2 className="text-lg font-bold mb-3">Selected Heroes</h2>
@@ -1799,12 +1790,24 @@ export const MapEditor: React.FC = () => {
                 </div>
               )}
             </div>
+            {/* Placed-entity roster — lives with the board it describes */}
+            <div style={{ maxWidth: scaledCanvasWidth }}>
+              <PlacedRoster
+                enemies={state.enemies}
+                placedObjects={state.placedObjects}
+                collectibles={state.collectibles}
+                allyIds={allyIds}
+                vesselIds={vesselIds}
+                onHoverTile={setHighlightTile}
+                onRemove={handleRemovePlacement}
+              />
+            </div>
           </div>
 
           {/* Right Side — single tabbed sidebar (Phase 2). Build = the
               always-on workbench; Rules and Details hold the once-per-puzzle
               configuration that used to crowd the page. */}
-          <div className="flex-1 min-w-0 lg:max-w-xl">
+          <div className="flex-1 min-w-0">
             {/* Tab strip */}
             <div className="flex gap-1 bg-stone-800 p-1 rounded mb-3">
               {SIDEBAR_TABS.map(([key, label]) => (
@@ -1822,8 +1825,14 @@ export const MapEditor: React.FC = () => {
               ))}
             </div>
 
-            {sidebarTab === 'build' && <div className="space-y-4">
+            {sidebarTab === 'build' && <div className="space-y-3">
               <ToolsRow selectedTool={state.selectedTool} onSelectTool={handleSelectTool} />
+
+              {/* Status bar: active tool + cursor tile */}
+              <div className="flex items-center justify-between bg-stone-800 rounded px-3 py-1.5 text-xs text-stone-400">
+                <span className="truncate">{activeToolLabel}</span>
+                <span className="flex-shrink-0 tabular-nums">{cursorTile ? `(${cursorTile.x + 1}, ${cursorTile.y + 1})` : '—'}</span>
+              </div>
               {/* Tile Selector - Shows when Tile tool is selected */}
               {(state.selectedTool === 'custom' || state.selectedTool === 'void' || state.selectedTool === 'empty' || state.selectedTool === 'wall') && (
                 <TilePalette
@@ -1924,23 +1933,16 @@ export const MapEditor: React.FC = () => {
                   onToggleCharacter={handleToggleAvailableCharacter}
                 />
               )}
-              {/* Placed-entity roster */}
-              <PlacedRoster
-                enemies={state.enemies}
-                placedObjects={state.placedObjects}
-                collectibles={state.collectibles}
-                allyIds={allyIds}
-                vesselIds={vesselIds}
-                onHoverTile={setHighlightTile}
-                onRemove={handleRemovePlacement}
-              />
             </div>}
 
             {sidebarTab === 'rules' && (
-              <RulesPanel state={state} setState={setState} />
+              <div className="max-w-xl">
+                <RulesPanel state={state} setState={setState} />
+              </div>
             )}
 
             {sidebarTab === 'details' && (
+              <div className="max-w-xl">
               <DetailsPanel
                 state={state}
                 setState={setState}
@@ -1951,6 +1953,7 @@ export const MapEditor: React.FC = () => {
                 knownTags={collectAllTags(savedPuzzles)}
                 getCurrentPuzzle={getCurrentPuzzle}
               />
+              </div>
             )}
           </div>
         </div>
