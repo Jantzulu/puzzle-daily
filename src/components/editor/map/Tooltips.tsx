@@ -28,8 +28,9 @@ export const getAllSpells = (behavior: CharacterAction[] | undefined): SpellAsse
   return spells;
 };
 
-// Helper to format action sequence for display
-const formatActionSequence = (behavior: CharacterAction[] | undefined): string[] => {
+// Helper to format action sequence for display (also used by the board's
+// inspect popover)
+export const formatActionSequence = (behavior: CharacterAction[] | undefined): string[] => {
   if (!behavior || behavior.length === 0) return ['No actions defined'];
   return behavior.map((action, i) => {
     const num = i + 1;

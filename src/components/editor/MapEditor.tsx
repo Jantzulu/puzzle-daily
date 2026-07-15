@@ -18,6 +18,7 @@ import { EditorToolbar } from './map/EditorToolbar';
 import { RulesPanel } from './map/RulesPanel';
 import { DetailsPanel } from './map/DetailsPanel';
 import { PlacedRoster, type RosterKind } from './map/PlacedRoster';
+import { InspectPopover } from './map/InspectPopover';
 import { ToolsRow } from './map/ToolsRow';
 import { TilePalette } from './map/TilePalette';
 import { EnemyPalette } from './map/EnemyPalette';
@@ -164,6 +165,9 @@ export const MapEditor: React.FC = () => {
     toY: number;
     moved: boolean;
   } | null>(null);
+  // Entity inspect popover (Phase 3): opened by a plain click on a placed
+  // entity while an entity tool is active.
+  const [inspect, setInspect] = useState<{ index: number; screenX: number; screenY: number } | null>(null);
   // Combat log state + helpers will be re-introduced in Phase 5 (data plumbing
   // via <Game/> onTurnExecuted callback + a sidebar layout). Removed here so
   // the file stays clean while that's in flight; bring back as a small focused
@@ -752,10 +756,17 @@ export const MapEditor: React.FC = () => {
       if (ds.moved) {
         if (ds.toX !== ds.fromX || ds.toY !== ds.fromY) commitMove(ds);
       } else if (e) {
-        // Released in place — run the normal click for this tile.
-        saveSnapshotBeforeDraw();
-        paintTile(ds.fromX, ds.fromY);
-        setTimeout(() => { pushToHistoryAfterDraw(); }, 0);
+        const entityToolActive = state.selectedTool === 'enemy' || state.selectedTool === 'ally' || state.selectedTool === 'vessel';
+        if (ds.kind === 'enemy' && entityToolActive) {
+          // Plain click on an entity with an entity tool: inspect instead of
+          // toggle-remove (removal lives on right-click and in the popover).
+          setInspect({ index: ds.index, screenX: e.clientX, screenY: e.clientY });
+        } else {
+          // Released in place — run the normal click for this tile.
+          saveSnapshotBeforeDraw();
+          paintTile(ds.fromX, ds.fromY);
+          setTimeout(() => { pushToHistoryAfterDraw(); }, 0);
+        }
       }
       return;
     }
@@ -1571,6 +1582,7 @@ export const MapEditor: React.FC = () => {
   // Roster removal (Phase 2): snapshot first so the removal is undoable,
   // mirroring handleResize/handleClear.
   const handleRemovePlacement = (kind: RosterKind, index: number) => {
+    setInspect(null); // indices shift on removal — never leave a stale popover
     pushToHistory();
     setState(prev => {
       if (kind === 'enemy') return { ...prev, enemies: prev.enemies.filter((_, i) => i !== index) };
@@ -2091,6 +2103,21 @@ export const MapEditor: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Entity inspect popover (Phase 3) */}
+      {inspect && state.enemies[inspect.index] && (
+        <InspectPopover
+          enemy={state.enemies[inspect.index]}
+          kindLabel={
+            allyIds.has(state.enemies[inspect.index].enemyId) ? 'Ally'
+            : vesselIds.has(state.enemies[inspect.index].enemyId) ? 'Vessel'
+            : 'Enemy'
+          }
+          position={{ x: inspect.screenX, y: inspect.screenY }}
+          onRemove={() => handleRemovePlacement('enemy', inspect.index)}
+          onClose={() => setInspect(null)}
+        />
+      )}
 
       {/* Puzzle Library Modal */}
       <PuzzleLibraryModal
