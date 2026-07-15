@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { toast } from '../shared/Toast';
 import { useSearchParams } from 'react-router-dom';
-import type { Puzzle, TileOrNull, PlacedEnemy, PlacedCollectible, PlacedObject, WinCondition, WinConditionType, BorderConfig, SideQuest, SideQuestType, GameState } from '../../types/game';
+import type { Puzzle, TileOrNull, PlacedEnemy, PlacedCollectible, PlacedObject, WinConditionType, BorderConfig, SideQuestType, GameState } from '../../types/game';
 import { TileType, Direction } from '../../types/game';
 import { getAllCharacters, getCharacter } from '../../data/characters';
 import { getAllEnemies, getEnemy } from '../../data/enemies';
@@ -12,6 +12,7 @@ import { writeAutoSave, readAutoSave, clearAutoSave, AUTOSAVE_INTERVAL_MS, type 
 import { getAllPuzzleSkins, loadPuzzleSkin, getCustomTileTypes, loadTileType, loadSpellAsset, getAllObjects, loadObject, getAllCollectibles, getSoundAssets, resolveImageSource, getCustomVessels, vesselToEnemyAsset, getCustomAllies, allyToEnemyAsset } from '../../utils/assetStorage';
 import { TILE_SIZE, BORDER_SIZE, SIDE_BORDER_SIZE, MAX_DISPLAY_WIDTH_TILES, createEmptyGrid, drawDungeonBorder, drawTile, drawEnemy, drawCollectibleInEditor, drawObject } from './map/canvasDraw';
 import { getAllSpells, SpellTooltip, ActionTooltip, ObjectTooltip } from './map/Tooltips';
+import { createDefaultEditorState, type EditorState, type ToolType, type EditorMode } from './map/editorState';
 import { collectPuzzleAssetUrls } from '../../utils/spritePreload';
 import { preloadImages } from '../../utils/imageLoader';
 import type { PuzzleSkin, SoundAsset } from '../../types/game';
@@ -37,83 +38,6 @@ import { vibrate } from '../../utils/haptics';
 import { useIsMobile } from '../../hooks/useMediaQuery';
 import { Game } from '../game/Game';
 import { diffTurn, logTypeStyles, type CombatLogEntry } from '../../engine/combatLog';
-
-type ToolType = 'empty' | 'wall' | 'void' | 'enemy' | 'ally' | 'vessel' | 'collectible' | 'object' | 'custom' | 'characters';
-type EditorMode = 'edit' | 'playtest';
-
-interface EditorState {
-  gridWidth: number;
-  gridHeight: number;
-  tiles: TileOrNull[][];
-  enemies: PlacedEnemy[];
-  collectibles: PlacedCollectible[];
-  placedObjects: PlacedObject[];
-
-  // Metadata
-  puzzleName: string;
-  puzzleId: string;
-  maxCharacters: number;
-  maxPlaceableCharacters?: number; // Max heroes player can place (if different from maxCharacters)
-  maxTurns?: number;
-  lives?: number; // Number of attempts (0 = unlimited, default: 3)
-  availableCharacters: string[];
-  winConditions: WinCondition[];
-  borderConfig?: BorderConfig; // Legacy - kept for backwards compatibility
-  skinId?: string; // Reference to PuzzleSkin
-  backgroundMusicId?: string; // Reference to sound asset for puzzle-specific background music
-
-  // Scoring
-  parCharacters?: number;
-  parTurns?: number;
-  sideQuests: SideQuest[];
-
-  // Tags & description
-  tags: string[];
-  description: string;
-
-  // Training arena
-  isTraining: boolean;
-
-  // Editor state
-  selectedTool: ToolType;
-  isDrawing: boolean;
-  mode: EditorMode;
-}
-
-// Helper to create default editor state
-const createDefaultEditorState = (): EditorState => ({
-  gridWidth: 8,
-  gridHeight: 8,
-  tiles: createEmptyGrid(8, 8),
-  enemies: [],
-  collectibles: [],
-  placedObjects: [],
-
-  puzzleName: 'New Puzzle',
-  puzzleId: 'puzzle_' + Date.now(),
-  maxCharacters: 3,
-  maxTurns: 100,
-  lives: 3,
-  availableCharacters: [],
-  winConditions: [{ type: 'defeat_all_enemies' }],
-  skinId: 'builtin_dungeon', // Default skin
-
-  // Scoring - undefined means auto-suggest from validator
-  parCharacters: undefined,
-  parTurns: undefined,
-  sideQuests: [],
-
-  // Tags & description
-  tags: [],
-  description: '',
-
-  // Training arena
-  isTraining: false,
-
-  selectedTool: 'wall',
-  isDrawing: false,
-  mode: 'edit',
-});
 
 export const MapEditor: React.FC = () => {
   const _isMobile = useIsMobile();
