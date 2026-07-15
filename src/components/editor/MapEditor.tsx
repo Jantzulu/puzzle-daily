@@ -688,13 +688,39 @@ export const MapEditor: React.FC = () => {
     ctx.restore();
   }, [state.tiles, state.enemies, state.collectibles, state.placedObjects, state.gridWidth, state.gridHeight, state.mode, state.skinId, redrawCounter, highlightTile, dragState]);
 
-  const handleCanvasMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  // Touch long-press = delete (mirrors right-click). Android fires
+  // contextmenu on long-press natively; iOS Safari doesn't, so a manual
+  // timer covers it. Whichever fires first sets the flag, which turns the
+  // eventual release into a no-op — the guard also prevents the two paths
+  // from double-deleting stacked placements.
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressFiredRef = useRef(false);
+
+  const clearLongPressTimer = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
+
+  const handleCanvasPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    longPressFiredRef.current = false;
     if (e.button !== 0) return; // right-click is delete (context menu)
     // Grab-first (Phase 3): pressing on a placement defers the action —
     // dragging moves it, releasing in place runs the normal click.
     const tile = tileFromMouseEvent(e);
     const grabbed = tile ? findPlacementAt(tile.x, tile.y) : null;
     if (grabbed && tile) {
+      if (e.pointerType === 'touch') {
+        // Arm the iOS-side long-press delete; any tile change cancels it.
+        longPressTimerRef.current = setTimeout(() => {
+          longPressTimerRef.current = null;
+          longPressFiredRef.current = true;
+          setDragState(null);
+          vibrate('tilePaint');
+          handleRemovePlacement(grabbed.kind, grabbed.index);
+        }, 650);
+      }
       setDragState({ ...grabbed, fromX: tile.x, fromY: tile.y, toX: tile.x, toY: tile.y, moved: false });
       return;
     }
@@ -731,10 +757,13 @@ export const MapEditor: React.FC = () => {
     return { x, y };
   };
 
-  const handleCanvasMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  const handleCanvasPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const tile = tileFromMouseEvent(e);
     setCursorTile(prev => (prev?.x === tile?.x && prev?.y === tile?.y ? prev : tile));
     if (dragState) {
+      if (longPressTimerRef.current && tile && (tile.x !== dragState.fromX || tile.y !== dragState.fromY)) {
+        clearLongPressTimer(); // it's a drag now, not a long-press
+      }
       if (tile) {
         setDragState(prev => {
           if (!prev) return prev;
@@ -749,7 +778,13 @@ export const MapEditor: React.FC = () => {
     handleCanvasClick(e);
   };
 
-  const handleCanvasMouseUp = (e?: React.MouseEvent<HTMLCanvasElement>) => {
+  const handleCanvasPointerUp = (e?: React.PointerEvent<HTMLCanvasElement>) => {
+    clearLongPressTimer();
+    if (longPressFiredRef.current) {
+      longPressFiredRef.current = false;
+      setDragState(null);
+      return;
+    }
     if (dragState) {
       const ds = dragState;
       setDragState(null);
@@ -810,14 +845,22 @@ export const MapEditor: React.FC = () => {
     });
   };
 
-  const handleCanvasMouseLeave = () => {
+  const handleCanvasPointerLeave = () => {
+    clearLongPressTimer();
     setCursorTile(null);
     if (dragState) {
       // Leaving the canvas cancels an in-flight drag.
       setDragState(null);
       return;
     }
-    handleCanvasMouseUp();
+    handleCanvasPointerUp();
+  };
+
+  // Pointer cancel (e.g. the OS claims the touch): abandon everything.
+  const handleCanvasPointerCancel = () => {
+    clearLongPressTimer();
+    setDragState(null);
+    setState(prev => (prev.isDrawing ? { ...prev, isDrawing: false } : prev));
   };
 
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -1571,6 +1614,9 @@ export const MapEditor: React.FC = () => {
   // undoable path as the roster's ✕.
   const handleCanvasContextMenu = (e: React.MouseEvent<HTMLCanvasElement>) => {
     e.preventDefault();
+    clearLongPressTimer();
+    longPressFiredRef.current = true; // the release must not paint/inspect
+    setDragState(null);
     const tile = tileFromMouseEvent(e);
     if (!tile) return;
     const hit = findPlacementAt(tile.x, tile.y);
@@ -1866,12 +1912,14 @@ export const MapEditor: React.FC = () => {
                 style={{
                   transform: `scale(${editorScale})`,
                   transformOrigin: 'top left',
-                  cursor: dragState?.moved ? 'grabbing' : undefined
+                  cursor: dragState?.moved ? 'grabbing' : undefined,
+                  touchAction: 'none'
                 }}
-                onMouseDown={handleCanvasMouseDown}
-                onMouseMove={handleCanvasMouseMove}
-                onMouseUp={handleCanvasMouseUp}
-                onMouseLeave={handleCanvasMouseLeave}
+                onPointerDown={handleCanvasPointerDown}
+                onPointerMove={handleCanvasPointerMove}
+                onPointerUp={handleCanvasPointerUp}
+                onPointerLeave={handleCanvasPointerLeave}
+                onPointerCancel={handleCanvasPointerCancel}
                 onContextMenu={handleCanvasContextMenu}
               />
             </div>
