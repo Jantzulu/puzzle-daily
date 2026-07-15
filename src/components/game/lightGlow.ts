@@ -111,6 +111,36 @@ function flickerFactor(now: number, depth: number): number {
   return 1 - depth * (0.5 + wave * 0.5);
 }
 
+// ─── Cached halo sprites ────────────────────────────────────────────────────
+// One pre-rendered halo per glow COLOR: the gradient stops are LINEAR in
+// alpha (α, α·MID_ALPHA, 0), so globalAlpha + scaled drawImage reproduce
+// every intensity/flicker state exactly — without a createRadialGradient
+// allocation per glowing entity per frame (user-felt mobile jank 2026-07-15).
+// Authored glowColor values are a handful of hexes, so the map stays tiny.
+const GLOW_SPRITE_R = 128;
+const glowSprites = new Map<string, HTMLCanvasElement>();
+
+function getGlowSprite(rgbStr: string): HTMLCanvasElement | null {
+  const cached = glowSprites.get(rgbStr);
+  if (cached) return cached;
+  if (typeof document === 'undefined') return null;
+  const c = document.createElement('canvas');
+  c.width = c.height = GLOW_SPRITE_R * 2;
+  const cctx = c.getContext('2d');
+  if (!cctx) return null;
+  const R = GLOW_SPRITE_R;
+  const g = cctx.createRadialGradient(R, R, 0, R, R, R);
+  g.addColorStop(0, `rgba(${rgbStr},1)`);
+  g.addColorStop(KNOBS.MID_STOP, `rgba(${rgbStr},${KNOBS.MID_ALPHA})`);
+  g.addColorStop(1, `rgba(${rgbStr},0)`);
+  cctx.fillStyle = g;
+  cctx.beginPath();
+  cctx.arc(R, R, R, 0, Math.PI * 2);
+  cctx.fill();
+  glowSprites.set(rgbStr, c);
+  return c;
+}
+
 /**
  * Draw an already-resolved glow. Used directly by the editor previews; the
  * board paths go through drawLightGlow below. `centerX/centerY` is the sprite
@@ -143,20 +173,18 @@ export function drawLightGlowResolved(
   const cy = centerY + glow.offsetYArt * zoom;
   const rgbStr = `${rgb.r},${rgb.g},${rgb.b}`;
 
+  const sprite = getGlowSprite(rgbStr);
+  if (!sprite) return;
+
   ctx.save();
   ctx.globalCompositeOperation = 'lighter';
   // Callers on the legacy-shadow path have ctx.shadow* armed for the sprite
   // draw — without this the halo would cast its own offset silhouette.
   ctx.shadowColor = 'transparent';
   ctx.shadowBlur = 0;
-  const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
-  g.addColorStop(0, `rgba(${rgbStr},${alpha})`);
-  g.addColorStop(KNOBS.MID_STOP, `rgba(${rgbStr},${alpha * KNOBS.MID_ALPHA})`);
-  g.addColorStop(1, `rgba(${rgbStr},0)`);
-  ctx.fillStyle = g;
-  ctx.beginPath();
-  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-  ctx.fill();
+  ctx.globalAlpha = ctx.globalAlpha * alpha; // stops are alpha-linear — exact
+  ctx.imageSmoothingEnabled = true; // the scaled halo must stay soft on pixelated boards
+  ctx.drawImage(sprite, cx - radius, cy - radius, radius * 2, radius * 2);
   ctx.restore();
 }
 

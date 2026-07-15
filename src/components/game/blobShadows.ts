@@ -129,23 +129,47 @@ function getDeathAnimDurationMs(sprite: CustomSprite | undefined): number {
 }
 
 // ─── Drawing ────────────────────────────────────────────────────────────────
+// The soft-ellipse gradient's stops are LINEAR in `alpha` (α, α·0.85, 0), so
+// one pre-rendered unit circle drawn with globalAlpha and non-uniform scaling
+// reproduces every shadow exactly — without a createRadialGradient allocation
+// per entity per frame (a top per-frame cost on mobile; user-felt jank
+// 2026-07-15).
+
+const SHADOW_SPRITE_R = 96; // cache-resolution radius (px) — comfortably above
+                            // any on-screen shadow radius, so it only downscales
+let shadowSprite: HTMLCanvasElement | null = null;
+
+function getShadowSprite(): HTMLCanvasElement | null {
+  if (shadowSprite) return shadowSprite;
+  if (typeof document === 'undefined') return null;
+  const c = document.createElement('canvas');
+  c.width = c.height = SHADOW_SPRITE_R * 2;
+  const cctx = c.getContext('2d');
+  if (!cctx) return null;
+  const R = SHADOW_SPRITE_R;
+  const g = cctx.createRadialGradient(R, R, R * 0.35, R, R, R);
+  g.addColorStop(0, 'rgba(0,0,0,1)');
+  g.addColorStop(0.7, 'rgba(0,0,0,0.85)');
+  g.addColorStop(1, 'rgba(0,0,0,0)');
+  cctx.fillStyle = g;
+  cctx.beginPath();
+  cctx.arc(R, R, R, 0, Math.PI * 2);
+  cctx.fill();
+  shadowSprite = c;
+  return c;
+}
 
 function fillSoftEllipse(
   ctx: CanvasRenderingContext2D,
   cx: number, cy: number, rx: number, ry: number, alpha: number,
 ): void {
   if (rx <= 0 || ry <= 0 || alpha <= 0) return;
+  const sprite = getShadowSprite();
+  if (!sprite) return;
   ctx.save();
-  ctx.translate(cx, cy);
-  ctx.scale(1, ry / rx);
-  const g = ctx.createRadialGradient(0, 0, rx * 0.35, 0, 0, rx);
-  g.addColorStop(0, `rgba(0,0,0,${alpha})`);
-  g.addColorStop(0.7, `rgba(0,0,0,${alpha * 0.85})`);
-  g.addColorStop(1, 'rgba(0,0,0,0)');
-  ctx.fillStyle = g;
-  ctx.beginPath();
-  ctx.arc(0, 0, rx, 0, Math.PI * 2);
-  ctx.fill();
+  ctx.globalAlpha = ctx.globalAlpha * alpha; // inherit the caller's fade (stealth)
+  ctx.imageSmoothingEnabled = true; // the scaled gradient must stay soft on pixelated boards
+  ctx.drawImage(sprite, cx - rx, cy - ry, rx * 2, ry * 2);
   ctx.restore();
 }
 
