@@ -17,6 +17,7 @@ import { ValidationModal } from './map/ValidationModal';
 import { EditorToolbar } from './map/EditorToolbar';
 import { RulesPanel } from './map/RulesPanel';
 import { DetailsPanel } from './map/DetailsPanel';
+import { PlacedRoster, type RosterKind } from './map/PlacedRoster';
 import { ToolsRow } from './map/ToolsRow';
 import { TilePalette } from './map/TilePalette';
 import { EnemyPalette } from './map/EnemyPalette';
@@ -149,6 +150,9 @@ export const MapEditor: React.FC = () => {
   // Sidebar tab (Phase 2): Build = tools + palette workbench; Rules and
   // Details hold once-per-puzzle configuration.
   const [sidebarTab, setSidebarTab] = useState<'build' | 'rules' | 'details'>('build');
+  // Roster hover highlight + status-bar cursor tile (Phase 2).
+  const [highlightTile, setHighlightTile] = useState<{ x: number; y: number } | null>(null);
+  const [cursorTile, setCursorTile] = useState<{ x: number; y: number } | null>(null);
   // Combat log state + helpers will be re-introduced in Phase 5 (data plumbing
   // via <Game/> onTurnExecuted callback + a sidebar layout). Removed here so
   // the file stays clean while that's in flight; bring back as a small focused
@@ -435,6 +439,7 @@ export const MapEditor: React.FC = () => {
   // stamp is what makes a placed ally an ally — engine/party.ts).
   const allAllies = getCustomAllies().map(allyToEnemyAsset);
   const allyIds = new Set(allAllies.map(a => a.id));
+  const vesselIds = new Set(allVessels.map(v => v.id));
   const placeableEnemyTypes = [...allEnemies, ...allVessels, ...allAllies];
   const allCharacters = getAllCharacters();
   const allObjects = getAllObjects();
@@ -634,8 +639,18 @@ export const MapEditor: React.FC = () => {
       drawObject(ctx, obj.x, obj.y, obj.objectId);
     });
 
+    // Roster hover highlight (Phase 2): copper wash + outline on the hovered
+    // row's tile so it's easy to spot on the board.
+    if (highlightTile) {
+      ctx.fillStyle = 'rgba(245, 158, 11, 0.18)';
+      ctx.fillRect(highlightTile.x * TILE_SIZE, highlightTile.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+      ctx.strokeStyle = '#f59e0b';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(highlightTile.x * TILE_SIZE + 1.5, highlightTile.y * TILE_SIZE + 1.5, TILE_SIZE - 3, TILE_SIZE - 3);
+    }
+
     ctx.restore();
-  }, [state.tiles, state.enemies, state.collectibles, state.placedObjects, state.gridWidth, state.gridHeight, state.mode, state.skinId, redrawCounter]);
+  }, [state.tiles, state.enemies, state.collectibles, state.placedObjects, state.gridWidth, state.gridHeight, state.mode, state.skinId, redrawCounter, highlightTile]);
 
   const handleCanvasMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     // Save snapshot of state before drawing starts
@@ -644,7 +659,36 @@ export const MapEditor: React.FC = () => {
     handleCanvasClick(e);
   };
 
+  // Tile under the mouse, or null when outside the grid. Mirrors the
+  // coordinate math in handleCanvasClick (scale + border offsets).
+  const tileFromMouseEvent = (e: React.MouseEvent<HTMLCanvasElement>): { x: number; y: number } | null => {
+    const canvas = canvasRef.current;
+    if (!canvas) return null;
+    const hasBorderLocal = state.skinId !== undefined && state.skinId !== '';
+    const offsetX = hasBorderLocal ? SIDE_BORDER_SIZE : 0;
+    const offsetY = hasBorderLocal ? BORDER_SIZE : 0;
+    const gridWidthPx = state.gridWidth * TILE_SIZE;
+    const canvasWidthPx = hasBorderLocal ? gridWidthPx + (SIDE_BORDER_SIZE * 2) : gridWidthPx;
+    const maxDisplayGridWidth = MAX_DISPLAY_WIDTH_TILES * TILE_SIZE;
+    const maxDisplayCanvasWidth = hasBorderLocal ? maxDisplayGridWidth + (SIDE_BORDER_SIZE * 2) : maxDisplayGridWidth;
+    let currentScale = 1;
+    if (state.gridWidth > MAX_DISPLAY_WIDTH_TILES) {
+      currentScale = maxDisplayCanvasWidth / canvasWidthPx;
+    } else if (editorMaxWidth && editorMaxWidth < canvasWidthPx) {
+      currentScale = editorMaxWidth / canvasWidthPx;
+    }
+    const rect = canvas.getBoundingClientRect();
+    const mouseX = (e.clientX - rect.left) / currentScale - offsetX;
+    const mouseY = (e.clientY - rect.top) / currentScale - offsetY;
+    const x = Math.floor(mouseX / TILE_SIZE);
+    const y = Math.floor(mouseY / TILE_SIZE);
+    if (x < 0 || y < 0 || x >= state.gridWidth || y >= state.gridHeight) return null;
+    return { x, y };
+  };
+
   const handleCanvasMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const tile = tileFromMouseEvent(e);
+    setCursorTile(prev => (prev?.x === tile?.x && prev?.y === tile?.y ? prev : tile));
     if (!state.isDrawing) return;
     handleCanvasClick(e);
   };
@@ -1393,6 +1437,17 @@ export const MapEditor: React.FC = () => {
   // responsibilities now. Test-mode (enemies-only / heroes-only) is
   // intentionally not yet ported — see feature-backlog if missed.
 
+  // Roster removal (Phase 2): snapshot first so the removal is undoable,
+  // mirroring handleResize/handleClear.
+  const handleRemovePlacement = (kind: RosterKind, index: number) => {
+    pushToHistory();
+    setState(prev => {
+      if (kind === 'enemy') return { ...prev, enemies: prev.enemies.filter((_, i) => i !== index) };
+      if (kind === 'object') return { ...prev, placedObjects: prev.placedObjects.filter((_, i) => i !== index) };
+      return { ...prev, collectibles: prev.collectibles.filter((_, i) => i !== index) };
+    });
+  };
+
   // Palette handlers (Phase 1 decomposition — behavior unchanged)
   const handleSelectTool = (tool: ToolType) => {
     if (tool === 'custom') {
@@ -1448,6 +1503,40 @@ export const MapEditor: React.FC = () => {
   const editorScale = targetWidth / canvasWidth;
   const scaledCanvasWidth = targetWidth;
   const scaledCanvasHeight = canvasHeight * editorScale;
+
+  // Status-bar text: active tool + selected asset (Phase 2).
+  const activeToolLabel = (() => {
+    switch (state.selectedTool) {
+      case 'void': return 'Tile — Void';
+      case 'empty': return 'Tile — Empty';
+      case 'wall': return 'Tile — Wall';
+      case 'custom': {
+        const t = selectedCustomTileTypeId ? customTileTypes.find(tt => tt.id === selectedCustomTileTypeId) : null;
+        return t ? `Tile — ${t.name}` : 'Tile — pick a tile type';
+      }
+      case 'enemy': {
+        const a = selectedEnemyId ? allEnemies.find(x => x.id === selectedEnemyId) : null;
+        return a ? `Enemy — ${a.name}` : 'Enemy — pick one to place';
+      }
+      case 'ally': {
+        const a = selectedAllyId ? allAllies.find(x => x.id === selectedAllyId) : null;
+        return a ? `Ally — ${a.name}` : 'Ally — pick one to place';
+      }
+      case 'vessel': {
+        const a = selectedVesselId ? allVessels.find(x => x.id === selectedVesselId) : null;
+        return a ? `Vessel — ${a.name}` : 'Vessel — pick one to place';
+      }
+      case 'object': {
+        const a = selectedObjectId ? allObjects.find(x => x.id === selectedObjectId) : null;
+        return a ? `Object — ${a.name}` : 'Object — pick one to place';
+      }
+      case 'collectible': {
+        const a = selectedCollectibleId ? allCollectibles.find(x => x.id === selectedCollectibleId) : null;
+        return a ? `Item — ${a.name}` : 'Item — Default Coin';
+      }
+      case 'characters': return 'Heroes — choose the player roster';
+    }
+  })();
 
   // Render playtest mode
   if (state.mode === 'playtest') {
@@ -1638,8 +1727,17 @@ export const MapEditor: React.FC = () => {
                 onMouseDown={handleCanvasMouseDown}
                 onMouseMove={handleCanvasMouseMove}
                 onMouseUp={handleCanvasMouseUp}
-                onMouseLeave={handleCanvasMouseUp}
+                onMouseLeave={() => { setCursorTile(null); handleCanvasMouseUp(); }}
               />
+            </div>
+
+            {/* Status bar: active tool + cursor tile (Phase 2) */}
+            <div
+              className="flex items-center justify-between bg-stone-800 rounded px-3 py-1.5 text-xs text-stone-400"
+              style={{ maxWidth: scaledCanvasWidth }}
+            >
+              <span className="truncate">{activeToolLabel}</span>
+              <span className="flex-shrink-0 tabular-nums">{cursorTile ? `(${cursorTile.x + 1}, ${cursorTile.y + 1})` : '—'}</span>
             </div>
 
             {/* Selected Heroes - Shows selected available heroes with sprites */}
@@ -1826,6 +1924,16 @@ export const MapEditor: React.FC = () => {
                   onToggleCharacter={handleToggleAvailableCharacter}
                 />
               )}
+              {/* Placed-entity roster */}
+              <PlacedRoster
+                enemies={state.enemies}
+                placedObjects={state.placedObjects}
+                collectibles={state.collectibles}
+                allyIds={allyIds}
+                vesselIds={vesselIds}
+                onHoverTile={setHighlightTile}
+                onRemove={handleRemovePlacement}
+              />
             </div>}
 
             {sidebarTab === 'rules' && (

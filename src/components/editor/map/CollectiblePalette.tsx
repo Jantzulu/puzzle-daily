@@ -28,7 +28,7 @@ export const CollectiblePalette: React.FC<CollectiblePaletteProps> = ({
   onSelect,
 }) => (
   <div className="bg-stone-800 p-4 rounded">
-    <h2 className="text-lg font-bold mb-3">Select Collectible</h2>
+    <h2 className="text-lg font-bold mb-3">Select Item</h2>
     <FolderDropdown
       category="collectibles"
       selectedFolderId={collectibleFolderId}
@@ -36,7 +36,7 @@ export const CollectiblePalette: React.FC<CollectiblePaletteProps> = ({
     />
     <input
       type="text"
-      placeholder="Search collectibles..."
+      placeholder="Search items..."
       value={searchTerm}
       onChange={e => onSearchChange(e.target.value)}
       className="w-full bg-stone-700 rounded px-2 py-1 text-sm placeholder-stone-500 mt-2"
@@ -61,13 +61,13 @@ export const CollectiblePalette: React.FC<CollectiblePaletteProps> = ({
       )}
       {collectibles.length === 0 && totalCollectibleCount > 0 ? (
         <div className="text-center py-2">
-          <p className="text-sm text-stone-400">No collectibles in this folder.</p>
+          <p className="text-sm text-stone-400">No items in this folder.</p>
         </div>
       ) : totalCollectibleCount === 0 ? (
         <div className="text-center py-2">
-          <p className="text-sm text-stone-400 mb-2">No custom collectibles available.</p>
+          <p className="text-sm text-stone-400 mb-2">No custom items available.</p>
           <a href="/assets" className="text-blue-400 hover:underline text-sm">
-            Create collectibles in Asset Manager
+            Create items in Asset Manager
           </a>
         </div>
       ) : (
