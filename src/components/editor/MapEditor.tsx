@@ -14,7 +14,7 @@ import { TILE_SIZE, BORDER_SIZE, SIDE_BORDER_SIZE, MAX_DISPLAY_WIDTH_TILES, crea
 import { getAllSpells, SpellTooltip, ActionTooltip } from './map/Tooltips';
 import { createDefaultEditorState, type EditorState, type ToolType, type EditorMode } from './map/editorState';
 import { ValidationModal } from './map/ValidationModal';
-import { ActionsPanel } from './map/ActionsPanel';
+import { EditorToolbar } from './map/EditorToolbar';
 import { PuzzleInfoPanel } from './map/PuzzleInfoPanel';
 import { ToolsRow } from './map/ToolsRow';
 import { TilePalette } from './map/TilePalette';
@@ -141,7 +141,6 @@ export const MapEditor: React.FC = () => {
 
   // Editor panel toggle state (toolbar collapse/expand).
   const [toolsPanelOpen, setToolsPanelOpen] = useState(true);
-  const [actionsPanelOpen, setActionsPanelOpen] = useState(true);
   const [puzzleInfoPanelOpen, setPuzzleInfoPanelOpen] = useState(true);
   // Combat log state + helpers will be re-introduced in Phase 5 (data plumbing
   // via <Game/> onTurnExecuted callback + a sidebar layout). Removed here so
@@ -1570,155 +1569,45 @@ export const MapEditor: React.FC = () => {
           </div>
         )}
 
-        {/* Header - Mobile: centered stack, Desktop: horizontal row */}
-        {/* Mobile header */}
-        <div className="md:hidden mb-4 flex flex-col items-center gap-2">
-          <h1 className="text-xl font-bold font-medieval text-copper-400 truncate max-w-[300px] text-center" title={state.puzzleName || 'Map Editor'}>
-            {state.puzzleName || 'Map Editor'}
-          </h1>
-          <div className="flex items-center gap-2">
-            {/* Grid Size */}
-            <div className="flex items-center gap-2 bg-stone-800 px-3 py-1.5 rounded">
-              <span className="text-xs font-medium text-parchment-300">Grid:</span>
-              <div className="flex items-center gap-1">
-                <label className="text-xs text-stone-400">W</label>
-                <div className="flex items-center">
-                  <button
-                    onClick={() => handleResize(state.gridWidth - 1, state.gridHeight)}
-                    disabled={state.gridWidth <= 3}
-                    className="w-6 h-7 bg-stone-700 hover:bg-stone-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-l text-sm font-bold"
-                  >−</button>
-                  <input type="text" inputMode="numeric" pattern="[0-9]*" value={widthInput}
-                    onChange={(e) => setWidthInput(e.target.value)}
-                    onBlur={() => { const val = parseInt(widthInput, 10); if (!isNaN(val) && val >= 3 && val <= 20) handleResize(val, state.gridHeight); else setWidthInput(String(state.gridWidth)); }}
-                    onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
-                    className="w-8 h-7 px-1 bg-stone-700 text-sm text-center border-x border-stone-600"
-                  />
-                  <button
-                    onClick={() => handleResize(state.gridWidth + 1, state.gridHeight)}
-                    disabled={state.gridWidth >= 20}
-                    className="w-6 h-7 bg-stone-700 hover:bg-stone-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-r text-sm font-bold"
-                  >+</button>
-                </div>
-              </div>
-              <div className="flex items-center gap-1">
-                <label className="text-xs text-stone-400">H</label>
-                <div className="flex items-center">
-                  <button
-                    onClick={() => handleResize(state.gridWidth, state.gridHeight - 1)}
-                    disabled={state.gridHeight <= 3}
-                    className="w-6 h-7 bg-stone-700 hover:bg-stone-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-l text-sm font-bold"
-                  >−</button>
-                  <input type="text" inputMode="numeric" pattern="[0-9]*" value={heightInput}
-                    onChange={(e) => setHeightInput(e.target.value)}
-                    onBlur={() => { const val = parseInt(heightInput, 10); if (!isNaN(val) && val >= 3 && val <= 20) handleResize(state.gridWidth, val); else setHeightInput(String(state.gridHeight)); }}
-                    onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
-                    className="w-8 h-7 px-1 bg-stone-700 text-sm text-center border-x border-stone-600"
-                  />
-                  <button
-                    onClick={() => handleResize(state.gridWidth, state.gridHeight + 1)}
-                    disabled={state.gridHeight >= 20}
-                    className="w-6 h-7 bg-stone-700 hover:bg-stone-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-r text-sm font-bold"
-                  >+</button>
-                </div>
-              </div>
-            </div>
-            {/* Undo/Redo */}
-            <div className="flex items-center gap-1 bg-stone-800 px-2 py-1 rounded">
-              <button onClick={handleUndo} disabled={!canUndo}
-                className={`px-2 py-1.5 rounded text-xs font-medium transition-colors ${canUndo ? 'bg-stone-700 hover:bg-stone-600 text-parchment-100' : 'bg-stone-800 text-stone-500 cursor-not-allowed'}`}
-                title="Undo">↩</button>
-              <button onClick={handleRedo} disabled={!canRedo}
-                className={`px-2 py-1.5 rounded text-xs font-medium transition-colors ${canRedo ? 'bg-stone-700 hover:bg-stone-600 text-parchment-100' : 'bg-stone-800 text-stone-500 cursor-not-allowed'}`}
-                title="Redo">↪</button>
-            </div>
-          </div>
-          <button
-            onClick={handlePlaytest}
-            className="w-full max-w-xs px-4 py-2.5 bg-arcane-600 rounded hover:bg-arcane-700 font-bold text-sm"
-          >
-            ▶ Playtest
-          </button>
-        </div>
-
-        {/* Desktop header (unchanged) */}
-        <div className="hidden md:flex mb-6 items-center gap-4">
-          <div className="flex items-center justify-start gap-4">
-            <h1 className="text-4xl font-bold truncate max-w-[500px]" title={state.puzzleName || 'Map Editor'}>
-              {state.puzzleName || 'Map Editor'}
-            </h1>
-            <button
-              onClick={handlePlaytest}
-              className="px-4 py-2 bg-arcane-600 rounded hover:bg-arcane-700 font-bold text-base"
-            >
-              ▶ Play
-            </button>
-          </div>
-          <div className="flex items-center gap-4 flex-wrap">
-            {/* Grid Size */}
-            <div className="flex items-center gap-3 bg-stone-800 px-4 py-2 rounded">
-              <span className="text-sm font-medium text-parchment-300">Grid:</span>
-              <div className="flex items-center gap-1">
-                <label className="text-xs text-stone-400">W</label>
-                <div className="flex items-center">
-                  <button
-                    onClick={() => handleResize(state.gridWidth - 1, state.gridHeight)}
-                    disabled={state.gridWidth <= 3}
-                    className="w-7 h-8 bg-stone-700 hover:bg-stone-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-l text-sm font-bold"
-                  >−</button>
-                  <input type="text" inputMode="numeric" pattern="[0-9]*" value={widthInput}
-                    onChange={(e) => setWidthInput(e.target.value)}
-                    onBlur={() => { const val = parseInt(widthInput, 10); if (!isNaN(val) && val >= 3 && val <= 20) handleResize(val, state.gridHeight); else setWidthInput(String(state.gridWidth)); }}
-                    onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
-                    className="w-10 h-8 px-1 bg-stone-700 text-sm text-center border-x border-stone-600"
-                  />
-                  <button
-                    onClick={() => handleResize(state.gridWidth + 1, state.gridHeight)}
-                    disabled={state.gridWidth >= 20}
-                    className="w-7 h-8 bg-stone-700 hover:bg-stone-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-r text-sm font-bold"
-                  >+</button>
-                </div>
-              </div>
-              <div className="flex items-center gap-1">
-                <label className="text-xs text-stone-400">H</label>
-                <div className="flex items-center">
-                  <button
-                    onClick={() => handleResize(state.gridWidth, state.gridHeight - 1)}
-                    disabled={state.gridHeight <= 3}
-                    className="w-7 h-8 bg-stone-700 hover:bg-stone-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-l text-sm font-bold"
-                  >−</button>
-                  <input type="text" inputMode="numeric" pattern="[0-9]*" value={heightInput}
-                    onChange={(e) => setHeightInput(e.target.value)}
-                    onBlur={() => { const val = parseInt(heightInput, 10); if (!isNaN(val) && val >= 3 && val <= 20) handleResize(state.gridWidth, val); else setHeightInput(String(state.gridHeight)); }}
-                    onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
-                    className="w-10 h-8 px-1 bg-stone-700 text-sm text-center border-x border-stone-600"
-                  />
-                  <button
-                    onClick={() => handleResize(state.gridWidth, state.gridHeight + 1)}
-                    disabled={state.gridHeight >= 20}
-                    className="w-7 h-8 bg-stone-700 hover:bg-stone-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-r text-sm font-bold"
-                  >+</button>
-                </div>
-              </div>
-            </div>
-            {/* Undo/Redo buttons */}
-            <div className="flex items-center gap-1 bg-stone-800 px-2 py-1 rounded">
-              <button onClick={handleUndo} disabled={!canUndo}
-                className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${canUndo ? 'bg-stone-700 hover:bg-stone-600 text-parchment-100' : 'bg-stone-800 text-stone-500 cursor-not-allowed'}`}
-                title="Undo (Ctrl+Z)">↩</button>
-              <button onClick={handleRedo} disabled={!canRedo}
-                className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${canRedo ? 'bg-stone-700 hover:bg-stone-600 text-parchment-100' : 'bg-stone-800 text-stone-500 cursor-not-allowed'}`}
-                title="Redo (Ctrl+Y)">↪</button>
-              <button
-                onClick={() => setShowShortcuts(true)}
-                className="px-3 py-1.5 rounded text-sm font-medium transition-colors bg-stone-700 hover:bg-stone-600 text-stone-400 hover:text-parchment-100 ml-1"
-                title="Keyboard Shortcuts (?)"
-              >
-                {'\u2328'} ?
-              </button>
-            </div>
-          </div>
-        </div>
+        {/* Toolbar — title, primary verbs, overflow, grid size, undo/redo */}
+        <EditorToolbar
+          puzzleName={state.puzzleName}
+          puzzleId={state.puzzleId}
+          savedPuzzleCount={savedPuzzles.length}
+          isValidating={isValidating}
+          gridWidth={state.gridWidth}
+          gridHeight={state.gridHeight}
+          widthInput={widthInput}
+          heightInput={heightInput}
+          setWidthInput={setWidthInput}
+          setHeightInput={setHeightInput}
+          onResize={handleResize}
+          canUndo={canUndo}
+          canRedo={canRedo}
+          onUndo={handleUndo}
+          onRedo={handleRedo}
+          onShowShortcuts={() => setShowShortcuts(true)}
+          onPlaytest={handlePlaytest}
+          onSave={handleSave}
+          onSaveAs={handleSaveAs}
+          onNewPuzzle={handleNewPuzzle}
+          onOpenLibrary={() => setShowLibrary(true)}
+          onExport={handleExport}
+          onImport={handleImport}
+          onClear={handleClear}
+          onValidate={handleValidate}
+          onOpenGenerator={() => setShowGenerator(true)}
+          onOpenVersionHistory={() => setShowVersionHistory(true)}
+          publishStatus={publishStatus}
+          setPublishStatus={setPublishStatus}
+          reviewNotes={reviewNotes}
+          setReviewNotes={setReviewNotes}
+          showReviewNotes={showReviewNotes}
+          setShowReviewNotes={setShowReviewNotes}
+          getCurrentPuzzle={getCurrentPuzzle}
+          setPublishDeps={setPublishDeps}
+          setShowPublishModal={setShowPublishModal}
+        />
 
         <div className="flex flex-col lg:flex-row gap-4 md:gap-6">
           {/* Left Column - Canvas, Selected Characters */}
@@ -1926,35 +1815,6 @@ export const MapEditor: React.FC = () => {
 
             {/* Column 2 (Right) - Actions, Puzzle Info, Library */}
             <div className="space-y-4">
-              {/* Actions - At top of right column */}
-              <ActionsPanel
-                isOpen={actionsPanelOpen}
-                onToggleOpen={() => setActionsPanelOpen(!actionsPanelOpen)}
-                savedPuzzleCount={savedPuzzles.length}
-                isValidating={isValidating}
-                puzzleId={state.puzzleId}
-                puzzleName={state.puzzleName}
-                publishStatus={publishStatus}
-                setPublishStatus={setPublishStatus}
-                reviewNotes={reviewNotes}
-                setReviewNotes={setReviewNotes}
-                showReviewNotes={showReviewNotes}
-                setShowReviewNotes={setShowReviewNotes}
-                getCurrentPuzzle={getCurrentPuzzle}
-                setPublishDeps={setPublishDeps}
-                setShowPublishModal={setShowPublishModal}
-                onNewPuzzle={handleNewPuzzle}
-                onSave={handleSave}
-                onSaveAs={handleSaveAs}
-                onOpenLibrary={() => setShowLibrary(true)}
-                onExport={handleExport}
-                onImport={handleImport}
-                onClear={handleClear}
-                onValidate={handleValidate}
-                onOpenGenerator={() => setShowGenerator(true)}
-                onOpenVersionHistory={() => setShowVersionHistory(true)}
-              />
-
               {/* Puzzle Info - Below Actions */}
               <PuzzleInfoPanel
                 isOpen={puzzleInfoPanelOpen}
