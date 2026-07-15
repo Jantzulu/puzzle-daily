@@ -9,11 +9,19 @@ import { playBackgroundMusic, stopMusic } from '../../utils/gameSounds';
 import { savePuzzle, getSavedPuzzles, deletePuzzle, loadPuzzle, type SavedPuzzle } from '../../utils/puzzleStorage';
 import { cacheEditorState, getCachedEditorState, clearCachedEditorState } from '../../utils/editorState';
 import { writeAutoSave, readAutoSave, clearAutoSave, AUTOSAVE_INTERVAL_MS, type AutoSaveData } from '../../utils/autoSave';
-import { getAllPuzzleSkins, loadPuzzleSkin, getCustomTileTypes, loadTileType, getAllObjects, loadObject, getAllCollectibles, getSoundAssets, resolveImageSource, getCustomVessels, vesselToEnemyAsset, getCustomAllies, allyToEnemyAsset } from '../../utils/assetStorage';
+import { getAllPuzzleSkins, loadPuzzleSkin, getCustomTileTypes, loadTileType, getAllObjects, loadObject, getAllCollectibles, getSoundAssets, getCustomVessels, vesselToEnemyAsset, getCustomAllies, allyToEnemyAsset } from '../../utils/assetStorage';
 import { TILE_SIZE, BORDER_SIZE, SIDE_BORDER_SIZE, MAX_DISPLAY_WIDTH_TILES, createEmptyGrid, drawDungeonBorder, drawTile, drawEnemy, drawCollectibleInEditor, drawObject } from './map/canvasDraw';
-import { getAllSpells, SpellTooltip, ActionTooltip, ObjectTooltip } from './map/Tooltips';
+import { getAllSpells, SpellTooltip, ActionTooltip } from './map/Tooltips';
 import { createDefaultEditorState, type EditorState, type ToolType, type EditorMode } from './map/editorState';
 import { ValidationModal } from './map/ValidationModal';
+import { ToolsRow } from './map/ToolsRow';
+import { TilePalette } from './map/TilePalette';
+import { EnemyPalette } from './map/EnemyPalette';
+import { AllyPalette } from './map/AllyPalette';
+import { VesselPalette } from './map/VesselPalette';
+import { ObjectPalette } from './map/ObjectPalette';
+import { CollectiblePalette } from './map/CollectiblePalette';
+import { HeroesPalette } from './map/HeroesPalette';
 import { collectPuzzleAssetUrls } from '../../utils/spritePreload';
 import { preloadImages } from '../../utils/imageLoader';
 import type { PuzzleSkin, SoundAsset } from '../../types/game';
@@ -30,7 +38,7 @@ import { logActivity } from '../../services/activityLogService';
 import { createHistoryManager } from '../../utils/historyManager';
 import { subscribeToImageLoads } from '../../utils/imageLoader';
 import { subscribeToSpriteImageLoads } from './SpriteEditor';
-import { FolderDropdown, useFilteredAssets } from './FolderDropdown';
+import { useFilteredAssets } from './FolderDropdown';
 import { PuzzleLibraryModal } from './PuzzleLibraryModal';
 import { solvePuzzleAsync, quickValidate, type SolverResult } from '../../engine/puzzleSolver';
 import { WarningModal } from '../shared/WarningModal';
@@ -1379,6 +1387,38 @@ export const MapEditor: React.FC = () => {
   // responsibilities now. Test-mode (enemies-only / heroes-only) is
   // intentionally not yet ported — see feature-backlog if missed.
 
+  // Palette handlers (Phase 1 decomposition — behavior unchanged)
+  const handleSelectTool = (tool: ToolType) => {
+    if (tool === 'custom') {
+      setCustomTileTypes(getCustomTileTypes()); // Refresh list
+    }
+    setState(prev => ({ ...prev, selectedTool: tool }));
+  };
+
+  const handleSelectCustomTile = (tileTypeId: string) => {
+    setSelectedCustomTileTypeId(tileTypeId);
+    setState(prev => ({ ...prev, selectedTool: 'custom' }));
+  };
+
+  const handleToggleAvailableCharacter = (characterId: string, checked: boolean) => {
+    setState(prev => {
+      const newAvailable = checked
+        ? [...prev.availableCharacters, characterId]
+        : prev.availableCharacters.filter(id => id !== characterId);
+
+      // Auto-increase maxCharacters if selecting more heroes (up to cap of 5)
+      const newMaxCharacters = checked && newAvailable.length > prev.maxCharacters
+        ? Math.min(newAvailable.length, 5)
+        : prev.maxCharacters;
+
+      return {
+        ...prev,
+        availableCharacters: newAvailable,
+        maxCharacters: newMaxCharacters,
+      };
+    });
+  };
+
   // Canvas size + scale calc for the editor's edit-mode canvas. Was inline
   // with the stripped renderLivesHearts block before — kept here because
   // the edit-mode canvas still needs these.
@@ -1772,697 +1812,114 @@ export const MapEditor: React.FC = () => {
             {/* Column 1 (Left) - Tools, Tile/Enemy Selectors, Available Characters */}
             <div className="space-y-4">
               {/* Tools - At top of left column */}
-              <div className="bg-stone-800 p-4 rounded">
-                <button
-                  onClick={() => setToolsPanelOpen(!toolsPanelOpen)}
-                  className="w-full flex items-center justify-between text-lg font-bold"
-                >
-                  <span>Tools</span>
-                  <span className="text-lg text-stone-400">{toolsPanelOpen ? '▾' : '▸'}</span>
-                </button>
-                {toolsPanelOpen && <div className="grid grid-cols-4 gap-2 mt-3">
-                  <button
-                    onClick={() => {
-                      setCustomTileTypes(getCustomTileTypes()); // Refresh list
-                      setState(prev => ({ ...prev, selectedTool: 'custom' }));
-                    }}
-                    className={`p-3 rounded text-sm ${
-                      state.selectedTool === 'custom' || state.selectedTool === 'void' || state.selectedTool === 'empty' || state.selectedTool === 'wall'
-                        ? 'bg-blue-600' : 'bg-stone-700 hover:bg-stone-600'
-                    }`}
-                  >
-                    <span className="text-[10px] opacity-50 mr-0.5">1</span> Tile
-                  </button>
-                  <button
-                    onClick={() => setState(prev => ({ ...prev, selectedTool: 'enemy' }))}
-                    className={`p-3 rounded text-sm ${
-                      state.selectedTool === 'enemy' ? 'bg-blue-600' : 'bg-stone-700 hover:bg-stone-600'
-                    }`}
-                  >
-                    <span className="text-[10px] opacity-50 mr-0.5">2</span> Enemy
-                  </button>
-                  <button
-                    onClick={() => setState(prev => ({ ...prev, selectedTool: 'ally' }))}
-                    className={`p-3 rounded text-sm ${
-                      state.selectedTool === 'ally' ? 'bg-blue-600' : 'bg-stone-700 hover:bg-stone-600'
-                    }`}
-                  >
-                    <span className="text-[10px] opacity-50 mr-0.5">3</span> Ally
-                  </button>
-                  <button
-                    onClick={() => setState(prev => ({ ...prev, selectedTool: 'vessel' }))}
-                    className={`p-3 rounded text-sm ${
-                      state.selectedTool === 'vessel' ? 'bg-blue-600' : 'bg-stone-700 hover:bg-stone-600'
-                    }`}
-                  >
-                    <span className="text-[10px] opacity-50 mr-0.5">4</span> Vessel
-                  </button>
-                  <button
-                    onClick={() => setState(prev => ({ ...prev, selectedTool: 'object' }))}
-                    className={`p-3 rounded text-sm ${
-                      state.selectedTool === 'object' ? 'bg-blue-600' : 'bg-stone-700 hover:bg-stone-600'
-                    }`}
-                  >
-                    <span className="text-[10px] opacity-50 mr-0.5">5</span> Object
-                  </button>
-                  <button
-                    onClick={() => setState(prev => ({ ...prev, selectedTool: 'collectible' }))}
-                    className={`p-3 rounded text-sm ${
-                      state.selectedTool === 'collectible' ? 'bg-blue-600' : 'bg-stone-700 hover:bg-stone-600'
-                    }`}
-                  >
-                    <span className="text-[10px] opacity-50 mr-0.5">6</span> Item
-                  </button>
-                  <button
-                    onClick={() => setState(prev => ({ ...prev, selectedTool: 'characters' }))}
-                    className={`p-3 rounded text-sm ${
-                      state.selectedTool === 'characters' ? 'bg-blue-600' : 'bg-stone-700 hover:bg-stone-600'
-                    }`}
-                  >
-                    <span className="text-[10px] opacity-50 mr-0.5">7</span> Heroes
-                  </button>
-                </div>}
-              </div>
+              <ToolsRow
+                selectedTool={state.selectedTool}
+                isOpen={toolsPanelOpen}
+                onToggleOpen={() => setToolsPanelOpen(!toolsPanelOpen)}
+                onSelectTool={handleSelectTool}
+              />
 
               {/* Tool-specific panels - hidden when Tools panel is collapsed */}
               {toolsPanelOpen && <>
               {/* Tile Selector - Shows when Tile tool is selected */}
-              {(state.selectedTool === 'custom' || state.selectedTool === 'void' || state.selectedTool === 'empty' || state.selectedTool === 'wall') && (() => {
-                const currentSkin = state.skinId ? loadPuzzleSkin(state.skinId) : null;
-                const skinEmptySprite = currentSkin?.tileSprites?.empty;
-                const skinWallSprite = currentSkin?.tileSprites?.wall;
-                const skinVoidSprite = currentSkin?.tileSprites?.void;
-
-                // Helper to get the best sprite for a custom tile (skin override > tile default > null)
-                const getCustomTileThumbnail = (tileTypeId: string, tileType: { customSprite?: { idleImageData?: string; idleImageUrl?: string } }) => {
-                  // Priority 1: Skin-specific custom tile sprite
-                  const skinEntry = currentSkin?.customTileSprites?.[tileTypeId];
-                  if (skinEntry) {
-                    if (typeof skinEntry === 'string') return skinEntry;
-                    if (skinEntry.onSprite) return skinEntry.onSprite;
-                  }
-                  // Priority 2: Tile type's own sprite (data URL or HTTP URL)
-                  return resolveImageSource(tileType.customSprite?.idleImageData, tileType.customSprite?.idleImageUrl);
-                };
-
-                return (
-                <div className="bg-stone-800 p-4 rounded">
-                  <h2 className="text-lg font-bold mb-3">Tile Type</h2>
-                  <div className="space-y-2">
-                    {/* Built-in tiles: Void at top */}
-                    <button
-                      onClick={() => setState(prev => ({ ...prev, selectedTool: 'void' }))}
-                      className={`w-full p-2 rounded text-left flex items-center gap-2 ${
-                        state.selectedTool === 'void' ? 'bg-blue-600' : 'bg-stone-700 hover:bg-stone-600'
-                      }`}
-                    >
-                      <div className="w-8 h-8 bg-stone-900 rounded flex items-center justify-center overflow-hidden">
-                        {skinVoidSprite ? (
-                          <img src={skinVoidSprite} alt="" className="w-full h-full object-cover" style={{ imageRendering: 'pixelated' }} loading="lazy" decoding="async" />
-                        ) : (
-                          <span className="text-stone-600">✕</span>
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium">Void</div>
-                        <div className="text-xs text-stone-400">Empty space (no tile)</div>
-                      </div>
-                    </button>
-                    <button
-                      onClick={() => setState(prev => ({ ...prev, selectedTool: 'empty' }))}
-                      className={`w-full p-2 rounded text-left flex items-center gap-2 ${
-                        state.selectedTool === 'empty' ? 'bg-blue-600' : 'bg-stone-700 hover:bg-stone-600'
-                      }`}
-                    >
-                      <div className="w-8 h-8 bg-stone-600 rounded flex items-center justify-center overflow-hidden">
-                        {skinEmptySprite ? (
-                          <img src={skinEmptySprite} alt="" className="w-full h-full object-cover" style={{ imageRendering: 'pixelated' }} loading="lazy" decoding="async" />
-                        ) : (
-                          <span className="text-stone-400">⬜</span>
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium">Empty</div>
-                        <div className="text-xs text-stone-400">Walkable floor tile</div>
-                      </div>
-                    </button>
-                    <button
-                      onClick={() => setState(prev => ({ ...prev, selectedTool: 'wall' }))}
-                      className={`w-full p-2 rounded text-left flex items-center gap-2 ${
-                        state.selectedTool === 'wall' ? 'bg-blue-600' : 'bg-stone-700 hover:bg-stone-600'
-                      }`}
-                    >
-                      <div className="w-8 h-8 bg-stone-500 rounded flex items-center justify-center overflow-hidden">
-                        {skinWallSprite ? (
-                          <img src={skinWallSprite} alt="" className="w-full h-full object-cover" style={{ imageRendering: 'pixelated' }} loading="lazy" decoding="async" />
-                        ) : (
-                          <span className="text-parchment-300">▓</span>
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium">Wall</div>
-                        <div className="text-xs text-stone-400">Impassable barrier</div>
-                      </div>
-                    </button>
-
-                    {/* Divider if custom tiles exist */}
-                    {customTileTypes.length > 0 && (
-                      <div className="border-t border-stone-600 my-2 pt-2">
-                        <div className="text-xs text-stone-400 mb-2">Custom Tiles</div>
-                        <FolderDropdown
-                          category="tiles"
-                          selectedFolderId={tileFolderId}
-                          onFolderSelect={setTileFolderId}
-                        />
-                        <input
-                          type="text"
-                          placeholder="Search custom tiles..."
-                          value={toolSearchTerm}
-                          onChange={e => setToolSearchTerm(e.target.value)}
-                          className="w-full bg-stone-700 rounded px-2 py-1 text-sm placeholder-stone-500 mt-2"
-                        />
-                      </div>
-                    )}
-
-                    {/* Custom tiles */}
-                    {searchFilteredTileTypes.map(tileType => {
-                      const isSelected = selectedCustomTileTypeId === tileType.id && state.selectedTool === 'custom';
-                      const behaviorIcons = tileType.behaviors.map(b => {
-                        switch (b.type) {
-                          case 'damage': return '🔥';
-                          case 'teleport': return '🌀';
-                          case 'direction_change': return '➡️';
-                          case 'ice': return '❄️';
-                          case 'pressure_plate': return '⬇️';
-                          default: return '?';
-                        }
-                      }).join(' ');
-
-                      return (
-                        <button
-                          key={tileType.id}
-                          onClick={() => {
-                            setSelectedCustomTileTypeId(tileType.id);
-                            setState(prev => ({ ...prev, selectedTool: 'custom' }));
-                          }}
-                          className={`w-full p-2 rounded text-left flex items-center gap-2 ${
-                            isSelected ? 'bg-blue-600' : 'bg-stone-700 hover:bg-stone-600'
-                          }`}
-                        >
-                          <div className="w-8 h-8 bg-stone-600 rounded flex items-center justify-center overflow-hidden">
-                            {(() => {
-                              const thumbSrc = getCustomTileThumbnail(tileType.id, tileType);
-                              return thumbSrc ? (
-                                <img
-                                  src={thumbSrc}
-                                  alt=""
-                                  className="w-full h-full object-cover"
-                                  style={{ imageRendering: 'pixelated' }}
-                                  loading="lazy" decoding="async"
-                                />
-                              ) : (
-                                <span className="text-sm">{behaviorIcons || '⬜'}</span>
-                              );
-                            })()}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="text-sm font-medium truncate">{tileType.name}</div>
-                            <div className="text-xs text-stone-400">
-                              {tileType.baseType} • {behaviorIcons}
-                            </div>
-                          </div>
-                        </button>
-                      );
-                    })}
-
-                    {/* Message when no tiles in folder or no tiles at all */}
-                    {customTileTypes.length === 0 ? (
-                      <p className="text-xs text-stone-400 mt-2">
-                        Create custom tiles in{' '}
-                        <a href="/assets" className="text-blue-400 hover:underline">
-                          Asset Manager → Tiles
-                        </a>
-                      </p>
-                    ) : searchFilteredTileTypes.length === 0 && (
-                      <p className="text-xs text-stone-400 mt-2">{toolSearchTerm ? 'No tiles match your search.' : 'No tiles in this folder.'}</p>
-                    )}
-
-                    {/* Trigger Group Selector - Shows for any selected custom tile */}
-                    {selectedCustomTileTypeId && (() => {
-                      const tileType = loadTileType(selectedCustomTileTypeId);
-                      if (!tileType) return null;
-                      const hasOnOffStates = tileType.cadence?.enabled || tileType.canBeTriggered || tileType.offStateSprite;
-                      const hasPressurePlate = tileType.behaviors?.some(b => b.type === 'pressure_plate');
-                      return (
-                        <div className="mt-3 p-2 bg-stone-700 rounded">
-                          <label className="text-sm text-stone-300 block mb-1">Trigger Group</label>
-                          <p className="text-xs text-stone-400 mb-2">
-                            {hasPressurePlate
-                              ? 'Tiles in the same group will be toggled when this pressure plate is activated'
-                              : hasOnOffStates
-                                ? 'Assign to a group to control this tile with pressure plates'
-                                : 'Assign to a group to link this tile with pressure plates'}
-                          </p>
-                          <select
-                            value={selectedTriggerGroupId}
-                            onChange={e => setSelectedTriggerGroupId(e.target.value)}
-                            className="w-full bg-stone-600 rounded px-2 py-1 text-sm"
-                          >
-                            <option value="">None{hasOnOffStates ? ' (uses cadence)' : ''}</option>
-                            {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map(group => (
-                              <option key={group} value={group}>Group {group}</option>
-                            ))}
-                          </select>
-                        </div>
-                      );
-                    })()}
-                  </div>
-                </div>
-                );
-              })()}
+              {(state.selectedTool === 'custom' || state.selectedTool === 'void' || state.selectedTool === 'empty' || state.selectedTool === 'wall') && (
+                <TilePalette
+                  selectedTool={state.selectedTool}
+                  skinId={state.skinId}
+                  customTileTypes={customTileTypes}
+                  filteredTileTypes={searchFilteredTileTypes}
+                  tileFolderId={tileFolderId}
+                  onTileFolderSelect={setTileFolderId}
+                  searchTerm={toolSearchTerm}
+                  onSearchChange={setToolSearchTerm}
+                  selectedCustomTileTypeId={selectedCustomTileTypeId}
+                  selectedTriggerGroupId={selectedTriggerGroupId}
+                  onSelectTool={handleSelectTool}
+                  onSelectCustomTile={handleSelectCustomTile}
+                  onTriggerGroupChange={setSelectedTriggerGroupId}
+                />
+              )}
 
               {/* Enemy Type Selector - List style with sprites */}
               {state.selectedTool === 'enemy' && (
-                <div className="bg-stone-800 p-4 rounded">
-                  <h2 className="text-lg font-bold mb-3">Select Enemy</h2>
-                  <FolderDropdown
-                    category="enemies"
-                    selectedFolderId={enemyFolderId}
-                    onFolderSelect={setEnemyFolderId}
-                  />
-                  <input
-                    type="text"
-                    placeholder="Search enemies..."
-                    value={toolSearchTerm}
-                    onChange={e => setToolSearchTerm(e.target.value)}
-                    className="w-full bg-stone-700 rounded px-2 py-1 text-sm placeholder-stone-500 mt-2"
-                  />
-                  {searchFilteredEnemies.length === 0 ? (
-                    <p className="text-sm text-stone-400 mt-2">
-                      {allEnemies.length === 0 ? 'No enemies available. Create enemies in Asset Manager!' : toolSearchTerm ? 'No enemies match your search.' : 'No enemies in this folder.'}
-                    </p>
-                  ) : (
-                    <div className="space-y-2 max-h-64 overflow-y-auto mt-2">
-                      {searchFilteredEnemies.map(enemy => {
-                        const spells = getAllSpells(enemy.behavior?.pattern);
-                        return (
-                          <ActionTooltip key={enemy.id} actions={enemy.behavior?.pattern}>
-                            <button
-                              onClick={() => setSelectedEnemyId(enemy.id)}
-                              className={`w-full p-2 rounded text-left flex items-center gap-2 ${
-                                selectedEnemyId === enemy.id ? 'bg-blue-600' : 'bg-stone-700 hover:bg-stone-600'
-                              }`}
-                            >
-                              <SpriteThumbnail sprite={enemy.customSprite} size={32} previewType="entity" />
-                              <div className="flex-1 min-w-0">
-                                <div className="text-sm font-medium truncate">{enemy.name}</div>
-                                <div className="text-xs text-stone-400">HP: {enemy.health}</div>
-                              </div>
-                              {spells.length > 0 && (
-                                <div className="flex gap-1 flex-shrink-0">
-                                  {spells.map(spell => (
-                                    <SpellTooltip key={spell.id} spell={spell}>
-                                      <div className="w-6 h-6 rounded overflow-hidden cursor-help">
-                                        {spell.thumbnailIcon ? (
-                                          <img src={spell.thumbnailIcon} alt={spell.name} className="w-full h-full object-cover" loading="lazy" decoding="async" />
-                                        ) : (
-                                          <div className="w-full h-full bg-arcane-600 flex items-center justify-center text-xs">S</div>
-                                        )}
-                                      </div>
-                                    </SpellTooltip>
-                                  ))}
-                                </div>
-                              )}
-                            </button>
-                          </ActionTooltip>
-                        );
-                      })}
-                    </div>
-                  )}
-
-                </div>
+                <EnemyPalette
+                  enemies={searchFilteredEnemies}
+                  totalEnemyCount={allEnemies.length}
+                  enemyFolderId={enemyFolderId}
+                  onFolderSelect={setEnemyFolderId}
+                  searchTerm={toolSearchTerm}
+                  onSearchChange={setToolSearchTerm}
+                  selectedEnemyId={selectedEnemyId}
+                  onSelect={setSelectedEnemyId}
+                />
               )}
 
-              {/* Ally Selector — first-class tool (2026-07-14). Allies place
-                  into puzzle.enemies via the adapter; the party: 'hero'
-                  stamp in paintTile is what makes them allies. */}
+              {/* Ally Selector — first-class tool (2026-07-14) */}
               {state.selectedTool === 'ally' && (
-                <div className="bg-stone-800 p-4 rounded">
-                  <h2 className="text-lg font-bold mb-3">🛡️ Select Ally</h2>
-                  <FolderDropdown
-                    category="allies"
-                    selectedFolderId={allyFolderId}
-                    onFolderSelect={setAllyFolderId}
-                  />
-                  <input
-                    type="text"
-                    placeholder="Search allies..."
-                    value={toolSearchTerm}
-                    onChange={e => setToolSearchTerm(e.target.value)}
-                    className="w-full bg-stone-700 rounded px-2 py-1 text-sm placeholder-stone-500 mt-2"
-                  />
-                  {searchFilteredAllies.length === 0 ? (
-                    <p className="text-sm text-stone-400 mt-2">
-                      {allAllies.length === 0 ? (
-                        <>
-                          No allies yet. Create allies in{' '}
-                          <a href="/assets?tab=allies" className="text-blue-400 hover:underline">
-                            Asset Manager → Allies
-                          </a>
-                        </>
-                      ) : toolSearchTerm ? 'No allies match your search.' : 'No allies in this folder.'}
-                    </p>
-                  ) : (
-                    <div className="space-y-2 max-h-64 overflow-y-auto mt-2">
-                      {searchFilteredAllies.map(ally => {
-                        const spells = getAllSpells(ally.behavior?.pattern);
-                        return (
-                          <ActionTooltip key={ally.id} actions={ally.behavior?.pattern}>
-                            <button
-                              onClick={() => setSelectedAllyId(ally.id)}
-                              className={`w-full p-2 rounded text-left flex items-center gap-2 ${
-                                selectedAllyId === ally.id ? 'bg-blue-600' : 'bg-stone-700 hover:bg-stone-600'
-                              }`}
-                            >
-                              <SpriteThumbnail sprite={ally.customSprite} size={32} previewType="entity" />
-                              <div className="flex-1 min-w-0">
-                                <div className="text-sm font-medium truncate">
-                                  {ally.name}
-                                  {ally.isNoble && <span className="ml-1 text-xs text-copper-300 font-medium">NOBLE</span>}
-                                </div>
-                                <div className="text-xs text-stone-400">HP: {ally.health}</div>
-                              </div>
-                              {spells.length > 0 && (
-                                <div className="flex gap-1 flex-shrink-0">
-                                  {spells.map(spell => (
-                                    <SpellTooltip key={spell.id} spell={spell}>
-                                      <div className="w-6 h-6 rounded overflow-hidden cursor-help">
-                                        {spell.thumbnailIcon ? (
-                                          <img src={spell.thumbnailIcon} alt={spell.name} className="w-full h-full object-cover" loading="lazy" decoding="async" />
-                                        ) : (
-                                          <div className="w-full h-full bg-arcane-600 flex items-center justify-center text-xs">S</div>
-                                        )}
-                                      </div>
-                                    </SpellTooltip>
-                                  ))}
-                                </div>
-                              )}
-                            </button>
-                          </ActionTooltip>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
+                <AllyPalette
+                  allies={searchFilteredAllies}
+                  totalAllyCount={allAllies.length}
+                  allyFolderId={allyFolderId}
+                  onFolderSelect={setAllyFolderId}
+                  searchTerm={toolSearchTerm}
+                  onSearchChange={setToolSearchTerm}
+                  selectedAllyId={selectedAllyId}
+                  onSelect={setSelectedAllyId}
+                />
               )}
 
-              {/* Vessel Selector — first-class tool (2026-07-14). Breakable
-                  statics; place exactly like enemies via the adapter. */}
+              {/* Vessel Selector — first-class tool (2026-07-14) */}
               {state.selectedTool === 'vessel' && (
-                <div className="bg-stone-800 p-4 rounded">
-                  <h2 className="text-lg font-bold mb-3">🛢️ Select Vessel</h2>
-                  <input
-                    type="text"
-                    placeholder="Search vessels..."
-                    value={toolSearchTerm}
-                    onChange={e => setToolSearchTerm(e.target.value)}
-                    className="w-full bg-stone-700 rounded px-2 py-1 text-sm placeholder-stone-500"
-                  />
-                  {searchFilteredVessels.length === 0 ? (
-                    <p className="text-sm text-stone-400 mt-2">
-                      {allVessels.length === 0 ? (
-                        <>
-                          No vessels yet. Create vessels in{' '}
-                          <a href="/assets?tab=vessels" className="text-blue-400 hover:underline">
-                            Asset Manager → Vessels
-                          </a>
-                        </>
-                      ) : 'No vessels match your search.'}
-                    </p>
-                  ) : (
-                    <div className="space-y-2 max-h-64 overflow-y-auto mt-2">
-                      {searchFilteredVessels.map(vessel => (
-                        <button
-                          key={vessel.id}
-                          onClick={() => setSelectedVesselId(vessel.id)}
-                          className={`w-full p-2 rounded text-left flex items-center gap-2 ${
-                            selectedVesselId === vessel.id ? 'bg-blue-600' : 'bg-stone-700 hover:bg-stone-600'
-                          }`}
-                        >
-                          <SpriteThumbnail sprite={vessel.customSprite} size={32} previewType="entity" />
-                          <div className="flex-1 min-w-0">
-                            <div className="text-sm font-medium truncate">{vessel.name}</div>
-                            <div className="text-xs text-stone-400">
-                              HP: {vessel.health}
-                              {vessel.droppedCollectibleId && <span className="ml-2">💰 drops loot</span>}
-                            </div>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                <VesselPalette
+                  vessels={searchFilteredVessels}
+                  totalVesselCount={allVessels.length}
+                  searchTerm={toolSearchTerm}
+                  onSearchChange={setToolSearchTerm}
+                  selectedVesselId={selectedVesselId}
+                  onSelect={setSelectedVesselId}
+                />
               )}
 
               {/* Object Type Selector - List style with sprites and tooltips */}
               {state.selectedTool === 'object' && (
-                <div className="bg-stone-800 p-4 rounded">
-                  <h2 className="text-lg font-bold mb-3">Select Object</h2>
-                  <FolderDropdown
-                    category="objects"
-                    selectedFolderId={objectFolderId}
-                    onFolderSelect={setObjectFolderId}
-                  />
-                  <input
-                    type="text"
-                    placeholder="Search objects..."
-                    value={toolSearchTerm}
-                    onChange={e => setToolSearchTerm(e.target.value)}
-                    className="w-full bg-stone-700 rounded px-2 py-1 text-sm placeholder-stone-500 mt-2"
-                  />
-                  {searchFilteredObjects.length === 0 ? (
-                    <div className="text-center py-4">
-                      <p className="text-sm text-stone-400 mb-2">
-                        {allObjects.length === 0 ? 'No objects available.' : toolSearchTerm ? 'No objects match your search.' : 'No objects in this folder.'}
-                      </p>
-                      {allObjects.length === 0 && (
-                        <a href="/assets" className="text-blue-400 hover:underline text-sm">
-                          Create objects in Asset Manager
-                        </a>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="space-y-2 max-h-64 overflow-y-auto mt-2">
-                      {searchFilteredObjects.map(obj => (
-                        <ObjectTooltip key={obj.id} object={obj}>
-                          <button
-                            onClick={() => setSelectedObjectId(obj.id)}
-                            className={`w-full p-2 rounded text-left flex items-center gap-2 ${
-                              selectedObjectId === obj.id ? 'bg-blue-600' : 'bg-stone-700 hover:bg-stone-600'
-                            }`}
-                          >
-                            <SpriteThumbnail sprite={obj.customSprite} size={32} previewType="asset" />
-                            <div className="flex-1 min-w-0">
-                              <div className="text-sm font-medium truncate">{obj.name}</div>
-                              <div className="text-xs text-stone-400 capitalize">
-                                {obj.collisionType.replace('_', ' ')}
-                                {obj.effects.length > 0 && ` • ${obj.effects.length} effect${obj.effects.length > 1 ? 's' : ''}`}
-                              </div>
-                            </div>
-                            {obj.effects.length > 0 && (
-                              <div className="flex gap-1 flex-shrink-0">
-                                {obj.effects.slice(0, 2).map((effect, i) => (
-                                  <span
-                                    key={i}
-                                    className={`text-xs px-1.5 py-0.5 rounded ${
-                                      effect.type === 'damage' ? 'bg-red-900 text-red-300' :
-                                      effect.type === 'heal' ? 'bg-green-900 text-green-300' :
-                                      'bg-blue-900 text-blue-300'
-                                    }`}
-                                  >
-                                    {effect.type.charAt(0).toUpperCase()}
-                                  </span>
-                                ))}
-                              </div>
-                            )}
-                          </button>
-                        </ObjectTooltip>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                <ObjectPalette
+                  objects={searchFilteredObjects}
+                  totalObjectCount={allObjects.length}
+                  objectFolderId={objectFolderId}
+                  onFolderSelect={setObjectFolderId}
+                  searchTerm={toolSearchTerm}
+                  onSearchChange={setToolSearchTerm}
+                  selectedObjectId={selectedObjectId}
+                  onSelect={setSelectedObjectId}
+                />
               )}
 
               {/* Collectible Type Selector - List style with sprites */}
               {state.selectedTool === 'collectible' && (
-                <div className="bg-stone-800 p-4 rounded">
-                  <h2 className="text-lg font-bold mb-3">Select Collectible</h2>
-                  <FolderDropdown
-                    category="collectibles"
-                    selectedFolderId={collectibleFolderId}
-                    onFolderSelect={setCollectibleFolderId}
-                  />
-                  <input
-                    type="text"
-                    placeholder="Search collectibles..."
-                    value={toolSearchTerm}
-                    onChange={e => setToolSearchTerm(e.target.value)}
-                    className="w-full bg-stone-700 rounded px-2 py-1 text-sm placeholder-stone-500 mt-2"
-                  />
-                  {/* Legacy coin option */}
-                  <div className="space-y-2 max-h-64 overflow-y-auto mt-2">
-                    {!toolSearchTerm && (
-                      <button
-                        onClick={() => setSelectedCollectibleId(null)}
-                        className={`w-full p-2 rounded text-left flex items-center gap-2 ${
-                          selectedCollectibleId === null ? 'bg-blue-600' : 'bg-stone-700 hover:bg-stone-600'
-                        }`}
-                      >
-                        <div className="w-8 h-8 rounded flex items-center justify-center bg-stone-600">
-                          <span className="text-yellow-400">⭐</span>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="text-sm font-medium truncate">Default Coin</div>
-                          <div className="text-xs text-stone-400">Legacy collectible (10 points)</div>
-                        </div>
-                      </button>
-                    )}
-                    {searchFilteredCollectibles.length === 0 && allCollectibles.length > 0 ? (
-                      <div className="text-center py-2">
-                        <p className="text-sm text-stone-400">No collectibles in this folder.</p>
-                      </div>
-                    ) : allCollectibles.length === 0 ? (
-                      <div className="text-center py-2">
-                        <p className="text-sm text-stone-400 mb-2">No custom collectibles available.</p>
-                        <a href="/assets" className="text-blue-400 hover:underline text-sm">
-                          Create collectibles in Asset Manager
-                        </a>
-                      </div>
-                    ) : (
-                      searchFilteredCollectibles.map(coll => (
-                        <button
-                          key={coll.id}
-                          onClick={() => setSelectedCollectibleId(coll.id)}
-                          className={`w-full p-2 rounded text-left flex items-center gap-2 ${
-                            selectedCollectibleId === coll.id ? 'bg-blue-600' : 'bg-stone-700 hover:bg-stone-600'
-                          }`}
-                        >
-                          <SpriteThumbnail sprite={coll.customSprite} size={32} previewType="asset" />
-                          <div className="flex-1 min-w-0">
-                            <div className="text-sm font-medium truncate">{coll.name}</div>
-                            <div className="text-xs text-stone-400">
-                              {coll.effects.length > 0
-                                ? coll.effects.map(e => e.type).join(', ')
-                                : 'No effects'}
-                            </div>
-                          </div>
-                          {coll.effects.length > 0 && (
-                            <div className="flex gap-1 flex-shrink-0">
-                              {coll.effects.slice(0, 2).map((effect, i) => (
-                                <span
-                                  key={i}
-                                  className={`text-xs px-1.5 py-0.5 rounded ${
-                                    effect.type === 'damage' ? 'bg-red-900 text-red-300' :
-                                    effect.type === 'heal' ? 'bg-green-900 text-green-300' :
-                                    effect.type === 'score' ? 'bg-yellow-900 text-yellow-300' :
-                                    effect.type === 'win_key' ? 'bg-purple-900 text-purple-300' :
-                                    'bg-blue-900 text-blue-300'
-                                  }`}
-                                >
-                                  {effect.type === 'status_effect' ? 'Buff' : effect.type.charAt(0).toUpperCase()}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                        </button>
-                      ))
-                    )}
-                  </div>
-                </div>
+                <CollectiblePalette
+                  collectibles={searchFilteredCollectibles}
+                  totalCollectibleCount={allCollectibles.length}
+                  collectibleFolderId={collectibleFolderId}
+                  onFolderSelect={setCollectibleFolderId}
+                  searchTerm={toolSearchTerm}
+                  onSearchChange={setToolSearchTerm}
+                  selectedCollectibleId={selectedCollectibleId}
+                  onSelect={setSelectedCollectibleId}
+                />
               )}
 
               {/* Available Heroes - Shows when Heroes tool is selected */}
               {state.selectedTool === 'characters' && (
-                <div className="bg-stone-800 p-4 rounded">
-                  <h2 className="text-lg font-bold mb-3">Available Heroes</h2>
-                  <p className="text-xs text-stone-400 mb-3">Select which heroes players can use</p>
-                  <FolderDropdown
-                    category="characters"
-                    selectedFolderId={characterFolderId}
-                    onFolderSelect={setCharacterFolderId}
-                  />
-                  <input
-                    type="text"
-                    placeholder="Search heroes..."
-                    value={toolSearchTerm}
-                    onChange={e => setToolSearchTerm(e.target.value)}
-                    className="w-full bg-stone-700 rounded px-2 py-1 text-sm placeholder-stone-500 mt-2"
-                  />
-                  {searchFilteredCharacters.length === 0 ? (
-                    <p className="text-sm text-stone-400 mt-2">
-                      {allCharacters.length === 0 ? 'No characters available' : toolSearchTerm ? 'No heroes match your search.' : 'No characters in this folder.'}
-                    </p>
-                  ) : (
-                    <div className="space-y-2 max-h-80 overflow-y-auto mt-2">
-                      {searchFilteredCharacters.map(char => {
-                        const spells = getAllSpells(char.behavior);
-                        const isSelected = state.availableCharacters.includes(char.id);
-                        const isAtCap = state.availableCharacters.length >= 5 && !isSelected;
-
-                        return (
-                          <ActionTooltip key={char.id} actions={char.behavior}>
-                            <label className={`flex items-center gap-2 p-2 bg-stone-700 rounded ${isAtCap ? 'opacity-50 cursor-not-allowed' : 'hover:bg-stone-600 cursor-pointer'}`}>
-                              <input
-                                type="checkbox"
-                                checked={isSelected}
-                                disabled={isAtCap}
-                                onChange={(e) => {
-                                  setState(prev => {
-                                    const newAvailable = e.target.checked
-                                      ? [...prev.availableCharacters, char.id]
-                                      : prev.availableCharacters.filter(id => id !== char.id);
-
-                                    // Auto-increase maxCharacters if selecting more heroes (up to cap of 5)
-                                    const newMaxCharacters = e.target.checked && newAvailable.length > prev.maxCharacters
-                                      ? Math.min(newAvailable.length, 5)
-                                      : prev.maxCharacters;
-
-                                    return {
-                                      ...prev,
-                                      availableCharacters: newAvailable,
-                                      maxCharacters: newMaxCharacters,
-                                    };
-                                  });
-                                }}
-                                className="w-4 h-4"
-                              />
-                              <SpriteThumbnail sprite={char.customSprite} size={32} previewType="entity" />
-                              <div className="flex-1 min-w-0">
-                                <div className="text-sm font-medium truncate">{char.name}</div>
-                                <div className="text-xs text-stone-400">HP: {char.health}</div>
-                              </div>
-                              {spells.length > 0 && (
-                                <div className="flex gap-1 flex-shrink-0">
-                                  {spells.map(spell => (
-                                    <SpellTooltip key={spell.id} spell={spell}>
-                                      <div className="w-6 h-6 rounded overflow-hidden cursor-help">
-                                        {spell.thumbnailIcon ? (
-                                          <img src={spell.thumbnailIcon} alt={spell.name} className="w-full h-full object-cover" loading="lazy" decoding="async" />
-                                        ) : (
-                                          <div className="w-full h-full bg-arcane-600 flex items-center justify-center text-xs">S</div>
-                                        )}
-                                      </div>
-                                    </SpellTooltip>
-                                  ))}
-                                </div>
-                              )}
-                            </label>
-                          </ActionTooltip>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
+                <HeroesPalette
+                  characters={searchFilteredCharacters}
+                  totalCharacterCount={allCharacters.length}
+                  characterFolderId={characterFolderId}
+                  onFolderSelect={setCharacterFolderId}
+                  searchTerm={toolSearchTerm}
+                  onSearchChange={setToolSearchTerm}
+                  availableCharacters={state.availableCharacters}
+                  onToggleCharacter={handleToggleAvailableCharacter}
+                />
               )}
               </>}
             </div>
