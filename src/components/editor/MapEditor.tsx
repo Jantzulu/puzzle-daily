@@ -246,7 +246,7 @@ const BORDER_SIZE = 48; // Border thickness for top/bottom
 const SIDE_BORDER_SIZE = 16; // Thinner side borders to match pixel art style
 const MAX_DISPLAY_WIDTH_TILES = 15; // Max tiles before scaling down
 
-type ToolType = 'empty' | 'wall' | 'void' | 'enemy' | 'collectible' | 'object' | 'custom' | 'characters';
+type ToolType = 'empty' | 'wall' | 'void' | 'enemy' | 'ally' | 'vessel' | 'collectible' | 'object' | 'custom' | 'characters';
 type EditorMode = 'edit' | 'playtest';
 
 interface EditorState {
@@ -586,18 +586,28 @@ export const MapEditor: React.FC = () => {
           e.preventDefault();
           setState(prev => ({ ...prev, selectedTool: 'enemy' }));
           break;
-        // 3 — Object tool
+        // 3 — Ally tool
         case '3':
+          e.preventDefault();
+          setState(prev => ({ ...prev, selectedTool: 'ally' }));
+          break;
+        // 4 — Vessel tool
+        case '4':
+          e.preventDefault();
+          setState(prev => ({ ...prev, selectedTool: 'vessel' }));
+          break;
+        // 5 — Object tool
+        case '5':
           e.preventDefault();
           setState(prev => ({ ...prev, selectedTool: 'object' }));
           break;
-        // 4 — Item (collectible) tool
-        case '4':
+        // 6 — Item (collectible) tool
+        case '6':
           e.preventDefault();
           setState(prev => ({ ...prev, selectedTool: 'collectible' }));
           break;
-        // 5 — Heroes tool
-        case '5':
+        // 7 — Heroes tool
+        case '7':
           e.preventDefault();
           setState(prev => ({ ...prev, selectedTool: 'characters' }));
           break;
@@ -678,13 +688,17 @@ export const MapEditor: React.FC = () => {
   const [selectedCustomTileTypeId, setSelectedCustomTileTypeId] = useState<string | null>(null);
   const [selectedTriggerGroupId, setSelectedTriggerGroupId] = useState<string>(''); // For pressure plate trigger groups
 
-  // Enemy/Character/Object/Collectible selection
+  // Enemy/Ally/Vessel/Object/Collectible selection — each placement tool
+  // keeps its own selected id so switching tools never places the wrong
+  // kind from a stale selection.
   const [selectedEnemyId, setSelectedEnemyId] = useState<string | null>(null);
+  const [selectedAllyId, setSelectedAllyId] = useState<string | null>(null);
+  const [selectedVesselId, setSelectedVesselId] = useState<string | null>(null);
   const [selectedObjectId, setSelectedObjectId] = useState<string | null>(null);
   const [selectedCollectibleId, setSelectedCollectibleId] = useState<string | null>(null);
   const allEnemies = getAllEnemies();
   // Vessels place exactly like enemies (they live in puzzle.enemies and
-  // resolve through the enemy adapter) — shown as their own palette section.
+  // resolve through the enemy adapter) — first-class tool since 2026-07-14.
   const allVessels = getCustomVessels().map(vesselToEnemyAsset);
   // Allies ride the same pipeline; placement stamps party: 'hero' (that
   // stamp is what makes a placed ally an ally — engine/party.ts).
@@ -697,11 +711,13 @@ export const MapEditor: React.FC = () => {
 
   // Folder filtering for asset selectors
   const [enemyFolderId, setEnemyFolderId] = useState<string | null>(null);
+  const [allyFolderId, setAllyFolderId] = useState<string | null>(null);
   const [objectFolderId, setObjectFolderId] = useState<string | null>(null);
   const [characterFolderId, setCharacterFolderId] = useState<string | null>(null);
   const [tileFolderId, setTileFolderId] = useState<string | null>(null);
   const [collectibleFolderId, setCollectibleFolderId] = useState<string | null>(null);
   const filteredEnemies = useFilteredAssets(allEnemies, enemyFolderId);
+  const filteredAllies = useFilteredAssets(allAllies, allyFolderId);
   const filteredObjects = useFilteredAssets(allObjects, objectFolderId);
   const filteredCharacters = useFilteredAssets(allCharacters, characterFolderId);
   const filteredTileTypes = useFilteredAssets(customTileTypes, tileFolderId);
@@ -710,6 +726,9 @@ export const MapEditor: React.FC = () => {
   // Search filtering for tool panels
   const [toolSearchTerm, setToolSearchTerm] = useState('');
   const searchFilteredEnemies = toolSearchTerm ? filteredEnemies.filter(e => e.name.toLowerCase().includes(toolSearchTerm.toLowerCase())) : filteredEnemies;
+  const searchFilteredAllies = toolSearchTerm ? filteredAllies.filter(a => a.name.toLowerCase().includes(toolSearchTerm.toLowerCase())) : filteredAllies;
+  // Vessels have no folder category (assetStorage AssetCategory) — search only.
+  const searchFilteredVessels = toolSearchTerm ? allVessels.filter(v => v.name.toLowerCase().includes(toolSearchTerm.toLowerCase())) : allVessels;
   const searchFilteredObjects = toolSearchTerm ? filteredObjects.filter(o => o.name.toLowerCase().includes(toolSearchTerm.toLowerCase())) : filteredObjects;
   const searchFilteredCharacters = toolSearchTerm ? filteredCharacters.filter(c => c.name.toLowerCase().includes(toolSearchTerm.toLowerCase())) : filteredCharacters;
   const searchFilteredTileTypes = toolSearchTerm ? filteredTileTypes.filter(t => t.name.toLowerCase().includes(toolSearchTerm.toLowerCase())) : filteredTileTypes;
@@ -944,13 +963,19 @@ export const MapEditor: React.FC = () => {
 
   const paintTile = (x: number, y: number) => {
     vibrate('tilePaint');
-    if (state.selectedTool === 'enemy') {
-      if (!selectedEnemyId) {
-        toast.warning('Please select an enemy type first!');
+    if (state.selectedTool === 'enemy' || state.selectedTool === 'ally' || state.selectedTool === 'vessel') {
+      // All three place into puzzle.enemies through the same pipeline; the
+      // party stamp below (keyed on the ASSET id, not the tool) is what
+      // makes a placed ally an ally.
+      const selectedId = state.selectedTool === 'enemy' ? selectedEnemyId
+        : state.selectedTool === 'ally' ? selectedAllyId
+        : selectedVesselId;
+      if (!selectedId) {
+        toast.warning(`Please select ${state.selectedTool === 'enemy' ? 'an enemy' : state.selectedTool === 'ally' ? 'an ally' : 'a vessel'} type first!`);
         return;
       }
 
-      const enemyType = placeableEnemyTypes.find(e => e.id === selectedEnemyId);
+      const enemyType = placeableEnemyTypes.find(e => e.id === selectedId);
       if (!enemyType) return;
 
       setState(prev => {
@@ -2060,12 +2085,28 @@ export const MapEditor: React.FC = () => {
                     <span className="text-[10px] opacity-50 mr-0.5">2</span> Enemy
                   </button>
                   <button
+                    onClick={() => setState(prev => ({ ...prev, selectedTool: 'ally' }))}
+                    className={`p-3 rounded text-sm ${
+                      state.selectedTool === 'ally' ? 'bg-blue-600' : 'bg-stone-700 hover:bg-stone-600'
+                    }`}
+                  >
+                    <span className="text-[10px] opacity-50 mr-0.5">3</span> Ally
+                  </button>
+                  <button
+                    onClick={() => setState(prev => ({ ...prev, selectedTool: 'vessel' }))}
+                    className={`p-3 rounded text-sm ${
+                      state.selectedTool === 'vessel' ? 'bg-blue-600' : 'bg-stone-700 hover:bg-stone-600'
+                    }`}
+                  >
+                    <span className="text-[10px] opacity-50 mr-0.5">4</span> Vessel
+                  </button>
+                  <button
                     onClick={() => setState(prev => ({ ...prev, selectedTool: 'object' }))}
                     className={`p-3 rounded text-sm ${
                       state.selectedTool === 'object' ? 'bg-blue-600' : 'bg-stone-700 hover:bg-stone-600'
                     }`}
                   >
-                    <span className="text-[10px] opacity-50 mr-0.5">3</span> Object
+                    <span className="text-[10px] opacity-50 mr-0.5">5</span> Object
                   </button>
                   <button
                     onClick={() => setState(prev => ({ ...prev, selectedTool: 'collectible' }))}
@@ -2073,7 +2114,7 @@ export const MapEditor: React.FC = () => {
                       state.selectedTool === 'collectible' ? 'bg-blue-600' : 'bg-stone-700 hover:bg-stone-600'
                     }`}
                   >
-                    <span className="text-[10px] opacity-50 mr-0.5">4</span> Item
+                    <span className="text-[10px] opacity-50 mr-0.5">6</span> Item
                   </button>
                   <button
                     onClick={() => setState(prev => ({ ...prev, selectedTool: 'characters' }))}
@@ -2081,7 +2122,7 @@ export const MapEditor: React.FC = () => {
                       state.selectedTool === 'characters' ? 'bg-blue-600' : 'bg-stone-700 hover:bg-stone-600'
                     }`}
                   >
-                    <span className="text-[10px] opacity-50 mr-0.5">5</span> Heroes
+                    <span className="text-[10px] opacity-50 mr-0.5">7</span> Heroes
                   </button>
                 </div>}
               </div>
@@ -2342,53 +2383,48 @@ export const MapEditor: React.FC = () => {
                     </div>
                   )}
 
-                  {/* Vessels — breakable statics, placed exactly like enemies */}
-                  {allVessels.length > 0 && (() => {
-                    const searchFilteredVessels = allVessels.filter(v =>
-                      v.name.toLowerCase().includes(toolSearchTerm.toLowerCase())
-                    );
-                    if (searchFilteredVessels.length === 0) return null;
-                    return (
-                      <>
-                        <h3 className="text-sm font-bold mt-4 mb-2 text-copper-300">🛢️ Vessels</h3>
-                        <div className="space-y-2 max-h-48 overflow-y-auto">
-                          {searchFilteredVessels.map(vessel => (
-                            <button
-                              key={vessel.id}
-                              onClick={() => setSelectedEnemyId(vessel.id)}
-                              className={`w-full p-2 rounded text-left flex items-center gap-2 ${
-                                selectedEnemyId === vessel.id ? 'bg-blue-600' : 'bg-stone-700 hover:bg-stone-600'
-                              }`}
-                            >
-                              <SpriteThumbnail sprite={vessel.customSprite} size={32} previewType="entity" />
-                              <div className="flex-1 min-w-0">
-                                <div className="text-sm font-medium truncate">{vessel.name}</div>
-                                <div className="text-xs text-stone-400">HP: {vessel.health}</div>
-                              </div>
-                            </button>
-                          ))}
-                        </div>
-                      </>
-                    );
-                  })()}
+                </div>
+              )}
 
-                  {/* Allies — hero-party units, placed exactly like enemies
-                      (placement stamps party: 'hero') */}
-                  {allAllies.length > 0 && (() => {
-                    const searchFilteredAllies = allAllies.filter(a =>
-                      a.name.toLowerCase().includes(toolSearchTerm.toLowerCase())
-                    );
-                    if (searchFilteredAllies.length === 0) return null;
-                    return (
-                      <>
-                        <h3 className="text-sm font-bold mt-4 mb-2 text-copper-300">🛡️ Allies</h3>
-                        <div className="space-y-2 max-h-48 overflow-y-auto">
-                          {searchFilteredAllies.map(ally => (
+              {/* Ally Selector — first-class tool (2026-07-14). Allies place
+                  into puzzle.enemies via the adapter; the party: 'hero'
+                  stamp in paintTile is what makes them allies. */}
+              {state.selectedTool === 'ally' && (
+                <div className="bg-stone-800 p-4 rounded">
+                  <h2 className="text-lg font-bold mb-3">🛡️ Select Ally</h2>
+                  <FolderDropdown
+                    category="allies"
+                    selectedFolderId={allyFolderId}
+                    onFolderSelect={setAllyFolderId}
+                  />
+                  <input
+                    type="text"
+                    placeholder="Search allies..."
+                    value={toolSearchTerm}
+                    onChange={e => setToolSearchTerm(e.target.value)}
+                    className="w-full bg-stone-700 rounded px-2 py-1 text-sm placeholder-stone-500 mt-2"
+                  />
+                  {searchFilteredAllies.length === 0 ? (
+                    <p className="text-sm text-stone-400 mt-2">
+                      {allAllies.length === 0 ? (
+                        <>
+                          No allies yet. Create allies in{' '}
+                          <a href="/assets?tab=allies" className="text-blue-400 hover:underline">
+                            Asset Manager → Allies
+                          </a>
+                        </>
+                      ) : toolSearchTerm ? 'No allies match your search.' : 'No allies in this folder.'}
+                    </p>
+                  ) : (
+                    <div className="space-y-2 max-h-64 overflow-y-auto mt-2">
+                      {searchFilteredAllies.map(ally => {
+                        const spells = getAllSpells(ally.behavior?.pattern);
+                        return (
+                          <ActionTooltip key={ally.id} actions={ally.behavior?.pattern}>
                             <button
-                              key={ally.id}
-                              onClick={() => setSelectedEnemyId(ally.id)}
+                              onClick={() => setSelectedAllyId(ally.id)}
                               className={`w-full p-2 rounded text-left flex items-center gap-2 ${
-                                selectedEnemyId === ally.id ? 'bg-blue-600' : 'bg-stone-700 hover:bg-stone-600'
+                                selectedAllyId === ally.id ? 'bg-blue-600' : 'bg-stone-700 hover:bg-stone-600'
                               }`}
                             >
                               <SpriteThumbnail sprite={ally.customSprite} size={32} previewType="entity" />
@@ -2399,12 +2435,75 @@ export const MapEditor: React.FC = () => {
                                 </div>
                                 <div className="text-xs text-stone-400">HP: {ally.health}</div>
                               </div>
+                              {spells.length > 0 && (
+                                <div className="flex gap-1 flex-shrink-0">
+                                  {spells.map(spell => (
+                                    <SpellTooltip key={spell.id} spell={spell}>
+                                      <div className="w-6 h-6 rounded overflow-hidden cursor-help">
+                                        {spell.thumbnailIcon ? (
+                                          <img src={spell.thumbnailIcon} alt={spell.name} className="w-full h-full object-cover" loading="lazy" decoding="async" />
+                                        ) : (
+                                          <div className="w-full h-full bg-arcane-600 flex items-center justify-center text-xs">S</div>
+                                        )}
+                                      </div>
+                                    </SpellTooltip>
+                                  ))}
+                                </div>
+                              )}
                             </button>
-                          ))}
-                        </div>
-                      </>
-                    );
-                  })()}
+                          </ActionTooltip>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Vessel Selector — first-class tool (2026-07-14). Breakable
+                  statics; place exactly like enemies via the adapter. */}
+              {state.selectedTool === 'vessel' && (
+                <div className="bg-stone-800 p-4 rounded">
+                  <h2 className="text-lg font-bold mb-3">🛢️ Select Vessel</h2>
+                  <input
+                    type="text"
+                    placeholder="Search vessels..."
+                    value={toolSearchTerm}
+                    onChange={e => setToolSearchTerm(e.target.value)}
+                    className="w-full bg-stone-700 rounded px-2 py-1 text-sm placeholder-stone-500"
+                  />
+                  {searchFilteredVessels.length === 0 ? (
+                    <p className="text-sm text-stone-400 mt-2">
+                      {allVessels.length === 0 ? (
+                        <>
+                          No vessels yet. Create vessels in{' '}
+                          <a href="/assets?tab=vessels" className="text-blue-400 hover:underline">
+                            Asset Manager → Vessels
+                          </a>
+                        </>
+                      ) : 'No vessels match your search.'}
+                    </p>
+                  ) : (
+                    <div className="space-y-2 max-h-64 overflow-y-auto mt-2">
+                      {searchFilteredVessels.map(vessel => (
+                        <button
+                          key={vessel.id}
+                          onClick={() => setSelectedVesselId(vessel.id)}
+                          className={`w-full p-2 rounded text-left flex items-center gap-2 ${
+                            selectedVesselId === vessel.id ? 'bg-blue-600' : 'bg-stone-700 hover:bg-stone-600'
+                          }`}
+                        >
+                          <SpriteThumbnail sprite={vessel.customSprite} size={32} previewType="entity" />
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-medium truncate">{vessel.name}</div>
+                            <div className="text-xs text-stone-400">
+                              HP: {vessel.health}
+                              {vessel.droppedCollectibleId && <span className="ml-2">💰 drops loot</span>}
+                            </div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -3932,9 +4031,11 @@ export const MapEditor: React.FC = () => {
                   {[
                     ['1', 'Tile tool'],
                     ['2', 'Enemy tool'],
-                    ['3', 'Object tool'],
-                    ['4', 'Item tool'],
-                    ['5', 'Heroes tool'],
+                    ['3', 'Ally tool'],
+                    ['4', 'Vessel tool'],
+                    ['5', 'Object tool'],
+                    ['6', 'Item tool'],
+                    ['7', 'Heroes tool'],
                   ].map(([key, label]) => (
                     <div key={key} className="flex items-center gap-3">
                       <kbd className="bg-stone-700 border border-stone-600 rounded px-2 py-0.5 text-xs font-mono min-w-[28px] text-center">{key}</kbd>
