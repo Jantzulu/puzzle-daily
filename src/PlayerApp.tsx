@@ -107,15 +107,23 @@ function AnimatedLogo({ src, alt, frameCount, frameRate, className }: {
       canvas.style.width = `${displayWidth}px`;
       canvas.style.height = `${displayHeight}px`;
 
+      // Only touch the canvas when the frame index actually changes — see
+      // App.tsx's twin loop; identical repaints kept this layer dirty at
+      // 60Hz for the compositor. Torch shading is a pure function of the
+      // frame, so skipping identical repaints is pixel-identical.
+      let lastDrawnFrame = -1;
       const animate = () => {
         const now = Date.now();
         if (now - lastFrameTimeRef.current >= frameDuration) {
           frameIndexRef.current = (frameIndexRef.current + 1) % frameCount;
           lastFrameTimeRef.current = now;
         }
-        ctx.clearRect(0, 0, frameWidth, frameHeight);
-        ctx.drawImage(img, frameIndexRef.current * frameWidth, 0, frameWidth, frameHeight, 0, 0, frameWidth, frameHeight);
-        applyNavTorchLight(ctx, frameWidth, frameHeight);
+        if (frameIndexRef.current !== lastDrawnFrame) {
+          lastDrawnFrame = frameIndexRef.current;
+          ctx.clearRect(0, 0, frameWidth, frameHeight);
+          ctx.drawImage(img, frameIndexRef.current * frameWidth, 0, frameWidth, frameHeight, 0, 0, frameWidth, frameHeight);
+          applyNavTorchLight(ctx, frameWidth, frameHeight);
+        }
         animationFrameId = requestAnimationFrame(animate);
       };
       animate();

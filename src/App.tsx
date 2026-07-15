@@ -150,6 +150,12 @@ function AnimatedLogo({ src, alt, frameCount, frameRate, className }: {
       canvas.style.width = `${displayWidth}px`;
       canvas.style.height = `${displayHeight}px`;
 
+      // Only touch the canvas when the frame index actually changes —
+      // repainting an identical frame every rAF keeps this layer dirty at
+      // 60Hz for the compositor (one of ~8 such loops that were dragging
+      // mobile Safari below 60fps). The torch shading is a pure function of
+      // the frame, so skipping identical repaints is pixel-identical.
+      let lastDrawnFrame = -1;
       const animate = () => {
         const now = Date.now();
 
@@ -159,14 +165,17 @@ function AnimatedLogo({ src, alt, frameCount, frameRate, className }: {
           lastFrameTimeRef.current = now;
         }
 
-        // Clear and draw current frame
-        ctx.clearRect(0, 0, frameWidth, frameHeight);
-        ctx.drawImage(
-          img,
-          frameIndexRef.current * frameWidth, 0, frameWidth, frameHeight,
-          0, 0, frameWidth, frameHeight
-        );
-        applyNavTorchLight(ctx, frameWidth, frameHeight);
+        if (frameIndexRef.current !== lastDrawnFrame) {
+          lastDrawnFrame = frameIndexRef.current;
+          // Clear and draw current frame
+          ctx.clearRect(0, 0, frameWidth, frameHeight);
+          ctx.drawImage(
+            img,
+            frameIndexRef.current * frameWidth, 0, frameWidth, frameHeight,
+            0, 0, frameWidth, frameHeight
+          );
+          applyNavTorchLight(ctx, frameWidth, frameHeight);
+        }
 
         animationFrameId = requestAnimationFrame(animate);
       };

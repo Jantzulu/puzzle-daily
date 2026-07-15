@@ -338,6 +338,12 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
       const STATIC_PHASE_MS = 600; // how long a static (non-sheet) one-shot phase shows before advancing
       let phaseIndex = 0;
       let phaseStart = Date.now();
+      // Only touch the canvas when (phase, frame) actually changes — card
+      // sprites animate at ~4-12fps, so repainting every rAF kept this
+      // layer dirty at 60Hz for the compositor (multiplied across every
+      // visible card, a real mobile frame-budget cost). Pixel-identical.
+      let lastDrawnPhase = -1;
+      let lastDrawnFrame = -1;
       const animateCard = () => {
         const now = Date.now();
         const phase = phases[phaseIndex];
@@ -369,7 +375,11 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
           frameIndex = Math.floor(elapsed / frameDuration);
           if (frameIndex >= frameCount) frameIndex = phase.loop ? frameIndex % frameCount : frameCount - 1;
         }
-        drawSpriteFrame(img, frameIndex, frameCount, frameWidth, frameHeight, phase.anchorX, phase.anchorY, phase.offsetX, phase.offsetY);
+        if (phaseIndex !== lastDrawnPhase || frameIndex !== lastDrawnFrame) {
+          lastDrawnPhase = phaseIndex;
+          lastDrawnFrame = frameIndex;
+          drawSpriteFrame(img, frameIndex, frameCount, frameWidth, frameHeight, phase.anchorX, phase.anchorY, phase.offsetX, phase.offsetY);
+        }
         animationFrameId = requestAnimationFrame(animateCard);
       };
       animateCard();
@@ -435,6 +445,10 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
           const frameWidth = spriteSheet.frameWidth || img.width / frameCount;
           const frameHeight = spriteSheet.frameHeight || img.height;
 
+          // Only touch the canvas when the frame index actually changes —
+          // see the card path above; identical repaints kept every animated
+          // thumbnail dirty at 60Hz for the compositor.
+          let lastDrawnFrame = -1;
           const animate = () => {
             const now = Date.now();
 
@@ -447,7 +461,10 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
               lastFrameTime = now;
             }
 
-            drawSpriteFrame(img, frameIndex, frameCount, frameWidth, frameHeight, sheetAx, sheetAy, sheetOx, sheetOy);
+            if (frameIndex !== lastDrawnFrame) {
+              lastDrawnFrame = frameIndex;
+              drawSpriteFrame(img, frameIndex, frameCount, frameWidth, frameHeight, sheetAx, sheetAy, sheetOx, sheetOy);
+            }
             animationFrameId = requestAnimationFrame(animate);
           };
 
