@@ -1437,6 +1437,30 @@ export const MapEditor: React.FC = () => {
   // responsibilities now. Test-mode (enemies-only / heroes-only) is
   // intentionally not yet ported — see feature-backlog if missed.
 
+  // Topmost placement on a tile, in draw order: entities over objects over
+  // items. Shared by right-click delete and drag-to-move (Phase 3).
+  const findPlacementAt = (x: number, y: number): { kind: RosterKind; index: number } | null => {
+    const enemyIndex = state.enemies.findIndex(p => p.x === x && p.y === y);
+    if (enemyIndex >= 0) return { kind: 'enemy', index: enemyIndex };
+    const objectIndex = state.placedObjects.findIndex(p => p.x === x && p.y === y);
+    if (objectIndex >= 0) return { kind: 'object', index: objectIndex };
+    const collIndex = state.collectibles.findIndex(p => p.x === x && p.y === y);
+    if (collIndex >= 0) return { kind: 'collectible', index: collIndex };
+    return null;
+  };
+
+  // Right-click removes the placement under the cursor (Phase 3) — same
+  // undoable path as the roster's ✕.
+  const handleCanvasContextMenu = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    const tile = tileFromMouseEvent(e);
+    if (!tile) return;
+    const hit = findPlacementAt(tile.x, tile.y);
+    if (!hit) return;
+    vibrate('tilePaint');
+    handleRemovePlacement(hit.kind, hit.index);
+  };
+
   // Roster removal (Phase 2): snapshot first so the removal is undoable,
   // mirroring handleResize/handleClear.
   const handleRemovePlacement = (kind: RosterKind, index: number) => {
@@ -1728,6 +1752,7 @@ export const MapEditor: React.FC = () => {
                 onMouseMove={handleCanvasMouseMove}
                 onMouseUp={handleCanvasMouseUp}
                 onMouseLeave={() => { setCursorTile(null); handleCanvasMouseUp(); }}
+                onContextMenu={handleCanvasContextMenu}
               />
             </div>
 
