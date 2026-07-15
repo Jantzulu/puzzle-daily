@@ -14,6 +14,7 @@ import { TILE_SIZE, BORDER_SIZE, SIDE_BORDER_SIZE, MAX_DISPLAY_WIDTH_TILES, crea
 import { getAllSpells, SpellTooltip, ActionTooltip } from './map/Tooltips';
 import { createDefaultEditorState, type EditorState, type ToolType, type EditorMode } from './map/editorState';
 import { ValidationModal } from './map/ValidationModal';
+import { ActionsPanel } from './map/ActionsPanel';
 import { ToolsRow } from './map/ToolsRow';
 import { TilePalette } from './map/TilePalette';
 import { EnemyPalette } from './map/EnemyPalette';
@@ -30,10 +31,9 @@ import { SpriteThumbnail } from './SpriteThumbnail';
 import { TagInput, collectAllTags } from '../shared/TagInput';
 import { suggestTags } from '../../utils/puzzleTagSuggestions';
 import { getPuzzleDependencies, type AssetDependency } from '../../utils/publishDependencies';
-import { publishPuzzle, publishAsset, unpublishPuzzle, getPuzzleDraftStatus, submitPuzzleForReview, approvePuzzle, requestPuzzleChanges } from '../../services/supabaseService';
+import { publishPuzzle, publishAsset } from '../../services/supabaseService';
 import { PublishDependencyModal } from './PublishDependencyModal';
 import { VersionHistoryModal } from './VersionHistoryModal';
-import { createVersionSnapshot } from '../../services/versionService';
 import { logActivity } from '../../services/activityLogService';
 import { createHistoryManager } from '../../utils/historyManager';
 import { subscribeToImageLoads } from '../../utils/imageLoader';
@@ -1927,296 +1927,33 @@ export const MapEditor: React.FC = () => {
             {/* Column 2 (Right) - Actions, Puzzle Info, Library */}
             <div className="space-y-4">
               {/* Actions - At top of right column */}
-              <div className="bg-stone-800 p-4 rounded">
-                <button
-                  onClick={() => setActionsPanelOpen(!actionsPanelOpen)}
-                  className="w-full flex items-center justify-between text-lg font-bold"
-                >
-                  <span>Actions</span>
-                  <span className="text-lg text-stone-400">{actionsPanelOpen ? '▾' : '▸'}</span>
-                </button>
-                {actionsPanelOpen && <div className="space-y-2 mt-2">
-                <button
-                  onClick={handleNewPuzzle}
-                  className="w-full px-4 py-2 bg-stone-600 rounded hover:bg-stone-700"
-                >
-                  New
-                </button>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    onClick={handleSave}
-                    className="px-4 py-2 bg-moss-600 rounded hover:bg-moss-700"
-                  >
-                    Save
-                  </button>
-                  <button
-                    onClick={handleSaveAs}
-                    className="px-4 py-2 bg-green-700 rounded hover:bg-green-800"
-                  >
-                    Save As
-                  </button>
-                </div>
-                <button
-                  onClick={() => setShowLibrary(true)}
-                  className="w-full px-4 py-2 bg-blue-600 rounded hover:bg-blue-700"
-                >
-                  Library ({savedPuzzles.length})
-                </button>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    onClick={handleExport}
-                    className="px-4 py-2 bg-stone-600 rounded hover:bg-stone-700 text-sm"
-                  >
-                    Export
-                  </button>
-                  <button
-                    onClick={handleImport}
-                    className="px-4 py-2 bg-stone-600 rounded hover:bg-stone-700 text-sm"
-                  >
-                    Import
-                  </button>
-                </div>
-                <button
-                  onClick={handleClear}
-                  className="w-full px-4 py-2 bg-blood-600 rounded hover:bg-blood-700"
-                >
-                  Clear Grid
-                </button>
-                <button
-                  onClick={handleValidate}
-                  disabled={isValidating}
-                  className="w-full px-4 py-2 bg-arcane-600 rounded hover:bg-arcane-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isValidating ? 'Validating...' : 'Validate Puzzle'}
-                </button>
-                <button
-                  onClick={() => setShowGenerator(true)}
-                  className="w-full px-4 py-2 bg-amber-600 rounded hover:bg-amber-700"
-                  title="Generate a new random puzzle"
-                >
-                  Generate Puzzle
-                </button>
-
-                {/* Version History */}
-                <div className="border-t border-stone-700 pt-3 mt-1">
-                  <label className="text-sm font-medium block mb-2">Versions</label>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        const puzzle = getCurrentPuzzle();
-                        const result = await createVersionSnapshot(
-                          state.puzzleId,
-                          'puzzle',
-                          state.puzzleName || 'Untitled',
-                          puzzle as unknown as object
-                        );
-                        if (result.success) {
-                          toast.success(`Saved version #${result.versionNumber}`);
-                          logActivity({
-                            action: 'update',
-                            asset_type: 'puzzle',
-                            asset_id: state.puzzleId,
-                            asset_name: state.puzzleName,
-                            details: { saved_version: result.versionNumber },
-                          });
-                        } else {
-                          toast.error('Failed to save version');
-                        }
-                      }}
-                      className="flex-1 px-3 py-1.5 text-sm bg-copper-600/20 hover:bg-copper-600/30 text-copper-300 rounded border border-copper-500/30 font-medium"
-                    >
-                      📸 Save Version
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setShowVersionHistory(true)}
-                      className="px-3 py-1.5 text-sm bg-stone-700 hover:bg-stone-600 rounded"
-                    >
-                      History
-                    </button>
-                  </div>
-                </div>
-
-                {/* Publishing & Review Workflow */}
-                <div className="border-t border-stone-700 pt-3 mt-1">
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="text-sm font-medium">Publishing</label>
-                    {publishStatus === 'published' && (
-                      <span className="px-2 py-0.5 text-xs rounded-full bg-copper-600/30 text-copper-400 border border-copper-500/30">
-                        Published
-                      </span>
-                    )}
-                    {publishStatus === 'approved' && (
-                      <span className="px-2 py-0.5 text-xs rounded-full bg-green-600/30 text-green-400 border border-green-500/30">
-                        Approved
-                      </span>
-                    )}
-                    {publishStatus === 'pending_review' && (
-                      <span className="px-2 py-0.5 text-xs rounded-full bg-amber-600/30 text-amber-400 border border-amber-500/30">
-                        In Review
-                      </span>
-                    )}
-                    {(publishStatus === 'draft' || publishStatus === null) && (
-                      <span className="px-2 py-0.5 text-xs rounded-full bg-stone-600/30 text-stone-400 border border-stone-500/30">
-                        Draft
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    {/* Draft state: Submit for Review */}
-                    {(publishStatus === 'draft' || publishStatus === null) && (
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          const success = await submitPuzzleForReview(state.puzzleId, state.puzzleName);
-                          if (success) {
-                            setPublishStatus('pending_review');
-                            toast.success('Submitted for review');
-                          } else {
-                            toast.error('Failed to submit for review');
-                          }
-                        }}
-                        className="w-full px-3 py-1.5 text-sm bg-amber-600/80 hover:bg-amber-600 rounded font-medium text-white"
-                      >
-                        📋 Submit for Review
-                      </button>
-                    )}
-
-                    {/* Pending Review state: Approve / Request Changes */}
-                    {publishStatus === 'pending_review' && (
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            const success = await approvePuzzle(state.puzzleId, state.puzzleName);
-                            if (success) {
-                              setPublishStatus('approved');
-                              toast.success('Puzzle approved!');
-                            } else {
-                              toast.error('Failed to approve');
-                            }
-                          }}
-                          className="flex-1 px-3 py-1.5 text-sm bg-green-600 hover:bg-green-700 rounded font-medium"
-                        >
-                          ✓ Approve
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setShowReviewNotes(true)}
-                          className="px-3 py-1.5 text-sm bg-stone-700 hover:bg-stone-600 rounded"
-                        >
-                          Request Changes
-                        </button>
-                      </div>
-                    )}
-
-                    {/* Approved state: Publish / Request Changes */}
-                    {publishStatus === 'approved' && (
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            setPublishStatus('checking');
-                            try {
-                              const puzzle = getCurrentPuzzle();
-                              const deps = await getPuzzleDependencies(puzzle);
-                              setPublishDeps(deps);
-                              setShowPublishModal(true);
-                            } catch (err) {
-                              toast.error('Failed to check dependencies');
-                              console.error(err);
-                            }
-                            setPublishStatus('approved');
-                          }}
-                          className="flex-1 px-3 py-1.5 text-sm bg-green-600 hover:bg-green-700 rounded font-medium"
-                        >
-                          🚀 Publish
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setShowReviewNotes(true)}
-                          className="px-3 py-1.5 text-sm bg-stone-700 hover:bg-stone-600 rounded"
-                        >
-                          Request Changes
-                        </button>
-                      </div>
-                    )}
-
-                    {/* Published state: Unpublish */}
-                    {publishStatus === 'published' && (
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          if (!confirm('Unpublish this puzzle? It will be removed from the live site.')) return;
-                          const success = await unpublishPuzzle(state.puzzleId);
-                          if (success) {
-                            setPublishStatus('draft');
-                            toast.success('Puzzle unpublished');
-                          } else {
-                            toast.error('Failed to unpublish');
-                          }
-                        }}
-                        className="w-full px-3 py-1.5 text-sm bg-stone-700 hover:bg-red-600/80 rounded text-stone-400 hover:text-white"
-                      >
-                        Unpublish
-                      </button>
-                    )}
-
-                    {/* Review notes input */}
-                    {showReviewNotes && (
-                      <div className="bg-stone-800/50 rounded p-2 space-y-2 border border-stone-700/50">
-                        <textarea
-                          value={reviewNotes}
-                          onChange={(e) => setReviewNotes(e.target.value)}
-                          placeholder="What needs to change?"
-                          rows={2}
-                          className="w-full px-2 py-1.5 bg-stone-700 rounded text-sm resize-none"
-                        />
-                        <div className="flex gap-2">
-                          <button
-                            type="button"
-                            onClick={async () => {
-                              const success = await requestPuzzleChanges(state.puzzleId, state.puzzleName, reviewNotes || undefined);
-                              if (success) {
-                                setPublishStatus('draft');
-                                setShowReviewNotes(false);
-                                setReviewNotes('');
-                                toast.success('Sent back for changes');
-                              } else {
-                                toast.error('Failed to request changes');
-                              }
-                            }}
-                            className="flex-1 px-2 py-1 text-xs bg-red-600/30 hover:bg-red-600/50 text-red-300 rounded border border-red-500/30"
-                          >
-                            Send Back
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => { setShowReviewNotes(false); setReviewNotes(''); }}
-                            className="px-2 py-1 text-xs bg-stone-700 hover:bg-stone-600 rounded"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      const status = await getPuzzleDraftStatus(state.puzzleId);
-                      setPublishStatus(status || 'draft');
-                    }}
-                    className="text-xs text-stone-500 hover:text-stone-300 mt-1"
-                  >
-                    Check status
-                  </button>
-                </div>
-                </div>}
-              </div>
+              <ActionsPanel
+                isOpen={actionsPanelOpen}
+                onToggleOpen={() => setActionsPanelOpen(!actionsPanelOpen)}
+                savedPuzzleCount={savedPuzzles.length}
+                isValidating={isValidating}
+                puzzleId={state.puzzleId}
+                puzzleName={state.puzzleName}
+                publishStatus={publishStatus}
+                setPublishStatus={setPublishStatus}
+                reviewNotes={reviewNotes}
+                setReviewNotes={setReviewNotes}
+                showReviewNotes={showReviewNotes}
+                setShowReviewNotes={setShowReviewNotes}
+                getCurrentPuzzle={getCurrentPuzzle}
+                setPublishDeps={setPublishDeps}
+                setShowPublishModal={setShowPublishModal}
+                onNewPuzzle={handleNewPuzzle}
+                onSave={handleSave}
+                onSaveAs={handleSaveAs}
+                onOpenLibrary={() => setShowLibrary(true)}
+                onExport={handleExport}
+                onImport={handleImport}
+                onClear={handleClear}
+                onValidate={handleValidate}
+                onOpenGenerator={() => setShowGenerator(true)}
+                onOpenVersionHistory={() => setShowVersionHistory(true)}
+              />
 
               {/* Puzzle Info - Below Actions */}
               <div className="bg-stone-800 p-4 rounded">
