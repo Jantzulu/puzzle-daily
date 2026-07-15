@@ -17,7 +17,7 @@ import { drawLightGlow } from './lightGlow';
 import { wallAOEnabled, drawWallAO, AO_VOID_OCCLUDES } from './wallAO';
 import { staticBakeEnabled } from './staticBake';
 import { atmosphereEnabled } from './atmosphere';
-import { profFrameStart, profPhase, profFrameEnd } from './frameProfiler';
+import { profFrameStart, profPhase, profFrameEnd, drawFreezeEnabled } from './frameProfiler';
 
 // Movement action types - entities with these actions should show direction arrow
 const MOVEMENT_ACTIONS = new Set([
@@ -1572,6 +1572,16 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       if (!ctx) return;
 
       profFrameStart(); // no-op unless the perf HUD is enabled
+
+      // Diagnostic freeze (Effects tab / frameProfiler.ts): touch NOTHING on
+      // the canvas — not even clearRect — so the compositor sees an unchanged
+      // layer, while the loop keeps pacing and the HUD keeps measuring.
+      // Board visuals and time-based updates stall while this is on.
+      if (drawFreezeEnabled()) {
+        profFrameEnd(canvas.width, canvas.height, Math.min(window.devicePixelRatio || 1, MAX_DPR), 0);
+        animationRef.current = requestAnimationFrame(animate);
+        return;
+      }
 
       // Get device pixel ratio for high-DPI rendering (capped — see MAX_DPR)
       const dpr = Math.min(window.devicePixelRatio || 1, MAX_DPR);

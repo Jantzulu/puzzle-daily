@@ -77,6 +77,36 @@ if (typeof window !== 'undefined') {
   };
 }
 
+// --- draw freeze (diagnostic) ------------------------------------------------
+// Skips every canvas touch in the board loop (no clearRect, no draws) while
+// the loop keeps scheduling frames. Separates "the canvas update is what
+// costs" from "the page is slow regardless": if fps recovers with drawing
+// frozen, the per-frame canvas raster/composite is what drives the frame
+// budget (or drops Safari's ProMotion frame-rate tier); if fps stays low,
+// the cost is elsewhere (other loops, page CSS, OS throttling). Board
+// visuals stall while frozen — it is strictly a measurement mode.
+
+const FREEZE_KEY = 'freeze_draws';
+let freezeCache: boolean | null = null;
+
+export function drawFreezeEnabled(): boolean {
+  if (freezeCache === null) {
+    try {
+      freezeCache = localStorage.getItem(FREEZE_KEY) === 'on';
+    } catch {
+      freezeCache = false;
+    }
+  }
+  return freezeCache;
+}
+
+export function setDrawFreezeEnabled(on: boolean): void {
+  freezeCache = on;
+  try {
+    localStorage.setItem(FREEZE_KEY, on ? 'on' : 'off');
+  } catch { /* session-only */ }
+}
+
 // --- per-frame accumulation ------------------------------------------------
 
 // Preallocated ring buffers — no per-frame allocation while profiling.
@@ -85,8 +115,53 @@ const phaseRings = new Map<ProfPhase, Float64Array>(
 );
 const intervalRing = new Float64Array(WINDOW_SIZE);
 const workRing = new Float64Array(WINDOW_SIZE);
+const lagRing = new Float64Array(WINDOW_SIZE);
+const rafsRing = new Float64Array(WINDOW_SIZE);
 let ringCursor = 0;
 let ringCount = 0;
+
+// Page-wide rAF census: wrap window.requestAnimationFrame (once, on first
+// profiled frame) so every callback that runs anywhere on the page — nav
+// torch, sprite-card thumbnails, this board — bumps a counter. The count
+// between two board frames says how many animation loops the page is really
+// running. The wrapper is an increment + passthrough; it stays installed
+// once patched (unpatching mid-flight would break ids), but the counter is
+// only read while the HUD is on.
+let rafCallbackCount = 0;
+let rafPatched = false;
+
+function patchRafCensus(): void {
+  if (rafPatched || typeof window === 'undefined') return;
+  rafPatched = true;
+  const orig = window.requestAnimationFrame.bind(window);
+  window.requestAnimationFrame = (cb: FrameRequestCallback): number =>
+    orig((t: DOMHighResTimeStamp) => {
+      rafCallbackCount++;
+      cb(t);
+    });
+}
+
+// Main-thread lag probe: after the board's frame callback returns, how long
+// until the task queue gets serviced? The MessageChannel handler runs after
+// every other rAF callback and the main-thread part of the rendering steps,
+// so this captures "main-thread busy time we didn't spend" — React commits,
+// GC, other animation loops. mainlag ≈ 0 while `other` is large means the
+// main thread is idle and the gap is compositor/GPU/frame-pacing.
+let lagChannel: MessageChannel | null = null;
+let lagPingSentAt = 0;
+let lastLagMs = 0;
+
+function sendLagPing(): void {
+  if (typeof MessageChannel === 'undefined') return;
+  if (!lagChannel) {
+    lagChannel = new MessageChannel();
+    lagChannel.port1.onmessage = () => {
+      lastLagMs = performance.now() - lagPingSentAt;
+    };
+  }
+  lagPingSentAt = performance.now();
+  lagChannel.port2.postMessage(0);
+}
 
 const phaseAcc = new Map<ProfPhase, number>(PROF_PHASES.map(p => [p, 0]));
 let currentPhase: ProfPhase | null = null;
@@ -98,6 +173,7 @@ let framesSinceHudUpdate = 0;
 /** Call at the top of the animate() callback. Starts the 'prep' phase. */
 export function profFrameStart(): void {
   if (!perfHudEnabled()) return;
+  patchRafCensus();
   const t = performance.now();
   lastFrameStart = frameStart;
   frameStart = t;
@@ -132,6 +208,14 @@ export function profFrameEnd(canvasW: number, canvasH: number, dpr: number, zoom
   for (const p of PROF_PHASES) phaseRings.get(p)![ringCursor] = phaseAcc.get(p)!;
   workRing[ringCursor] = work;
   intervalRing[ringCursor] = interval;
+  // lastLagMs was measured by the ping sent at the END of the previous frame,
+  // so it describes the gap this frame's interval covers. rafCallbackCount
+  // counts every page-wide rAF callback since the previous board frame
+  // (including this one).
+  lagRing[ringCursor] = lastLagMs;
+  rafsRing[ringCursor] = rafCallbackCount;
+  rafCallbackCount = 0;
+  lastLagMs = 0;
   ringCursor = (ringCursor + 1) % WINDOW_SIZE;
   if (ringCount < WINDOW_SIZE) ringCount++;
 
@@ -139,6 +223,7 @@ export function profFrameEnd(canvasW: number, canvasH: number, dpr: number, zoom
     framesSinceHudUpdate = 0;
     updateHud(canvasW, canvasH, dpr, zoom);
   }
+  sendLagPing();
 }
 
 // --- stats + HUD -------------------------------------------------------------
@@ -150,17 +235,21 @@ export function profSnapshot(): {
   frames: number;
   avgWorkMs: number;
   avgIntervalMs: number;
+  avgMainLagMs: number;
+  avgRafsPerFrame: number;
   phases: Record<ProfPhase, { avg: number; p95: number }>;
 } | null {
   if (ringCount === 0) return null;
   const [avgWorkMs] = avgAndP95(workRing, ringCount);
   const [avgIntervalMs] = avgAndP95(intervalRing, ringCount);
+  const [avgMainLagMs] = avgAndP95(lagRing, ringCount);
+  const [avgRafsPerFrame] = avgAndP95(rafsRing, ringCount);
   const phases = {} as Record<ProfPhase, { avg: number; p95: number }>;
   for (const p of PROF_PHASES) {
     const [avg, p95] = avgAndP95(phaseRings.get(p)!, ringCount);
     phases[p] = { avg, p95 };
   }
-  return { frames: ringCount, avgWorkMs, avgIntervalMs, phases };
+  return { frames: ringCount, avgWorkMs, avgIntervalMs, avgMainLagMs, avgRafsPerFrame, phases };
 }
 
 function avgAndP95(ring: Float64Array, n: number): [number, number] {
@@ -205,6 +294,8 @@ function removeHud(): void {
   framesSinceHudUpdate = 0;
   frameStart = 0;
   lastFrameStart = 0;
+  rafCallbackCount = 0;
+  lastLagMs = 0;
 }
 
 function updateHud(canvasW: number, canvasH: number, dpr: number, zoom: number): void {
@@ -231,6 +322,11 @@ function updateHud(canvasW: number, canvasH: number, dpr: number, zoom: number):
   }
   if (otherAvg < 0) otherAvg = 0;
   lines.push(`${'other'.padEnd(11)} ${otherAvg.toFixed(2).padStart(5)} |     -`);
+  const [lagAvg, lagP95] = avgAndP95(lagRing, n);
+  const [rafsAvg] = avgAndP95(rafsRing, n);
+  lines.push(`${'mainlag'.padEnd(11)} ${lagAvg.toFixed(2).padStart(5)} | ${lagP95.toFixed(2).padStart(5)}`);
+  lines.push(`${'rafs/frame'.padEnd(11)} ${rafsAvg.toFixed(1).padStart(5)} |     -`);
+  if (drawFreezeEnabled()) lines.push('** DRAWS FROZEN (diagnostic) **');
 
   ensureHud().textContent = lines.join('\n');
 }

@@ -56,6 +56,11 @@ describe('frameProfiler', () => {
     expect(snap!.avgWorkMs).toBeGreaterThanOrEqual(
       snap!.phases.logic.avg + snap!.phases.entities.avg - 0.01
     );
+    // Probe fields exist and are sane in the node environment (the rAF
+    // census and MessageChannel lag probe only produce nonzero values in a
+    // real browser frame loop).
+    expect(snap!.avgMainLagMs).toBeGreaterThanOrEqual(0);
+    expect(snap!.avgRafsPerFrame).toBeGreaterThanOrEqual(0);
   });
 
   it('resets the sample window when disabled', () => {

@@ -7,7 +7,7 @@ import { blobShadowsEnabled, setBlobShadowsEnabled } from '../game/blobShadows';
 import { lightGlowEnabled, setLightGlowEnabled } from '../game/lightGlow';
 import { staticBakeEnabled, setStaticBakeEnabled } from '../game/staticBake';
 import { atmosphereEnabled, setAtmosphereEnabled } from '../game/atmosphere';
-import { perfHudEnabled, setPerfHudEnabled } from '../game/frameProfiler';
+import { perfHudEnabled, setPerfHudEnabled, drawFreezeEnabled, setDrawFreezeEnabled } from '../game/frameProfiler';
 
 interface FxToggle {
   key: string;
@@ -52,6 +52,13 @@ const TOGGLES: FxToggle[] = [
     description: 'On-screen frame-time breakdown of the render loop (avg | p95 ms per phase) while a level is running. Also reachable via ?perf=1 on the URL. Diagnostic only.',
     get: perfHudEnabled,
     set: setPerfHudEnabled,
+  },
+  {
+    key: 'freeze_draws',
+    label: 'Freeze board drawing (diagnostic)',
+    description: 'Stops all board canvas updates while the frame loop keeps pacing — the board visually stalls. If fps recovers with this on, the per-frame canvas update itself is the frame-budget cost. Turn back OFF after measuring.',
+    get: drawFreezeEnabled,
+    set: setDrawFreezeEnabled,
   },
 ];
 
