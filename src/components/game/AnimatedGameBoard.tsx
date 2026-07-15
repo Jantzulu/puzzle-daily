@@ -1724,11 +1724,20 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
         drawPlacedObject(ctx, obj.objectId, obj.x, obj.y);
       });
 
-      // Use Date.now() for everything - particles, projectiles, collectibles, and entity
-      // rendering all use Date.now() for their startTime values
-      // The entity movement animations in useEffect hooks also use performance.now(), but
-      // they track their own separate timing and don't rely on this 'now' variable
-      const now = Date.now();
+      // Vsync-aligned animation clock. Every stored startTime is Date.now()-
+      // domain, but sampling motion with Date.now() AT CALLBACK EXECUTION
+      // adds the rAF callback's scheduling jitter (a few varying ms) to every
+      // position — visible as judder in tile slides on mobile Safari's
+      // variable frame pacing. The rAF `timestamp` is the frame's time base
+      // (performance-clock domain); mapping it onto the epoch keeps all
+      // stored startTimes comparable while sampling at a consistent point in
+      // the frame. Stamps written between the vsync and this callback can sit
+      // a few ms in the future — interpolations below clamp progress to >= 0.
+      // Fall back to the wall clock if the two disagree wildly (NTP step,
+      // resumed tab).
+      const frameNow = performance.timeOrigin + timestamp;
+      const wallNow = Date.now();
+      const now = Math.abs(wallNow - frameNow) <= 100 ? frameNow : wallNow;
 
       // Draw collectibles
       gameState.puzzle.collectibles.forEach((collectible) => {
@@ -1874,7 +1883,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
 
               if (elapsed < MOVE_DURATION) {
                 // Phase 1: Animate walking TO the teleport tile
-                const moveProgress = Math.min(1, elapsed / MOVE_DURATION);
+                const moveProgress = Math.min(1, Math.max(0, elapsed / MOVE_DURATION));
                 const eased = moveProgress;
                 const renderX = anim.fromX + (teleportTileX - anim.fromX) * eased;
                 const renderY = anim.fromY + (teleportTileY - anim.fromY) * eased;
@@ -1898,7 +1907,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
               const animMoves = anim.fromX !== anim.toX || anim.fromY !== anim.toY;
 
               if (elapsed < effectiveMoveDuration) {
-                const moveProgress = Math.min(1, elapsed / effectiveMoveDuration);
+                const moveProgress = Math.min(1, Math.max(0, elapsed / effectiveMoveDuration));
                 const eased = moveProgress;
                 const renderX = anim.fromX + (anim.toX - anim.fromX) * eased;
                 const renderY = anim.fromY + (anim.toY - anim.fromY) * eased;
@@ -1995,7 +2004,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
 
               if (elapsed < MOVE_DURATION) {
                 // Phase 1: Animate walking TO the teleport tile
-                const moveProgress = Math.min(1, elapsed / MOVE_DURATION);
+                const moveProgress = Math.min(1, Math.max(0, elapsed / MOVE_DURATION));
                 const eased = moveProgress;
                 const renderX = anim.fromX + (teleportTileX - anim.fromX) * eased;
                 const renderY = anim.fromY + (teleportTileY - anim.fromY) * eased;
@@ -2017,7 +2026,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
               const animMoves = anim.fromX !== anim.toX || anim.fromY !== anim.toY;
 
               if (elapsed < effectiveMoveDuration) {
-                const moveProgress = Math.min(1, elapsed / effectiveMoveDuration);
+                const moveProgress = Math.min(1, Math.max(0, elapsed / effectiveMoveDuration));
                 const eased = moveProgress;
                 const renderX = anim.fromX + (anim.toX - anim.fromX) * eased;
                 const renderY = anim.fromY + (anim.toY - anim.fromY) * eased;
@@ -2081,7 +2090,9 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
         const elapsed = now - anim.startTime;
         if (elapsed < DROP_PLACE_DURATION) {
           activeLiftOffs.push(anim);
-          const progress = elapsed / DROP_PLACE_DURATION;
+          // Clamped: a just-stamped startTime can sit a few ms ahead of the
+          // vsync-aligned clock, and pow(negative, 0.5) is NaN.
+          const progress = Math.max(0, elapsed / DROP_PLACE_DURATION);
           const eased = Math.pow(progress, 2); // ease in — accelerate upward
           const offsetY = -DROP_PLACE_OFFSET * eased;
           // Fade starts immediately and aggressively — ease-out curve
