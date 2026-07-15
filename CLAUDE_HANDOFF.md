@@ -319,6 +319,16 @@ That deviation was the root problem. The singleton's lack of ownership boundarie
 
 - **Native-resolution rendering Phase 2 (game board), and Phase 3 / Phase 4 with it.** Attempted on 2026-04-17 (commit `f2de97f`), reverted same day (commit `257c50b`). The "shrink the canvas buffer + CSS-upscale" approach is incompatible with the per-sheet `scale` and fractional `sprite.size` knobs the board needs for cross-sheet entity normalization. See [docs/native-resolution-rendering-plan.md](docs/native-resolution-rendering-plan.md) Phase 2 section for full reasoning. Don't reattempt without revisiting that doc. **NOTE (2026-06-30):** board pixel-perfection was *later achieved by a different, much smaller change* — see "Recently completed (June 30, 2026 — integer-zoom board quantization)" below. The "half-pixels are an accepted tax" framing in that plan doc is now superseded for the board.
 
+### Recently completed (July 15, 2026 — mobile render perf: gradient caches, vignette bake, FX toggles)
+
+User felt jank on a simple level even at DPR 2 (after the MAX_DPR 3 experiment was reverted in `19dbc95` — width gain imperceptible, fps cost real; the constant's comment records the measurement). Cheap wins shipped, all pushed, 545 tests + build green:
+
+- **`9d39110` — shadow/glow gradient-sprite caches.** blobShadows/lightGlow rebuilt a `createRadialGradient` per entity per frame. Both gradients' stops are LINEAR in alpha, so one pre-rendered unit sprite (one total for shadows; one per color for glows) drawn with `globalAlpha` × scaling is pixel-equivalent. Smoothing is forced on inside those draws so scaled gradients stay soft on pixelated boards.
+- **`13a89f8` — static-vignette bake.** The vignette's static half (4 edge gradients + inner radial + per-tile clip path, five full-area source-atop fills EVERY frame) now bakes to `vignetteBakeRef` (keyed on canvas size/scale/board shape) and composites with ONE source-atop drawImage; fog + dust stay live (already texture-based/cheap). Sequential source-atop fills ≡ compositing the merged overlay (source-over associativity) — pixel-identical.
+- **`3a812eb` — Settings ⚡ Effects tab** exposing the three console-only render toggles (`blob_shadows`, `light_glow`, `static_bake`) as live checkboxes, so frame cost can be bisected on a real device mid-level.
+- **Discovered en route: the static-layer bake (tiles/border/wall-AO per turn) ALREADY EXISTS** (`staticBake.ts` + `staticBakeRef`) — do not re-propose it.
+- **If still jittery after this:** bisect with the Effects tab; the remaining levers are the per-entity sprite draw stacks (docs/offscreen-sprite-cache-plan.md — the documented big lever, blocked on validation infra) and reflective tiles.
+
 ### Recently completed (July 14, 2026, third session — MAP EDITOR REDESIGN complete: decomposition → layout → gestures → mobile)
 
 The whole arc shipped in one session, 545 tests + tsc + eslint + prod build green after every commit, everything pushed. The user approved each phase live ("the new row at the top is nice" → "love it" → "looks great and feels great") and CANCELLED the planned dungeon-theming pass (editor is team-internal). MapEditor.tsx went 4,600 → ~2,300 lines; 18 focused modules now live in `src/components/editor/map/`.
