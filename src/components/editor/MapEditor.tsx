@@ -153,6 +153,17 @@ export const MapEditor: React.FC = () => {
   // Roster hover highlight + status-bar cursor tile (Phase 2).
   const [highlightTile, setHighlightTile] = useState<{ x: number; y: number } | null>(null);
   const [cursorTile, setCursorTile] = useState<{ x: number; y: number } | null>(null);
+  // Drag-to-move (Phase 3): set on mousedown over a placement; `moved` flips
+  // once the cursor leaves the source tile, turning the press into a move.
+  const [dragState, setDragState] = useState<{
+    kind: RosterKind;
+    index: number;
+    fromX: number;
+    fromY: number;
+    toX: number;
+    toY: number;
+    moved: boolean;
+  } | null>(null);
   // Combat log state + helpers will be re-introduced in Phase 5 (data plumbing
   // via <Game/> onTurnExecuted callback + a sidebar layout). Removed here so
   // the file stays clean while that's in flight; bring back as a small focused
@@ -649,10 +660,40 @@ export const MapEditor: React.FC = () => {
       ctx.strokeRect(highlightTile.x * TILE_SIZE + 1.5, highlightTile.y * TILE_SIZE + 1.5, TILE_SIZE - 3, TILE_SIZE - 3);
     }
 
+    // Drag-to-move ghost (Phase 3): the grabbed placement previews at the
+    // target tile while the original stays put until release.
+    if (dragState?.moved) {
+      const { kind, index, toX, toY } = dragState;
+      ctx.globalAlpha = 0.55;
+      if (kind === 'enemy') {
+        const en = state.enemies[index];
+        if (en) drawEnemy(ctx, toX, toY, en.enemyId);
+      } else if (kind === 'object') {
+        const ob = state.placedObjects[index];
+        if (ob) drawObject(ctx, toX, toY, ob.objectId);
+      } else {
+        const co = state.collectibles[index];
+        if (co) drawCollectibleInEditor(ctx, { ...co, x: toX, y: toY });
+      }
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = '#f59e0b';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(toX * TILE_SIZE + 1, toY * TILE_SIZE + 1, TILE_SIZE - 2, TILE_SIZE - 2);
+    }
+
     ctx.restore();
-  }, [state.tiles, state.enemies, state.collectibles, state.placedObjects, state.gridWidth, state.gridHeight, state.mode, state.skinId, redrawCounter, highlightTile]);
+  }, [state.tiles, state.enemies, state.collectibles, state.placedObjects, state.gridWidth, state.gridHeight, state.mode, state.skinId, redrawCounter, highlightTile, dragState]);
 
   const handleCanvasMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (e.button !== 0) return; // right-click is delete (context menu)
+    // Grab-first (Phase 3): pressing on a placement defers the action —
+    // dragging moves it, releasing in place runs the normal click.
+    const tile = tileFromMouseEvent(e);
+    const grabbed = tile ? findPlacementAt(tile.x, tile.y) : null;
+    if (grabbed && tile) {
+      setDragState({ ...grabbed, fromX: tile.x, fromY: tile.y, toX: tile.x, toY: tile.y, moved: false });
+      return;
+    }
     // Save snapshot of state before drawing starts
     saveSnapshotBeforeDraw();
     setState(prev => ({ ...prev, isDrawing: true }));
@@ -689,17 +730,83 @@ export const MapEditor: React.FC = () => {
   const handleCanvasMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const tile = tileFromMouseEvent(e);
     setCursorTile(prev => (prev?.x === tile?.x && prev?.y === tile?.y ? prev : tile));
+    if (dragState) {
+      if (tile) {
+        setDragState(prev => {
+          if (!prev) return prev;
+          const moved = prev.moved || tile.x !== prev.fromX || tile.y !== prev.fromY;
+          if (prev.toX === tile.x && prev.toY === tile.y && prev.moved === moved) return prev;
+          return { ...prev, toX: tile.x, toY: tile.y, moved };
+        });
+      }
+      return;
+    }
     if (!state.isDrawing) return;
     handleCanvasClick(e);
   };
 
-  const handleCanvasMouseUp = () => {
+  const handleCanvasMouseUp = (e?: React.MouseEvent<HTMLCanvasElement>) => {
+    if (dragState) {
+      const ds = dragState;
+      setDragState(null);
+      if (ds.moved) {
+        if (ds.toX !== ds.fromX || ds.toY !== ds.fromY) commitMove(ds);
+      } else if (e) {
+        // Released in place — run the normal click for this tile.
+        saveSnapshotBeforeDraw();
+        paintTile(ds.fromX, ds.fromY);
+        setTimeout(() => { pushToHistoryAfterDraw(); }, 0);
+      }
+      return;
+    }
     setState(prev => ({ ...prev, isDrawing: false }));
     // Push the new state to history after drawing completes
     // Use setTimeout to ensure state has updated before comparing
     setTimeout(() => {
       pushToHistoryAfterDraw();
     }, 0);
+  };
+
+  // Commit a drag-move (Phase 3): blocked only when the target tile already
+  // holds a same-kind placement — mirrors the one-per-tile toggle rule.
+  const commitMove = (ds: { kind: RosterKind; index: number; toX: number; toY: number }) => {
+    const { kind, index, toX, toY } = ds;
+    const occupied = kind === 'enemy'
+      ? state.enemies.some((p, i) => i !== index && p.x === toX && p.y === toY)
+      : kind === 'object'
+        ? state.placedObjects.some((p, i) => i !== index && p.x === toX && p.y === toY)
+        : state.collectibles.some((p, i) => i !== index && p.x === toX && p.y === toY);
+    if (occupied) {
+      toast.warning('That tile already has one of those.');
+      return;
+    }
+    pushToHistory();
+    vibrate('tilePaint');
+    setState(prev => {
+      if (kind === 'enemy') {
+        const next = [...prev.enemies];
+        next[index] = { ...next[index], x: toX, y: toY };
+        return { ...prev, enemies: next };
+      }
+      if (kind === 'object') {
+        const next = [...prev.placedObjects];
+        next[index] = { ...next[index], x: toX, y: toY };
+        return { ...prev, placedObjects: next };
+      }
+      const next = [...prev.collectibles];
+      next[index] = { ...next[index], x: toX, y: toY };
+      return { ...prev, collectibles: next };
+    });
+  };
+
+  const handleCanvasMouseLeave = () => {
+    setCursorTile(null);
+    if (dragState) {
+      // Leaving the canvas cancels an in-flight drag.
+      setDragState(null);
+      return;
+    }
+    handleCanvasMouseUp();
   };
 
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -1746,12 +1853,13 @@ export const MapEditor: React.FC = () => {
                 className="border-2 border-stone-600 cursor-crosshair rounded"
                 style={{
                   transform: `scale(${editorScale})`,
-                  transformOrigin: 'top left'
+                  transformOrigin: 'top left',
+                  cursor: dragState?.moved ? 'grabbing' : undefined
                 }}
                 onMouseDown={handleCanvasMouseDown}
                 onMouseMove={handleCanvasMouseMove}
                 onMouseUp={handleCanvasMouseUp}
-                onMouseLeave={() => { setCursorTile(null); handleCanvasMouseUp(); }}
+                onMouseLeave={handleCanvasMouseLeave}
                 onContextMenu={handleCanvasContextMenu}
               />
             </div>
