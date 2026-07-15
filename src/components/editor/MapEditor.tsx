@@ -15,7 +15,8 @@ import { getAllSpells, SpellTooltip, ActionTooltip } from './map/Tooltips';
 import { createDefaultEditorState, type EditorState, type ToolType, type EditorMode } from './map/editorState';
 import { ValidationModal } from './map/ValidationModal';
 import { EditorToolbar } from './map/EditorToolbar';
-import { PuzzleInfoPanel } from './map/PuzzleInfoPanel';
+import { RulesPanel } from './map/RulesPanel';
+import { DetailsPanel } from './map/DetailsPanel';
 import { ToolsRow } from './map/ToolsRow';
 import { TilePalette } from './map/TilePalette';
 import { EnemyPalette } from './map/EnemyPalette';
@@ -47,6 +48,12 @@ import { vibrate } from '../../utils/haptics';
 import { useIsMobile } from '../../hooks/useMediaQuery';
 import { Game } from '../game/Game';
 import { diffTurn, logTypeStyles, type CombatLogEntry } from '../../engine/combatLog';
+
+const SIDEBAR_TABS = [
+  ['build', 'Build'],
+  ['rules', 'Rules'],
+  ['details', 'Details'],
+] as const;
 
 export const MapEditor: React.FC = () => {
   const _isMobile = useIsMobile();
@@ -139,9 +146,9 @@ export const MapEditor: React.FC = () => {
   // Keyboard shortcuts reference overlay
   const [showShortcuts, setShowShortcuts] = useState(false);
 
-  // Editor panel toggle state (toolbar collapse/expand).
-  const [toolsPanelOpen, setToolsPanelOpen] = useState(true);
-  const [puzzleInfoPanelOpen, setPuzzleInfoPanelOpen] = useState(true);
+  // Sidebar tab (Phase 2): Build = tools + palette workbench; Rules and
+  // Details hold once-per-puzzle configuration.
+  const [sidebarTab, setSidebarTab] = useState<'build' | 'rules' | 'details'>('build');
   // Combat log state + helpers will be re-introduced in Phase 5 (data plumbing
   // via <Game/> onTurnExecuted callback + a sidebar layout). Removed here so
   // the file stays clean while that's in flight; bring back as a small focused
@@ -1696,20 +1703,29 @@ export const MapEditor: React.FC = () => {
             </div>
           </div>
 
-          {/* Right Side - Two Columns (stacks on mobile) */}
-          <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4 content-start">
-            {/* Column 1 (Left) - Tools, Tile/Enemy Selectors, Available Characters */}
-            <div className="space-y-4">
-              {/* Tools - At top of left column */}
-              <ToolsRow
-                selectedTool={state.selectedTool}
-                isOpen={toolsPanelOpen}
-                onToggleOpen={() => setToolsPanelOpen(!toolsPanelOpen)}
-                onSelectTool={handleSelectTool}
-              />
+          {/* Right Side — single tabbed sidebar (Phase 2). Build = the
+              always-on workbench; Rules and Details hold the once-per-puzzle
+              configuration that used to crowd the page. */}
+          <div className="flex-1 min-w-0 lg:max-w-xl">
+            {/* Tab strip */}
+            <div className="flex gap-1 bg-stone-800 p-1 rounded mb-3">
+              {SIDEBAR_TABS.map(([key, label]) => (
+                <button
+                  key={key}
+                  onClick={() => setSidebarTab(key)}
+                  className={`flex-1 py-2 text-sm rounded font-medium transition-colors ${
+                    sidebarTab === key
+                      ? 'bg-stone-600 text-parchment-100'
+                      : 'text-stone-400 hover:text-parchment-200 hover:bg-stone-700/50'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
 
-              {/* Tool-specific panels - hidden when Tools panel is collapsed */}
-              {toolsPanelOpen && <>
+            {sidebarTab === 'build' && <div className="space-y-4">
+              <ToolsRow selectedTool={state.selectedTool} onSelectTool={handleSelectTool} />
               {/* Tile Selector - Shows when Tile tool is selected */}
               {(state.selectedTool === 'custom' || state.selectedTool === 'void' || state.selectedTool === 'empty' || state.selectedTool === 'wall') && (
                 <TilePalette
@@ -1810,15 +1826,14 @@ export const MapEditor: React.FC = () => {
                   onToggleCharacter={handleToggleAvailableCharacter}
                 />
               )}
-              </>}
-            </div>
+            </div>}
 
-            {/* Column 2 (Right) - Actions, Puzzle Info, Library */}
-            <div className="space-y-4">
-              {/* Puzzle Info - Below Actions */}
-              <PuzzleInfoPanel
-                isOpen={puzzleInfoPanelOpen}
-                onToggleOpen={() => setPuzzleInfoPanelOpen(!puzzleInfoPanelOpen)}
+            {sidebarTab === 'rules' && (
+              <RulesPanel state={state} setState={setState} />
+            )}
+
+            {sidebarTab === 'details' && (
+              <DetailsPanel
                 state={state}
                 setState={setState}
                 availableSkins={availableSkins}
@@ -1828,8 +1843,7 @@ export const MapEditor: React.FC = () => {
                 knownTags={collectAllTags(savedPuzzles)}
                 getCurrentPuzzle={getCurrentPuzzle}
               />
-
-            </div>
+            )}
           </div>
         </div>
       </div>

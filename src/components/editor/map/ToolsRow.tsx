@@ -1,25 +1,17 @@
-// The Tools panel: collapsible header + the 7-tool button grid (hotkeys 1-7).
-// Extracted verbatim from MapEditor.tsx (Phase 1 decomposition, 2026-07-14).
+// The 7-tool button grid (hotkeys 1-7). Extracted from MapEditor.tsx in
+// Phase 1; the collapse header was dropped in Phase 2 — the Build tab now
+// scopes when tools are visible.
 import React from 'react';
 import type { ToolType } from './editorState';
 
 interface ToolsRowProps {
   selectedTool: ToolType;
-  isOpen: boolean;
-  onToggleOpen: () => void;
   onSelectTool: (tool: ToolType) => void;
 }
 
-export const ToolsRow: React.FC<ToolsRowProps> = ({ selectedTool, isOpen, onToggleOpen, onSelectTool }) => (
-  <div className="bg-stone-800 p-4 rounded">
-    <button
-      onClick={onToggleOpen}
-      className="w-full flex items-center justify-between text-lg font-bold"
-    >
-      <span>Tools</span>
-      <span className="text-lg text-stone-400">{isOpen ? '▾' : '▸'}</span>
-    </button>
-    {isOpen && <div className="grid grid-cols-4 gap-2 mt-3">
+export const ToolsRow: React.FC<ToolsRowProps> = ({ selectedTool, onSelectTool }) => (
+  <div className="bg-stone-800 p-3 rounded">
+    <div className="grid grid-cols-4 gap-2">
       <button
         onClick={() => onSelectTool('custom')}
         className={`p-3 rounded text-sm ${
@@ -77,6 +69,6 @@ export const ToolsRow: React.FC<ToolsRowProps> = ({ selectedTool, isOpen, onTogg
       >
         <span className="text-[10px] opacity-50 mr-0.5">7</span> Heroes
       </button>
-    </div>}
+    </div>
   </div>
 );
