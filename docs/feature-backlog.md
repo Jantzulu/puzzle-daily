@@ -103,16 +103,17 @@ do, complementary to [`feature-roadmap.md`](../../puzzle-game/feature-roadmap.md
   labels; the .nav-pill utility signs still inherit the body font
   (extend to them if the user asks). *Captured 2026-07-16.*
 
-- [ ] **BUG/POLISH — "Loading sprites" state: opaque fill + missed
-  entrance animations.** Two symptoms on the play page: (1) while the
-  "loading sprites" text shows, the whole puzzle area has a solid fill —
-  should be transparent so the page background shows through; (2) spawn /
-  board-intro animations can start (or partially burn) before the puzzle
-  is actually visible, so players miss them. Note `entrancesRevealed`
-  gating (`590a0b6`) already exists for enemy entrances tied to
-  spritesReady — investigate what's still slipping through (hero
-  entrances? portcullis? board fade?) and gate ALL intro motion behind
-  load. *Captured 2026-07-16.*
+- [x] **BUG/POLISH — "Loading sprites" state: opaque fill + missed
+  entrance animations.** **Done 2026-07-16** (`44e8109`). (1) Overlay
+  fill removed — background shows through. (2) TWO gating holes found:
+  spritesReady flipped false in a parent effect but child effects run
+  first, so on a puzzle SWAP the board initialized entrances with the
+  stale reveal and they burned behind the overlay (skipped at reveal —
+  the "sometimes" case); now derived (readyPuzzleId === puzzle.id) so
+  it reads false the same render the puzzle changes. (3) Character
+  spawns had NO entrancesRevealed gate (enemy-only since 590a0b6) —
+  now mirrored. AWAITING USER VERIFY on deploy (slow-network case).
+  *Captured 2026-07-16.*
 
 - [x] **POLISH — Slow the portcullis open/close animation further.**
   **Done 2026-07-16** (`b2ffc48`): open 0.9s → 1.2s, close 0.8s → 1s,
