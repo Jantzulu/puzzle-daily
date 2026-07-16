@@ -378,26 +378,34 @@ Design answers locked 2026-07-16.
   per side. AWAITING USER TEST (editor is login-gated). Follow-ups
   captured below (jamb skin sprites). *Captured 2026-07-16.*
 
-- [ ] **Phase 1.5 — Skinnable hallway pieces (user request
-  2026-07-16).** Skins get sprite slots for the hallway jamb/corner
-  pieces (and later the door pieces), replacing the procedural
-  fallback, with preview + upload in the skin editor alongside the
-  existing border sprites. Side corridors are also depth-capped at
-  the 16px side band in v1 — revisit if the user wants deeper side
-  hallways (needs canvas-margin surgery).
+- [x] **Phase 1.5 — Skinnable hallway pieces — SHIPPED 2026-07-16**
+  (`cfecabf`). Four CustomBorderSprites slots (hallwayTop/Bottom
+  48x48, hallwayLeft/Right 16x48) = the corridor interior as one
+  authored piece; darkness still applied in-game (draw art fully
+  lit); procedural fallback while absent. Skin editor: slots +
+  preview hallways (one per side) + highlight regions. NOTE: side
+  corridors stay depth-capped at the 16px side band — revisit if
+  deeper side hallways are wanted (canvas-margin surgery).
 
-- [ ] **Phase 2 — Doors.** Same wall-segment authoring, TOP or BOTTOM
-  walls only (invalid elsewhere). Renders the FULL door sprite in
-  place of the wall segment (new skin sprite slots). Sprite states:
-  closed / opening / open (last opening frame) / closing (opening
-  reversed), each optionally a spritesheet. Editor chooses which
-  states exist + the starting state. Open/close animation only ever
-  plays at puzzle start. Purely cosmetic through phase 3 (nothing
-  passes through) — CONFIRMED.
+- [x] **Phase 2 — Doors — SHIPPED 2026-07-16** (`9981f2d`).
+  Puzzle.doors {x, y, side: top|bottom, startState:
+  closed|open|opening|closing}; skin slots doorClosed/doorOpen
+  (48x48) + doorOpening (horizontal strip of square frames, 10fps,
+  closing = reversed); procedural plank-door fallback. Open/close
+  plays ONCE at board reveal (same gate as entrances — can't burn
+  behind loading), replays per board mount. Rendered per-frame after
+  the static blit, under entities. Editor: Hallway tool grew a
+  Hallway/Door/Door+Hallway mode picker + start-state select; doors
+  ride all save/load/cache/undo paths; copper outline + state letter
+  while tool active. Skin editor slots + preview doors. Purely
+  cosmetic (confirmed). AWAITING USER TEST + real door art.
 
-- [ ] **Phase 3 — Hallway + door combined on one segment.** An open
-  door shows ~half a tile of darkened hallway through it ("seeing
-  barely into a hallway below the puzzle").
+- [x] **Phase 3 — Hallway + door combined — SHIPPED 2026-07-16**
+  (with phase 2, by construction): hallway corridors bake under the
+  per-frame door pass, so an open door with a transparent doorway
+  shows the corridor behind it. "Door + Hallway" editor mode places/
+  clears the pair as one gesture. The First Steps test puzzle's top
+  edge demos it (door swings open at load revealing the corridor).
 
 - [ ] **Phase 4 — Doors/hallways as INITIAL-SPAWN entrance styles.**
   SCOPE LOCKED 2026-07-16: start-of-game entrances ONLY, not mid-match
