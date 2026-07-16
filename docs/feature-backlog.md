@@ -90,9 +90,70 @@ do, complementary to [`feature-roadmap.md`](../../puzzle-game/feature-roadmap.md
   the squash campaign. Do whenever the next preload-related change comes
   through. *Captured 2026-05-01.*
 
+## Launch-adjacent (captured 2026-07-16 batch)
+
+- [ ] **FEATURE — Install "Modern Antiqua" Google Font.** Add to the CDN
+  links + register in the font maps like Jacquard 12 / Metamorphous
+  (`c6bb15c` is the pattern). Trivial. *Captured 2026-07-16.*
+
+- [ ] **FEATURE — Gate-menu button font themeable in settings.** The
+  hamburger gate-menu buttons (steel plates, `.nav-gate-item`) have a
+  hardcoded font (Almendra). Add a theme-assets font slot (like
+  fontFamily / fontFamilyHeading) so their font is choosable. *Captured
+  2026-07-16.*
+
+- [ ] **BUG/POLISH — "Loading sprites" state: opaque fill + missed
+  entrance animations.** Two symptoms on the play page: (1) while the
+  "loading sprites" text shows, the whole puzzle area has a solid fill —
+  should be transparent so the page background shows through; (2) spawn /
+  board-intro animations can start (or partially burn) before the puzzle
+  is actually visible, so players miss them. Note `entrancesRevealed`
+  gating (`590a0b6`) already exists for enemy entrances tied to
+  spritesReady — investigate what's still slipping through (hero
+  entrances? portcullis? board fade?) and gate ALL intro motion behind
+  load. *Captured 2026-07-16.*
+
+- [ ] **POLISH — Slow the portcullis open/close animation further.**
+  Timing tweak, user wants it statelier than the current speed.
+  *Captured 2026-07-16.*
+
+- [ ] **FEATURE — Optional attack-animation-while-moving.** Current rule:
+  if an entity attacks while moving, the walking animation always plays.
+  Keep that as the default, add an opt-in to play the attack animation
+  instead. DECIDED 2026-07-16: toggle lives PER ENTITY, in the
+  animation selector. *Captured 2026-07-16.*
+
+- [ ] **POLISH — Smooth hero/enemy selection transitions on the play
+  page.** Switching selection snaps instantly. DECIDED 2026-07-16: the
+  highlight ring AND the arrow underneath should physically SLIDE from
+  the old selection to the new one — smoothness is the bar. *Captured
+  2026-07-16.*
+
+- [ ] **BUG — Map editor mobile: puzzle title clipped at top + oversized
+  editor tabs.** The title gets cut off on mobile, and the editor tab
+  strip takes more room than it needs on small screens. *Captured
+  2026-07-16.*
+
+- [ ] **BUG — Quest panel mobile: (?) help icon wraps onto its own line
+  above the quest when the quest text is long.** It should stay anchored
+  left of "Quest". *Captured 2026-07-16.*
+
 ## Post-launch features
 
 ### Spell system extensions
+
+- [ ] **Anti-projectile spells — "wind wall" (DESIGN LOCKED
+  2026-07-16).** A standing zone that destroys projectiles flying
+  into/through it. User rejected bolt-vs-bolt interception and sweep
+  models as too complicated — the persistent-zone model is THE design.
+  Locked: default eats HOSTILE projectiles only, with a per-spell
+  option to eat ALL projectiles (both offered as options). Likely
+  vehicle: the existing persistent-zone system grows a
+  "destroys projectiles" behavior; enforcement point = the shared
+  projectile walkers (a travel step entering a zone tile kills the
+  bolt there — same rule in real + headless, solver parity free).
+  Remaining smalls at build time: zone shape/duration knobs, kill VFX,
+  does a dying bolt still trigger linger (no). *Captured 2026-07-16.*
 
 - [ ] **User-input spell variants.** Extend the existing redirect-direction-
   picker pattern (player chooses at setup) to three more cases, each
@@ -272,6 +333,47 @@ do, complementary to [`feature-roadmap.md`](../../puzzle-game/feature-roadmap.md
   ahead, a Noble in danger, enemy/ally count thresholds... brainstorm
   with the user before building; each condition must stay a pure,
   deterministic function of game state (determinism rule).
+
+### Dungeon dressing: hallways, doors, spawn paths (captured 2026-07-16)
+
+A phased visual-flavor-into-gameplay arc. User's framing: faux
+passages "to and from" the dungeon for visual flavor and uneven
+geometry, later becoming entrance points for START-OF-GAME spawns.
+Design answers locked 2026-07-16.
+
+- [ ] **Phase 1 — Hallways (render-only).** Valid on ALL FOUR sides.
+  AUTHORING MODEL (user's pick): select a specific RENDERED WALL
+  SEGMENT in the map editor and mark it as a hallway — NOT a placed
+  floor/void tile (user expects this to feel and look better; data
+  model = per-wall-segment annotations on the puzzle, keyed by the
+  bordering edge tile + side). The marked wall opens and a 1-tile-deep
+  corridor renders outward (floor + branched walls), far half
+  swallowed by darkness. Not walkable by any entity. EXCLUDED from
+  puzzle-bounds sizing math on all devices — allowed to overflow the
+  viewport slightly.
+
+- [ ] **Phase 2 — Doors.** Same wall-segment authoring, TOP or BOTTOM
+  walls only (invalid elsewhere). Renders the FULL door sprite in
+  place of the wall segment (new skin sprite slots). Sprite states:
+  closed / opening / open (last opening frame) / closing (opening
+  reversed), each optionally a spritesheet. Editor chooses which
+  states exist + the starting state. Open/close animation only ever
+  plays at puzzle start. Purely cosmetic through phase 3 (nothing
+  passes through) — CONFIRMED.
+
+- [ ] **Phase 3 — Hallway + door combined on one segment.** An open
+  door shows ~half a tile of darkened hallway through it ("seeing
+  barely into a hallway below the puzzle").
+
+- [ ] **Phase 4 — Doors/hallways as INITIAL-SPAWN entrance styles.**
+  SCOPE LOCKED 2026-07-16: start-of-game entrances ONLY, not mid-match
+  waves (mid-game spawning is a possible later extension, explicitly
+  deferred). These become entrance options alongside fly-in / swoop /
+  flutter: at puzzle start, an entity walks in from a door or hallway
+  instead of fading/flying in. Entrance FAMILIES so the creator
+  chooses which entities come from which door/hallway. Rides the
+  existing entrance-animation system (render-side theater), NOT
+  spawnEnemyMidGame — no engine/win-condition impact.
 
 ### Profile / cosmetic
 
