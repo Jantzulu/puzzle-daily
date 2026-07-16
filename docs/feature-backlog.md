@@ -154,18 +154,21 @@ do, complementary to [`feature-roadmap.md`](../../puzzle-game/feature-roadmap.md
 
 ### Spell system extensions
 
-- [ ] **Anti-projectile spells — "wind wall" (DESIGN LOCKED
-  2026-07-16).** A standing zone that destroys projectiles flying
-  into/through it. User rejected bolt-vs-bolt interception and sweep
-  models as too complicated — the persistent-zone model is THE design.
-  Locked: default eats HOSTILE projectiles only, with a per-spell
-  option to eat ALL projectiles (both offered as options). Likely
-  vehicle: the existing persistent-zone system grows a
-  "destroys projectiles" behavior; enforcement point = the shared
-  projectile walkers (a travel step entering a zone tile kills the
-  bolt there — same rule in real + headless, solver parity free).
-  Remaining smalls at build time: zone shape/duration knobs, kill VFX,
-  does a dying bolt still trigger linger (no). *Captured 2026-07-16.*
+- [x] **Anti-projectile spells — "wind wall" — SHIPPED 2026-07-16**
+  (`8c53bc1` engine + `5b1d167` editor UI). Persistent-zone model as
+  locked: `destroysProjectiles: 'hostile' | 'all'` on
+  PersistentAreaEffect, authored via persistDestroysProjectiles on any
+  persisting AOE spell ("Destroys Projectiles" select in the builder;
+  damage-0 = pure screen). Enforced in the SHARED walkers
+  (walkNonHomingTick entry check before entity hits; planHomingTick
+  zone_kill plan on advance + reach legs — a zone on the target's tile
+  screens the target) → real/headless parity by construction, 10 pins
+  in wind-wall.test.ts. Bolts die where they enter; visual stops AT
+  the kill tile. THROW_PLACE exempt (items, reflect's carve-out).
+  Deliberately out of scope: reflected return legs ignore zones (rare
+  compound; own session if wanted); no dedicated kill VFX yet (despawn
+  shrink covers it). AWAITING USER TEST with a real authored wall.
+  *Captured 2026-07-16.*
 
 - [ ] **User-input spell variants.** Extend the existing redirect-direction-
   picker pattern (player chooses at setup) to three more cases, each
@@ -186,13 +189,20 @@ do, complementary to [`feature-roadmap.md`](../../puzzle-game/feature-roadmap.md
   for range 2 use beginning + end; for range 3+ middle is repeated.
   Creator-specified per part, not auto-derived. *Captured 2026-04-27.*
 
-- [ ] **Projectile linger at end of range.** Non-homing projectiles can
-  optionally linger on the tile their path would have ended on for a
-  variable number of turns. Entities that walk into that tile during the
-  linger interact with it the same way they would have if hit during the
-  bolt's travel (damage, status effects, etc). Effectively a poor-man's
-  AOE persistent area effect tied to a projectile's natural endpoint.
-  *Captured 2026-04-27.*
+- [x] **Projectile linger at end of range — SHIPPED 2026-07-16**
+  (`239804f` engine + `2eb6d48` visual/UI). SpellAsset.lingerDuration
+  ("Linger at End of Path" in Projectile Settings): an UNSPENT
+  non-homing bolt (hit nothing; range end or wall stop — not bounds,
+  reflect, or wind-wall kills) drops a SINGLE-TRIGGER hazard on its
+  final tile. First opposing walker takes the bolt's hit (damage
+  stamps 'any' like tile damage + on-hit status + drops on kill);
+  own side passes; expires after N full post-landing turns. Trigger
+  rides the move loop's per-step site (covers ice-slide stops +
+  teleport arrivals); creation on shared walker outputs in both
+  modes → parity by construction, 7 pins in
+  projectile-linger.test.ts. Visual: projectile sprite resting on
+  the tile (amber glint fallback). Deterministic ids. AWAITING USER
+  TEST. Original spec: *Captured 2026-04-27.*
 
 ### New entity types & summoning
 
