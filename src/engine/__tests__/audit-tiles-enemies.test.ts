@@ -7,14 +7,11 @@
 import './helpers';
 import {
   clearAllRegistries,
-  registerTestCharacter as regChar,
   registerTestEnemy as regEnemy,
   registerTestTileType,
   createEmptyGrid,
   createTestPuzzle,
-  createTestCharacterDef,
   createTestEnemyDef,
-  createTestCharacter,
   createTestEnemy,
   createTestGameState,
   setTile,

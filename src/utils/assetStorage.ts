@@ -760,7 +760,9 @@ export const loadVessel = (vesselId: string): CustomVessel | null => {
 // triggers, pickups, and win conditions all resolve through the shipped
 // party model (engine/party.ts). Spec: docs/feature-backlog.md.
 
-export interface CustomAlly extends CustomEnemy {}
+// A type alias (not an empty extends-interface) until ally-only fields
+// exist — flip it back to an interface when the first one lands.
+export type CustomAlly = CustomEnemy;
 
 const ALLY_STORAGE_KEY = 'custom_allies';
 let alliesCache: CustomAlly[] | null = null;

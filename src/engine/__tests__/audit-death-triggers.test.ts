@@ -24,7 +24,6 @@ import {
   createTestCharacter,
   createTestEnemy,
   createTestGameState,
-  setTile,
 } from './helpers';
 import { Direction, ActionType, SpellTemplate, StatusEffectType } from '../../types/game';
 import type { GameState, PlacedEnemy, PlacedCharacter, StatusEffectInstance } from '../../types/game';

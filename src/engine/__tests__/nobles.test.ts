@@ -25,7 +25,7 @@ import {
   setTile,
 } from './helpers';
 import { Direction, ActionType, SpellTemplate, TileType } from '../../types/game';
-import type { GameState, PlacedEnemy, PlacedCharacter, WinCondition, TileOrNull } from '../../types/game';
+import type { PlacedEnemy, PlacedCharacter, WinCondition, TileOrNull } from '../../types/game';
 import { executeTurn } from '../simulation';
 
 beforeEach(() => {

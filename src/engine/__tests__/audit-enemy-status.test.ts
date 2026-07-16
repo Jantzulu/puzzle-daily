@@ -17,7 +17,6 @@ import {
   registerTestCharacter as regChar,
   registerTestEnemy as regEnemy,
   registerTestSpell,
-  registerTestStatusEffect,
   createTestPuzzle,
   createTestCharacterDef,
   createTestEnemyDef,
@@ -26,7 +25,7 @@ import {
   createTestGameState,
 } from './helpers';
 import { Direction, ActionType, SpellTemplate, StatusEffectType } from '../../types/game';
-import type { GameState, PlacedEnemy, PlacedCharacter, StatusEffectInstance } from '../../types/game';
+import type { PlacedEnemy, PlacedCharacter, StatusEffectInstance } from '../../types/game';
 import { executeTurn } from '../simulation';
 
 // ==========================================
