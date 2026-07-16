@@ -51,6 +51,13 @@ const BORDER_SPRITE_SLOTS: { key: keyof CustomBorderSprites; label: string; desc
   // Inner corners - Thin size (interior voids)
   { key: 'innerCornerBottomLeftThin', label: 'Inner BL Thin', description: 'Inner bottom-left corner (thin)', size: '24x24' },
   { key: 'innerCornerBottomRightThin', label: 'Inner BR Thin', description: 'Inner bottom-right corner (thin)', size: '24x24' },
+  // Hallway openings (2026-07-16) — corridor interior where a hallway
+  // marker opens the wall; the game fades the far half to black on top,
+  // so draw these fully lit.
+  { key: 'hallwayTop', label: 'Hallway Top', description: 'Corridor through the top wall (darkness added in-game)', size: '48x48' },
+  { key: 'hallwayBottom', label: 'Hallway Bottom', description: 'Corridor through the bottom wall (darkness added in-game)', size: '48x48' },
+  { key: 'hallwayLeft', label: 'Hallway Left', description: 'Corridor through the left wall (darkness added in-game)', size: '16x48' },
+  { key: 'hallwayRight', label: 'Hallway Right', description: 'Corridor through the right wall (darkness added in-game)', size: '16x48' },
 ];
 
 // Tile sprite slot configuration
@@ -95,6 +102,12 @@ const SLOT_HIGHLIGHT_REGIONS: Record<string, { x: number; y: number; w: number; 
   // Thin inner corners (same position, used when !isOuterBottom)
   innerCornerBottomLeftThin:  [{ x: 96,  y: 192, w: 16, h: 16 }],  // concave-bl thin at tile(2,2)
   innerCornerBottomRightThin: [{ x: 256, y: 144, w: 16, h: 16 }],  // concave-br thin at tile(4,1)
+  // Hallway openings — preview markers: top at tile(2,0), bottom at
+  // tile(3,5), left at tile(0,1), right at tile(5,0)
+  hallwayTop:    [{ x: 112, y: 0,   w: 48, h: 48 }],
+  hallwayBottom: [{ x: 160, y: 336, w: 48, h: 48 }],
+  hallwayLeft:   [{ x: 0,   y: 96,  w: 16, h: 48 }],
+  hallwayRight:  [{ x: 304, y: 48,  w: 16, h: 48 }],
   // Tile slots — highlight a representative tile
   empty: [{ x: 16,  y: 48,  w: 48, h: 48 }],   // tile(0,0) floor
   wall:  [{ x: 64,  y: 96,  w: 48, h: 48 }],    // tile(1,1) wall
@@ -167,6 +180,15 @@ function buildPreviewGameState(skin: PuzzleSkin, customTileTypes: CustomTileType
     maxCharacters: 0,
     borderConfig,
     skinId: skin.id,
+    // One hallway per side so the hallway slot pieces (and the procedural
+    // fallback) show live in the preview — positions match
+    // SLOT_HIGHLIGHT_REGIONS' hallway entries.
+    hallways: [
+      { x: 2, y: 0, side: 'top' },
+      { x: 3, y: 5, side: 'bottom' },
+      { x: 0, y: 1, side: 'left' },
+      { x: 5, y: 0, side: 'right' },
+    ],
   };
 
   return {

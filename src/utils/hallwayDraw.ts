@@ -12,8 +12,16 @@
 // board's fit-scale math is untouched — the locked "excluded from sizing"
 // rule. Draw calls happen in the tile-translated coordinate space (negative
 // coords reach into the band).
-import type { HallwayMarker, HallwaySide, TileOrNull } from '../types/game';
+import type { CustomBorderSprites, HallwayMarker, HallwaySide, TileOrNull } from '../types/game';
 import { TileType } from '../types/game';
+
+/** Skin sprite slot for a hallway side (phase 1.5 skinnable pieces). */
+export function hallwaySpriteSlot(side: HallwaySide): keyof CustomBorderSprites {
+  return side === 'top' ? 'hallwayTop'
+    : side === 'bottom' ? 'hallwayBottom'
+    : side === 'left' ? 'hallwayLeft'
+    : 'hallwayRight';
+}
 
 /** Offset from a tile to its neighbor through the given side. */
 const SIDE_OFFSETS: Record<HallwaySide, { dx: number; dy: number }> = {
@@ -62,6 +70,10 @@ export function drawHallwayOpening(
   verticalDepth: number,   // corridor depth for top/bottom sides (= BORDER_SIZE)
   horizontalDepth: number, // corridor depth for left/right sides (= SIDE_BORDER_SIZE)
   drawFloorTile: (ctx: CanvasRenderingContext2D, gridX: number, gridY: number) => void,
+  // Skin piece (phase 1.5): a loaded, .complete image for this side's
+  // hallway slot. When provided it replaces the procedural corridor
+  // interior (floor + jambs); the darkness fade still applies on top.
+  spriteImg?: HTMLImageElement | null,
 ): void {
   const { x, y, side } = marker;
   const t = tileSize;
@@ -78,14 +90,22 @@ export function drawHallwayOpening(
   }
 
   ctx.save();
+  ctx.beginPath();
+  ctx.rect(rx, ry, rw, rh);
+  ctx.clip();
+
+  if (spriteImg) {
+    // Skinned corridor interior — one authored piece fills the band.
+    ctx.drawImage(spriteImg, rx, ry, rw, rh);
+    drawDarkness(ctx, marker.side, rx, ry, rw, rh);
+    ctx.restore();
+    return;
+  }
 
   // 1. Corridor floor: the caller's floor tile drawn at the off-grid
   //    neighbor cell, clipped to the corridor. Because the clip keeps the
   //    sliver ADJACENT to the room tile, the floor texture continues
   //    seamlessly through the opening.
-  ctx.beginPath();
-  ctx.rect(rx, ry, rw, rh);
-  ctx.clip();
   drawFloorTile(ctx, x + off.dx, y + off.dy);
 
   // 2. Jamb walls — the corridor's own side walls, in the dungeon
@@ -111,11 +131,25 @@ export function drawHallwayOpening(
     ctx.fillRect(rx, ry + rh - flank, rw, lip);
   }
 
-  // 3. Darkness: from a light dimming at the opening to FULLY opaque black
-  //    at the far end — the half furthest from the puzzle drowns. There is
-  //    deliberately NO back wall: full black dissolves into the void around
-  //    the board, so the corridor reads as continuing an unknown distance
-  //    (user design, 2026-07-16).
+  // 3. Darkness fade over everything.
+  drawDarkness(ctx, side, rx, ry, rw, rh);
+
+  ctx.restore();
+}
+
+/**
+ * Darkness: from a light dimming at the opening to FULLY opaque black at
+ * the far end — the half furthest from the puzzle drowns. There is
+ * deliberately NO back wall: full black dissolves into the void around
+ * the board, so the corridor reads as continuing an unknown distance
+ * (user design, 2026-07-16). Applied over both the procedural corridor
+ * and skinned pieces, so artists draw their hallway art fully lit.
+ */
+function drawDarkness(
+  ctx: CanvasRenderingContext2D,
+  side: HallwaySide,
+  rx: number, ry: number, rw: number, rh: number,
+): void {
   let grad: CanvasGradient;
   switch (side) {
     case 'top':    grad = ctx.createLinearGradient(0, ry + rh, 0, ry); break;
@@ -128,6 +162,4 @@ export function drawHallwayOpening(
   grad.addColorStop(1, 'rgba(0, 0, 0, 1)');
   ctx.fillStyle = grad;
   ctx.fillRect(rx, ry, rw, rh);
-
-  ctx.restore();
 }

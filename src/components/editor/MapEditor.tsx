@@ -11,7 +11,8 @@ import { cacheEditorState, getCachedEditorState, clearCachedEditorState } from '
 import { writeAutoSave, readAutoSave, clearAutoSave, AUTOSAVE_INTERVAL_MS, type AutoSaveData } from '../../utils/autoSave';
 import { getAllPuzzleSkins, loadPuzzleSkin, getCustomTileTypes, loadTileType, getAllObjects, loadObject, getAllCollectibles, getSoundAssets, getCustomVessels, vesselToEnemyAsset, getCustomAllies, allyToEnemyAsset } from '../../utils/assetStorage';
 import { TILE_SIZE, BORDER_SIZE, SIDE_BORDER_SIZE, MAX_DISPLAY_WIDTH_TILES, createEmptyGrid, drawDungeonBorder, drawTile, drawEnemy, drawCollectibleInEditor, drawObject } from './map/canvasDraw';
-import { isValidHallway, drawHallwayOpening } from '../../utils/hallwayDraw';
+import { isValidHallway, drawHallwayOpening, hallwaySpriteSlot } from '../../utils/hallwayDraw';
+import { loadImage } from '../../utils/imageLoader';
 import type { HallwaySide } from '../../types/game';
 import { getAllSpells, SpellTooltip, ActionTooltip } from './map/Tooltips';
 import { createDefaultEditorState, type EditorState, type ToolType, type EditorMode } from './map/editorState';
@@ -637,9 +638,11 @@ export const MapEditor: React.FC = () => {
     if (hasBorder && state.hallways.length > 0) {
       state.hallways.forEach(marker => {
         if (!isValidHallway(marker, state.tiles, state.gridWidth, state.gridHeight)) return;
+        const slotSrc = currentSkin?.borderSprites?.[hallwaySpriteSlot(marker.side)];
+        const slotImg = slotSrc ? loadImage(slotSrc) : null;
         drawHallwayOpening(ctx, marker, TILE_SIZE, BORDER_SIZE, SIDE_BORDER_SIZE, (c, gx, gy) => {
           drawTile(c, gx, gy, { x: gx, y: gy, type: TileType.EMPTY }, currentSkin);
-        });
+        }, slotImg && slotImg.complete ? slotImg : null);
         if (state.selectedTool === 'hallway') {
           const d = marker.side === 'top' || marker.side === 'bottom' ? BORDER_SIZE : SIDE_BORDER_SIZE;
           const rx = marker.side === 'left' ? marker.x * TILE_SIZE - d : marker.side === 'right' ? (marker.x + 1) * TILE_SIZE : marker.x * TILE_SIZE;

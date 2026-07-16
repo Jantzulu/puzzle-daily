@@ -605,6 +605,16 @@ export interface CustomBorderSprites {
   // Concave corners - Thin size (for interior void edges, 24x24px)
   innerCornerBottomLeftThin?: string;   // Inner bottom-left thin corner (24x24px)
   innerCornerBottomRightThin?: string;  // Inner bottom-right thin corner (24x24px)
+
+  // Hallway openings (2026-07-16): the full corridor interior (floor +
+  // jamb walls) drawn where a hallway marker opens the wall, replacing the
+  // procedural fallback. The renderer still applies the darkness fade on
+  // top, so art should be drawn fully lit. Draw sizes match the border
+  // band: top/bottom 48x48, left/right 16x48 (canvas px; 24 art px/tile).
+  hallwayTop?: string;
+  hallwayBottom?: string;
+  hallwayLeft?: string;
+  hallwayRight?: string;
 }
 
 export interface BorderConfig {

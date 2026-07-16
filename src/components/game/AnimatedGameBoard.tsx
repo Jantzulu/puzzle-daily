@@ -7,7 +7,7 @@ import { getEnemy } from '../../data/enemies';
 import { drawSprite, drawDeathSprite, hasDeathAnimation, drawSpawnSprite, hasSpawnAnimation, isSpawnAnimationPlaying, subscribeToSpriteImageLoads, getSpriteDrawHeight, ART_TILE_PX } from '../editor/SpriteEditor';
 import type { CustomCharacter, CustomEnemy, CustomTileType, CustomObject, CustomCollectible, CustomSprite } from '../../utils/assetStorage';
 import { loadPuzzleSkin, loadTileType, loadObject, loadStatusEffectAsset, loadCollectible, resolveImageSource } from '../../utils/assetStorage';
-import { isValidHallway, drawHallwayOpening } from '../../utils/hallwayDraw';
+import { isValidHallway, drawHallwayOpening, hallwaySpriteSlot } from '../../utils/hallwayDraw';
 import { getThemeAsset } from '../../utils/themeAssets';
 import type { Tile } from '../../types/game';
 import { updateProjectiles, updateParticles, executeParallelActions, DESPAWN_SHRINK_MS, TARGET_LOST_LINGER_MS } from '../../engine/simulation';
@@ -2397,11 +2397,16 @@ function drawStaticLayers(
   // baked pass, so it costs nothing per frame. Stale markers are skipped
   // by the shared validity rule.
   if (hasBorder && puzzle.hallways && puzzle.hallways.length > 0) {
+    const borderSprites = puzzle.borderConfig?.customBorderSprites;
     puzzle.hallways.forEach(marker => {
       if (!isValidHallway(marker, puzzle.tiles, puzzle.width, puzzle.height)) return;
+      // Skinned hallway piece when the skin provides one; procedural
+      // floor+jambs otherwise.
+      const slotSrc = borderSprites?.[hallwaySpriteSlot(marker.side)];
+      const slotImg = slotSrc ? loadBorderImage(slotSrc) : null;
       drawHallwayOpening(ctx, marker, TILE_SIZE, BORDER_SIZE, SIDE_BORDER_SIZE, (c, gx, gy) => {
         drawTile(c, gx, gy, TileType.EMPTY, tileSprites, { x: gx, y: gy, type: TileType.EMPTY } as Tile, customTileSprites, isEditor, currentTurn, tileStates);
-      });
+      }, slotImg && slotImg.complete ? slotImg : null);
     });
   }
 
