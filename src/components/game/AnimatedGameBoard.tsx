@@ -1254,9 +1254,15 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       setLiftOffAnimations(prev => [...prev, ...newLiftOffs]);
     }
 
-    // Detect newly placed characters and trigger spawn animations
+    // Detect newly placed characters and trigger spawn animations.
+    // Gated like the enemy entrances above: while the host's loading gate
+    // hides the board, heroes stay unmarked so their full entrance
+    // (fly-in flight + spawn sheet) plays where the player can see it —
+    // this effect re-runs the moment entrancesRevealed flips. Interactive
+    // placement always happens post-reveal (the board is pointer-blocked
+    // while loading), so this only defers pre-placed/restored heroes.
     const newCharSpawns = new Map<string, SpawnAnimationState>();
-    gameState.placedCharacters.forEach((char) => {
+    if (entrancesRevealed) gameState.placedCharacters.forEach((char) => {
       // Keyed by characterId only — stable across movement (see lift-off above).
       const spawnKey = char.characterId;
       if (!spawnedCharactersRef.current.has(spawnKey) && !char.dead) {
@@ -1313,7 +1319,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
 
     prevCharactersRef.current = [...gameState.placedCharacters];
     prevGameStatusRef.current = gameState.gameStatus;
-  }, [gameState.placedCharacters, gameState.gameStatus]);
+  }, [gameState.placedCharacters, gameState.gameStatus, entrancesRevealed]);
 
   // Detect enemy movement
   useEffect(() => {

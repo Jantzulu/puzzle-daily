@@ -201,7 +201,15 @@ export const Game: React.FC<GameProps> = ({
   // here's the result" — and gets a dismiss-to-pill flow below, mirroring
   // victory.
   const [showGameOver, setShowGameOver] = useState(false);
-  const [spritesReady, setSpritesReady] = useState(false);
+  // Which puzzle's sprites are ready — DERIVED at render time so a puzzle
+  // swap reads not-ready on the very render that carries the new puzzle.
+  // The old boolean only flipped false inside this component's preload
+  // effect, but child effects run before parent effects: on a swap the
+  // board still saw entrancesRevealed=true, initialized every entrance,
+  // and the clocks burned behind the loading overlay — at reveal the
+  // entities were already marked spawned and their entrances never played.
+  const [spritesReadyPuzzleId, setSpritesReadyPuzzleId] = useState<string | null>(null);
+  const spritesReady = spritesReadyPuzzleId === currentPuzzle.id;
   // Count of puzzle sprites that failed to preload. Non-zero shows a small
   // retry pill on the board instead of rendering missing art silently.
   const [failedSpriteCount, setFailedSpriteCount] = useState(0);
@@ -575,14 +583,13 @@ export const Game: React.FC<GameProps> = ({
   // sprites, animation frames, skin tiles, etc. are cached before gameplay needs them.
   useEffect(() => {
     const urlsToPreload = collectPuzzleAssetUrls(currentPuzzle);
-    setSpritesReady(false);
     setFailedSpriteCount(0);
     if (urlsToPreload.length === 0) {
-      setSpritesReady(true);
+      setSpritesReadyPuzzleId(currentPuzzle.id);
       return;
     }
     let cancelled = false;
-    const reveal = () => { if (!cancelled) setSpritesReady(true); };
+    const reveal = () => { if (!cancelled) setSpritesReadyPuzzleId(currentPuzzle.id); };
     // A hung or failed image must never gate the board forever — reveal after
     // a grace timeout regardless; anything still loading pops in afterwards
     // via the image-load subscription re-renders. The cancelled flag also
@@ -2515,7 +2522,9 @@ export const Game: React.FC<GameProps> = ({
                 <ResponsiveGameBoard gameState={gameState} onTileClick={handleTileClick} onProjectileKill={handleProjectileKill} replayFrozen={replayMode && !replayPlaying && !replayStepAnimating} entrancesRevealed={spritesReady} />
               </div>
               {!spritesReady && (
-                <div className="absolute inset-0 flex items-center justify-center bg-stone-900/80">
+                // No fill: the page background shows through while loading —
+                // the board itself sits at opacity 0 underneath.
+                <div className="absolute inset-0 flex items-center justify-center">
                   <div className="text-stone-400 text-sm animate-pulse">Loading sprites...</div>
                 </div>
               )}
