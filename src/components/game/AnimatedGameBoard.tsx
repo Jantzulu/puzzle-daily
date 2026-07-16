@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any, no-case-declarations */
 import React, { useRef, useEffect, useMemo, useState, useCallback } from 'react';
-import type { GameState, PlacedCharacter, PlacedEnemy, Projectile, ProjectileVisualState, ParticleEffect, BorderConfig, CharacterAction, EnemyBehavior, TileSprites, ActivationSpriteConfig, StatusEffectInstance, PersistentAreaEffect, Puzzle, PuzzleSkin } from '../../types/game';
+import type { GameState, PlacedCharacter, PlacedEnemy, Projectile, ProjectileVisualState, ParticleEffect, BorderConfig, CharacterAction, EnemyBehavior, TileSprites, ActivationSpriteConfig, StatusEffectInstance, PersistentAreaEffect, LingeringProjectileHazard, Puzzle, PuzzleSkin } from '../../types/game';
 import { TileType, Direction, ActionType, StatusEffectType } from '../../types/game';
 import { getCharacter } from '../../data/characters';
 import { getEnemy } from '../../data/enemies';
@@ -1792,6 +1792,17 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       if (gameState.persistentAreaEffects && gameState.persistentAreaEffects.length > 0) {
         gameState.persistentAreaEffects.forEach(effect => {
           drawPersistentAreaEffect(ctx, effect, now, imageCache.current, gameState.puzzle);
+        });
+      }
+
+      // Lingering projectile hazards — spent bolts resting on their final
+      // tile, same ground layer as persistent effects. Consumed hazards
+      // stop drawing immediately (the trigger's impact VFX covers the beat
+      // until the end-of-turn sweep removes them).
+      if (gameState.lingeringHazards && gameState.lingeringHazards.length > 0) {
+        gameState.lingeringHazards.forEach(hazard => {
+          if (hazard.consumed) return;
+          drawLingeringHazard(ctx, hazard, now, imageCache.current, gameState.puzzle);
         });
       }
 
@@ -5349,6 +5360,47 @@ function drawPersistentAreaEffect(
       ctx.restore();
     }
   }
+}
+
+/**
+ * A lingering projectile hazard: the spent bolt's sprite resting on the
+ * tile its flight ended on. Single tile, ground layer. Falls back to a
+ * soft pulsing glint when the spell has no projectile sprite so the
+ * hazard is never invisible.
+ */
+function drawLingeringHazard(
+  ctx: CanvasRenderingContext2D,
+  hazard: LingeringProjectileHazard,
+  now: number,
+  imageCache: Map<string, HTMLImageElement>,
+  puzzle: Puzzle
+) {
+  const tile = puzzle.tiles[hazard.y]?.[hazard.x];
+  if (!tile || tile.type === TileType.WALL) return;
+  const px = hazard.x * TILE_SIZE + TILE_SIZE / 2;
+  const py = hazard.y * TILE_SIZE + TILE_SIZE / 2;
+  const spriteData = hazard.visualSprite?.spriteData;
+
+  ctx.save();
+  if (spriteData?.spriteSheet) {
+    drawSpellSpriteSheetFromStartTime(
+      ctx, { ...spriteData.spriteSheet, loop: true },
+      px, py, TILE_SIZE * 0.9, imageCache, 0, now, undefined);
+  } else if (spriteData) {
+    const shape = spriteData.shape || 'circle';
+    const color = spriteData.primaryColor || '#ffd166';
+    const imageData = spriteData.idleImageData || spriteData.imageData;
+    drawShape(ctx, px, py, shape, color, TILE_SIZE * 0.4, imageData, imageCache);
+  } else {
+    // No projectile sprite authored — a resting amber glint.
+    const pulsePhase = (now % 1200) / 1200;
+    ctx.globalAlpha = 0.35 + 0.2 * Math.sin(pulsePhase * Math.PI * 2);
+    ctx.fillStyle = '#ffd166';
+    ctx.beginPath();
+    ctx.arc(px, py, TILE_SIZE * 0.18, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
 }
 
 // ==========================================

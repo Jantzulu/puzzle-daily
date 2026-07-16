@@ -2364,6 +2364,25 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                 <p className="text-xs text-stone-400 ml-6">If enabled, projectile continues through enemies</p>
               </div>
 
+              {/* Linger at end of path */}
+              <div>
+                <label className="block text-sm font-medium mb-1">Linger at End of Path (turns)</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="20"
+                  value={editedSpell.lingerDuration || 0}
+                  onChange={(e) => setEditedSpell({ ...editedSpell, lingerDuration: parseInt(e.target.value) || 0 })}
+                  className="w-full px-3 py-2 bg-stone-700 rounded text-parchment-100"
+                />
+                <p className="text-xs text-stone-400 mt-1">
+                  0 = the bolt fizzles as usual. 1+ = if it hits nothing, it
+                  rests on its final tile for N turns; the first opposing unit
+                  to step on it takes the bolt's hit (damage + status), then
+                  it's spent. Own side walks over it safely. Non-homing only.
+                </p>
+              </div>
+
               {/* Bounce off walls */}
               <div>
                 <label className="flex items-center gap-2">
