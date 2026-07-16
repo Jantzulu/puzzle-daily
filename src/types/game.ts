@@ -684,6 +684,24 @@ export interface Puzzle {
 
   // Training arena flag — shown in Training Grounds page
   isTraining?: boolean;
+
+  // Hallways — PURELY VISUAL dungeon dressing (2026-07-16 arc, phase 1).
+  // Each marker opens the rendered wall on one side of an edge tile into a
+  // faux corridor drawn inside the border band (floor + flanking walls,
+  // far half swallowed by darkness). Never walkable — the corridor is
+  // off-grid, so the engine/solver can't even see it. Invalid markers
+  // (tile no longer a floor, or the side no longer borders void/out-of-
+  // bounds) are simply skipped at render time.
+  hallways?: HallwayMarker[];
+}
+
+/** Which wall of the tile a hallway opens through — matches the smart-border edge vocabulary. */
+export type HallwaySide = 'top' | 'bottom' | 'left' | 'right';
+
+export interface HallwayMarker {
+  x: number;
+  y: number;
+  side: HallwaySide;
 }
 
 export interface PlacedCharacter {
