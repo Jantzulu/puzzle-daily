@@ -55,17 +55,19 @@ export const SlidingSelection: React.FC<SlidingSelectionProps> = ({ slotCount, s
 
   return (
     <>
-      {/* Soft-shouldered ember pool, not a flat rect: the old solid tint's
-          hard vertical edges read as a sliding box once the highlight
-          moved (user feedback). Transparent shoulders make the motion read
-          as warm light passing beneath the cards; the center alpha sits
-          near the old flat wash so the resting look stays familiar. */}
+      {/* Ember bloom anchored at the card's BOTTOM-CENTER — the caret
+          point where the info panel connects. Radial with the far stop
+          inside the card, so there is no hard edge on ANY side (the flat
+          rect and then the straight-sided gradient both read as a sliding
+          box — user feedback, twice). Brightest at the strip/panel seam,
+          where SelectionBloom answers it from below: one pool of light
+          saying "this lit unit is what the panel describes." */}
       <div
         aria-hidden
         className={`absolute inset-y-0 left-0 pointer-events-none ${transition}`}
         style={{
           ...slotStyle,
-          backgroundImage: `linear-gradient(to right, rgba(${emberRgb}, 0) 0%, rgba(${emberRgb}, 0.12) 20%, rgba(${emberRgb}, 0.19) 50%, rgba(${emberRgb}, 0.12) 80%, rgba(${emberRgb}, 0) 100%)`,
+          backgroundImage: `radial-gradient(120% 135% at 50% 100%, rgba(${emberRgb}, 0.28) 0%, rgba(${emberRgb}, 0.13) 42%, rgba(${emberRgb}, 0) 72%)`,
         }}
       />
       <div aria-hidden className={`absolute bottom-0 left-0 z-10 pointer-events-none ${transition}`} style={slotStyle}>
@@ -80,5 +82,33 @@ export const SlidingSelection: React.FC<SlidingSelectionProps> = ({ slotCount, s
         </svg>
       </div>
     </>
+  );
+};
+
+/**
+ * The answering half of the selection glow: a bloom at the TOP of the info
+ * panel, positioned under the selected card with the same slot math and
+ * the same always-on transition, so it glides in step with the card's
+ * ember above. The two gradients meet at the caret line and read as one
+ * pool of light connecting the unit to its attributes/behavior panel.
+ * Render as the first child of the (position: relative) panel container;
+ * returns null with nothing selected — the panel is closing then anyway.
+ */
+export const SelectionBloom: React.FC<{
+  slotCount: number;
+  selectedIndex: number;
+  emberRgb: string;
+}> = ({ slotCount, selectedIndex, emberRgb }) => {
+  if (slotCount <= 0 || selectedIndex < 0) return null;
+  return (
+    <div
+      aria-hidden
+      className="pointer-events-none absolute top-0 left-0 h-14 transition-transform duration-300 ease-out"
+      style={{
+        width: `${100 / slotCount}%`,
+        transform: `translateX(${selectedIndex * 100}%)`,
+        backgroundImage: `radial-gradient(90% 100% at 50% 0%, rgba(${emberRgb}, 0.22) 0%, rgba(${emberRgb}, 0.09) 55%, rgba(${emberRgb}, 0) 100%)`,
+      }}
+    />
   );
 };

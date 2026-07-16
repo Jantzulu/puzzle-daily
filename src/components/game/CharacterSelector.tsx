@@ -9,7 +9,7 @@ import { HelpButton } from './HelpOverlay';
 import { DirectionArrow } from './DirectionArrow';
 import type { ThemeAssets } from '../../utils/themeAssets';
 import { CARD_PIXEL_SCALE, computeCardSpriteAreaHeight } from './cardConstants';
-import { SlidingSelection } from './SlidingSelection';
+import { SlidingSelection, SelectionBloom } from './SlidingSelection';
 import { subscribeToImageLoads } from '../../utils/imageLoader';
 
 const MOVEMENT_TYPES = new Set([
@@ -402,7 +402,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
         }}>
         <div style={{ overflow: 'hidden', minHeight: 0 }}>
         <div
-          className="pt-4 pb-3 mt-0 bg-copper-900/15 rounded-b-pixel-md"
+          className="relative pt-4 pb-3 mt-0 bg-copper-900/15 rounded-b-pixel-md"
           style={{
             opacity: isOpen ? 1 : 0,
             transform: isOpen ? 'translateY(0)' : 'translateY(-8px)',
@@ -411,6 +411,13 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
               : 'opacity 0.2s ease-in, transform 0.3s ease-in',
           }}
         >
+          {/* Top bloom under the selected card — the panel half of the
+              cohesive selection glow (see SlidingSelection). */}
+          <SelectionBloom
+            slotCount={stripCharacterIds.length}
+            selectedIndex={selectedStripIndex}
+            emberRgb="94, 61, 41"
+          />
 
           {/* Action Steps + Attributes: split 50/50 if both present, full-width centered if only one */}
           {(hasActionSteps || hasAttributes) && (
