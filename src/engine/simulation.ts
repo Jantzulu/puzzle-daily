@@ -3599,6 +3599,46 @@ function getEffectiveTeams(proj: Projectile): { targetsEnemies: boolean; targets
 }
 
 /**
+ * Effective party a projectile fights FOR right now: the firer's party,
+ * flipped by teamSwapped (charm at spawn, or reflect). Used by wind-wall
+ * zones to decide hostility. Same derivation getEffectiveTeams uses,
+ * expressed as the bolt's own side instead of its target side.
+ */
+function projectileEffectiveParty(proj: Projectile): EntityParty | undefined {
+  const sourceParty: EntityParty | undefined = proj.sourceParty
+    ?? (proj.sourceCharacterId ? 'hero' : proj.sourceEnemyId ? 'enemy' : undefined);
+  if (!sourceParty) return undefined;
+  const opposed: EntityParty = sourceParty === 'hero' ? 'enemy' : 'hero';
+  return proj.teamSwapped ? opposed : sourceParty;
+}
+
+/**
+ * Wind wall: does a projectile entering tile (x,y) die to a
+ * projectile-destroying persistent zone covering that tile? Called from the
+ * shared projectile walkers (walkNonHomingTick, planHomingTick) so real and
+ * headless modes agree by construction. THROW_PLACE tosses are exempt at
+ * the call sites (items, not attacks — the same carve-out reflect uses).
+ * Radius rule matches processPersistentAreaEffects' damage tick: Euclidean
+ * distance from the zone center; excludeCenter is visual-only there and
+ * ignored here too.
+ */
+function zoneKillsProjectileAt(proj: Projectile, x: number, y: number, gameState: GameState): boolean {
+  const zones = gameState.persistentAreaEffects;
+  if (!zones || zones.length === 0) return false;
+  for (const zone of zones) {
+    if (!zone.destroysProjectiles) continue;
+    const distance = Math.sqrt(Math.pow(x - zone.x, 2) + Math.pow(y - zone.y, 2));
+    if (distance > zone.radius) continue;
+    if (zone.destroysProjectiles === 'all') return true;
+    // 'hostile': eats bolts fighting against the zone's side. Sourceless
+    // bolts have no side and pass through.
+    const projParty = projectileEffectiveParty(proj);
+    if (projParty !== undefined && projParty !== (zone.sourceParty ?? 'hero')) return true;
+  }
+  return false;
+}
+
+/**
  * Is a homing arrival a hostile hit (damage) or a friendly one (heal/buff)?
  * Reflected bolts are always hostile — reflect flipped targetIsEnemy to
  * point back at the original caster's team, but the bolt stays damage-only
@@ -3988,7 +4028,14 @@ type NonHomingStep =
    * `proj.bounceCount++` before emitting this step; callers just need
    * to record / visualize it.
    */
-  | { kind: 'bounce'; atX: number; atY: number; wallX: number; wallY: number; newDirection: Direction };
+  | { kind: 'bounce'; atX: number; atY: number; wallX: number; wallY: number; newDirection: Direction }
+  /**
+   * Wind wall: a projectile-destroying persistent zone ate the bolt as it
+   * entered this tile (before any entity on the tile could be hit — the
+   * zone screens what's inside it). The preceding 'travel' step already
+   * pushed the tile; this marks where the bolt dies.
+   */
+  | { kind: 'zone_kill'; x: number; y: number; dist: number };
 
 interface NonHomingWalkResult {
   steps: NonHomingStep[];
@@ -3997,6 +4044,7 @@ interface NonHomingWalkResult {
   endedAtBounds: boolean;
   endedAtReflect: boolean;
   endedAtPierceStop: boolean;
+  endedAtZoneKill: boolean;
   bounced: boolean;
   /** Final logical position after the walk (last traversed tile). */
   endX: number;
@@ -4102,6 +4150,7 @@ function walkNonHomingTick(
   let endedAtBounds = false;
   let endedAtReflect = false;
   let endedAtPierceStop = false;
+  let endedAtZoneKill = false;
   let bounced = false;
 
   // `segDist` is the tile index within the current segment (relative to
@@ -4183,6 +4232,15 @@ function walkNonHomingTick(
     // THROW_PLACE projectiles pass through entities — no collision checks this tile.
     if (proj.throwPlaceConfig) { segDist++; continue; }
 
+    // Wind-wall zones eat the bolt as it ENTERS a covered tile, before any
+    // entity standing there can be hit — screening what's inside the zone
+    // is the point. Shared walker = real and headless agree for free.
+    if (zoneKillsProjectileAt(proj, checkX, checkY, gameState)) {
+      endedAtZoneKill = true;
+      steps.push({ kind: 'zone_kill', x: checkX, y: checkY, dist: segDist });
+      break;
+    }
+
     const { targetsEnemies, targetsCharacters } = getEffectiveTeams(proj);
 
     if (targetsEnemies) {
@@ -4254,7 +4312,7 @@ function walkNonHomingTick(
     segDist++;
   }
 
-  return { steps, hitSomething, endedAtWall, endedAtBounds, endedAtReflect, endedAtPierceStop, bounced, endX, endY, endDist };
+  return { steps, hitSomething, endedAtWall, endedAtBounds, endedAtReflect, endedAtPierceStop, endedAtZoneKill, bounced, endX, endY, endDist };
 }
 
 /**
@@ -4676,7 +4734,41 @@ type HomingTickPlan =
       segLen: number;
       /** Full BFS path (pathfinding style only) — debug logging. */
       bfsFullPath?: Array<{ x: number; y: number }>;
+    }
+  | {
+      kind: 'zone_kill';
+      /** Tile inside a projectile-destroying zone where the bolt dies. */
+      x: number;
+      y: number;
+      /** This turn's tiles up to and including the kill tile. */
+      traversedTiles: Array<{ x: number; y: number }>;
     };
+
+/**
+ * Wind wall vs homing: scan a homing turn's traversed tiles (advance
+ * turnTiles or reach reachTiles) for a projectile-destroying zone. Skips
+ * the pre-move tile — zones kill on ENTRY, matching walkNonHomingTick.
+ * Returns the zone_kill plan, or null to proceed with the original plan.
+ * Lives inside planHomingTick's flow so real and headless modes consume
+ * the identical decision.
+ */
+function findZoneKillAlongTiles(
+  proj: Projectile,
+  tiles: Array<{ x: number; y: number }>,
+  gameState: GameState,
+): Extract<HomingTickPlan, { kind: 'zone_kill' }> | null {
+  if (proj.throwPlaceConfig) return null; // items, not attacks — same carve-out as the non-homing walker
+  const curX = Math.floor(proj.logicalX);
+  const curY = Math.floor(proj.logicalY);
+  for (let i = 0; i < tiles.length; i++) {
+    const tile = tiles[i];
+    if (tile.x === curX && tile.y === curY) continue;
+    if (zoneKillsProjectileAt(proj, tile.x, tile.y, gameState)) {
+      return { kind: 'zone_kill', x: tile.x, y: tile.y, traversedTiles: tiles.slice(0, i + 1) };
+    }
+  }
+  return null;
+}
 
 function planHomingTick(
   proj: Projectile,
@@ -4725,6 +4817,10 @@ function planHomingTick(
       : getTilesAlongLine(
           Math.round(proj.logicalX), Math.round(proj.logicalY),
           target.x, target.y);
+    // Wind wall screens the target: a zone anywhere on the final leg
+    // (including the target's own tile) eats the bolt before it lands.
+    const zoneKill = findZoneKillAlongTiles(proj, reachTiles, gameState);
+    if (zoneKill) return zoneKill;
     return { kind: 'reach', hitX: target.x, hitY: target.y, reachTiles };
   }
 
@@ -4749,6 +4845,10 @@ function planHomingTick(
   }
   const segLen = Math.sqrt(
     Math.pow(newX - proj.logicalX, 2) + Math.pow(newY - proj.logicalY, 2));
+  // Wind wall mid-flight: a zone on this turn's traversed tiles eats the
+  // bolt where it enters.
+  const zoneKill = findZoneKillAlongTiles(proj, turnTiles, gameState);
+  if (zoneKill) return zoneKill;
   return { kind: 'advance', newX, newY, turnTiles, segLen, bfsFullPath };
 }
 
@@ -4897,6 +4997,37 @@ function resolveProjectiles(gameState: GameState): void {
             type: 'wall_hit',
             projId: proj.id,
             x: plan.wallX, y: plan.wallY,
+          });
+          proj.homingVisualStartX = undefined;
+          proj.homingVisualStartY = undefined;
+          proj.homingVisualStartTime = undefined;
+          continue;
+        }
+
+        if (plan.kind === 'zone_kill') {
+          // A wind-wall zone ate the bolt mid-flight. Mirror the wall stop,
+          // but the path INCLUDES the kill tile — the bolt dies inside the
+          // zone, not in front of it. Straight style rebuilds the leg from
+          // the visual anchor (like wall_blocked) so the sprite doesn't
+          // snap; grid/pathfinding use the plan's traversed tiles, which
+          // follow the actual route.
+          const killPath = proj.homingPathStyle === 'straight'
+            ? getTilesAlongLine(
+                proj.homingVisualStartX ?? proj.logicalX,
+                proj.homingVisualStartY ?? proj.logicalY,
+                plan.x, plan.y)
+            : [...plan.traversedTiles];
+          if (killPath.length === 0) killPath.push({ x: plan.x, y: plan.y });
+          proj.tilePath = killPath;
+          proj.currentTileIndex = 0;
+          proj.tileEntryTime = proj.homingVisualStartTime ?? Date.now();
+          proj.hitResult = { hitTileIndex: killPath.length - 1, deactivate: true };
+          maybeMarkLingerDespawn(proj, killPath.length - 1, Date.now());
+          // Replay end event — the bolt's lifetime ends inside the zone.
+          recordProjectileEvent(gameState, {
+            type: 'deactivate',
+            projId: proj.id,
+            x: plan.x, y: plan.y,
           });
           proj.homingVisualStartX = undefined;
           proj.homingVisualStartY = undefined;
@@ -5434,7 +5565,7 @@ function resolveProjectiles(gameState: GameState): void {
         }
       }
 
-      shouldRemove = walk.endedAtBounds || walk.endedAtWall || walk.endedAtPierceStop
+      shouldRemove = walk.endedAtBounds || walk.endedAtWall || walk.endedAtPierceStop || walk.endedAtZoneKill
         || walk.steps.some(s => (s.kind === 'hostile_hit' || s.kind === 'healing_hit') && s.pierceStop);
 
       // Skip position/tilePath updates if reflected (already handled above)
@@ -5485,6 +5616,33 @@ function resolveProjectiles(gameState: GameState): void {
         proj.tilePath = [...turnTiles];
         proj.currentTileIndex = 0;
         proj.tileEntryTime = Date.now();
+      }
+
+      // Wind-wall zone kill: the bolt died entering a projectile-destroying
+      // zone mid-path. Set an explicit hitResult at the KILL tile — the
+      // generic fallback below aims at the END of the spawn-time tilePath,
+      // which extends past the zone and would fly the visual through the
+      // wall of wind. Runs after the bounce refresh above so the index is
+      // computed against the path the visual will actually traverse;
+      // backward search because bounce paths can revisit a tile (the kill
+      // is the LAST traversed occurrence).
+      const zoneKill = walk.steps.find(
+        (s): s is Extract<NonHomingStep, { kind: 'zone_kill' }> => s.kind === 'zone_kill');
+      if (zoneKill && !proj.hitResult) {
+        const path = proj.tilePath;
+        let killIdx = -1;
+        if (path) {
+          for (let i = path.length - 1; i >= 0; i--) {
+            if (path[i].x === zoneKill.x && path[i].y === zoneKill.y) { killIdx = i; break; }
+          }
+        }
+        if (killIdx < 0) killIdx = path && path.length > 0 ? Math.min(zoneKill.dist, path.length - 1) : 0;
+        proj.hitResult = { hitTileIndex: killIdx, deactivate: true };
+        maybeMarkLingerDespawn(proj, killIdx, Date.now());
+        // Replay end event — the bolt's lifetime ends inside the zone.
+        recordProjectileEvent(gameState, {
+          type: 'deactivate', projId: proj.id, x: zoneKill.x, y: zoneKill.y,
+        });
       }
     }
 
@@ -5617,6 +5775,18 @@ function updateProjectilesHeadless(gameState: GameState): void {
           continue;
         }
 
+        if (plan.kind === 'zone_kill') {
+          // Wind-wall kill — mirrors real mode's stop-in-zone deactivation.
+          recordProjectileEvent(gameState, {
+            type: 'deactivate',
+            projId: proj.id,
+            x: plan.x, y: plan.y,
+          });
+          proj.active = false;
+          projectilesToRemove.push(proj.id);
+          continue;
+        }
+
         if (plan.kind === 'reach') {
           // Final-leg along-path hits — same scan, same tiles, same order
           // as real mode (before the target hit lands).
@@ -5715,6 +5885,11 @@ function updateProjectilesHeadless(gameState: GameState): void {
           recordProjectileEvent(gameState, {
             type: 'wall_hit', projId: proj.id, x: step.x, y: step.y,
           });
+        } else if (step.kind === 'zone_kill') {
+          // Wind-wall kill — mirrors real mode's stop-in-zone deactivation.
+          recordProjectileEvent(gameState, {
+            type: 'deactivate', projId: proj.id, x: step.x, y: step.y,
+          });
         } else if (step.kind === 'bounce') {
           // Record as wall_hit for replay purposes — visuals get a "bounced
           // off this wall" marker without introducing a new event type.
@@ -5754,7 +5929,7 @@ function updateProjectilesHeadless(gameState: GameState): void {
         }
       }
 
-      if (walk.endedAtBounds || walk.endedAtWall || walk.endedAtPierceStop) shouldRemove = true;
+      if (walk.endedAtBounds || walk.endedAtWall || walk.endedAtPierceStop || walk.endedAtZoneKill) shouldRemove = true;
       if (walk.steps.some(s => (s.kind === 'hostile_hit' || s.kind === 'healing_hit') && s.pierceStop)) {
         shouldRemove = true;
       }

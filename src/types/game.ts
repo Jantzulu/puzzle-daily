@@ -743,6 +743,7 @@ export interface PersistentAreaEffect {
   sourceCharacterId?: string;   // Who created this (for friendly fire rules)
   sourceEnemyId?: string;       // If created by enemy
   sourceParty?: EntityParty;    // Creator's EFFECTIVE party when cast (engine/party.ts) — the zone keeps fighting for that side. Absent on legacy effects = 'hero' (the only side that ever created them before this field).
+  destroysProjectiles?: 'hostile' | 'all'; // Wind wall: projectiles entering any tile of the zone are destroyed there ('hostile' = only bolts fighting against sourceParty). Enforced inside the shared projectile walkers — real and headless agree by construction.
 }
 
 export interface GameState {
@@ -919,6 +920,7 @@ export interface CustomAttack {
   persistDuration?: number;      // Turns the AOE effect persists (0 = instant)
   persistDamagePerTurn?: number; // Damage dealt each turn to units in the area
   persistVisualSprite?: SpriteReference; // Visual indicator for persistent area
+  persistDestroysProjectiles?: 'hostile' | 'all'; // Wind wall: the zone eats projectiles entering it — 'hostile' = only bolts fighting against the zone's side; 'all' = every bolt. THROW_PLACE tosses always pass (items, not attacks — same carve-out as reflect).
 
   // Visuals
   projectileSprite?: SpriteReference;  // Visual for projectile
@@ -1423,6 +1425,7 @@ export interface SpellAsset {
   // Persistent AOE effects
   persistDuration?: number;      // Turns the AOE effect persists (0 = instant)
   persistDamagePerTurn?: number; // Damage dealt each turn to units in the area
+  persistDestroysProjectiles?: 'hostile' | 'all'; // Wind wall — see CustomAttack.persistDestroysProjectiles
 
   // Melee-specific settings
   skipSpriteOnCasterTile?: boolean; // For melee spells - don't show attack sprite on caster's tile

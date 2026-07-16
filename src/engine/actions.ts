@@ -1778,6 +1778,7 @@ function executeSpellInDirection(
     aoeSingleSprite: spell.aoeSingleSprite,
     persistDuration: spell.persistDuration,
     persistDamagePerTurn: spell.persistDamagePerTurn,
+    persistDestroysProjectiles: spell.persistDestroysProjectiles,
     persistVisualSprite: spell.sprites.persistentArea,
     projectileSprite: spell.sprites.projectile,
     aoeEffectSprite: spell.sprites.aoeEffect,
@@ -2607,6 +2608,7 @@ export function executeAOEAttack(
       // The zone fights for whoever the caster fought for at cast time —
       // same allegiance the instant AOE hit above used (isEnemyCaster).
       sourceParty: isEnemyCaster ? 'enemy' : 'hero',
+      destroysProjectiles: attackData.persistDestroysProjectiles,
     };
 
     gameState.persistentAreaEffects.push(persistentEffect);
