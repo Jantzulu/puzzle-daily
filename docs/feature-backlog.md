@@ -363,16 +363,28 @@ passages "to and from" the dungeon for visual flavor and uneven
 geometry, later becoming entrance points for START-OF-GAME spawns.
 Design answers locked 2026-07-16.
 
-- [ ] **Phase 1 — Hallways (render-only).** Valid on ALL FOUR sides.
-  AUTHORING MODEL (user's pick): select a specific RENDERED WALL
-  SEGMENT in the map editor and mark it as a hallway — NOT a placed
-  floor/void tile (user expects this to feel and look better; data
-  model = per-wall-segment annotations on the puzzle, keyed by the
-  bordering edge tile + side). The marked wall opens and a 1-tile-deep
-  corridor renders outward (floor + branched walls), far half
-  swallowed by darkness. Not walkable by any entity. EXCLUDED from
-  puzzle-bounds sizing math on all devices — allowed to overflow the
-  viewport slightly.
+- [x] **Phase 1 — Hallways (render-only) — SHIPPED 2026-07-16**
+  (`cd9f2b0` render + `33e02fc` jambs/no-back-wall + `f80736b` editor
+  authoring). Puzzle.hallways = per-wall-segment markers ({x,y,side});
+  shared renderer src/utils/hallwayDraw.ts used by BOTH the game's
+  baked static layers and the editor canvas. Corridors fit INSIDE the
+  border band (48px top/bottom, 16px sides — sizing math untouched):
+  skin floor through the opening, procedural jamb walls with lit
+  edges, darkness dissolving to pure black (NO back wall — implies
+  continuation, user design). Editor: Hallway tool (hotkey 8), click
+  a floor edge bordering void/outside, click again to remove; copper
+  outlines while tool active; validity shared with renderer so stale
+  markers self-skip. First Steps test puzzle carries a demo hallway
+  per side. AWAITING USER TEST (editor is login-gated). Follow-ups
+  captured below (jamb skin sprites). *Captured 2026-07-16.*
+
+- [ ] **Phase 1.5 — Skinnable hallway pieces (user request
+  2026-07-16).** Skins get sprite slots for the hallway jamb/corner
+  pieces (and later the door pieces), replacing the procedural
+  fallback, with preview + upload in the skin editor alongside the
+  existing border sprites. Side corridors are also depth-capped at
+  the 16px side band in v1 — revisit if the user wants deeper side
+  hallways (needs canvas-margin surgery).
 
 - [ ] **Phase 2 — Doors.** Same wall-segment authoring, TOP or BOTTOM
   walls only (invalid elsewhere). Renders the FULL door sprite in
