@@ -9,6 +9,7 @@ import { HelpButton } from './HelpOverlay';
 import { DirectionArrow } from './DirectionArrow';
 import type { ThemeAssets } from '../../utils/themeAssets';
 import { CARD_PIXEL_SCALE, computeCardSpriteAreaHeight } from './cardConstants';
+import { SlidingSelection } from './SlidingSelection';
 import { subscribeToImageLoads } from '../../utils/imageLoader';
 
 const MOVEMENT_TYPES = new Set([
@@ -174,6 +175,12 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
 
   const placedSelectedChar = placedCharacters.find(pc => pc.characterId === renderedCharId);
 
+  // Slot list for the strip + sliding selection overlay: only ids that
+  // resolve to real characters render cards, so the overlay's slot math
+  // must index within the same filtered list.
+  const stripCharacterIds = availableCharacterIds.filter((id) => !!getCharacter(id));
+  const selectedStripIndex = selectedCharacterId ? stripCharacterIds.indexOf(selectedCharacterId) : -1;
+
   const content = (
     <>
       {/* Header row — unchanged */}
@@ -241,9 +248,20 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
         </div>
       </div>
 
-      {/* Hero strip — equal-width slots separated by vertical dividers */}
+      {/* Hero strip — equal-width slots separated by vertical dividers.
+          The selection tint + caret live in a SlidingSelection overlay (in a
+          relative wrapper OUTSIDE the divide-x flex row, so the dividers
+          don't paint borders on the overlay divs) and glide between slots
+          instead of snapping card-to-card. */}
+      <div className="relative">
+      <SlidingSelection
+        slotCount={stripCharacterIds.length}
+        selectedIndex={selectedStripIndex}
+        tintClass="bg-copper-900/15"
+        caretClass="text-copper-400"
+      />
       <div className="flex divide-x divide-stone-700">
-        {availableCharacterIds.map((charId, charIndex) => {
+        {stripCharacterIds.map((charId, charIndex) => {
           const character = getCharacter(charId);
           if (!character) return null;
 
@@ -266,20 +284,16 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                   : isPlaced && isSelected
                   // Placed AND actively viewed: full brightness so the
                   // sprite/name/HP match the (full-brightness) info area
-                  // below. Without this, opacity-50 dimmed the card while
-                  // the info area stayed bright, producing a visible
-                  // brightness seam between the two zones. Backdrop tint
-                  // matches the info area's bg-copper-900/15 so card +
-                  // info read as one unified surface (mirrors the enemy
-                  // display's bg-blood-900/15 pattern).
-                  ? 'cursor-pointer bg-copper-900/15'
+                  // below (the copper tint itself now comes from the
+                  // SlidingSelection overlay behind the card).
+                  ? 'cursor-pointer'
                   : isPlaced
                   // Placed but NOT viewed: dim with opacity-50 + a hover
                   // tint. "Already placed, can't re-place" signal — the
                   // checkmark + dimmed sprite carry that.
                   ? 'opacity-50 cursor-pointer [@media(hover:hover)]:hover:bg-stone-700/30'
                   : isSelected
-                  ? 'bg-copper-900/15 cursor-pointer'
+                  ? 'cursor-pointer'
                   : '[@media(hover:hover)]:hover:bg-stone-700/30 cursor-pointer'
               }`}
             >
@@ -366,19 +380,11 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                   </svg>
                 )}
               </div>
-              {/* Selected: up-pointing caret straddling the strip/tooltip boundary */}
-              {isSelected && (
-                <svg
-                  width="14" height="8" viewBox="0 0 14 8" fill="currentColor"
-                  className="text-copper-400 absolute z-10"
-                  style={{ bottom: 0, left: '50%', transform: 'translate(-50%, 50%)' }}
-                >
-                  <path d="M7 0L14 8H0z" />
-                </svg>
-              )}
+              {/* Selected caret now lives in the SlidingSelection overlay */}
             </div>
           );
         })}
+      </div>
       </div>
 
       {/* Info area — grid height animation so easing applies to real content height.

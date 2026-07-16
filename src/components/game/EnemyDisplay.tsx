@@ -9,6 +9,7 @@ import { LintelMesh } from './LintelMesh';
 import { DirectionArrow } from './DirectionArrow';
 import type { ThemeAssets } from '../../utils/themeAssets';
 import { CARD_PIXEL_SCALE, computeCardSpriteAreaHeight } from './cardConstants';
+import { SlidingSelection } from './SlidingSelection';
 import { subscribeToImageLoads } from '../../utils/imageLoader';
 
 const MOVEMENT_TYPES = new Set([
@@ -101,6 +102,9 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
     }
   }
   const uniqueEnemyIds = Array.from(enemyGroups.keys());
+  // Only ids that resolve to real assets render cards — the sliding
+  // selection overlay's slot math must index within this same list.
+  const stripEnemyIds = uniqueEnemyIds.filter((id) => !!getEnemy(id));
 
   // Uniform card sprite-area height across the enemy row — derived from the
   // tallest native sprite × CARD_PIXEL_SCALE. Prevents clipping of the
@@ -265,9 +269,20 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
         </span>
       </div>
 
-      {/* Enemy strip — equal-width slots separated by vertical dividers */}
+      {/* Enemy strip — equal-width slots separated by vertical dividers.
+          Selection tint + caret ride the SlidingSelection overlay (in a
+          relative wrapper OUTSIDE the divide-x row so the dividers don't
+          border the overlay divs) and glide between slots. Slot math must
+          index the same filtered list the cards render from. */}
+      <div className="relative">
+      <SlidingSelection
+        slotCount={stripEnemyIds.length}
+        selectedIndex={selectedEnemyId ? stripEnemyIds.indexOf(selectedEnemyId) : -1}
+        tintClass={isAllySide ? 'bg-copper-900/15' : 'bg-blood-900/15'}
+        caretClass={isAllySide ? 'text-copper-400' : 'text-blood-400'}
+      />
       <div className="flex divide-x divide-stone-700">
-        {uniqueEnemyIds.map((enemyId, enemyIndex) => {
+        {stripEnemyIds.map((enemyId, enemyIndex) => {
           const enemyData = getEnemy(enemyId);
           if (!enemyData) return null;
 
@@ -282,7 +297,8 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
               onClick={() => setSelectedEnemyId(isSelected ? null : enemyId)}
               className={`flex-1 flex flex-col items-center px-1 pt-1 pb-0.5 relative transition-colors cursor-pointer ${
                 isSelected
-                  ? (isAllySide ? 'bg-copper-900/15' : 'bg-blood-900/15')
+                  // Tint comes from the SlidingSelection overlay behind the card
+                  ? ''
                   : '[@media(hover:hover)]:hover:bg-stone-700/30'
               } ${allDead ? 'opacity-50' : ''}`}
             >
@@ -357,19 +373,11 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
                 )}
               </div>
 
-              {/* Selected: up-pointing caret straddling strip/panel boundary */}
-              {isSelected && (
-                <svg
-                  width="14" height="8" viewBox="0 0 14 8" fill="currentColor"
-                  className="text-blood-400 absolute z-10"
-                  style={{ bottom: 0, left: '50%', transform: 'translate(-50%, 50%)' }}
-                >
-                  <path d="M7 0L14 8H0z" />
-                </svg>
-              )}
+              {/* Selected caret now lives in the SlidingSelection overlay */}
             </div>
           );
         })}
+      </div>
       </div>
 
       {/* Info panel — grid height animation so easing applies to real content height */}
