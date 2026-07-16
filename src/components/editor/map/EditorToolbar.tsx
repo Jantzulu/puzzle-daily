@@ -116,9 +116,14 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
 
   return (
     <div className="mb-4 md:mb-6 flex flex-wrap items-center gap-2">
-      {/* Title */}
+      {/* Title. leading-normal is load-bearing: .theme-root h1 overrides the
+          font-SIZE (heading setting × 2 ≈ 32px+) but text-lg's fixed 28px
+          line-height survived, and truncate's overflow:hidden clipped the
+          glyph tops in the too-short line box (worst on mobile, where the
+          line box was smallest). A relative line-height tracks whatever size
+          the theme forces. */}
       <h1
-        className="text-lg md:text-2xl font-bold truncate max-w-[200px] md:max-w-[320px] mr-1"
+        className="text-lg md:text-2xl leading-normal font-bold truncate max-w-[200px] md:max-w-[320px] mr-1"
         title={puzzleName || 'Map Editor'}
       >
         {puzzleName || 'Map Editor'}

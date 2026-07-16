@@ -18,12 +18,12 @@ export const EditorsPage: React.FC = () => {
   return (
     <div className="flex flex-col h-[calc(100vh-60px)]">
       {/* Tab bar */}
-      <div className="flex items-center gap-1 px-4 py-1 bg-stone-800 border-b border-stone-700">
+      <div className="flex items-center gap-1 px-2 md:px-4 py-1 bg-stone-800 border-b border-stone-700">
         {TABS.map(tab => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`px-4 py-2 text-sm font-medium rounded-t transition-colors border-b-2 ${
+            className={`px-2.5 py-1 text-xs md:px-4 md:py-2 md:text-sm font-medium rounded-t transition-colors border-b-2 ${
               activeTab === tab.id
                 ? 'bg-stone-700 text-parchment-100 border-arcane-500'
                 : 'text-stone-400 hover:text-stone-200 border-transparent hover:bg-stone-750'
