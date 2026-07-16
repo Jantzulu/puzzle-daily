@@ -3293,14 +3293,17 @@ function drawEnemy(
   // (see directionalSprites[dirKey] || ['default'] in drawSpritePixelPerfect).
   const directionToUse = contactReacting ? reactionFacing! : facing;
 
-  // Determine if enemy is casting (only if not moving, since moving takes priority).
-  // isCasting is a deterministic per-turn flag — true for the whole turn a spell is cast.
-  // The contact-damage reaction reuses the same cast animation.
-  const isCasting = !isMoving && (!!enemy.isCasting || contactReacting);
-
   // Check if this enemy has a custom sprite
   const enemyData = getEnemy(enemy.enemyId) as CustomEnemy | undefined;
   const hasCustomSprite = enemyData && 'customSprite' in enemyData && enemyData.customSprite;
+
+  // Determine if enemy is casting. Walking wins over the cast animation
+  // mid-move unless the sprite opts into castingWhileMoving. isCasting is a
+  // deterministic per-turn flag — true for the whole turn a spell is cast.
+  // The contact-damage reaction reuses the same cast animation and stays
+  // stationary-only (its facing swap would fight the walk direction).
+  const isCasting = contactReacting ||
+    ((!isMoving || enemyData?.customSprite?.castingWhileMoving === true) && !!enemy.isCasting);
 
   // Check if spawn animation is still playing
   // startTime can sit in the future while a fly-in entrance is mid-flight;
@@ -4226,13 +4229,14 @@ function drawCharacter(
   // (see directionalSprites[dirKey] || ['default'] in drawSpritePixelPerfect).
   const directionToUse = facing;
 
-  // Determine if character is casting (only if not moving, since moving takes priority).
-  // isCasting is a deterministic per-turn flag — true for the whole turn a spell is cast.
-  const isCasting = !isMoving && !!character.isCasting;
-
   // Check if this character has a custom sprite
   const charData = getCharacter(character.characterId) as CustomCharacter | undefined;
   const hasCustomSprite = charData && 'customSprite' in charData && charData.customSprite;
+
+  // Determine if character is casting. Walking wins over the cast animation
+  // mid-move unless the sprite opts into castingWhileMoving. isCasting is a
+  // deterministic per-turn flag — true for the whole turn a spell is cast.
+  const isCasting = (!isMoving || charData?.customSprite?.castingWhileMoving === true) && !!character.isCasting;
 
   // Check if spawn animation is still playing
   // startTime can sit in the future while a fly-in entrance is mid-flight;

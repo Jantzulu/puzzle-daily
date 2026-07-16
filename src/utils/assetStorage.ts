@@ -344,6 +344,10 @@ export interface CustomSprite {
   castingImageUrl?: string; // URL to casting image
   castingSpriteSheet?: SpriteSheetConfig; // Sprite sheet for casting animation
   castingAnchorX?: number; castingAnchorY?: number; castingOffsetX?: number; castingOffsetY?: number;
+  // When true, the casting/attack animation plays even while the entity is
+  // moving (default: the walking animation wins over casting mid-move).
+  // Sprite-level — applies to simple AND directional casting states.
+  castingWhileMoving?: boolean;
 
   // Spawn animation - plays once when entity first appears (for enemies on puzzle load, heroes on placement)
   // Does NOT have directional variants - same animation regardless of facing direction

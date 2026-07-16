@@ -2639,6 +2639,15 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, sh
               <p className="text-xs text-yellow-400">
                 ✨ Casting animation plays when character/enemy casts spell while stationary
               </p>
+              <label className="flex items-center gap-2 text-xs text-stone-300 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={sprite.castingWhileMoving === true}
+                  onChange={(e) => onChange({ ...sprite, castingWhileMoving: e.target.checked || undefined })}
+                  className="w-4 h-4"
+                />
+                ⚔ Also play while moving (normally the walking animation wins when this entity attacks mid-move)
+              </label>
             </div>
           </div>
 
@@ -3386,9 +3395,20 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, sh
                 Casting → All
               </button>
             </div>
-            <p className="text-xs text-stone-400 mb-4">
+            <p className="text-xs text-stone-400 mb-1">
               Animation when casting a spell while stationary (moving animation has priority)
             </p>
+            {/* Sprite-level flag (not per-direction): one checkbox flips the
+                walk-vs-attack priority for every directional casting state. */}
+            <label className="flex items-center gap-2 text-xs text-stone-300 cursor-pointer mb-4">
+              <input
+                type="checkbox"
+                checked={sprite.castingWhileMoving === true}
+                onChange={(e) => onChange({ ...sprite, castingWhileMoving: e.target.checked || undefined })}
+                className="w-4 h-4"
+              />
+              ⚔ Also play while moving (normally the walking animation wins when this entity attacks mid-move)
+            </label>
 
           {/* Sprite type toggle — shown when neither sheet nor image is set */}
           {!hasCastingSpriteSheet && !hasCastingImage && (
@@ -4365,13 +4385,15 @@ function drawSpriteConfig(
   // For spritesheets: anchor lives on SpriteSheetConfig
   // For images: anchor lives as per-state fields on the config
 
-  // Priority: moving > casting > idle
+  // Priority: casting > moving > idle. Callers gate isCasting — it only
+  // arrives true WHILE MOVING when the sprite opts into castingWhileMoving,
+  // so when both flags are set the attack animation is the one to show.
   // Check for sprite sheet first (highest priority for animation)
-  let spriteSheet = isMoving ? config.movingSpriteSheet : null;
-  let _activeState: 'moving' | 'casting' | 'idle' = isMoving ? 'moving' : 'idle';
-  if (!spriteSheet && isCasting && !isMoving) {
-    spriteSheet = config.castingSpriteSheet;
-    _activeState = 'casting';
+  let spriteSheet = isCasting ? config.castingSpriteSheet : null;
+  let _activeState: 'moving' | 'casting' | 'idle' = spriteSheet ? 'casting' : 'idle';
+  if (!spriteSheet && isMoving) {
+    spriteSheet = config.movingSpriteSheet;
+    if (spriteSheet) _activeState = 'moving';
   }
   if (!spriteSheet) {
     spriteSheet = config.idleSpriteSheet;
@@ -4393,15 +4415,15 @@ function drawSpriteConfig(
   }
 
   // Check for uploaded image (PNG/GIF) or URL
-  // Priority: moving > casting > idle
+  // Priority: casting > moving > idle (see the sheet-picker note above)
   let imageToUse: string | undefined;
   let imageState: 'idle' | 'moving' | 'casting' = 'idle';
-  if (isMoving && (config.movingImageData || config.movingImageUrl)) {
-    imageToUse = config.movingImageData || config.movingImageUrl;
-    imageState = 'moving';
-  } else if (isCasting && !isMoving && (config.castingImageData || config.castingImageUrl)) {
+  if (isCasting && (config.castingImageData || config.castingImageUrl)) {
     imageToUse = config.castingImageData || config.castingImageUrl;
     imageState = 'casting';
+  } else if (isMoving && (config.movingImageData || config.movingImageUrl)) {
+    imageToUse = config.movingImageData || config.movingImageUrl;
+    imageState = 'moving';
   } else {
     imageToUse = config.idleImageData || config.imageData || config.idleImageUrl || config.imageUrl;
     imageState = 'idle';
@@ -4531,11 +4553,13 @@ export function drawSprite(
     }
   }
 
-  // Priority: moving > casting > idle
+  // Priority: casting > moving > idle. Callers gate isCasting — it only
+  // arrives true WHILE MOVING when the sprite opts into castingWhileMoving,
+  // so when both flags are set the attack animation is the one to show.
   // Check for sprite sheet first (simple mode)
-  let simpleSpriteSheet = isMoving ? sprite.movingSpriteSheet : null;
-  if (!simpleSpriteSheet && isCasting && !isMoving) {
-    simpleSpriteSheet = sprite.castingSpriteSheet;
+  let simpleSpriteSheet = isCasting ? sprite.castingSpriteSheet : null;
+  if (!simpleSpriteSheet && isMoving) {
+    simpleSpriteSheet = sprite.movingSpriteSheet;
   }
   if (!simpleSpriteSheet) {
     simpleSpriteSheet = sprite.idleSpriteSheet;
@@ -4556,15 +4580,15 @@ export function drawSprite(
   }
 
   // Check for simple image sprite (PNG/GIF)
-  // Priority: moving > casting > idle
+  // Priority: casting > moving > idle (see the sheet-picker note above)
   let spriteImageToUse: string | undefined;
   let imgState: 'idle' | 'moving' | 'casting' = 'idle';
-  if (isMoving && sprite.movingImageData) {
-    spriteImageToUse = sprite.movingImageData;
-    imgState = 'moving';
-  } else if (isCasting && !isMoving && sprite.castingImageData) {
+  if (isCasting && sprite.castingImageData) {
     spriteImageToUse = sprite.castingImageData;
     imgState = 'casting';
+  } else if (isMoving && sprite.movingImageData) {
+    spriteImageToUse = sprite.movingImageData;
+    imgState = 'moving';
   } else {
     spriteImageToUse = sprite.idleImageData || sprite.imageData;
     imgState = 'idle';
