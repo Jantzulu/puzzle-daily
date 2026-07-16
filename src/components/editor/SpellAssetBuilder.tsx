@@ -2277,6 +2277,34 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                 </div>
               )}
 
+              {/* Wind wall — the zone destroys projectiles flying into it */}
+              {editedSpell.persistDuration && editedSpell.persistDuration > 0 && (
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Destroys Projectiles (wind wall)
+                  </label>
+                  <select
+                    value={editedSpell.persistDestroysProjectiles || 'none'}
+                    onChange={(e) => setEditedSpell({
+                      ...editedSpell,
+                      persistDestroysProjectiles: e.target.value === 'none'
+                        ? undefined
+                        : (e.target.value as 'hostile' | 'all'),
+                    })}
+                    className="w-full px-3 py-2 bg-stone-700 rounded text-parchment-100"
+                  >
+                    <option value="none">No — projectiles pass through</option>
+                    <option value="hostile">Hostile only — eats enemy bolts, your own fly through</option>
+                    <option value="all">All — eats every projectile, including your side's</option>
+                  </select>
+                  <p className="text-xs text-stone-400 mt-1">
+                    Projectiles entering the area are destroyed where they enter.
+                    Thrown/placed items always pass through. Set Damage Per Turn
+                    to 0 for a pure projectile screen.
+                  </p>
+                </div>
+              )}
+
               {/* Exclude Center Tile */}
               <div>
                 <label className="flex items-center gap-2">
