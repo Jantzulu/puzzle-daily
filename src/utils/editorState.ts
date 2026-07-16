@@ -6,7 +6,7 @@
  * Only "Clear Grid" or page refresh will clear the state.
  */
 
-import type { TileOrNull, PlacedEnemy, PlacedCollectible, PlacedObject, WinCondition, BorderConfig, SideQuest } from '../types/game';
+import type { TileOrNull, PlacedEnemy, PlacedCollectible, PlacedObject, WinCondition, BorderConfig, SideQuest, HallwayMarker } from '../types/game';
 
 export interface EditorPuzzleState {
   gridWidth: number;
@@ -33,6 +33,9 @@ export interface EditorPuzzleState {
   parCharacters?: number;
   parTurns?: number;
   sideQuests: SideQuest[];
+
+  // Hallways — visual wall openings (2026-07-16); optional for older caches
+  hallways?: HallwayMarker[];
 
   // Tags & description
   tags?: string[];

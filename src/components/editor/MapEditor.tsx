@@ -11,6 +11,8 @@ import { cacheEditorState, getCachedEditorState, clearCachedEditorState } from '
 import { writeAutoSave, readAutoSave, clearAutoSave, AUTOSAVE_INTERVAL_MS, type AutoSaveData } from '../../utils/autoSave';
 import { getAllPuzzleSkins, loadPuzzleSkin, getCustomTileTypes, loadTileType, getAllObjects, loadObject, getAllCollectibles, getSoundAssets, getCustomVessels, vesselToEnemyAsset, getCustomAllies, allyToEnemyAsset } from '../../utils/assetStorage';
 import { TILE_SIZE, BORDER_SIZE, SIDE_BORDER_SIZE, MAX_DISPLAY_WIDTH_TILES, createEmptyGrid, drawDungeonBorder, drawTile, drawEnemy, drawCollectibleInEditor, drawObject } from './map/canvasDraw';
+import { isValidHallway, drawHallwayOpening } from '../../utils/hallwayDraw';
+import type { HallwaySide } from '../../types/game';
 import { getAllSpells, SpellTooltip, ActionTooltip } from './map/Tooltips';
 import { createDefaultEditorState, type EditorState, type ToolType, type EditorMode } from './map/editorState';
 import { ValidationModal } from './map/ValidationModal';
@@ -73,6 +75,8 @@ export const MapEditor: React.FC = () => {
         mode: 'edit' as EditorMode,
         // Ensure sideQuests is always an array (for backwards compatibility with old cached state)
         sideQuests: cached.sideQuests || [],
+        // Hallways joined the state 2026-07-16 — default for older caches
+        hallways: cached.hallways || [],
         // Ensure tags/description are always initialized
         tags: cached.tags || [],
         description: cached.description || '',
@@ -361,6 +365,11 @@ export const MapEditor: React.FC = () => {
           e.preventDefault();
           setState(prev => ({ ...prev, selectedTool: 'characters' }));
           break;
+        // 8 — Hallway tool
+        case '8':
+          e.preventDefault();
+          setState(prev => ({ ...prev, selectedTool: 'hallway' }));
+          break;
         // Space — Playtest
         case ' ':
           e.preventDefault();
@@ -515,6 +524,7 @@ export const MapEditor: React.FC = () => {
         parCharacters: state.parCharacters,
         parTurns: state.parTurns,
         sideQuests: state.sideQuests,
+        hallways: state.hallways,
         tags: state.tags,
         description: state.description,
         isTraining: state.isTraining,
@@ -620,6 +630,29 @@ export const MapEditor: React.FC = () => {
       }
     }
 
+    // Hallway openings — same shared renderer the game board uses, so the
+    // editor preview matches the live dungeon. With the hallway tool
+    // active, each opening also gets a copper outline so markers are easy
+    // to find and remove.
+    if (hasBorder && state.hallways.length > 0) {
+      state.hallways.forEach(marker => {
+        if (!isValidHallway(marker, state.tiles, state.gridWidth, state.gridHeight)) return;
+        drawHallwayOpening(ctx, marker, TILE_SIZE, BORDER_SIZE, SIDE_BORDER_SIZE, (c, gx, gy) => {
+          drawTile(c, gx, gy, { x: gx, y: gy, type: TileType.EMPTY }, currentSkin);
+        });
+        if (state.selectedTool === 'hallway') {
+          const d = marker.side === 'top' || marker.side === 'bottom' ? BORDER_SIZE : SIDE_BORDER_SIZE;
+          const rx = marker.side === 'left' ? marker.x * TILE_SIZE - d : marker.side === 'right' ? (marker.x + 1) * TILE_SIZE : marker.x * TILE_SIZE;
+          const ry = marker.side === 'top' ? marker.y * TILE_SIZE - d : marker.side === 'bottom' ? (marker.y + 1) * TILE_SIZE : marker.y * TILE_SIZE;
+          const rw = marker.side === 'top' || marker.side === 'bottom' ? TILE_SIZE : d;
+          const rh = marker.side === 'top' || marker.side === 'bottom' ? d : TILE_SIZE;
+          ctx.strokeStyle = '#d4a574';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(rx + 1, ry + 1, rw - 2, rh - 2);
+        }
+      });
+    }
+
     // Draw objects below entities (sorted by y position for proper layering)
     const belowObjects = state.placedObjects.filter(obj => {
       const objData = loadObject(obj.objectId);
@@ -686,7 +719,7 @@ export const MapEditor: React.FC = () => {
     }
 
     ctx.restore();
-  }, [state.tiles, state.enemies, state.collectibles, state.placedObjects, state.gridWidth, state.gridHeight, state.mode, state.skinId, redrawCounter, highlightTile, dragState]);
+  }, [state.tiles, state.enemies, state.collectibles, state.placedObjects, state.hallways, state.selectedTool, state.gridWidth, state.gridHeight, state.mode, state.skinId, redrawCounter, highlightTile, dragState]);
 
   // Touch long-press = delete (mirrors right-click). Android fires
   // contextmenu on long-press natively; iOS Safari doesn't, so a manual
@@ -775,6 +808,10 @@ export const MapEditor: React.FC = () => {
       return;
     }
     if (!state.isDrawing) return;
+    // Hallway toggles aren't idempotent — drag-painting would flip the
+    // marker on every pointermove. Single-click tool: the pointer-down
+    // click did the work.
+    if (state.selectedTool === 'hallway') return;
     handleCanvasClick(e);
   };
 
@@ -894,11 +931,39 @@ export const MapEditor: React.FC = () => {
 
     if (x < 0 || x >= state.gridWidth || y < 0 || y >= state.gridHeight) return;
 
-    paintTile(x, y);
+    // Fractional position within the tile — the hallway tool picks WHICH
+    // wall of the tile from where inside it you clicked.
+    paintTile(x, y, clickX / TILE_SIZE - x, clickY / TILE_SIZE - y);
   };
 
-  const paintTile = (x: number, y: number) => {
+  const paintTile = (x: number, y: number, fx?: number, fy?: number) => {
     vibrate('tilePaint');
+
+    if (state.selectedTool === 'hallway') {
+      // Needs a direct canvas click (fractions unavailable on the
+      // release-in-place path after grabbing a placement — rare; move the
+      // placement aside or click an empty edge tile).
+      if (fx === undefined || fy === undefined) return;
+      const dx = fx - 0.5;
+      const dy = fy - 0.5;
+      const side: HallwaySide = Math.abs(dx) > Math.abs(dy)
+        ? (dx > 0 ? 'right' : 'left')
+        : (dy > 0 ? 'bottom' : 'top');
+      if (!isValidHallway({ x, y, side }, state.tiles, state.gridWidth, state.gridHeight)) {
+        toast.warning('Hallways open through outer walls — click near the edge of a floor tile that borders the void or the outside.');
+        return;
+      }
+      setState(prev => {
+        const existing = prev.hallways.findIndex(h => h.x === x && h.y === y && h.side === side);
+        if (existing >= 0) {
+          const next = [...prev.hallways];
+          next.splice(existing, 1);
+          return { ...prev, hallways: next };
+        }
+        return { ...prev, hallways: [...prev.hallways, { x, y, side }] };
+      });
+      return;
+    }
     if (state.selectedTool === 'enemy' || state.selectedTool === 'ally' || state.selectedTool === 'vessel') {
       // All three place into puzzle.enemies through the same pipeline; the
       // party stamp below (keyed on the ASSET id, not the tool) is what
@@ -1112,6 +1177,7 @@ export const MapEditor: React.FC = () => {
       parCharacters: state.parCharacters,
       parTurns: state.parTurns,
       sideQuests: state.sideQuests.length > 0 ? state.sideQuests : undefined,
+      hallways: state.hallways.length > 0 ? state.hallways : undefined,
       tags: state.tags.length > 0 ? state.tags : undefined,
       description: state.description || undefined,
       isTraining: state.isTraining || undefined,
@@ -1204,6 +1270,7 @@ export const MapEditor: React.FC = () => {
       parCharacters: puzzle.parCharacters,
       parTurns: puzzle.parTurns,
       sideQuests: puzzle.sideQuests || [],
+      hallways: puzzle.hallways || [],
       tags: puzzle.tags || [],
       description: puzzle.description || '',
       isTraining: puzzle.isTraining ?? false,
@@ -1252,6 +1319,7 @@ export const MapEditor: React.FC = () => {
       parCharacters: puzzle.parCharacters,
       parTurns: puzzle.parTurns,
       sideQuests: puzzle.sideQuests || [],
+      hallways: puzzle.hallways || [],
       tags: puzzle.tags || [],
       description: puzzle.description || '',
       isTraining: puzzle.isTraining ?? false,
@@ -1290,6 +1358,7 @@ export const MapEditor: React.FC = () => {
       parCharacters: undefined,
       parTurns: undefined,
       sideQuests: [],
+      hallways: [],
       tags: [],
       description: '',
       isTraining: false,
@@ -1326,6 +1395,7 @@ export const MapEditor: React.FC = () => {
         parCharacters: puzzle.parCharacters,
         parTurns: puzzle.parTurns,
         sideQuests: puzzle.sideQuests || [],
+        hallways: puzzle.hallways || [],
         tags: puzzle.tags || [],
         description: puzzle.description || '',
         isTraining: puzzle.isTraining ?? false,
@@ -1563,6 +1633,7 @@ export const MapEditor: React.FC = () => {
       skinId: state.skinId,
       backgroundMusicId: state.backgroundMusicId,
       sideQuests: state.sideQuests,
+      hallways: state.hallways.length > 0 ? state.hallways : undefined,
       parCharacters: state.parCharacters,
       parTurns: state.parTurns,
     };
@@ -1724,6 +1795,7 @@ export const MapEditor: React.FC = () => {
         return a ? `Item — ${a.name}` : 'Item — Default Coin';
       }
       case 'characters': return 'Heroes — choose the player roster';
+      case 'hallway': return 'Hallway — click a floor edge bordering the void';
     }
   })();
 
@@ -2126,6 +2198,22 @@ export const MapEditor: React.FC = () => {
                   onToggleCharacter={handleToggleAvailableCharacter}
                 />
               )}
+
+              {/* Hallway tool — no assets to pick; explain the gesture */}
+              {state.selectedTool === 'hallway' && (
+                <div className="bg-stone-800 p-3 rounded text-xs text-stone-400 space-y-1.5">
+                  <div className="text-sm font-medium text-parchment-200">Hallways</div>
+                  <p>
+                    Click near the <span className="text-copper-400">edge</span> of a floor tile
+                    that borders the void or the outside — the wall there opens into a faux
+                    corridor fading into darkness. Click the same edge again to remove it.
+                  </p>
+                  <p className="text-stone-500">
+                    Purely visual dressing: nothing can walk in or out. Openings show a copper
+                    outline while this tool is active.
+                  </p>
+                </div>
+              )}
             </div>}
 
             {sidebarTab === 'rules' && (
@@ -2301,6 +2389,7 @@ export const MapEditor: React.FC = () => {
             parCharacters: puzzle.parCharacters,
             parTurns: puzzle.parTurns,
             sideQuests: puzzle.sideQuests || [],
+            hallways: puzzle.hallways || [],
             tags: puzzle.tags || [],
             description: puzzle.description || '',
             isTraining: puzzle.isTraining ?? false,

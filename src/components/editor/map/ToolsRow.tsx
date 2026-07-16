@@ -69,6 +69,14 @@ export const ToolsRow: React.FC<ToolsRowProps> = ({ selectedTool, onSelectTool }
       >
         <span className="text-[10px] opacity-50 mr-0.5">7</span> Heroes
       </button>
+      <button
+        onClick={() => onSelectTool('hallway')}
+        className={`p-3 rounded text-sm ${
+          selectedTool === 'hallway' ? 'bg-blue-600' : 'bg-stone-700 hover:bg-stone-600'
+        }`}
+      >
+        <span className="text-[10px] opacity-50 mr-0.5">8</span> Hallway
+      </button>
     </div>
   </div>
 );
