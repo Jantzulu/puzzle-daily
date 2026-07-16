@@ -9,7 +9,7 @@ import { LintelMesh } from './LintelMesh';
 import { DirectionArrow } from './DirectionArrow';
 import type { ThemeAssets } from '../../utils/themeAssets';
 import { CARD_PIXEL_SCALE, computeCardSpriteAreaHeight } from './cardConstants';
-import { SlidingSelection, SelectionBloom } from './SlidingSelection';
+import { SlidingSelection } from './SlidingSelection';
 import { subscribeToImageLoads } from '../../utils/imageLoader';
 
 const MOVEMENT_TYPES = new Set([
@@ -400,13 +400,6 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
                 : 'opacity 0.2s ease-in, transform 0.3s ease-in',
             }}
           >
-            {/* Top bloom under the selected card — the panel half of the
-                cohesive selection glow (see SlidingSelection). */}
-            <SelectionBloom
-              slotCount={stripEnemyIds.length}
-              selectedIndex={selectedEnemyId ? stripEnemyIds.indexOf(selectedEnemyId) : -1}
-              emberRgb={isAllySide ? '94, 61, 41' : '107, 16, 16'}
-            />
             {(hasActionSteps || hasAttributes) && (
               <div className={`flex mb-2 px-2 ${hasActionSteps && hasAttributes ? 'gap-0' : 'justify-center'}`}>
                 {hasActionSteps && (
