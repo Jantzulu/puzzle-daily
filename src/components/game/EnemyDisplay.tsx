@@ -278,7 +278,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
       <SlidingSelection
         slotCount={stripEnemyIds.length}
         selectedIndex={selectedEnemyId ? stripEnemyIds.indexOf(selectedEnemyId) : -1}
-        tintClass={isAllySide ? 'bg-copper-900/15' : 'bg-blood-900/15'}
+        emberRgb={isAllySide ? '94, 61, 41' : '107, 16, 16'}
         caretClass={isAllySide ? 'text-copper-400' : 'text-blood-400'}
       />
       <div className="flex divide-x divide-stone-700">

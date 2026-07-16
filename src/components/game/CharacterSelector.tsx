@@ -257,7 +257,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
       <SlidingSelection
         slotCount={stripCharacterIds.length}
         selectedIndex={selectedStripIndex}
-        tintClass="bg-copper-900/15"
+        emberRgb="94, 61, 41"
         caretClass="text-copper-400"
       />
       <div className="flex divide-x divide-stone-700">

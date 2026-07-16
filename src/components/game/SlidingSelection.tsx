@@ -5,8 +5,8 @@ interface SlidingSelectionProps {
   slotCount: number;
   /** Index of the selected slot, or -1 for none. */
   selectedIndex: number;
-  /** Tailwind bg class for the slot tint, e.g. 'bg-copper-900/15'. */
-  tintClass: string;
+  /** Ember glow color as "r, g, b" — copper for hero/ally strips, blood for enemies. */
+  emberRgb: string;
   /** Tailwind text class for the caret, e.g. 'text-copper-400'. */
   caretClass: string;
 }
@@ -28,7 +28,7 @@ interface SlidingSelectionProps {
  * Selecting from nothing fades in at the target slot (no cross-strip swoop
  * from a stale position); deselecting fades out in place.
  */
-export const SlidingSelection: React.FC<SlidingSelectionProps> = ({ slotCount, selectedIndex, tintClass, caretClass }) => {
+export const SlidingSelection: React.FC<SlidingSelectionProps> = ({ slotCount, selectedIndex, emberRgb, caretClass }) => {
   const lastIndexRef = useRef(selectedIndex);
   const prev = lastIndexRef.current;
   useEffect(() => { lastIndexRef.current = selectedIndex; });
@@ -55,7 +55,19 @@ export const SlidingSelection: React.FC<SlidingSelectionProps> = ({ slotCount, s
 
   return (
     <>
-      <div aria-hidden className={`absolute inset-y-0 left-0 pointer-events-none ${tintClass} ${transition}`} style={slotStyle} />
+      {/* Soft-shouldered ember pool, not a flat rect: the old solid tint's
+          hard vertical edges read as a sliding box once the highlight
+          moved (user feedback). Transparent shoulders make the motion read
+          as warm light passing beneath the cards; the center alpha sits
+          near the old flat wash so the resting look stays familiar. */}
+      <div
+        aria-hidden
+        className={`absolute inset-y-0 left-0 pointer-events-none ${transition}`}
+        style={{
+          ...slotStyle,
+          backgroundImage: `linear-gradient(to right, rgba(${emberRgb}, 0) 0%, rgba(${emberRgb}, 0.12) 20%, rgba(${emberRgb}, 0.19) 50%, rgba(${emberRgb}, 0.12) 80%, rgba(${emberRgb}, 0) 100%)`,
+        }}
+      />
       <div aria-hidden className={`absolute bottom-0 left-0 z-10 pointer-events-none ${transition}`} style={slotStyle}>
         {/* Same caret the cards used to own: centered in the slot, half
             below the strip edge so it straddles into the info area. */}
