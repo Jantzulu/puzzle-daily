@@ -480,6 +480,51 @@ function runBehaviors(
 }
 
 /**
+ * Projectile linger: an entity stepped onto its current tile — trigger any
+ * live hazard lying there. Single-trigger: the walker "takes the bolt" (its
+ * damage + on-hit status, drops on kill via applyDamageToEntity's guard)
+ * and the hazard is consumed. Own-side entities walk over safely; hostility
+ * is effective-party vs the bolt's landed side, matching the hit the bolt
+ * would have dealt in flight. Runs at the same movement sites as tile
+ * behaviors (main move steps, which also cover ice-slide stops and teleport
+ * arrivals since those mutate x/y before this) — shared by real and
+ * headless modes, so solver parity holds. Damage stamps as 'any' kind (no
+ * attacker attribution), like tile damage.
+ */
+function processLingeringHazardsAt(
+  character: PlacedCharacter,
+  gameState: GameState
+): PlacedCharacter {
+  const hazards = gameState.lingeringHazards;
+  if (!hazards || hazards.length === 0) return character;
+
+  let updatedChar = character;
+  for (const hazard of hazards) {
+    if (hazard.consumed) continue;
+    if (hazard.x !== updatedChar.x || hazard.y !== updatedChar.y) continue;
+    if (effectiveParty(updatedChar, gameState) === (hazard.sourceParty ?? 'hero')) continue;
+
+    hazard.consumed = true; // spent whether or not the damage got through — it's the bolt connecting
+    updatedChar = { ...updatedChar };
+    applyDamageToEntity(updatedChar, hazard.damage, gameState);
+    if (!updatedChar.dead && hazard.spellAssetId) {
+      const spell = loadSpellAsset(hazard.spellAssetId);
+      if (spell) {
+        applyStatusEffectFromSpell(
+          updatedChar, spell,
+          hazard.sourceCharacterId ?? hazard.sourceEnemyId ?? '',
+          !!hazard.sourceEnemyId, gameState.currentTurn);
+      }
+    }
+    if (hazard.hitEffectSprite) {
+      spawnParticle(updatedChar.x, updatedChar.y, hazard.hitEffectSprite, 300, gameState);
+    }
+    if (updatedChar.dead) break;
+  }
+  return updatedChar;
+}
+
+/**
  * Process all tile behaviors when a character steps on a tile.
  * When tile is ON → runs normal behaviors.
  * When tile is OFF → runs offStateBehaviors (if any).
@@ -1347,6 +1392,14 @@ function moveCharacter(
         return updatedChar;
       }
     }
+
+    // Lingering projectile hazards — checked on EVERY tile (not just custom
+    // ones), after tile behaviors so ice slides and teleports have already
+    // settled the entity on its final tile.
+    updatedChar = processLingeringHazardsAt(updatedChar, gameState);
+    if (updatedChar.dead) {
+      return updatedChar;
+    }
   }
 
   // POST-MOVEMENT LOOKAHEAD: After successfully moving, check if next tile is a wall
@@ -1779,6 +1832,7 @@ function executeSpellInDirection(
     persistDuration: spell.persistDuration,
     persistDamagePerTurn: spell.persistDamagePerTurn,
     persistDestroysProjectiles: spell.persistDestroysProjectiles,
+    lingerDuration: spell.lingerDuration,
     persistVisualSprite: spell.sprites.persistentArea,
     projectileSprite: spell.sprites.projectile,
     aoeEffectSprite: spell.sprites.aoeEffect,

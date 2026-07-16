@@ -2463,6 +2463,9 @@ export function executeTurn(gameState: GameState): GameState {
   // Process persistent area effects
   processPersistentAreaEffects(gameState);
 
+  // Sweep consumed lingering hazards + age the survivors
+  processLingeringHazards(gameState);
+
   // Process collectible durations (despawn expired items)
   processCollectibleDurations(gameState);
 
@@ -2928,6 +2931,7 @@ export function initializeGameState(puzzle: Puzzle): GameState {
     activeProjectiles: [],
     activeParticles: [],
     persistentAreaEffects: [],
+    lingeringHazards: [],
     tileStates: new Map(), // Initialize empty tile runtime states
   };
 }
@@ -3622,6 +3626,54 @@ function projectileEffectiveParty(proj: Projectile): EntityParty | undefined {
  * distance from the zone center; excludeCenter is visual-only there and
  * ignored here too.
  */
+/**
+ * Projectile linger: when a linger-flagged non-homing bolt ends its flight
+ * WITHOUT hitting anything (range exhausted or wall stop — not bounds exit,
+ * reflect, or a wind-wall kill; callers gate those), drop a single-trigger
+ * hazard on its final tile. Shared by resolveProjectiles and
+ * updateProjectilesHeadless so both modes create the identical hazard.
+ * Ids are deterministic (turn + index) — the determinism rule.
+ */
+function maybeSpawnLingerHazard(proj: Projectile, endX: number, endY: number, gameState: GameState): void {
+  const duration = proj.attackData.lingerDuration ?? 0;
+  if (duration <= 0) return;
+  if (proj.throwPlaceConfig) return;        // item tosses place items, they don't linger
+  if (proj.isHoming) return;                // spec: non-homing only
+  if (proj.attackData.healing !== undefined) return; // a resting heal-mine has no walk-in semantics
+  if (!isInBounds(endX, endY, gameState.puzzle.width, gameState.puzzle.height)) return;
+  if (!gameState.lingeringHazards) gameState.lingeringHazards = [];
+  gameState.lingeringHazards.push({
+    id: `linger_${gameState.currentTurn}_${gameState.lingeringHazards.length}`,
+    x: endX,
+    y: endY,
+    turnsRemaining: duration,
+    spawnTurn: gameState.currentTurn,
+    damage: proj.attackData.damage ?? 0,
+    spellAssetId: proj.spellAssetId,
+    sourceCharacterId: proj.sourceCharacterId,
+    sourceEnemyId: proj.sourceEnemyId,
+    sourceParty: projectileEffectiveParty(proj),
+    visualSprite: proj.attackData.projectileSprite,
+    hitEffectSprite: proj.attackData.hitEffectSprite,
+  });
+}
+
+/**
+ * End-of-turn hazard upkeep: consumed hazards are swept, surviving ones age.
+ * The spawn turn is skipped by the decrement so "linger N" means the hazard
+ * is live for N full turns of enemy/hero movement after landing.
+ */
+function processLingeringHazards(gameState: GameState): void {
+  if (!gameState.lingeringHazards || gameState.lingeringHazards.length === 0) return;
+  for (const hazard of gameState.lingeringHazards) {
+    if (hazard.spawnTurn === gameState.currentTurn) continue;
+    hazard.turnsRemaining--;
+  }
+  gameState.lingeringHazards = gameState.lingeringHazards.filter(
+    h => !h.consumed && h.turnsRemaining > 0
+  );
+}
+
 function zoneKillsProjectileAt(proj: Projectile, x: number, y: number, gameState: GameState): boolean {
   const zones = gameState.persistentAreaEffects;
   if (!zones || zones.length === 0) return false;
@@ -5644,6 +5696,14 @@ function resolveProjectiles(gameState: GameState): void {
           type: 'deactivate', projId: proj.id, x: zoneKill.x, y: zoneKill.y,
         });
       }
+
+      // Projectile linger: an UNSPENT bolt (hit nothing, wasn't reflected,
+      // eaten, or lost off-board) that stops at range end or a wall drops
+      // its hazard on the final traversed tile. shouldRemove is final here
+      // (the range-end case sets it in the position block above).
+      if (shouldRemove && !hitSomething && !walk.endedAtBounds && !walk.endedAtZoneKill) {
+        maybeSpawnLingerHazard(proj, walk.endX, walk.endY, gameState);
+      }
     }
 
     // THROW_PLACE: place item when projectile reaches destination.
@@ -5951,6 +6011,13 @@ function updateProjectilesHeadless(gameState: GameState): void {
           }
           shouldRemove = true;
         }
+      }
+
+      // Projectile linger — same rule and condition as real mode's
+      // resolveProjectiles, on the same walker outputs.
+      if (!reflectHandled && shouldRemove && !hitSomething
+          && !walk.endedAtBounds && !walk.endedAtZoneKill) {
+        maybeSpawnLingerHazard(proj, walk.endX, walk.endY, gameState);
       }
     }
 

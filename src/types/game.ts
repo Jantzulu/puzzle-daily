@@ -746,6 +746,31 @@ export interface PersistentAreaEffect {
   destroysProjectiles?: 'hostile' | 'all'; // Wind wall: projectiles entering any tile of the zone are destroyed there ('hostile' = only bolts fighting against sourceParty). Enforced inside the shared projectile walkers — real and headless agree by construction.
 }
 
+/**
+ * Projectile linger: a spent non-homing bolt lying on the tile where its
+ * flight ended, waiting as a single-trigger hazard. The first OPPOSING
+ * entity to step onto the tile takes the bolt's hit (damage + on-hit
+ * status, drops on kill) exactly as if struck in flight, consuming the
+ * hazard. Own-side entities walk over it safely. Created and consumed in
+ * shared engine code (both real and headless modes), so solver parity
+ * holds by construction. Ids are deterministic (turn + index).
+ */
+export interface LingeringProjectileHazard {
+  id: string;
+  x: number;
+  y: number;
+  turnsRemaining: number;       // Decremented at end of each turn AFTER the spawn turn
+  spawnTurn: number;            // Turn the bolt landed — skipped by the first decrement
+  damage: number;               // The bolt's hit damage
+  spellAssetId?: string;        // For on-hit status application on trigger
+  sourceCharacterId?: string;
+  sourceEnemyId?: string;
+  sourceParty?: EntityParty;    // The bolt's effective side when it landed — hazard bites the OPPOSING side
+  consumed?: boolean;           // Trigger fired; swept at end of turn
+  visualSprite?: SpriteReference;   // The bolt's projectile sprite, drawn resting on the tile
+  hitEffectSprite?: SpriteReference; // Impact VFX spawned when the trigger fires
+}
+
 export interface GameState {
   puzzle: Puzzle;
   placedCharacters: PlacedCharacter[];
@@ -758,6 +783,7 @@ export interface GameState {
   activeProjectiles?: Projectile[];
   activeParticles?: ParticleEffect[];
   persistentAreaEffects?: PersistentAreaEffect[];
+  lingeringHazards?: LingeringProjectileHazard[];
 
   // Custom tile behavior runtime state
   tileStates?: Map<string, TileRuntimeState>;  // Key: "x,y"
@@ -921,6 +947,13 @@ export interface CustomAttack {
   persistDamagePerTurn?: number; // Damage dealt each turn to units in the area
   persistVisualSprite?: SpriteReference; // Visual indicator for persistent area
   persistDestroysProjectiles?: 'hostile' | 'all'; // Wind wall: the zone eats projectiles entering it — 'hostile' = only bolts fighting against the zone's side; 'all' = every bolt. THROW_PLACE tosses always pass (items, not attacks — same carve-out as reflect).
+
+  // Projectile linger: a non-homing bolt that ends its flight WITHOUT
+  // hitting anything (range exhausted or wall stop) stays on its final
+  // tile for N turns as a single-trigger hazard — the first opposing
+  // entity to step on it takes the bolt's hit (damage + on-hit status),
+  // exactly as if struck in flight, and the hazard is consumed.
+  lingerDuration?: number;
 
   // Visuals
   projectileSprite?: SpriteReference;  // Visual for projectile
@@ -1426,6 +1459,9 @@ export interface SpellAsset {
   persistDuration?: number;      // Turns the AOE effect persists (0 = instant)
   persistDamagePerTurn?: number; // Damage dealt each turn to units in the area
   persistDestroysProjectiles?: 'hostile' | 'all'; // Wind wall — see CustomAttack.persistDestroysProjectiles
+
+  // Projectile linger — see CustomAttack.lingerDuration
+  lingerDuration?: number;
 
   // Melee-specific settings
   skipSpriteOnCasterTile?: boolean; // For melee spells - don't show attack sprite on caster's tile
