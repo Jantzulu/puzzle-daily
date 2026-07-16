@@ -615,6 +615,14 @@ export interface CustomBorderSprites {
   hallwayBottom?: string;
   hallwayLeft?: string;
   hallwayRight?: string;
+
+  // Door pieces (2026-07-16, phase 2). All 48x48 per frame, drawn over a
+  // top/bottom wall segment. doorOpening is a HORIZONTAL STRIP of square
+  // frames (closed → open); closing plays it reversed. doorOpen should
+  // leave the doorway transparent so a hallway behind it shows through.
+  doorClosed?: string;
+  doorOpening?: string;
+  doorOpen?: string;
 }
 
 export interface BorderConfig {
@@ -703,6 +711,12 @@ export interface Puzzle {
   // (tile no longer a floor, or the side no longer borders void/out-of-
   // bounds) are simply skipped at render time.
   hallways?: HallwayMarker[];
+
+  // Doors — PURELY VISUAL (phase 2). Each replaces a rendered top/bottom
+  // wall segment with the skin's door piece; open/close plays once at
+  // puzzle start per the marker's startState. Combine with a hallway on
+  // the same segment to see the corridor through an open door.
+  doors?: DoorMarker[];
 }
 
 /** Which wall of the tile a hallway opens through — matches the smart-border edge vocabulary. */
@@ -712,6 +726,21 @@ export interface HallwayMarker {
   x: number;
   y: number;
   side: HallwaySide;
+}
+
+/**
+ * Door starting behavior (phase 2, 2026-07-16). The open/close animation
+ * only ever plays at PUZZLE START: 'opening' shows closed then plays the
+ * skin's opening sheet once when the board reveals; 'closing' plays it
+ * reversed from open. Purely visual in this phase.
+ */
+export type DoorStartState = 'closed' | 'open' | 'opening' | 'closing';
+
+export interface DoorMarker {
+  x: number;
+  y: number;
+  side: 'top' | 'bottom'; // doors only read on front-facing walls
+  startState: DoorStartState;
 }
 
 export interface PlacedCharacter {

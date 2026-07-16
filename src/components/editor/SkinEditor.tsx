@@ -58,6 +58,13 @@ const BORDER_SPRITE_SLOTS: { key: keyof CustomBorderSprites; label: string; desc
   { key: 'hallwayBottom', label: 'Hallway Bottom', description: 'Corridor through the bottom wall (darkness added in-game)', size: '48x48' },
   { key: 'hallwayLeft', label: 'Hallway Left', description: 'Corridor through the left wall (darkness added in-game)', size: '16x48' },
   { key: 'hallwayRight', label: 'Hallway Right', description: 'Corridor through the right wall (darkness added in-game)', size: '16x48' },
+  // Doors (2026-07-16 phase 2) — replace a top/bottom wall segment; the
+  // opening sheet is a horizontal strip of square frames (closed → open),
+  // closing plays it reversed. Leave the doorway transparent in Door Open
+  // so a hallway behind it shows through.
+  { key: 'doorClosed', label: 'Door Closed', description: 'Closed door on a top/bottom wall', size: '48x48' },
+  { key: 'doorOpening', label: 'Door Opening', description: 'Horizontal strip of square frames, closed → open', size: '48xN strip' },
+  { key: 'doorOpen', label: 'Door Open', description: 'Open door — transparent doorway shows a hallway behind', size: '48x48' },
 ];
 
 // Tile sprite slot configuration
@@ -108,6 +115,10 @@ const SLOT_HIGHLIGHT_REGIONS: Record<string, { x: number; y: number; w: number; 
   hallwayBottom: [{ x: 160, y: 336, w: 48, h: 48 }],
   hallwayLeft:   [{ x: 0,   y: 96,  w: 16, h: 48 }],
   hallwayRight:  [{ x: 304, y: 48,  w: 16, h: 48 }],
+  // Doors — preview markers: closed at tile(0,0) top, opening at tile(4,0) top
+  doorClosed:  [{ x: 16,  y: 0, w: 48, h: 48 }],
+  doorOpening: [{ x: 208, y: 0, w: 48, h: 48 }],
+  doorOpen:    [{ x: 208, y: 0, w: 48, h: 48 }],
   // Tile slots — highlight a representative tile
   empty: [{ x: 16,  y: 48,  w: 48, h: 48 }],   // tile(0,0) floor
   wall:  [{ x: 64,  y: 96,  w: 48, h: 48 }],    // tile(1,1) wall
@@ -188,6 +199,12 @@ function buildPreviewGameState(skin: PuzzleSkin, customTileTypes: CustomTileType
       { x: 3, y: 5, side: 'bottom' },
       { x: 0, y: 1, side: 'left' },
       { x: 5, y: 0, side: 'right' },
+    ],
+    // Two preview doors: a resting closed one, and one that plays the
+    // opening sheet on mount then holds open — covers all three slots.
+    doors: [
+      { x: 0, y: 0, side: 'top', startState: 'closed' },
+      { x: 4, y: 0, side: 'top', startState: 'opening' },
     ],
   };
 

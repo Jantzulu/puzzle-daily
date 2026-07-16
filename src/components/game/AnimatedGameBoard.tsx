@@ -8,6 +8,7 @@ import { drawSprite, drawDeathSprite, hasDeathAnimation, drawSpawnSprite, hasSpa
 import type { CustomCharacter, CustomEnemy, CustomTileType, CustomObject, CustomCollectible, CustomSprite } from '../../utils/assetStorage';
 import { loadPuzzleSkin, loadTileType, loadObject, loadStatusEffectAsset, loadCollectible, resolveImageSource } from '../../utils/assetStorage';
 import { isValidHallway, drawHallwayOpening, hallwaySpriteSlot } from '../../utils/hallwayDraw';
+import { isValidDoor, drawDoor } from '../../utils/doorDraw';
 import { getThemeAsset } from '../../utils/themeAssets';
 import type { Tile } from '../../types/game';
 import { updateProjectiles, updateParticles, executeParallelActions, DESPAWN_SHRINK_MS, TARGET_LOST_LINGER_MS } from '../../engine/simulation';
@@ -1015,9 +1016,24 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       prevEnemyDeadStateRef.current.clear();
       characterCastStartTimes.clear();
       enemyCastStartTimes.clear();
+      // New puzzle = fresh door theater (doors replay their start-of-
+      // puzzle open/close on the next reveal, same cadence as entrances).
+      doorRevealTimeRef.current = entrancesRevealed ? Date.now() : null;
     }
     prevPuzzleIdRef.current = currentPuzzleId;
   }, [gameState.puzzle.id]);
+
+  // Door reveal clock (phase 2): the doors' start-of-puzzle open/close
+  // theater is clocked from the moment the board reveals, so it can't
+  // burn behind the host's loading gate — the same rule entrances follow.
+  const doorRevealTimeRef = useRef<number | null>(entrancesRevealed ? Date.now() : null);
+  useEffect(() => {
+    if (entrancesRevealed && doorRevealTimeRef.current === null) {
+      doorRevealTimeRef.current = Date.now();
+    } else if (!entrancesRevealed) {
+      doorRevealTimeRef.current = null;
+    }
+  }, [entrancesRevealed]);
 
   // Initialize spawn animations for enemies when puzzle loads (and they haven't spawned yet)
   useEffect(() => {
@@ -1745,6 +1761,25 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       const frameNow = performance.timeOrigin + timestamp;
       const wallNow = Date.now();
       const now = Math.abs(wallNow - frameNow) <= 100 ? frameNow : wallNow;
+
+      // Doors (phase 2) — per-frame because the open/close plays once at
+      // reveal; after the intro each door is a single static drawImage.
+      // Drawn over the baked wall band, under entities (a unit standing in
+      // front of a north door covers it, correctly).
+      if (hasBorder && gameState.puzzle.doors && gameState.puzzle.doors.length > 0) {
+        const doorSprites = gameState.puzzle.borderConfig?.customBorderSprites;
+        const doorImages = {
+          closed: doorSprites?.doorClosed ? loadBorderImage(doorSprites.doorClosed) : null,
+          open: doorSprites?.doorOpen ? loadBorderImage(doorSprites.doorOpen) : null,
+          openingSheet: doorSprites?.doorOpening ? loadBorderImage(doorSprites.doorOpening) : null,
+        };
+        const revealAt = doorRevealTimeRef.current;
+        const doorElapsed = revealAt === null ? null : Math.max(0, now - revealAt);
+        gameState.puzzle.doors.forEach(marker => {
+          if (!isValidDoor(marker, gameState.puzzle.tiles, gameState.puzzle.width, gameState.puzzle.height)) return;
+          drawDoor(ctx, marker, doorElapsed, doorImages, TILE_SIZE, BORDER_SIZE);
+        });
+      }
 
       // Draw collectibles
       gameState.puzzle.collectibles.forEach((collectible) => {

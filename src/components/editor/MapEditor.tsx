@@ -13,7 +13,8 @@ import { getAllPuzzleSkins, loadPuzzleSkin, getCustomTileTypes, loadTileType, ge
 import { TILE_SIZE, BORDER_SIZE, SIDE_BORDER_SIZE, MAX_DISPLAY_WIDTH_TILES, createEmptyGrid, drawDungeonBorder, drawTile, drawEnemy, drawCollectibleInEditor, drawObject } from './map/canvasDraw';
 import { isValidHallway, drawHallwayOpening, hallwaySpriteSlot } from '../../utils/hallwayDraw';
 import { loadImage } from '../../utils/imageLoader';
-import type { HallwaySide } from '../../types/game';
+import type { HallwaySide, DoorStartState } from '../../types/game';
+import { isValidDoor, drawDoor } from '../../utils/doorDraw';
 import { getAllSpells, SpellTooltip, ActionTooltip } from './map/Tooltips';
 import { createDefaultEditorState, type EditorState, type ToolType, type EditorMode } from './map/editorState';
 import { ValidationModal } from './map/ValidationModal';
@@ -76,8 +77,9 @@ export const MapEditor: React.FC = () => {
         mode: 'edit' as EditorMode,
         // Ensure sideQuests is always an array (for backwards compatibility with old cached state)
         sideQuests: cached.sideQuests || [],
-        // Hallways joined the state 2026-07-16 — default for older caches
+        // Hallways/doors joined the state 2026-07-16 — default for older caches
         hallways: cached.hallways || [],
+        doors: cached.doors || [],
         // Ensure tags/description are always initialized
         tags: cached.tags || [],
         description: cached.description || '',
@@ -448,6 +450,10 @@ export const MapEditor: React.FC = () => {
   const [selectedCustomTileTypeId, setSelectedCustomTileTypeId] = useState<string | null>(null);
   const [selectedTriggerGroupId, setSelectedTriggerGroupId] = useState<string>(''); // For pressure plate trigger groups
 
+  // Hallway tool sub-mode (phase 2 doors): what a wall-edge click places.
+  const [openingMode, setOpeningMode] = useState<'hallway' | 'door' | 'both'>('hallway');
+  const [doorStartState, setDoorStartState] = useState<DoorStartState>('closed');
+
   // Enemy/Ally/Vessel/Object/Collectible selection — each placement tool
   // keeps its own selected id so switching tools never places the wrong
   // kind from a stale selection.
@@ -526,6 +532,7 @@ export const MapEditor: React.FC = () => {
         parTurns: state.parTurns,
         sideQuests: state.sideQuests,
         hallways: state.hallways,
+        doors: state.doors,
         tags: state.tags,
         description: state.description,
         isTraining: state.isTraining,
@@ -656,6 +663,36 @@ export const MapEditor: React.FC = () => {
       });
     }
 
+    // Doors (phase 2) — resting look of each door's start state, using the
+    // skin's door pieces (procedural plank door as fallback). Drawn after
+    // hallways so a combined edge shows the door over the corridor. With
+    // the hallway tool active, doors get a copper outline + start-state
+    // letter (C/O/▶/◀) so they're distinguishable from bare hallways.
+    if (hasBorder && state.doors.length > 0) {
+      const doorImages = {
+        closed: currentSkin?.borderSprites?.doorClosed ? loadImage(currentSkin.borderSprites.doorClosed) : null,
+        open: currentSkin?.borderSprites?.doorOpen ? loadImage(currentSkin.borderSprites.doorOpen) : null,
+        openingSheet: currentSkin?.borderSprites?.doorOpening ? loadImage(currentSkin.borderSprites.doorOpening) : null,
+      };
+      state.doors.forEach(marker => {
+        if (!isValidDoor(marker, state.tiles, state.gridWidth, state.gridHeight)) return;
+        drawDoor(ctx, marker, null, doorImages, TILE_SIZE, BORDER_SIZE);
+        if (state.selectedTool === 'hallway') {
+          const rx = marker.x * TILE_SIZE;
+          const ry = marker.side === 'top' ? marker.y * TILE_SIZE - BORDER_SIZE : (marker.y + 1) * TILE_SIZE;
+          ctx.strokeStyle = '#d4a574';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(rx + 3, ry + 3, TILE_SIZE - 6, BORDER_SIZE - 6);
+          const letter = marker.startState === 'closed' ? 'C' : marker.startState === 'open' ? 'O' : marker.startState === 'opening' ? '▶' : '◀';
+          ctx.fillStyle = '#d4a574';
+          ctx.font = 'bold 12px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(letter, rx + TILE_SIZE / 2, ry + BORDER_SIZE / 2 + 4);
+          ctx.textAlign = 'left';
+        }
+      });
+    }
+
     // Draw objects below entities (sorted by y position for proper layering)
     const belowObjects = state.placedObjects.filter(obj => {
       const objData = loadObject(obj.objectId);
@@ -722,7 +759,7 @@ export const MapEditor: React.FC = () => {
     }
 
     ctx.restore();
-  }, [state.tiles, state.enemies, state.collectibles, state.placedObjects, state.hallways, state.selectedTool, state.gridWidth, state.gridHeight, state.mode, state.skinId, redrawCounter, highlightTile, dragState]);
+  }, [state.tiles, state.enemies, state.collectibles, state.placedObjects, state.hallways, state.doors, state.selectedTool, state.gridWidth, state.gridHeight, state.mode, state.skinId, redrawCounter, highlightTile, dragState]);
 
   // Touch long-press = delete (mirrors right-click). Android fires
   // contextmenu on long-press natively; iOS Safari doesn't, so a manual
@@ -952,18 +989,39 @@ export const MapEditor: React.FC = () => {
       const side: HallwaySide = Math.abs(dx) > Math.abs(dy)
         ? (dx > 0 ? 'right' : 'left')
         : (dy > 0 ? 'bottom' : 'top');
+      const wantsHallway = openingMode === 'hallway' || openingMode === 'both';
+      const wantsDoor = openingMode === 'door' || openingMode === 'both';
+      if (wantsDoor && side !== 'top' && side !== 'bottom') {
+        toast.warning('Doors fit top and bottom walls only.');
+        return;
+      }
       if (!isValidHallway({ x, y, side }, state.tiles, state.gridWidth, state.gridHeight)) {
-        toast.warning('Hallways open through outer walls — click near the edge of a floor tile that borders the void or the outside.');
+        toast.warning('Wall openings need the edge of a floor tile that borders the void or the outside.');
         return;
       }
       setState(prev => {
-        const existing = prev.hallways.findIndex(h => h.x === x && h.y === y && h.side === side);
-        if (existing >= 0) {
-          const next = [...prev.hallways];
-          next.splice(existing, 1);
-          return { ...prev, hallways: next };
+        const hallwayIdx = prev.hallways.findIndex(h => h.x === x && h.y === y && h.side === side);
+        const doorIdx = prev.doors.findIndex(d => d.x === x && d.y === y && d.side === side);
+        let hallways = prev.hallways;
+        let doors = prev.doors;
+        if (openingMode === 'both') {
+          // Pair semantics: if anything exists on this edge, clear it all;
+          // otherwise place hallway + door together.
+          if (hallwayIdx >= 0 || doorIdx >= 0) {
+            if (hallwayIdx >= 0) { hallways = [...hallways]; hallways.splice(hallwayIdx, 1); }
+            if (doorIdx >= 0) { doors = [...doors]; doors.splice(doorIdx, 1); }
+          } else {
+            hallways = [...hallways, { x, y, side }];
+            doors = [...doors, { x, y, side: side as 'top' | 'bottom', startState: doorStartState }];
+          }
+        } else if (wantsHallway) {
+          if (hallwayIdx >= 0) { hallways = [...hallways]; hallways.splice(hallwayIdx, 1); }
+          else hallways = [...hallways, { x, y, side }];
+        } else if (wantsDoor) {
+          if (doorIdx >= 0) { doors = [...doors]; doors.splice(doorIdx, 1); }
+          else doors = [...doors, { x, y, side: side as 'top' | 'bottom', startState: doorStartState }];
         }
-        return { ...prev, hallways: [...prev.hallways, { x, y, side }] };
+        return { ...prev, hallways, doors };
       });
       return;
     }
@@ -1181,6 +1239,7 @@ export const MapEditor: React.FC = () => {
       parTurns: state.parTurns,
       sideQuests: state.sideQuests.length > 0 ? state.sideQuests : undefined,
       hallways: state.hallways.length > 0 ? state.hallways : undefined,
+      doors: state.doors.length > 0 ? state.doors : undefined,
       tags: state.tags.length > 0 ? state.tags : undefined,
       description: state.description || undefined,
       isTraining: state.isTraining || undefined,
@@ -1274,6 +1333,7 @@ export const MapEditor: React.FC = () => {
       parTurns: puzzle.parTurns,
       sideQuests: puzzle.sideQuests || [],
       hallways: puzzle.hallways || [],
+      doors: puzzle.doors || [],
       tags: puzzle.tags || [],
       description: puzzle.description || '',
       isTraining: puzzle.isTraining ?? false,
@@ -1323,6 +1383,7 @@ export const MapEditor: React.FC = () => {
       parTurns: puzzle.parTurns,
       sideQuests: puzzle.sideQuests || [],
       hallways: puzzle.hallways || [],
+      doors: puzzle.doors || [],
       tags: puzzle.tags || [],
       description: puzzle.description || '',
       isTraining: puzzle.isTraining ?? false,
@@ -1362,6 +1423,7 @@ export const MapEditor: React.FC = () => {
       parTurns: undefined,
       sideQuests: [],
       hallways: [],
+      doors: [],
       tags: [],
       description: '',
       isTraining: false,
@@ -1399,6 +1461,7 @@ export const MapEditor: React.FC = () => {
         parTurns: puzzle.parTurns,
         sideQuests: puzzle.sideQuests || [],
         hallways: puzzle.hallways || [],
+        doors: puzzle.doors || [],
         tags: puzzle.tags || [],
         description: puzzle.description || '',
         isTraining: puzzle.isTraining ?? false,
@@ -1637,6 +1700,7 @@ export const MapEditor: React.FC = () => {
       backgroundMusicId: state.backgroundMusicId,
       sideQuests: state.sideQuests,
       hallways: state.hallways.length > 0 ? state.hallways : undefined,
+      doors: state.doors.length > 0 ? state.doors : undefined,
       parCharacters: state.parCharacters,
       parTurns: state.parTurns,
     };
@@ -1798,7 +1862,11 @@ export const MapEditor: React.FC = () => {
         return a ? `Item — ${a.name}` : 'Item — Default Coin';
       }
       case 'characters': return 'Heroes — choose the player roster';
-      case 'hallway': return 'Hallway — click a floor edge bordering the void';
+      case 'hallway': return openingMode === 'hallway'
+        ? 'Hallway — click a floor edge bordering the void'
+        : openingMode === 'door'
+        ? `Door (${doorStartState}) — click a top/bottom floor edge`
+        : `Door + Hallway (${doorStartState}) — click a top/bottom floor edge`;
     }
   })();
 
@@ -2202,18 +2270,50 @@ export const MapEditor: React.FC = () => {
                 />
               )}
 
-              {/* Hallway tool — no assets to pick; explain the gesture */}
+              {/* Hallway/door tool — mode picker instead of an asset list */}
               {state.selectedTool === 'hallway' && (
-                <div className="bg-stone-800 p-3 rounded text-xs text-stone-400 space-y-1.5">
-                  <div className="text-sm font-medium text-parchment-200">Hallways</div>
+                <div className="bg-stone-800 p-3 rounded text-xs text-stone-400 space-y-2">
+                  <div className="text-sm font-medium text-parchment-200">Wall Openings</div>
+                  <div className="flex gap-1">
+                    {(['hallway', 'door', 'both'] as const).map(mode => (
+                      <button
+                        key={mode}
+                        onClick={() => setOpeningMode(mode)}
+                        className={`flex-1 px-2 py-1.5 rounded capitalize ${
+                          openingMode === mode ? 'bg-blue-600 text-white' : 'bg-stone-700 hover:bg-stone-600'
+                        }`}
+                      >
+                        {mode === 'both' ? 'Door + Hallway' : mode}
+                      </button>
+                    ))}
+                  </div>
+                  {openingMode !== 'hallway' && (
+                    <div>
+                      <label className="block text-stone-300 mb-1">Door starts the puzzle…</label>
+                      <select
+                        value={doorStartState}
+                        onChange={(e) => setDoorStartState(e.target.value as DoorStartState)}
+                        className="w-full px-2 py-1.5 bg-stone-700 rounded text-parchment-100"
+                      >
+                        <option value="closed">Closed (stays closed)</option>
+                        <option value="open">Open (stays open)</option>
+                        <option value="opening">Closed, then opens</option>
+                        <option value="closing">Open, then closes</option>
+                      </select>
+                      <p className="text-stone-500 mt-1">
+                        Applies to doors you place next. Open/close plays once when the puzzle
+                        appears. Doors fit top/bottom walls only.
+                      </p>
+                    </div>
+                  )}
                   <p>
                     Click near the <span className="text-copper-400">edge</span> of a floor tile
-                    that borders the void or the outside — the wall there opens into a faux
-                    corridor fading into darkness. Click the same edge again to remove it.
+                    that borders the void or the outside. Click the same edge again to remove.
+                    Purely visual dressing — nothing can walk in or out.
                   </p>
                   <p className="text-stone-500">
-                    Purely visual dressing: nothing can walk in or out. Openings show a copper
-                    outline while this tool is active.
+                    Door sprites come from the puzzle's skin (Door Closed / Opening / Open
+                    slots in the skin editor); a plank-door placeholder shows until then.
                   </p>
                 </div>
               )}
@@ -2393,6 +2493,7 @@ export const MapEditor: React.FC = () => {
             parTurns: puzzle.parTurns,
             sideQuests: puzzle.sideQuests || [],
             hallways: puzzle.hallways || [],
+            doors: puzzle.doors || [],
             tags: puzzle.tags || [],
             description: puzzle.description || '',
             isTraining: puzzle.isTraining ?? false,

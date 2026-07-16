@@ -1,7 +1,7 @@
 // EditorState shape + defaults for the map editor. Extracted verbatim from
 // MapEditor.tsx (Phase 1 decomposition, 2026-07-14). Distinct from
 // src/utils/editorState.ts, which handles cross-tab caching of this state.
-import type { TileOrNull, PlacedEnemy, PlacedCollectible, PlacedObject, WinCondition, BorderConfig, SideQuest, HallwayMarker } from '../../../types/game';
+import type { TileOrNull, PlacedEnemy, PlacedCollectible, PlacedObject, WinCondition, BorderConfig, SideQuest, HallwayMarker, DoorMarker } from '../../../types/game';
 import { createEmptyGrid } from './canvasDraw';
 
 export type ToolType = 'empty' | 'wall' | 'void' | 'enemy' | 'ally' | 'vessel' | 'collectible' | 'object' | 'custom' | 'characters' | 'hallway';
@@ -15,6 +15,7 @@ export interface EditorState {
   collectibles: PlacedCollectible[];
   placedObjects: PlacedObject[];
   hallways: HallwayMarker[];
+  doors: DoorMarker[];
 
   // Metadata
   puzzleName: string;
@@ -56,6 +57,7 @@ export const createDefaultEditorState = (): EditorState => ({
   collectibles: [],
   placedObjects: [],
   hallways: [],
+  doors: [],
 
   puzzleName: 'New Puzzle',
   puzzleId: 'puzzle_' + Date.now(),

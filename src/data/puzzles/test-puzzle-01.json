@@ -10,6 +10,10 @@
     { "x": 0, "y": 2, "side": "left" },
     { "x": 4, "y": 2, "side": "right" }
   ],
+  "doors": [
+    { "x": 2, "y": 0, "side": "top", "startState": "opening" },
+    { "x": 4, "y": 4, "side": "bottom", "startState": "closed" }
+  ],
   "tiles": [
     [
       { "x": 0, "y": 0, "type": "empty" },
