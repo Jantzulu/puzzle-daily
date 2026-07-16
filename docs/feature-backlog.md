@@ -120,17 +120,20 @@ do, complementary to [`feature-roadmap.md`](../../puzzle-game/feature-roadmap.md
   all four lockstep sites (gate open/close, rail ride pair, visibility
   delay). Second pass after e699bbe. *Captured 2026-07-16.*
 
-- [ ] **FEATURE — Optional attack-animation-while-moving.** Current rule:
-  if an entity attacks while moving, the walking animation always plays.
-  Keep that as the default, add an opt-in to play the attack animation
-  instead. DECIDED 2026-07-16: toggle lives PER ENTITY, in the
-  animation selector. *Captured 2026-07-16.*
+- [x] **FEATURE — Optional attack-animation-while-moving.** **Done
+  2026-07-16** (`35ed96b`): sprite-level `castingWhileMoving` flag,
+  checkbox in both casting sections of the sprite editor (one flag
+  covers all directional states). Draw priority flips to casting >
+  moving > idle only under the opt-in; legacy rendering unchanged;
+  contact-damage reactions stay stationary-only. AWAITING USER TEST
+  with a real attack sheet. *Captured 2026-07-16.*
 
-- [ ] **POLISH — Smooth hero/enemy selection transitions on the play
-  page.** Switching selection snaps instantly. DECIDED 2026-07-16: the
-  highlight ring AND the arrow underneath should physically SLIDE from
-  the old selection to the new one — smoothness is the bar. *Captured
-  2026-07-16.*
+- [x] **POLISH — Smooth hero/enemy selection transitions on the play
+  page.** **Done 2026-07-16** (`9fdaa18`): shared SlidingSelection
+  overlay — strip-level tint + caret translate between slots (300ms,
+  transform/opacity only, slot-unit math). Ally strips got a copper
+  caret (was blood). Geometry verified live; the actual glide needs a
+  2+-card puzzle — user verifies on deploy. *Captured 2026-07-16.*
 
 - [x] **BUG — Map editor mobile: puzzle title clipped at top + oversized
   editor tabs.** **Done 2026-07-16** (`facf4ff`). Root cause of the
