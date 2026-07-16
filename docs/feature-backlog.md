@@ -92,15 +92,16 @@ do, complementary to [`feature-roadmap.md`](../../puzzle-game/feature-roadmap.md
 
 ## Launch-adjacent (captured 2026-07-16 batch)
 
-- [ ] **FEATURE — Install "Modern Antiqua" Google Font.** Add to the CDN
-  links + register in the font maps like Jacquard 12 / Metamorphous
-  (`c6bb15c` is the pattern). Trivial. *Captured 2026-07-16.*
+- [x] **FEATURE — Install "Modern Antiqua" Google Font.** **Done
+  2026-07-16** (`8e5f52c`), all five registration spots, load verified
+  in-browser. *Captured 2026-07-16.*
 
-- [ ] **FEATURE — Gate-menu button font themeable in settings.** The
-  hamburger gate-menu buttons (steel plates, `.nav-gate-item`) have a
-  hardcoded font (Almendra). Add a theme-assets font slot (like
-  fontFamily / fontFamilyHeading) so their font is choosable. *Captured
-  2026-07-16.*
+- [x] **FEATURE — Gate-menu button font themeable in settings.** **Done
+  2026-07-16** (`e6206e6`): new fontFamilyMenu slot ("Menu Font") →
+  --theme-font-family-menu, consumed by .nav-gate-item > span with
+  Almendra as the var() fallback. Scoped to the gate's steel-plate
+  labels; the .nav-pill utility signs still inherit the body font
+  (extend to them if the user asks). *Captured 2026-07-16.*
 
 - [ ] **BUG/POLISH — "Loading sprites" state: opaque fill + missed
   entrance animations.** Two symptoms on the play page: (1) while the
@@ -113,9 +114,10 @@ do, complementary to [`feature-roadmap.md`](../../puzzle-game/feature-roadmap.md
   entrances? portcullis? board fade?) and gate ALL intro motion behind
   load. *Captured 2026-07-16.*
 
-- [ ] **POLISH — Slow the portcullis open/close animation further.**
-  Timing tweak, user wants it statelier than the current speed.
-  *Captured 2026-07-16.*
+- [x] **POLISH — Slow the portcullis open/close animation further.**
+  **Done 2026-07-16** (`b2ffc48`): open 0.9s → 1.2s, close 0.8s → 1s,
+  all four lockstep sites (gate open/close, rail ride pair, visibility
+  delay). Second pass after e699bbe. *Captured 2026-07-16.*
 
 - [ ] **FEATURE — Optional attack-animation-while-moving.** Current rule:
   if an entity attacks while moving, the walking animation always plays.
@@ -129,14 +131,20 @@ do, complementary to [`feature-roadmap.md`](../../puzzle-game/feature-roadmap.md
   the old selection to the new one — smoothness is the bar. *Captured
   2026-07-16.*
 
-- [ ] **BUG — Map editor mobile: puzzle title clipped at top + oversized
-  editor tabs.** The title gets cut off on mobile, and the editor tab
-  strip takes more room than it needs on small screens. *Captured
+- [x] **BUG — Map editor mobile: puzzle title clipped at top + oversized
+  editor tabs.** **Done 2026-07-16** (`facf4ff`). Root cause of the
+  clip: .theme-root h1 forces font-size (heading setting × 2) but
+  text-lg's fixed 28px line-height survived, and truncate's
+  overflow:hidden cut the glyph tops — leading-normal makes the line
+  box track the themed size. Tabs: text-xs/px-2.5/py-1 below md.
+  AWAITING USER VERIFY on a phone (page is login-gated). *Captured
   2026-07-16.*
 
-- [ ] **BUG — Quest panel mobile: (?) help icon wraps onto its own line
-  above the quest when the quest text is long.** It should stay anchored
-  left of "Quest". *Captured 2026-07-16.*
+- [x] **BUG — Quest panel mobile: (?) help icon wraps onto its own line
+  above the quest when the quest text is long.** **Done 2026-07-16**
+  (`a6b3e06`): icon + shimmer container share one non-wrapping flex
+  group (min-w-0), so only the quest text wraps. Verified at 375px
+  with a forced 3-line quest. *Captured 2026-07-16.*
 
 ## Post-launch features
 
