@@ -741,6 +741,7 @@ export function getThemeAssetsCSSProperties(): Record<string, string> {
     'jacquarda': "'Jacquarda Bastarda 9', serif",
     'jacquard12': "'Jacquard 12', serif",
     'metamorphous': "'Metamorphous', serif",
+    'modernantiqua': "'Modern Antiqua', serif",
     'amarante': "'Amarante', serif",
     'faculty': "'Faculty Glyphic', serif",
   };

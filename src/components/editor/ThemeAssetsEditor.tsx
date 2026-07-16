@@ -84,6 +84,7 @@ const FONT_OPTIONS = [
   { value: 'jacquarda', label: 'Jacquarda Bastarda 9' },
   { value: 'jacquard12', label: 'Jacquard 12' },
   { value: 'metamorphous', label: 'Metamorphous' },
+  { value: 'modernantiqua', label: 'Modern Antiqua' },
   { value: 'amarante', label: 'Amarante' },
   { value: 'faculty', label: 'Faculty Glyphic' },
 ];
@@ -711,6 +712,7 @@ const StyleSelector: React.FC<StyleSelectorProps> = ({ assetKey, value, onChange
                   'jacquarda': "'Jacquarda Bastarda 9', serif",
                   'jacquard12': "'Jacquard 12', serif",
                   'metamorphous': "'Metamorphous', serif",
+                  'modernantiqua': "'Modern Antiqua', serif",
                   'amarante': "'Amarante', serif",
                   'faculty': "'Faculty Glyphic', serif",
                 };
