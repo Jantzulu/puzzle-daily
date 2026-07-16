@@ -88,16 +88,27 @@ export function drawHallwayOpening(
   ctx.clip();
   drawFloorTile(ctx, x + off.dx, y + off.dy);
 
-  // 2. Flank strips — the corridor's own side walls, in the border art's
-  //    dark iron/stone tones. Along the corridor's long edges.
-  ctx.fillStyle = 'rgba(12, 9, 6, 0.85)';
-  const flank = Math.max(2, Math.round(t / 16));
+  // 2. Jamb walls — the corridor's own side walls, in the dungeon
+  //    border's stone tones (body + a lit edge facing the corridor), so
+  //    the opening reads as the wall TURNING into the corridor and the
+  //    band's cut ends get faces, instead of the wall simply stopping
+  //    (user note, 2026-07-16). The darkness pass below swallows their
+  //    far halves along with the floor.
+  const flank = Math.max(4, Math.round(t / 8));
+  const lip = Math.max(1, Math.round(flank / 3));
+  ctx.fillStyle = '#323242';
   if (side === 'top' || side === 'bottom') {
     ctx.fillRect(rx, ry, flank, rh);
     ctx.fillRect(rx + rw - flank, ry, flank, rh);
+    ctx.fillStyle = '#3a3a4a';
+    ctx.fillRect(rx + flank - lip, ry, lip, rh);
+    ctx.fillRect(rx + rw - flank, ry, lip, rh);
   } else {
     ctx.fillRect(rx, ry, rw, flank);
     ctx.fillRect(rx, ry + rh - flank, rw, flank);
+    ctx.fillStyle = '#3a3a4a';
+    ctx.fillRect(rx, ry + flank - lip, rw, lip);
+    ctx.fillRect(rx, ry + rh - flank, rw, lip);
   }
 
   // 3. Darkness: from a light dimming at the opening to FULLY opaque black
@@ -112,8 +123,8 @@ export function drawHallwayOpening(
     case 'left':   grad = ctx.createLinearGradient(rx + rw, 0, rx, 0); break;
     case 'right':  grad = ctx.createLinearGradient(rx, 0, rx + rw, 0); break;
   }
-  grad.addColorStop(0, 'rgba(0, 0, 0, 0.22)');
-  grad.addColorStop(0.45, 'rgba(0, 0, 0, 0.55)');
+  grad.addColorStop(0, 'rgba(0, 0, 0, 0.12)');
+  grad.addColorStop(0.5, 'rgba(0, 0, 0, 0.5)');
   grad.addColorStop(1, 'rgba(0, 0, 0, 1)');
   ctx.fillStyle = grad;
   ctx.fillRect(rx, ry, rw, rh);
