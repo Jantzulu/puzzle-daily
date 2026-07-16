@@ -38,10 +38,15 @@ export const SlidingSelection: React.FC<SlidingSelectionProps> = ({ slotCount, s
   const visible = selectedIndex >= 0;
   // While fading out, hold the last selected slot so the exit happens in place.
   const anchor = visible ? selectedIndex : prev >= 0 ? prev : 0;
-  const slide = visible && prev >= 0 && prev !== selectedIndex;
-  const transition = slide
-    ? 'transition-[transform,opacity] duration-300 ease-out'
-    : 'transition-opacity duration-200';
+  // The transition is UNCONDITIONAL. The first version enabled the
+  // transform transition only on the render that changed the selection —
+  // but the strips re-render again immediately (the info panel's
+  // open/render state cascades right behind the selection change), which
+  // flipped the class back and CANCELLED the in-flight slide, so switches
+  // snapped. With the classes constant, no re-render can kill the motion.
+  // Select-from-none simply fades in while gliding from the last anchor —
+  // continuity, not a glitch (the overlay is transparent when it starts).
+  const transition = 'transition-[transform,opacity] duration-300 ease-out';
   const slotStyle: React.CSSProperties = {
     width: `${100 / slotCount}%`,
     transform: `translateX(${anchor * 100}%)`,
