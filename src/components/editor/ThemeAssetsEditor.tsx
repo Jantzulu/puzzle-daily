@@ -627,6 +627,7 @@ const StyleSelector: React.FC<StyleSelectorProps> = ({ assetKey, value, onChange
       break;
     case 'fontFamily':
     case 'fontFamilyHeading':
+    case 'fontFamilyMenu':
       options = FONT_OPTIONS;
       defaultValue = 'default';
       break;
@@ -690,7 +691,7 @@ const StyleSelector: React.FC<StyleSelectorProps> = ({ assetKey, value, onChange
       )}
 
       {/* Preview for font family */}
-      {(assetKey === 'fontFamily' || assetKey === 'fontFamilyHeading') && (
+      {(assetKey === 'fontFamily' || assetKey === 'fontFamilyHeading' || assetKey === 'fontFamilyMenu') && (
         <div className="mt-3 space-y-2">
           <p className="text-xs text-stone-500">Preview:</p>
           <div
@@ -716,7 +717,9 @@ const StyleSelector: React.FC<StyleSelectorProps> = ({ assetKey, value, onChange
                   'amarante': "'Amarante', serif",
                   'faculty': "'Faculty Glyphic', serif",
                 };
-                return fontMap[value || defaultValue] || fontMap['default'];
+                // The gate menu's un-themed default is Almendra, not the body default
+                const menuDefault = assetKey === 'fontFamilyMenu' ? 'medieval' : defaultValue;
+                return fontMap[value || menuDefault] || fontMap['default'];
               })()
             }}
           >

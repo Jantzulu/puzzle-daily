@@ -2312,7 +2312,7 @@ body.menu-gate-instant .quest-panel-sticky {
    signs) — lettered in the Knightly copper. */
 .nav-gate-item > span {
   display: inline-block;
-  font-family: 'Almendra', serif;
+  font-family: var(--theme-font-family-menu, 'Almendra', serif);
   font-weight: 700;
   font-size: 0.95rem;
   color: #d4a574; /* copper-400, the Knightly title color */

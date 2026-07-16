@@ -226,6 +226,7 @@ export interface ThemeAssets {
   shadowIntensity?: string;     // Shadow intensity ("none", "light", "medium", "heavy")
   fontFamily?: string;          // Font family override (applies to body text)
   fontFamilyHeading?: string;   // Font family for headings/titles
+  fontFamilyMenu?: string;      // Font family for the hamburger gate-menu buttons
   fontSizeBody?: string;        // Body text size multiplier
   fontSizeHeading?: string;     // Heading text size multiplier
 
@@ -403,6 +404,7 @@ export const THEME_ASSET_CONFIG: Record<ThemeAssetKey, { label: string; descript
   shadowIntensity: { label: 'Shadow Intensity', description: 'Strength of drop shadows', category: 'styles', inputType: 'select' },
   fontFamily: { label: 'Body Font', description: 'Font for body text and UI elements', category: 'styles', inputType: 'select' },
   fontFamilyHeading: { label: 'Heading Font', description: 'Font for titles and headings', category: 'styles', inputType: 'select' },
+  fontFamilyMenu: { label: 'Menu Font', description: 'Font for the hamburger gate-menu buttons', category: 'styles', inputType: 'select' },
   fontSizeBody: { label: 'Body Text Size', description: 'Size of body text', category: 'styles', inputType: 'select' },
   fontSizeHeading: { label: 'Heading Size', description: 'Size of headings and titles', category: 'styles', inputType: 'select' },
 
@@ -756,6 +758,11 @@ export function getThemeAssetsCSSProperties(): Record<string, string> {
     properties['--theme-font-family-heading'] = fontMap[assets.fontFamilyHeading];
   }
 
+  // Gate-menu font (the hamburger menu's steel-plate labels; default stays Almendra via the CSS fallback)
+  if (assets.fontFamilyMenu && assets.fontFamilyMenu !== 'default' && fontMap[assets.fontFamilyMenu]) {
+    properties['--theme-font-family-menu'] = fontMap[assets.fontFamilyMenu];
+  }
+
   // Font sizes - convert size names to pixel values
   const fontSizeMap: Record<string, string> = {
     'x-small': '12px',
@@ -830,6 +837,7 @@ const ALL_THEME_CSS_VARS = [
   '--theme-border-width',
   '--theme-font-family',
   '--theme-font-family-heading',
+  '--theme-font-family-menu',
   '--theme-font-size-body-px',
   '--theme-font-size-heading-px',
 ];
