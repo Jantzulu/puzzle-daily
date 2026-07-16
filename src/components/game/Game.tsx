@@ -3060,7 +3060,13 @@ export const Game: React.FC<GameProps> = ({
                         <span className="hidden md:inline">Log</span>
                       </button>
                     )}
-                    <HelpButton sectionId="game_general" />
+                    {/* The (?) rides in one flex group with the quest: the outer
+                        row's flex-wrap breaks BETWEEN items, so a long quest used
+                        to strand the icon alone on the line above. Grouped, only
+                        the quest text itself wraps and the icon stays left of
+                        "Quest:". min-w-0 lets the group shrink into the row. */}
+                    <span className="flex items-center gap-2 min-w-0">
+                    <HelpButton sectionId="game_general" className="flex-shrink-0" />
                     <span key={shimmerKey} className="shimmer-container">
                       <span className="text-base md:text-lg lg:text-xl font-semibold text-stone-400">Quest:</span>
                       <span className="text-sm md:text-base lg:text-lg text-copper-300 font-medium">
@@ -3145,6 +3151,7 @@ export const Game: React.FC<GameProps> = ({
                         }
                       }).join(' & ')}
                       </span>
+                    </span>
                     </span>
                   </div>
 
