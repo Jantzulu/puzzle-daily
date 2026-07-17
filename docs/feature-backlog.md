@@ -383,9 +383,14 @@ Design answers locked 2026-07-16.
   48x48, hallwayLeft/Right 16x48) = the corridor interior as one
   authored piece; darkness still applied in-game (draw art fully
   lit); procedural fallback while absent. Skin editor: slots +
-  preview hallways (one per side) + highlight regions. NOTE: side
-  corridors stay depth-capped at the 16px side band — revisit if
-  deeper side hallways are wanted (canvas-margin surgery).
+  preview hallways (one per side) + highlight regions. ~~NOTE: side
+  corridors stay depth-capped at the 16px side band~~ **RESOLVED
+  2026-07-16 (`b922341`)**: side corridors now run 48px deep via a
+  canvas overhang excluded from fit-scale math (board size unchanged;
+  tails clip on narrow phones). Same rework (`cc01f18`) replaced the
+  sliver jambs with the skin's real inner-corner pieces at every
+  opening — hallway slots are corridor FLOOR art only now, and
+  hallwayLeft/Right slots grew to 48x48 (old 16x48 art stretches).
 
 - [x] **Phase 2 — Doors — SHIPPED 2026-07-16** (`9981f2d`).
   Puzzle.doors {x, y, side: top|bottom, startState:
