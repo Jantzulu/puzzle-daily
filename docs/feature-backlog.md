@@ -467,11 +467,19 @@ the visual items: baked, event-driven, or transform/opacity only.
   assigned to walk in from, foreshadowing the spawn pre-reveal.
   Relocates the parked "void eyes" flourish idea to its natural home.
 
-- [ ] **FEATURE — Shove-out ejection.** Engine + editor. A push that
-  drives an entity through a hallway mouth ejects it from the board
-  (despawn semantics like summon expiry — no corpse; deterministic;
-  walk/tumble-out theater). Per-hallway editor toggle ("open ledge" vs
-  barred). New puzzle verb built from existing push + despawn pieces.
+- [x] **FEATURE — Shove-out ejection — SHIPPED 2026-07-17** (`589dc04`).
+  HallwayMarker.openLedge (default barred — existing hallways
+  unchanged; "Open ledge" checkbox in the Hallway tool applies to
+  openings placed next). executePushSpell's step loop ejects on a
+  cardinal push THROUGH a valid open-ledge mouth (incl. 0-tile pushes
+  starting on the mouth; diagonals never eject; Sturdy still blocks
+  targeting): dead+despawned, summon-expiry semantics (no
+  drops/triggers/corpse, tile frees), counts as defeated. Shoved
+  vessels never hatch (pinned); ejected Nobles read as lost
+  (implied-protect); heroes can be shoved out (real death, no corpse).
+  ejectedOnTurn drives a FAST tumble-out (110ms/tile vs the 260
+  stride). 4 pins in shove-out.test.ts. AWAITING USER TEST (open-ledge
+  hallway + push spell).
 
 - [x] **FEATURE — Escape objectives — SHIPPED 2026-07-17** (`84a0a7b`).
   New `noble_escapes` win condition: every Noble must exit through an

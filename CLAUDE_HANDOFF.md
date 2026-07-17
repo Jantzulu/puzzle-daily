@@ -192,6 +192,21 @@ The Reflect status effect bounces incoming projectiles back:
 
 ## Pending Tasks
 
+### Shove-out ejection — ✅ SHIPPED 2026-07-17 (hallway dynamics batch, item 4)
+
+`589dc04`: HallwayMarker.openLedge + ejection in executePushSpell (the
+single push choke point — targets are REAL array objects, no wrapper
+transport needed). Cardinal push through a valid open-ledge mouth =
+dead+despawned, summon-expiry semantics, counts as defeated;
+ejectedOnTurn → fast tumble-out render (EJECT_MS_PER_TILE). Barred
+default keeps every existing hallway byte-identical (pinned). Shoved
+vessels never hatch; ejected Nobles are lost (implied-protect); heroes
+ejectable (real death, no corpse — hero exit draw gained the
+dead:false spoof). Editor: "Open ledge" checkbox in the Hallway tool.
+AWAITING USER TEST. **Batch remainder: mid-game-waves thin slice →
+passerby v2 recurring + deliveries** (the only items left; both need
+walk-in theater firing mid-game).
+
 ### Escape objectives (noble_escapes) — ✅ SHIPPED 2026-07-17 (hallway dynamics batch, item 3)
 
 `84a0a7b`: "guide the Noble out of the Dungeon" — full details in the
