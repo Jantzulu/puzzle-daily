@@ -1698,6 +1698,15 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
     return queue;
   }, [gameState.puzzle.enemies, gameState.placedCharacters]);
 
+  // Wall-clock anchor for the vsync-aligned animation clock: the epoch value
+  // that performance-clock zero currently corresponds to. Starts at
+  // performance.timeOrigin but is re-anchored continuously in the animate
+  // loop — the monotonic and wall clocks drift apart over long uptime/sleep,
+  // and a stale anchor makes `now` lead the Date.now() stamps turn logic
+  // writes, skipping the head of every animation (the "game runs fast until
+  // restart" bug, 2026-07-16).
+  const epochAnchorRef = useRef<number>(performance.timeOrigin);
+
   // Animation loop
   useEffect(() => {
     const animate = (timestamp: number) => {
@@ -1876,11 +1885,18 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       // stored startTimes comparable while sampling at a consistent point in
       // the frame. Stamps written between the vsync and this callback can sit
       // a few ms in the future — interpolations below clamp progress to >= 0.
-      // Fall back to the wall clock if the two disagree wildly (NTP step,
-      // resumed tab).
-      const frameNow = performance.timeOrigin + timestamp;
+      //
+      // The anchor must self-correct: stored stamps live in the wall-clock
+      // domain, so sustained monotonic-vs-wall skew shifts every animation's
+      // phase. Small skew slews away via a low-pass filter — the measured
+      // skew carries the callback's scheduling jitter, so it's averaged out
+      // (2% per frame), not tracked; the per-frame correction stays under
+      // ~5ms (< one frame delta), keeping `now` monotonic. Skew past 250ms
+      // is a step change (sleep resume, NTP jump): snap.
       const wallNow = Date.now();
-      const now = Math.abs(wallNow - frameNow) <= 100 ? frameNow : wallNow;
+      const skew = wallNow - (epochAnchorRef.current + timestamp);
+      epochAnchorRef.current += Math.abs(skew) > 250 ? skew : skew * 0.02;
+      const now = epochAnchorRef.current + timestamp;
 
       // Doors (phase 2) — per-frame because the open/close plays once at
       // reveal; after the intro each door is a single static drawImage.
