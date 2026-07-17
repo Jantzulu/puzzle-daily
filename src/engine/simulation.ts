@@ -3,10 +3,10 @@ import type { GameState, PlacedCharacter, PlacedEnemy, ParallelActionTracker, St
 import { ActionType, Direction, StatusEffectType, TileType as TileTypeEnum } from '../types/game';
 import { getCharacter } from '../data/characters';
 import { getEnemy } from '../data/enemies';
-import { executeAction, executeAOEAttack, evaluateTriggers, executeDeathTriggers, applyDamageToEntity, applyDamageToEntityNoDeflect, placeCollectibleFromSpell, checkTriggerCondition, mergeHitStamps, stampDealtHit, stampHitLanded } from './actions';
+import { executeAction, executeAOEAttack, evaluateTriggers, executeDeathTriggers, applyDamageToEntity, applyDamageToEntityNoDeflect, placeCollectibleFromSpell, checkTriggerCondition, mergeHitStamps, stampDealtHit, stampHitLanded, isEntityStealthed } from './actions';
 import { loadStatusEffectAsset, loadSpellAsset, loadCollectible, loadEnemy, loadCharacter, loadTileType, loadVessel } from '../utils/assetStorage';
 import { spawnEnemyMidGame } from './spawning';
-import { turnLeft, turnRight, turnAround, getDirectionOffset, calculateDirectionTo, isAttackFromBehind, isEntityFunctional } from './utils';
+import { turnLeft, turnRight, turnAround, getDirectionOffset, calculateDirectionTo, calculateDistance, isAttackFromBehind, isEntityFunctional } from './utils';
 import { entityParty } from './party';
 
 // Debug flag for projectile tracing: flip to true to enable detailed logs
@@ -2557,10 +2557,43 @@ function processVesselTransforms(gameState: GameState): void {
     const logicallyDead = entity.dead || !!entity.pendingProjectileDeath;
     const deathSettled = entity.diedOnTurn === undefined ||
       gameState.currentTurn >= entity.diedOnTurn;
-    const brokeOpen = logicallyDead && deathSettled;
-    const hatchDue = !logicallyDead &&
+
+    // Struck trigger (2026-07-17): a CONNECTED hit of a listed kind hatches
+    // the vessel. Hit stamps record connection, not damage-got-through, so
+    // deflected/absorbed strikes still count ("gong wakes the golem").
+    const hitMatch = !!vessel.transformOnHitKinds?.length &&
+      vessel.transformOnHitKinds.some(k => entity.hitStamps?.[k] !== undefined);
+
+    // Break-open is togglable (default ON — undefined keeps pre-2026-07-17
+    // vessels transforming on death). A vessel KILLED by a listed hit kind
+    // emerges through the break path even with the toggle off.
+    const breakEnabled = vessel.transformOnBreak !== false;
+    const brokeOpen = logicallyDead && deathSettled && (breakEnabled || hitMatch);
+
+    // Proximity hatch (2026-07-17): a matching LIVING entity standing within
+    // range at END of turn — where entities stand when transforms process,
+    // not fly-bys mid-turn. BASE parties (charm-blind, matching trigger-event
+    // sensing); stealth hides from an OPPOSING vessel's senses while the
+    // vessel's own side still sees stealthed teammates. Same Euclidean
+    // distance rule as the "in range" trigger events.
+    let proximityDue = false;
+    const proximityRange = vessel.transformProximityRange ?? 0;
+    if (!logicallyDead && proximityRange > 0) {
+      const wantParty = vessel.transformProximityParty ?? 'hero';
+      const vesselParty = entityParty(entity, gameState);
+      proximityDue = [...gameState.placedCharacters, ...gameState.puzzle.enemies].some(c => {
+        if (c === entity || !isEntityFunctional(c)) return false;
+        const cParty = entityParty(c, gameState);
+        if (wantParty !== 'any' && cParty !== wantParty) return false;
+        if (cParty !== vesselParty && isEntityStealthed(c)) return false;
+        return calculateDistance(entity.x, entity.y, c.x, c.y) <= proximityRange;
+      });
+    }
+
+    const timedDue = !logicallyDead &&
       vessel.transformAfterTurns !== undefined && vessel.transformAfterTurns > 0 &&
       gameState.currentTurn >= (entity.spawnedOnTurn ?? 0) + vessel.transformAfterTurns;
+    const hatchDue = !logicallyDead && (timedDue || proximityDue || hitMatch);
     if (!brokeOpen && !hatchDue) continue;
 
     const vx = Math.floor(entity.x);
@@ -2586,7 +2619,8 @@ function processVesselTransforms(gameState: GameState): void {
 
     entity.transformedOnTurn = gameState.currentTurn;
     if (!brokeOpen) {
-      // Timed hatch of a living vessel — it leaves without dying.
+      // Timed/proximity/struck hatch of a living vessel — it leaves without
+      // dying (no drops, no death triggers, tile frees immediately).
       entity.dead = true;
       entity.despawned = true;
     }

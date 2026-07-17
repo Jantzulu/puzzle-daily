@@ -1,4 +1,4 @@
-import type { Character, Enemy, TileBehaviorConfig, CadenceConfig, SoundAsset, GlobalSoundConfig, GlobalHapticConfig, CollectibleEffectConfig, CollectiblePickupPermissions, Direction } from '../types/game';
+import type { Character, Enemy, TileBehaviorConfig, CadenceConfig, SoundAsset, GlobalSoundConfig, GlobalHapticConfig, CollectibleEffectConfig, CollectiblePickupPermissions, Direction, HitStampKind } from '../types/game';
 import { toast } from '../components/shared/Toast';
 import { logActivity } from '../services/activityLogService';
 
@@ -672,8 +672,14 @@ export interface CustomVessel {
   health: number;           // Some vessels are harder to break
   customSprite?: CustomSprite; // Idle + death sheets only — no directional movement, no spawn, no spells
   transformEnemyId?: string;    // Enemy that emerges when the vessel breaks (unset = plain breakable)
-  transformAfterTurns?: number; // Timed hatch: transforms at the END of this many turns even if unbroken (0/unset = death-trigger only)
+  transformAfterTurns?: number; // Timed hatch: transforms at the END of this many turns even if unbroken (0/unset = off)
   transformFacing?: Direction;  // Facing for the emerged enemy (unset = its asset default)
+  // Trigger batch 2026-07-17 (all checked end-of-turn in processVesselTransforms;
+  // any configured trigger can fire — first one wins via transformedOnTurn):
+  transformOnBreak?: boolean;   // Break-open toggle. DEFAULT TRUE (undefined keeps every pre-existing vessel transforming on death); false = death is a plain break — drops fire, nothing emerges (unless a listed hit kind delivered the kill)
+  transformProximityRange?: number;      // >0 enables the proximity hatch: a matching LIVING entity within this range at end of turn (same Euclidean rule as "in range" triggers; fly-bys during the turn don't count). Living vessel leaves without dying — no drops
+  transformProximityParty?: 'hero' | 'enemy' | 'any'; // Who proximity senses (default 'hero'). BASE parties (charm-blind); stealth hides from an opposing vessel's senses
+  transformOnHitKinds?: HitStampKind[]; // Non-empty enables the struck trigger: a CONNECTED hit of any listed kind hatches the vessel at that turn's end (stamps record connection, not damage-got-through — deflected/absorbed hits still count). Alive = leaves without dying; killed by a listed kind = break-open emergence even with transformOnBreak false
   droppedCollectibleId?: string; // Loot on break — fires via the normal death-drop path (a transforming vessel usually shouldn't also drop)
   sounds?: Enemy['sounds'];
   isCustom: boolean;

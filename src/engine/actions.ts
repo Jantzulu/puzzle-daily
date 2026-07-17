@@ -3557,9 +3557,10 @@ function spawnCollectiblePickupParticle(
 // ==========================================
 
 /**
- * Check if an entity has an active stealth effect
+ * Check if an entity has an active stealth effect.
+ * (Exported for the vessel proximity hatch in simulation.ts.)
  */
-function isEntityStealthed(entity: PlacedCharacter | PlacedEnemy): boolean {
+export function isEntityStealthed(entity: PlacedCharacter | PlacedEnemy): boolean {
   if (!entity.statusEffects) return false;
   return entity.statusEffects.some(e => e.type === StatusEffectType.STEALTH);
 }
