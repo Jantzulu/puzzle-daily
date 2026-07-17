@@ -407,15 +407,20 @@ Design answers locked 2026-07-16.
   clears the pair as one gesture. The First Steps test puzzle's top
   edge demos it (door swings open at load revealing the corridor).
 
-- [ ] **Phase 4 — Doors/hallways as INITIAL-SPAWN entrance styles.**
-  SCOPE LOCKED 2026-07-16: start-of-game entrances ONLY, not mid-match
-  waves (mid-game spawning is a possible later extension, explicitly
-  deferred). These become entrance options alongside fly-in / swoop /
-  flutter: at puzzle start, an entity walks in from a door or hallway
-  instead of fading/flying in. Entrance FAMILIES so the creator
-  chooses which entities come from which door/hallway. Rides the
-  existing entrance-animation system (render-side theater), NOT
-  spawnEnemyMidGame — no engine/win-condition impact.
+- [x] **Phase 4 — Doors/hallways as INITIAL-SPAWN entrance styles —
+  SHIPPED 2026-07-16** (slices `2649dcd` opt-in flags + entersFrom,
+  `d6a982b` inspect-popover picker, `2ab630c` walk-in renderer).
+  Design locked with user same day: per-placed-entity assignment
+  (PlacedEnemy.entersFrom, position+side ref w/ stale self-skip),
+  gated behind sprite-level spawnFromDoor/spawnFromHallway checkboxes
+  (SpriteEditor Spawn section); BFS pathfind around walls (shared
+  findPathBFS); staggered file-out per opening (350ms); door walkers
+  wait out the door-opening beat (450ms delay + ~500ms sheet);
+  enemies + allies + vessels (heroes keep their entrances). Walk-in
+  wins over fly-in; spawn sheet plays on arrival. Render-only refs in
+  AnimatedGameBoard, engine/solver untouched. NOT demoable on the
+  bundled test puzzle (built-in goblin has no customSprite — opt-in
+  lives on user assets). Mid-game waves remain explicitly deferred.
 
 ### Profile / cosmetic
 
