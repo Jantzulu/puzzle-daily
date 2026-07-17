@@ -192,6 +192,26 @@ The Reflect status effect bounces incoming projectiles back:
 
 ## Pending Tasks
 
+### Player-aimed spell direction — ✅ SHIPPED 2026-07-17 (same session as the queued pair below)
+
+The user clarified the "hero behavior slots" queue item: what they
+actually want is the redirect compass generalized — dev-authored spells
+where the PLAYER picks the fired direction at setup ("very few" such
+spells planned; heroes only). Shipped as
+`SpellAsset.directionAcceptsUserInput` in two slices: `ce989e0` engine
+(aimed direction tops executeSpell's direction chain, beats
+auto-target, honors faceTargetOnCast, enemy/AI + un-aimed heroes fall
+back to authored config; solver's getUserInputSpellIds permutes it like
+redirect; 6 parity pins) and `ee3f342` UI (Direction Configuration
+checkbox for non-redirect templates, hero-card compass generalized,
+new spell_direction help section). The choice shares
+`spellDirectionOverrides` with redirect input — everything downstream
+(placement stamping, setup recovery, daily persistence, ValidationModal)
+was already generic. Overlay-hold tweak ridealong: 2s → 1.5s
+(`38fe8c2`). AWAITING USER TEST with a real authored spell. Remaining
+user-input-variant ideas (initial hero facing, pick-a-spell-per-slot)
+stay in the backlog, not requested yet.
+
 ### Queued small tasks (user-requested 2026-07-17) — ✅ BOTH SHIPPED 2026-07-17
 
 1. ~~**Harden the vsync clock mapping against drift.**~~ **DONE**

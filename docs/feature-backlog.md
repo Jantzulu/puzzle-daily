@@ -173,7 +173,21 @@ do, complementary to [`feature-roadmap.md`](../../puzzle-game/feature-roadmap.md
 - [ ] **User-input spell variants.** Extend the existing redirect-direction-
   picker pattern (player chooses at setup) to three more cases, each
   toggleable per-spell:
-  - [ ] Pick fired direction of a spell
+  - [x] **Pick fired direction of a spell — SHIPPED 2026-07-17**
+    (`ce989e0` engine + solver + 6 parity pins in
+    spell-direction-input.test.ts, `ee3f342` editor checkbox + hero-card
+    compass + "Aimed Spell" help section).
+    `SpellAsset.directionAcceptsUserInput` on any non-redirect template;
+    the choice rides the SAME `spellDirectionOverrides` slot as redirect
+    input, so placement stamping, persistence, setup recovery, solver
+    permutation (8^N), and the validation modal all worked unchanged.
+    Aimed direction beats every authored source incl. auto-target;
+    honors faceTargetOnCast; enemies/AI (and un-aimed heroes) fall back
+    to the authored direction config. Homing deliberately not engaged.
+    AWAITING USER TEST with a real authored spell. Note (mirrors
+    pre-existing redirect behavior): an untouched compass DISPLAYS
+    north but the engine falls back to the authored config until the
+    player clicks — flag if this ever confuses.
   - [ ] Pick initial facing of a placed hero (heroes currently have a
     hardcoded starting facing baked into the asset, e.g. "Bob always
     starts facing south"). When toggled on, the player picks at placement.
