@@ -192,6 +192,27 @@ The Reflect status effect bounces incoming projectiles back:
 
 ## Pending Tasks
 
+### Scheduled visitors / passerby v2 + mid-game walk-ins — ✅ SHIPPED 2026-07-17 (hallway dynamics batch, item 5)
+
+`2b55d42`: PlacedEnemy.recurrence {firstTurn, repeatEvery} — placement
+= inert template (init despawns + win-exempts; defensive stamp in the
+pass), processScheduledArrivals spawns win-exempt copies at the DAWN
+of each cadence turn (before actions; standard spawnedOnTurn idle;
+occupied tile = visit skipped, never queued; facing from the ASSET —
+template facing can be a stale lazy default, pinned). Mid-game walk-in
+thin slice: WalkInState.midGame bypasses the !gameStarted draw gate;
+detection effect builds walks for entities spawned this turn with a
+valid entersFrom — THE deferred-waves opener (future wave features:
+create a walk-in ref the same way). Editor: "Scheduled visitor"
+section in the inspect popover. 6 pins. AWAITING USER TEST (enemy w/
+walk-in sprite opt-in + entersFrom + schedule; watch it stride in
+mid-game, cross, DEPART, and return on cadence). **DELIVERIES
+(collectible tossed in on a turn) DEFERRED — needs per-collectible
+placement UI that doesn't exist yet; rides processScheduledArrivals
+when built. The hallway dynamics batch is otherwise COMPLETE** (only
+eyes-in-the-dark flourish + the roguelike vision remain in that
+backlog section).
+
 ### Shove-out ejection — ✅ SHIPPED 2026-07-17 (hallway dynamics batch, item 4)
 
 `589dc04`: HallwayMarker.openLedge + ejection in executePushSpell (the

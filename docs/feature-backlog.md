@@ -514,11 +514,18 @@ the visual items: baked, event-driven, or transform/opacity only.
   exit = the escape walk-out machinery at FULL opacity (fade is
   escape-only). Editor dropdown picks the type up automatically.
   4 pins in depart-action.test.ts. AWAITING USER TEST.
-  - [ ] **V2 = RECURRING CADENCE**: per-placement {firstTurn,
-    repeatEvery} re-spawn via spawnEnemyMidGame (deterministic,
-    turn-keyed) — requires the walk-in theater to fire MID-GAME, i.e.
-    the first thin slice of the deferred waves work. Recurring
-    visitors must be excludeFromWinConditions.
+  - [x] **V2 = RECURRING CADENCE — SHIPPED 2026-07-17** (`2b55d42`).
+    PlacedEnemy.recurrence {firstTurn, repeatEvery} via the inspect
+    popover's "Scheduled visitor" section (enemies + allies): the
+    placement is an inert template (despawned + win-exempt at init);
+    processScheduledArrivals spawns win-exempt copies at the dawn of
+    each cadence turn (Every 0 = one visit; occupied arrival tile
+    skips that visit — no queueing; facing always from the asset).
+    Includes the MID-GAME WALK-IN thin slice (WalkInState.midGame
+    bypasses the !gameStarted draw gate) — visitors stride in from
+    their assigned opening during play; this is the deferred-waves
+    opener future wave features build on. 6 pins in
+    scheduled-arrivals.test.ts. AWAITING USER TEST.
 
 - [ ] **FEATURE — Deliveries.** A collectible tossed in from a hallway
   on a known turn — timed pickup pressure, board-readable where/when.
