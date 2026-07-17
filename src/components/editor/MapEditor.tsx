@@ -11,7 +11,7 @@ import { cacheEditorState, getCachedEditorState, clearCachedEditorState } from '
 import { writeAutoSave, readAutoSave, clearAutoSave, AUTOSAVE_INTERVAL_MS, type AutoSaveData } from '../../utils/autoSave';
 import { getAllPuzzleSkins, loadPuzzleSkin, getCustomTileTypes, loadTileType, getAllObjects, loadObject, getAllCollectibles, getSoundAssets, getCustomVessels, vesselToEnemyAsset, getCustomAllies, allyToEnemyAsset } from '../../utils/assetStorage';
 import { TILE_SIZE, BORDER_SIZE, SIDE_BORDER_SIZE, MAX_DISPLAY_WIDTH_TILES, createEmptyGrid, drawDungeonBorder, drawTile, drawEnemy, drawCollectibleInEditor, drawObject } from './map/canvasDraw';
-import { isValidHallway, drawHallwayOpening, hallwaySpriteSlot } from '../../utils/hallwayDraw';
+import { isValidHallway, drawHallwayOpening, collectCorridorCells, type HallwayDrawConfig } from '../../utils/hallwayDraw';
 import { loadImage } from '../../utils/imageLoader';
 import type { HallwaySide, DoorStartState } from '../../types/game';
 import { isValidDoor, drawDoor } from '../../utils/doorDraw';
@@ -643,13 +643,29 @@ export const MapEditor: React.FC = () => {
     // active, each opening also gets a copper outline so markers are easy
     // to find and remove.
     if (hasBorder && state.hallways.length > 0) {
+      const hallwayCfg: HallwayDrawConfig = {
+        tileSize: TILE_SIZE,
+        borderSize: BORDER_SIZE,
+        sideBorderSize: SIDE_BORDER_SIZE,
+        verticalDepth: BORDER_SIZE,
+        horizontalDepth: SIDE_BORDER_SIZE,
+        tiles: state.tiles,
+        gridWidth: state.gridWidth,
+        gridHeight: state.gridHeight,
+        corridorCells: collectCorridorCells(state.hallways, state.tiles, state.gridWidth, state.gridHeight),
+        getImage: (slot) => {
+          const src = currentSkin?.borderSprites?.[slot];
+          if (!src) return null;
+          const img = loadImage(src);
+          return img && img.complete ? img : null;
+        },
+        drawFloorTile: (c, gx, gy) => {
+          drawTile(c, gx, gy, { x: gx, y: gy, type: TileType.EMPTY }, currentSkin);
+        },
+      };
       state.hallways.forEach(marker => {
         if (!isValidHallway(marker, state.tiles, state.gridWidth, state.gridHeight)) return;
-        const slotSrc = currentSkin?.borderSprites?.[hallwaySpriteSlot(marker.side)];
-        const slotImg = slotSrc ? loadImage(slotSrc) : null;
-        drawHallwayOpening(ctx, marker, TILE_SIZE, BORDER_SIZE, SIDE_BORDER_SIZE, (c, gx, gy) => {
-          drawTile(c, gx, gy, { x: gx, y: gy, type: TileType.EMPTY }, currentSkin);
-        }, slotImg && slotImg.complete ? slotImg : null);
+        drawHallwayOpening(ctx, marker, hallwayCfg);
         if (state.selectedTool === 'hallway') {
           const d = marker.side === 'top' || marker.side === 'bottom' ? BORDER_SIZE : SIDE_BORDER_SIZE;
           const rx = marker.side === 'left' ? marker.x * TILE_SIZE - d : marker.side === 'right' ? (marker.x + 1) * TILE_SIZE : marker.x * TILE_SIZE;

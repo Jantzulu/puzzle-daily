@@ -2,16 +2,24 @@
 // static layers) and the map editor canvas, so the editor preview and the
 // live dungeon can't drift. A hallway marker opens the rendered wall on one
 // side of an edge tile into a faux corridor drawn INSIDE the existing
-// border band: the corridor floor paints over the wall segment, thin flank
-// strips suggest the corridor's own walls, and a darkness gradient
-// swallows the far half. Purely visual — the corridor is off-grid, so
-// entities and the solver never interact with it.
+// border band, and a darkness gradient swallows the far half. Purely
+// visual — the corridor is off-grid, so entities and the solver never
+// interact with it.
 //
-// Geometry: corridors fill the band exactly (top/bottom = BORDER_SIZE deep,
-// left/right = SIDE_BORDER_SIZE deep), so the canvas never grows and the
-// board's fit-scale math is untouched — the locked "excluded from sizing"
-// rule. Draw calls happen in the tile-translated coordinate space (negative
-// coords reach into the band).
+// Opening geometry (2026-07-16 rework): the mouth is rendered with the
+// skin's REAL border-corner vocabulary — the same inner-corner pieces
+// computeSmartBorder would emit if the corridor were actual map tiles cut
+// through the wall. The marker tile, with its corridor side treated as
+// playable, emits concave corners per the autotiler's own rules (neighbor
+// playable + diagonal void), so openings look and behave like real inner
+// corners instead of bespoke jamb slivers (user design). The skin's
+// hallway slots are the corridor FLOOR/interior only; walls and corners
+// come from the border sprite set.
+//
+// Sizing contract: corridors draw only into band/overhang pixels — the
+// board's fit-scale math never includes them (the locked "excluded from
+// sizing" rule). Draw calls happen in the tile-translated coordinate
+// space (negative coords reach into the band).
 import type { CustomBorderSprites, HallwayMarker, HallwaySide, TileOrNull } from '../types/game';
 import { TileType } from '../types/game';
 
@@ -57,27 +65,57 @@ export function isValidHallway(
 }
 
 /**
+ * The off-grid cells occupied by every valid marker's corridor, as "x,y"
+ * keys. The mouth-corner rules treat these as playable so adjacent
+ * hallways merge into one wide opening (no phantom wall between them) —
+ * exactly what the autotiler would do if the corridors were real tiles.
+ */
+export function collectCorridorCells(
+  markers: HallwayMarker[] | undefined,
+  tiles: TileOrNull[][],
+  width: number,
+  height: number,
+): Set<string> {
+  const cells = new Set<string>();
+  (markers ?? []).forEach(m => {
+    if (!isValidHallway(m, tiles, width, height)) return;
+    const off = SIDE_OFFSETS[m.side];
+    cells.add(`${m.x + off.dx},${m.y + off.dy}`);
+  });
+  return cells;
+}
+
+/**
+ * Everything drawHallwayOpening needs, built once per pass by the caller.
+ * `getImage` resolves a border sprite slot to a loaded HTMLImageElement or
+ * null (missing / still loading → procedural fallback piece).
+ */
+export interface HallwayDrawConfig {
+  tileSize: number;
+  borderSize: number;      // top/bottom band depth (B) — also the corner-piece height
+  sideBorderSize: number;  // side wall width (S) — also the corner-piece width
+  verticalDepth: number;   // corridor depth for top/bottom markers
+  horizontalDepth: number; // corridor depth for left/right markers
+  tiles: TileOrNull[][];
+  gridWidth: number;
+  gridHeight: number;
+  corridorCells: Set<string>; // from collectCorridorCells
+  getImage: (slot: keyof CustomBorderSprites) => HTMLImageElement | null;
+  drawFloorTile: (ctx: CanvasRenderingContext2D, gridX: number, gridY: number) => void;
+}
+
+/**
  * Draw one hallway opening. `ctx` must already be translated to the tile
- * grid origin (the same space tiles draw in). `drawFloorTile` is the
- * caller's own floor painter — invoked at the corridor's off-grid neighbor
- * coordinate inside a clip, so the corridor floor is the caller's skin
- * floor and stays seamless with the room.
+ * grid origin (the same space tiles draw in).
  */
 export function drawHallwayOpening(
   ctx: CanvasRenderingContext2D,
   marker: HallwayMarker,
-  tileSize: number,
-  verticalDepth: number,   // corridor depth for top/bottom sides (= BORDER_SIZE)
-  horizontalDepth: number, // corridor depth for left/right sides (= SIDE_BORDER_SIZE)
-  drawFloorTile: (ctx: CanvasRenderingContext2D, gridX: number, gridY: number) => void,
-  // Skin piece (phase 1.5): a loaded, .complete image for this side's
-  // hallway slot. When provided it replaces the procedural corridor
-  // interior (floor + jambs); the darkness fade still applies on top.
-  spriteImg?: HTMLImageElement | null,
+  cfg: HallwayDrawConfig,
 ): void {
   const { x, y, side } = marker;
-  const t = tileSize;
-  const depth = side === 'top' || side === 'bottom' ? verticalDepth : horizontalDepth;
+  const t = cfg.tileSize;
+  const depth = side === 'top' || side === 'bottom' ? cfg.verticalDepth : cfg.horizontalDepth;
   const off = SIDE_OFFSETS[side];
 
   // Corridor rect in translated grid pixels.
@@ -89,52 +127,151 @@ export function drawHallwayOpening(
     case 'right':  rx = (x + 1) * t;   ry = y * t; rw = depth; rh = t; break;
   }
 
+  // ── Corridor interior (clipped to the corridor rect) ──
   ctx.save();
   ctx.beginPath();
   ctx.rect(rx, ry, rw, rh);
   ctx.clip();
 
-  if (spriteImg) {
-    // Skinned corridor interior — one authored piece fills the band.
-    ctx.drawImage(spriteImg, rx, ry, rw, rh);
-    drawDarkness(ctx, marker.side, rx, ry, rw, rh);
-    ctx.restore();
-    return;
-  }
-
-  // 1. Corridor floor: the caller's floor tile drawn at the off-grid
-  //    neighbor cell, clipped to the corridor. Because the clip keeps the
-  //    sliver ADJACENT to the room tile, the floor texture continues
-  //    seamlessly through the opening.
-  drawFloorTile(ctx, x + off.dx, y + off.dy);
-
-  // 2. Jamb walls — the corridor's own side walls, in the dungeon
-  //    border's stone tones (body + a lit edge facing the corridor), so
-  //    the opening reads as the wall TURNING into the corridor and the
-  //    band's cut ends get faces, instead of the wall simply stopping
-  //    (user note, 2026-07-16). The darkness pass below swallows their
-  //    far halves along with the floor.
-  const flank = Math.max(4, Math.round(t / 8));
-  const lip = Math.max(1, Math.round(flank / 3));
-  ctx.fillStyle = '#323242';
-  if (side === 'top' || side === 'bottom') {
-    ctx.fillRect(rx, ry, flank, rh);
-    ctx.fillRect(rx + rw - flank, ry, flank, rh);
-    ctx.fillStyle = '#3a3a4a';
-    ctx.fillRect(rx + flank - lip, ry, lip, rh);
-    ctx.fillRect(rx + rw - flank, ry, lip, rh);
+  const interiorImg = cfg.getImage(hallwaySpriteSlot(side));
+  if (interiorImg) {
+    // Skinned corridor interior — authored floor art fills the corridor.
+    ctx.drawImage(interiorImg, rx, ry, rw, rh);
   } else {
-    ctx.fillRect(rx, ry, rw, flank);
-    ctx.fillRect(rx, ry + rh - flank, rw, flank);
-    ctx.fillStyle = '#3a3a4a';
-    ctx.fillRect(rx, ry + flank - lip, rw, lip);
-    ctx.fillRect(rx, ry + rh - flank, rw, lip);
+    // Procedural floor: the caller's floor tile at each off-grid corridor
+    // cell. The clip keeps it adjacent to the room tile so the texture
+    // continues seamlessly through the opening; deep corridors repeat the
+    // tile outward until the rect is covered.
+    const cells = Math.ceil(depth / t);
+    for (let i = 1; i <= cells; i++) {
+      cfg.drawFloorTile(ctx, x + off.dx * i, y + off.dy * i);
+    }
   }
-
-  // 3. Darkness fade over everything.
+  drawSideWalls(ctx, marker, cfg, rx, ry, rw, rh);
   drawDarkness(ctx, side, rx, ry, rw, rh);
-
   ctx.restore();
+
+  // ── Mouth corners (unclipped — they sit in the flanking wall band) ──
+  drawMouthCorners(ctx, marker, cfg);
+}
+
+/**
+ * The corridor's own side walls, drawn INSIDE the corridor clip along its
+ * length — what the autotiler would put on a corridor floor cell's exposed
+ * edges. Only meaningful once the corridor is deeper than the mouth
+ * corners' reach; the darkness fade swallows their far ends. For left/
+ * right corridors the walls run horizontally: a wallFront face above
+ * (front-facing walls are B tall — it fills the band row above) and a
+ * wallTop lip below. For top/bottom corridors the mouth corners already
+ * span the full band depth, so nothing extra is drawn here today.
+ */
+function drawSideWalls(
+  ctx: CanvasRenderingContext2D,
+  marker: HallwayMarker,
+  cfg: HallwayDrawConfig,
+  rx: number, ry: number, rw: number, rh: number,
+): void {
+  void marker; void ctx; void cfg; void rx; void ry; void rw; void rh;
+  // Slice B (deep side corridors) fills this in: wallFront above and
+  // wallTop below left/right corridors, drawn in the overhang band.
+}
+
+/**
+ * Mouth corners: the inner-corner pieces the marker tile would emit from
+ * computeSmartBorder if its corridor were playable tiles. Conditions
+ * mirror the autotiler exactly — concave corner = both adjacent neighbors
+ * playable (corridor counts) + the diagonal between them void. Corridor
+ * cells of OTHER valid hallways count as playable too, so adjacent
+ * openings merge without phantom shoulders.
+ */
+function drawMouthCorners(
+  ctx: CanvasRenderingContext2D,
+  marker: HallwayMarker,
+  cfg: HallwayDrawConfig,
+): void {
+  const { x, y, side } = marker;
+  const t = cfg.tileSize;
+  const S = cfg.sideBorderSize;
+  const B = cfg.borderSize;
+
+  const playable = (tx: number, ty: number): boolean =>
+    isPlayable(cfg.tiles, tx, ty, cfg.gridWidth, cfg.gridHeight) || cfg.corridorCells.has(`${tx},${ty}`);
+
+  // piece(slot, thinSlot?) draws with the smart border's fallback chain:
+  // thin variants fall back to full, missing art falls back to procedural.
+  const piece = (
+    slot: keyof CustomBorderSprites,
+    px: number, py: number, w: number, h: number,
+    litEdge: 'left' | 'right',
+    fallbackSlot?: keyof CustomBorderSprites,
+  ) => {
+    const img = cfg.getImage(slot) ?? (fallbackSlot ? cfg.getImage(fallbackSlot) : null);
+    if (img) {
+      ctx.drawImage(img, px, py, w, h);
+    } else {
+      drawProceduralCorner(ctx, px, py, w, h, litEdge);
+    }
+  };
+
+  switch (side) {
+    case 'top': {
+      // Marker tile's concave-tl / concave-tr with the corridor above it.
+      if (playable(x - 1, y) && !playable(x - 1, y - 1)) {
+        piece('innerCornerTopLeft', x * t - S, y * t - B, S, B, 'right');
+      }
+      if (playable(x + 1, y) && !playable(x + 1, y - 1)) {
+        piece('innerCornerTopRight', x * t + t, y * t - B, S, B, 'left');
+      }
+      break;
+    }
+    case 'bottom': {
+      // Outer-perimeter bottom corners are full height, like the band.
+      if (playable(x - 1, y) && !playable(x - 1, y + 1)) {
+        piece('innerCornerBottomLeft', x * t - S, (y + 1) * t, S, B, 'right');
+      }
+      if (playable(x + 1, y) && !playable(x + 1, y + 1)) {
+        piece('innerCornerBottomRight', x * t + t, (y + 1) * t, S, B, 'left');
+      }
+      break;
+    }
+    case 'left': {
+      // Wall above the mouth turns into the corridor: full-height inner
+      // corner. Below the mouth the corridor lip meets the side wall: thin.
+      if (playable(x, y - 1) && !playable(x - 1, y - 1)) {
+        piece('innerCornerTopLeft', x * t - S, y * t - B, S, B, 'right');
+      }
+      if (playable(x, y + 1) && !playable(x - 1, y + 1)) {
+        piece('innerCornerBottomLeftThin', x * t - S, (y + 1) * t, S, S, 'right', 'innerCornerBottomLeft');
+      }
+      break;
+    }
+    case 'right': {
+      if (playable(x, y - 1) && !playable(x + 1, y - 1)) {
+        piece('innerCornerTopRight', x * t + t, y * t - B, S, B, 'left');
+      }
+      if (playable(x, y + 1) && !playable(x + 1, y + 1)) {
+        piece('innerCornerBottomRightThin', x * t + t, (y + 1) * t, S, S, 'left', 'innerCornerBottomRight');
+      }
+      break;
+    }
+  }
+}
+
+/**
+ * Procedural stand-in for a missing inner-corner sprite: a stone block in
+ * the dungeon border's tones with a lit lip on the corridor-facing edge —
+ * same palette the old jambs used, now positioned as a real corner piece.
+ */
+function drawProceduralCorner(
+  ctx: CanvasRenderingContext2D,
+  px: number, py: number, w: number, h: number,
+  litEdge: 'left' | 'right',
+): void {
+  const lip = Math.max(1, Math.round(w / 5));
+  ctx.fillStyle = '#323242';
+  ctx.fillRect(px, py, w, h);
+  ctx.fillStyle = '#3a3a4a';
+  ctx.fillRect(litEdge === 'left' ? px : px + w - lip, py, lip, h);
 }
 
 /**

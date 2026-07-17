@@ -7,7 +7,7 @@ import { getEnemy } from '../../data/enemies';
 import { drawSprite, drawDeathSprite, hasDeathAnimation, drawSpawnSprite, hasSpawnAnimation, isSpawnAnimationPlaying, subscribeToSpriteImageLoads, getSpriteDrawHeight, ART_TILE_PX } from '../editor/SpriteEditor';
 import type { CustomCharacter, CustomEnemy, CustomTileType, CustomObject, CustomCollectible, CustomSprite } from '../../utils/assetStorage';
 import { loadPuzzleSkin, loadTileType, loadObject, loadStatusEffectAsset, loadCollectible, resolveImageSource } from '../../utils/assetStorage';
-import { isValidHallway, drawHallwayOpening, hallwaySpriteSlot, SIDE_OFFSETS } from '../../utils/hallwayDraw';
+import { isValidHallway, drawHallwayOpening, collectCorridorCells, SIDE_OFFSETS, type HallwayDrawConfig } from '../../utils/hallwayDraw';
 import { isValidDoor, drawDoor, DOOR_ANIM_DELAY_MS } from '../../utils/doorDraw';
 import { getThemeAsset } from '../../utils/themeAssets';
 import type { Tile } from '../../types/game';
@@ -2532,15 +2532,29 @@ function drawStaticLayers(
   // by the shared validity rule.
   if (hasBorder && puzzle.hallways && puzzle.hallways.length > 0) {
     const borderSprites = puzzle.borderConfig?.customBorderSprites;
+    const hallwayCfg: HallwayDrawConfig = {
+      tileSize: TILE_SIZE,
+      borderSize: BORDER_SIZE,
+      sideBorderSize: SIDE_BORDER_SIZE,
+      verticalDepth: BORDER_SIZE,
+      horizontalDepth: SIDE_BORDER_SIZE,
+      tiles: puzzle.tiles,
+      gridWidth: puzzle.width,
+      gridHeight: puzzle.height,
+      corridorCells: collectCorridorCells(puzzle.hallways, puzzle.tiles, puzzle.width, puzzle.height),
+      getImage: (slot) => {
+        const src = borderSprites?.[slot];
+        if (!src) return null;
+        const img = loadBorderImage(src);
+        return img && img.complete ? img : null;
+      },
+      drawFloorTile: (c, gx, gy) => {
+        drawTile(c, gx, gy, TileType.EMPTY, tileSprites, { x: gx, y: gy, type: TileType.EMPTY } as Tile, customTileSprites, isEditor, currentTurn, tileStates);
+      },
+    };
     puzzle.hallways.forEach(marker => {
       if (!isValidHallway(marker, puzzle.tiles, puzzle.width, puzzle.height)) return;
-      // Skinned hallway piece when the skin provides one; procedural
-      // floor+jambs otherwise.
-      const slotSrc = borderSprites?.[hallwaySpriteSlot(marker.side)];
-      const slotImg = slotSrc ? loadBorderImage(slotSrc) : null;
-      drawHallwayOpening(ctx, marker, TILE_SIZE, BORDER_SIZE, SIDE_BORDER_SIZE, (c, gx, gy) => {
-        drawTile(c, gx, gy, TileType.EMPTY, tileSprites, { x: gx, y: gy, type: TileType.EMPTY } as Tile, customTileSprites, isEditor, currentTurn, tileStates);
-      }, slotImg && slotImg.complete ? slotImg : null);
+      drawHallwayOpening(ctx, marker, hallwayCfg);
     });
   }
 
