@@ -479,16 +479,26 @@ the visual items: baked, event-driven, or transform/opacity only.
   Escort puzzles get a destination that reads on the board.
 
 - [ ] **FEATURE — The passerby.** Enemy/ally authoring. Neutral scripted
-  creature crossing the board: DESIGN LOCKED 2026-07-17 — NO new
-  pathfinding; the route is a normal authored behavior sequence
-  (WAITs, moves, turns). New engine piece = a DEPART action (leave the
-  board at/adjacent to a designated opening; despawn, no corpse,
-  walk-out theater). Entry = the shipped walk-in assignment. V1 =
-  one-shot crossing. V2 = RECURRING CADENCE: per-placement
-  {firstTurn, repeatEvery} re-spawn via spawnEnemyMidGame
-  (deterministic, turn-keyed) — requires the walk-in theater to fire
-  MID-GAME, i.e. the first thin slice of the deferred waves work.
-  Recurring visitors must be excludeFromWinConditions.
+  creature crossing the board. **V1 (one-shot crossing) SHIPPED
+  2026-07-17** (`7bdacf9`): new **ActionType.DEPART** — author the
+  route with normal moves/waits, end with DEPART; the entity leaves
+  the board on its own terms. NOT a death (summon-expiry semantics:
+  no drops, no death triggers, no corpse) but dead+despawned so win
+  checks settle and the tile frees (diedOnTurn unset — designers
+  curate passersby out of kill quests via the existing win-condition
+  checkboxes, since departure "counts as defeated" there otherwise).
+  Stun/sleep gate it (a disabled passerby can't slip away).
+  departedOnTurn + despawned ride all three enemy wrapper copy-backs,
+  so TRIGGERED departs work too ("skittish critter flees when a hero
+  comes adjacent" — pinned). Entry = the shipped walk-in assignment;
+  exit = the escape walk-out machinery at FULL opacity (fade is
+  escape-only). Editor dropdown picks the type up automatically.
+  4 pins in depart-action.test.ts. AWAITING USER TEST.
+  - [ ] **V2 = RECURRING CADENCE**: per-placement {firstTurn,
+    repeatEvery} re-spawn via spawnEnemyMidGame (deterministic,
+    turn-keyed) — requires the walk-in theater to fire MID-GAME, i.e.
+    the first thin slice of the deferred waves work. Recurring
+    visitors must be excludeFromWinConditions.
 
 - [ ] **FEATURE — Deliveries.** A collectible tossed in from a hallway
   on a known turn — timed pickup pressure, board-readable where/when.

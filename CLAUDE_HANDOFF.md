@@ -192,6 +192,24 @@ The Reflect status effect bounces incoming projectiles back:
 
 ## Pending Tasks
 
+### DEPART action / passerby v1 — ✅ SHIPPED 2026-07-17 (hallway dynamics batch, item 2)
+
+`7bdacf9`: ActionType.DEPART — the shared engine primitive the rest of
+the batch builds on. Route = normal authored moves; DEPART = leave the
+board (summon-expiry semantics: dead+despawned, NO drops/triggers/
+corpse, diedOnTurn unset so the tile frees; stun/sleep gate it).
+departedOnTurn + despawned ride all 3 enemy wrapper copy-backs —
+triggered departs work (skittish-critter case pinned). Render reuses
+the escape walk-out at FULL opacity (ghostFade flag — fade is
+escape-only). Editor dropdown lists it automatically. NOTE for
+designers: a departed enemy reads as "defeated" to defeat_all_enemies
+— curate passersby out via the win-condition checkboxes. 4 pins.
+AWAITING USER TEST (author an enemy route ending in DEPART on a
+hallway'd puzzle). **Batch remainder: escape objectives (win condition
+"guide the Noble out through hall X" — condition shape exists, DEPART/
+walk-out theater now exists) → shove-out ejection → mid-game-waves
+thin slice → passerby v2 recurring + deliveries.**
+
 ### Escapes-on-defeat — ✅ SHIPPED 2026-07-17 (hallway dynamics batch, item 1)
 
 `bd3525b` logic: Enemy.escapesOnDefeat — death stays a FULL defeat (win
