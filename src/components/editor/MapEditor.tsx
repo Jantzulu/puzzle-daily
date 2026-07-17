@@ -629,8 +629,11 @@ export const MapEditor: React.FC = () => {
     return overhang;
   }
 
-  // Draw grid
-  useEffect(() => {
+  // Draw grid — a callable (not an effect body) so both the state-change
+  // effect and the live-preview ticker below can repaint it. Recreated each
+  // render so it closes over current state; the ref always holds the
+  // latest version for the ticker.
+  const drawBoard = () => {
     if (state.mode !== 'edit') return;
 
     const canvas = canvasRef.current;
@@ -812,7 +815,34 @@ export const MapEditor: React.FC = () => {
 
     ctx.restore();
     ctx.restore(); // side-corridor overhang translate
+  };
+  const drawBoardRef = useRef(drawBoard);
+  drawBoardRef.current = drawBoard;
+
+  // Repaint immediately on any state edit (same dep list the old draw
+  // effect used) — keeps editing feedback instant between ticker beats.
+  useEffect(() => {
+    drawBoardRef.current();
   }, [state.tiles, state.enemies, state.collectibles, state.placedObjects, state.hallways, state.doors, state.selectedTool, state.gridWidth, state.gridHeight, state.mode, state.skinId, redrawCounter, highlightTile, dragState]);
+
+  // Live board preview (2026-07-17): a modest repaint clock so sprite
+  // animations play while editing. drawSprite's sheet stepper advances only
+  // when drawn, gated by each sheet's own frameRate — so a ~12fps cadence
+  // animates the 4–12fps sprites correctly without running the canvas at
+  // 60Hz (the editor board is a workspace, not a game loop; rAF also stops
+  // entirely while the tab is hidden).
+  useEffect(() => {
+    let raf = 0;
+    let last = 0;
+    const tick = (t: number) => {
+      raf = requestAnimationFrame(tick);
+      if (t - last < 85) return;
+      last = t;
+      drawBoardRef.current();
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, []);
 
   // Touch long-press = delete (mirrors right-click). Android fires
   // contextmenu on long-press natively; iOS Safari doesn't, so a manual

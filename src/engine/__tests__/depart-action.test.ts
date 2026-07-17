@@ -12,7 +12,6 @@ import {
   clearAllRegistries,
   registerTestCharacter as regChar,
   registerTestEnemy as regEnemy,
-  registerTestSpell,
   registerTestCollectible,
   createTestPuzzle,
   createTestCharacterDef,
@@ -21,7 +20,7 @@ import {
   createTestEnemy,
   createTestGameState,
 } from './helpers';
-import { Direction, ActionType, SpellTemplate } from '../../types/game';
+import { Direction, ActionType } from '../../types/game';
 import type { GameState } from '../../types/game';
 import { executeTurn, checkVictoryConditions } from '../simulation';
 
