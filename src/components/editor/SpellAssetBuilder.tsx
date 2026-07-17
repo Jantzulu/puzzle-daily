@@ -1272,8 +1272,30 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
             <div className="space-y-4">
               <h3 className="text-lg font-semibold border-b border-stone-700 pb-2">Direction Configuration</h3>
 
+              {/* Player aims the spell — generalized redirect-style input.
+                  Redirect spells keep their own checkbox in Redirect Settings
+                  (that input aims the target's new facing, and the two share
+                  the same per-spell override slot). */}
+              {!templateIsRedirect && (
+                <div className={`p-3 rounded-lg border ${editedSpell.directionAcceptsUserInput ? 'bg-purple-900/30 border-purple-600' : 'bg-stone-800 border-stone-700'}`}>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={editedSpell.directionAcceptsUserInput || false}
+                      onChange={(e) => setEditedSpell({ ...editedSpell, directionAcceptsUserInput: e.target.checked })}
+                      className="rounded"
+                    />
+                    <span className="text-sm font-medium">🎯 Player chooses fired direction during setup</span>
+                  </label>
+                  <p className="text-xs text-stone-400 mt-1 ml-6">
+                    The player aims this spell via a compass when placing the hero.
+                    {editedSpell.directionAcceptsUserInput && ' The direction settings below serve as defaults for enemies/AI.'}
+                  </p>
+                </div>
+              )}
+
               <div>
-                <label className="block text-sm font-medium mb-2">Direction Mode *</label>
+                <label className="block text-sm font-medium mb-2">Direction Mode {editedSpell.directionAcceptsUserInput && !templateIsRedirect ? <span className="text-xs text-stone-500">(default for AI)</span> : ''}</label>
                 <select
                   value={editedSpell.directionMode}
                   onChange={(e) => setEditedSpell({ ...editedSpell, directionMode: e.target.value as DirectionMode })}

@@ -1435,6 +1435,7 @@ export type HelpSectionId =
   | 'characters'
   | 'game_general'
   | 'redirect_spell'
+  | 'spell_direction'
   | 'side_quests';
 
 // Help content for a single section
@@ -1499,6 +1500,12 @@ const defaultHelpContent: HelpContentStorage = {
       id: 'redirect_spell',
       title: 'Redirect Spell',
       content: '<p>This hero has a <strong>Redirect</strong> spell whose direction you choose.</p><ul><li>Use the compass to pick which direction the spell will redirect targets</li><li>You can change the direction before or after placing the hero</li><li>The chosen direction is shown on the hero card during the simulation</li></ul>',
+      updatedAt: new Date().toISOString(),
+    },
+    {
+      id: 'spell_direction',
+      title: 'Aimed Spell',
+      content: '<p>This hero has a spell that <strong>you aim</strong>.</p><ul><li>Use the compass to pick which direction the spell will fire</li><li>You can change the direction before or after placing the hero</li><li>The chosen direction is shown on the hero card during the simulation</li></ul>',
       updatedAt: new Date().toISOString(),
     },
     {

@@ -166,11 +166,19 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
   const hasActionSteps = (renderedCharacter?.actionSteps?.length ?? 0) > 0;
   const hasAttributes = (renderedCharacter?.attributes?.length ?? 0) > 0;
 
-  const redirectSpells = renderedCharacter
+  // Spells whose direction the player chooses: redirect spells (the compass
+  // aims the target's new facing) and aimed spells with
+  // directionAcceptsUserInput (the compass aims the cast direction). Both
+  // store their choice in spellDirectionOverrides, so one compass UI serves
+  // both — must match the solver's getUserInputSpellIds filter.
+  const directionInputSpells = renderedCharacter
     ? renderedCharacter.behavior
         .filter(a => a.type === 'spell' && a.spellId)
         .map(a => loadSpellAsset(a.spellId!))
-        .filter(s => s && s.templateType === 'redirect' && s.redirectAcceptsUserInput)
+        .filter(s => s && (
+          (s.templateType === 'redirect' && s.redirectAcceptsUserInput) ||
+          (s.templateType !== 'redirect' && s.directionAcceptsUserInput)
+        ))
     : [];
 
   const placedSelectedChar = placedCharacters.find(pc => pc.characterId === renderedCharId);
@@ -394,7 +402,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
           hero used to open an empty tinted box holding just the placement
           hint, expanding the panel at selection (read as the trash button
           displacing the layout). The hint now lives in a static row below. */}
-      {renderedCharId && renderedCharacter && (hasActionSteps || hasAttributes || redirectSpells.length > 0) && (
+      {renderedCharId && renderedCharacter && (hasActionSteps || hasAttributes || directionInputSpells.length > 0) && (
         <div style={{
           display: 'grid',
           gridTemplateRows: isOpen ? '1fr' : '0fr',
@@ -461,8 +469,8 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
             </div>
           )}
 
-          {/* Redirect spell compass */}
-          {redirectSpells.map(spell => {
+          {/* Direction-input spell compass (redirect + aimed spells) */}
+          {directionInputSpells.map(spell => {
             if (!spell) return null;
             const currentDir: Direction = (
               placedSelectedChar?.spellDirectionOverrides?.[spell.id]
@@ -483,7 +491,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
               <div key={spell.id} className="flex flex-col items-center gap-1 mb-2">
                 <div className="relative w-full flex items-center justify-center">
                   <div className="absolute left-2">
-                    <HelpButton sectionId="redirect_spell" className="!p-0" />
+                    <HelpButton sectionId={spell.templateType === 'redirect' ? 'redirect_spell' : 'spell_direction'} className="!p-0" />
                   </div>
                   <span className="text-[9px] text-purple-300 font-medium">{spell.name}</span>
                 </div>

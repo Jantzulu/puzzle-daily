@@ -43,6 +43,10 @@ const SECTION_INFO: Record<HelpSectionId, { icon: string; description: string }>
     icon: '🔄',
     description: 'Help for the redirect spell compass on hero cards',
   },
+  spell_direction: {
+    icon: '🎯',
+    description: 'Help for the aimed-spell compass on hero cards',
+  },
   side_quests: {
     icon: '🎯',
     description: 'Help for the side-quests row shown next to the main goal',
