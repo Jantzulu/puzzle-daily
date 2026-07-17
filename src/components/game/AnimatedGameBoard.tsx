@@ -2607,14 +2607,22 @@ function drawStaticLayers(
       if (!t) return AO_VOID_OCCLUDES;
       return t.type === TileType.WALL;
     };
+    // A hallway opening removes the wall on that side — no wall, no
+    // contact shadow on the marker tile's edge (user catch, 2026-07-16).
+    const hallwayOpenSides = new Set<string>();
+    (puzzle.hallways ?? []).forEach(m => {
+      if (isValidHallway(m, puzzle.tiles, puzzle.width, puzzle.height)) {
+        hallwayOpenSides.add(`${m.x},${m.y},${m.side}`);
+      }
+    });
     for (let y = 0; y < puzzle.height; y++) {
       for (let x = 0; x < puzzle.width; x++) {
         const t = tilesGrid[y][x];
         if (!t || t.type === TileType.WALL) continue; // AO lands on floor only
         drawWallAO(ctx, x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, {
-          n: isOccluder(x, y - 1),
-          w: isOccluder(x - 1, y),
-          e: isOccluder(x + 1, y),
+          n: isOccluder(x, y - 1) && !hallwayOpenSides.has(`${x},${y},top`),
+          w: isOccluder(x - 1, y) && !hallwayOpenSides.has(`${x},${y},left`),
+          e: isOccluder(x + 1, y) && !hallwayOpenSides.has(`${x},${y},right`),
           nw: isOccluder(x - 1, y - 1),
           ne: isOccluder(x + 1, y - 1),
         });
