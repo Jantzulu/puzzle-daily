@@ -27,7 +27,7 @@ export interface CharacterPlacement {
   x: number;
   y: number;
   facing: Direction;
-  spellDirectionOverrides?: Record<string, Direction>; // spellId -> chosen direction (for redirect spells)
+  spellDirectionOverrides?: Record<string, Direction>; // spellId -> chosen direction (redirect + player-aimed spells)
 }
 
 interface ValidTile {
@@ -109,23 +109,29 @@ const ALL_DIRECTIONS: Direction[] = [
 ];
 
 /**
- * Find redirect spell IDs that accept user input for a given character
+ * Find spell IDs whose direction is player-chosen for a given character:
+ * redirect spells with redirectAcceptsUserInput (the input aims the target's
+ * new facing) and any other spell with directionAcceptsUserInput (the input
+ * aims the cast direction). Both store their choice in spellDirectionOverrides.
  */
-function getRedirectSpellIds(charId: string): string[] {
+function getUserInputSpellIds(charId: string): string[] {
   const charData = getCharacter(charId);
   if (!charData) return [];
   return charData.behavior
     .filter(a => a.type === 'spell' && a.spellId)
     .map(a => loadSpellAsset(a.spellId!))
-    .filter(s => s && s.templateType === 'redirect' && s.redirectAcceptsUserInput)
+    .filter(s => s && (
+      (s.templateType === 'redirect' && s.redirectAcceptsUserInput) ||
+      (s.templateType !== 'redirect' && s.directionAcceptsUserInput)
+    ))
     .map(s => s!.id);
 }
 
 /**
- * Generate all direction override combinations for a list of redirect spell IDs.
- * Each spell gets one of 8 directions, yielding 8^N combinations.
+ * Generate all direction override combinations for a list of player-input
+ * spell IDs. Each spell gets one of 8 directions, yielding 8^N combinations.
  */
-function* generateRedirectOverrides(
+function* generateDirectionOverrides(
   spellIds: string[]
 ): Generator<Record<string, Direction>> {
   if (spellIds.length === 0) {
@@ -134,7 +140,7 @@ function* generateRedirectOverrides(
   }
   const [first, ...rest] = spellIds;
   for (const dir of ALL_DIRECTIONS) {
-    for (const restOverrides of generateRedirectOverrides(rest)) {
+    for (const restOverrides of generateDirectionOverrides(rest)) {
       yield { [first]: dir, ...restOverrides };
     }
   }
@@ -143,7 +149,7 @@ function* generateRedirectOverrides(
 /**
  * Generate all possible placements for a set of characters on valid tiles
  * Uses each character's actual defaultFacing (not all 8 directions)
- * Also permutes redirect spell direction overrides for heroes with player-choosable redirect spells
+ * Also permutes spell direction overrides for heroes with player-choosable spell directions (redirect + aimed spells)
  */
 function* generatePlacements(
   characters: string[],
@@ -160,15 +166,15 @@ function* generatePlacements(
   const charData = getCharacter(charId);
   const facing = charData?.defaultFacing || ('south' as Direction);
 
-  // Find redirect spells that need user input for this character
-  const redirectSpellIds = getRedirectSpellIds(charId);
+  // Find spells whose direction the player chooses for this character
+  const userInputSpellIds = getUserInputSpellIds(charId);
 
   for (const tile of tiles) {
     // Remaining tiles (exclude current to prevent overlaps)
     const remainingTiles = tiles.filter(t => t.x !== tile.x || t.y !== tile.y);
 
-    // Generate redirect direction permutations (or single empty override if none)
-    for (const overrides of generateRedirectOverrides(redirectSpellIds)) {
+    // Generate direction permutations (or single empty override if none)
+    for (const overrides of generateDirectionOverrides(userInputSpellIds)) {
       const placement: CharacterPlacement = {
         characterId: charId,
         x: tile.x,

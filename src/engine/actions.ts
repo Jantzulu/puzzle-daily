@@ -1695,7 +1695,22 @@ function executeSpell(
       targetEnemyIndex: 'enemyId' in t.entity ? t.enemyIndex : undefined,
     }));
 
-  if (autoTeam) {
+  // Player-aimed cast direction (setup-time compass input, generalized from
+  // the redirect compass 2026-07-17). The chosen direction replaces every
+  // authored direction source INCLUDING auto-target — the flag means "the
+  // player aims this spell". Casters without a stored choice (enemies/AI
+  // casting the same asset, or a hero the player never aimed) fall through
+  // to the authored config below, mirroring redirectAcceptsUserInput's
+  // fallback. Homing is deliberately not engaged: an aimed bolt flies where
+  // it was pointed.
+  const aimedDirection = spell.directionAcceptsUserInput
+    ? character.spellDirectionOverrides?.[spell.id]
+    : undefined;
+
+  if (aimedDirection) {
+    castDirections = [aimedDirection];
+    applyFaceOnCast(character, action, aimedDirection);
+  } else if (autoTeam) {
     const maxTargets = action.maxTargets || 1;
     const targetMode = action.autoTargetMode || 'omnidirectional';
     const maxRange = autoTargetRangeFallback;

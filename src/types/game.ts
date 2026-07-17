@@ -791,7 +791,7 @@ export interface PlacedCharacter {
   statusEffects?: StatusEffectInstance[]; // Active status effects on this character
   spellCooldowns?: Record<string, number>; // Spell ID -> turns remaining on cooldown
   spellUseCounts?: Record<string, number>; // Spell ID -> number of times used this game (for maxUsesPerGame)
-  spellDirectionOverrides?: Record<string, Direction>; // User-chosen directions for redirect spells (set during setup)
+  spellDirectionOverrides?: Record<string, Direction>; // User-chosen directions set during setup — redirect direction for redirect spells, fired direction for directionAcceptsUserInput spells
   pendingProjectileDeath?: boolean; // Deferred death: entity is logically dead but waiting for projectile visual to arrive
   pendingVisualDamage?: number; // Sum of damage from hits that have landed logically but haven't reached visually yet. Bar displays currentHealth + pendingVisualDamage, so each visual arrival drops the bar by exactly that hit's damage.
   diedOnTurn?: number; // See PlacedEnemy.diedOnTurn — deterministic death-turn stamp used by movement blockers to keep tile occupied through the next turn.
@@ -1503,6 +1503,12 @@ export interface SpellAsset {
   directionMode: DirectionMode;
   defaultDirections?: Direction[]; // For 'fixed' mode
   relativeDirections?: RelativeDirection[]; // For 'relative' mode
+  // Player picks the fired direction during setup (compass on the hero card,
+  // generalized from the redirect input); the direction config above becomes
+  // the enemy/AI fallback. Redirect spells use redirectAcceptsUserInput
+  // instead — that input aims the target's NEW facing, not the cast
+  // direction, and the two share the spellDirectionOverrides storage slot.
+  directionAcceptsUserInput?: boolean;
 
   // Damage/Healing
   damage?: number;              // Damage dealt (mutually exclusive with healing)
