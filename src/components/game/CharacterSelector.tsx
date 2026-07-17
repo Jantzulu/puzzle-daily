@@ -257,7 +257,6 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
       <SlidingSelection
         slotCount={stripCharacterIds.length}
         selectedIndex={selectedStripIndex}
-        emberRgb="94, 61, 41"
         caretClass="text-copper-400"
       />
       <div className="flex divide-x divide-stone-700">
@@ -284,16 +283,19 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                   : isPlaced && isSelected
                   // Placed AND actively viewed: full brightness so the
                   // sprite/name/HP match the (full-brightness) info area
-                  // below (the copper tint itself now comes from the
-                  // SlidingSelection overlay behind the card).
-                  ? 'cursor-pointer'
+                  // below. The flat tint exactly matches the info area's
+                  // bg-copper-900/15 so card + info read as ONE surface;
+                  // transition-colors crossfades it between cards (the
+                  // tint deliberately does not slide — see the design
+                  // record in SlidingSelection).
+                  ? 'cursor-pointer bg-copper-900/15'
                   : isPlaced
                   // Placed but NOT viewed: dim with opacity-50 + a hover
                   // tint. "Already placed, can't re-place" signal — the
                   // checkmark + dimmed sprite carry that.
                   ? 'opacity-50 cursor-pointer [@media(hover:hover)]:hover:bg-stone-700/30'
                   : isSelected
-                  ? 'cursor-pointer'
+                  ? 'bg-copper-900/15 cursor-pointer'
                   : '[@media(hover:hover)]:hover:bg-stone-700/30 cursor-pointer'
               }`}
             >
@@ -402,7 +404,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
         }}>
         <div style={{ overflow: 'hidden', minHeight: 0 }}>
         <div
-          className="relative pt-4 pb-3 mt-0 bg-copper-900/15 rounded-b-pixel-md"
+          className="pt-4 pb-3 mt-0 bg-copper-900/15 rounded-b-pixel-md"
           style={{
             opacity: isOpen ? 1 : 0,
             transform: isOpen ? 'translateY(0)' : 'translateY(-8px)',

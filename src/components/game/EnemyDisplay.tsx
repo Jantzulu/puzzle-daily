@@ -278,7 +278,6 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
       <SlidingSelection
         slotCount={stripEnemyIds.length}
         selectedIndex={selectedEnemyId ? stripEnemyIds.indexOf(selectedEnemyId) : -1}
-        emberRgb={isAllySide ? '94, 61, 41' : '107, 16, 16'}
         caretClass={isAllySide ? 'text-copper-400' : 'text-blood-400'}
       />
       <div className="flex divide-x divide-stone-700">
@@ -297,8 +296,10 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
               onClick={() => setSelectedEnemyId(isSelected ? null : enemyId)}
               className={`flex-1 flex flex-col items-center px-1 pt-1 pb-0.5 relative transition-colors cursor-pointer ${
                 isSelected
-                  // Tint comes from the SlidingSelection overlay behind the card
-                  ? ''
+                  // Flat tint matching the info panel's wash — one surface;
+                  // transition-colors crossfades it between cards (the tint
+                  // deliberately does not slide — see SlidingSelection).
+                  ? (isAllySide ? 'bg-copper-900/15' : 'bg-blood-900/15')
                   : '[@media(hover:hover)]:hover:bg-stone-700/30'
               } ${allDead ? 'opacity-50' : ''}`}
             >
@@ -391,7 +392,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
         }}>
         <div style={{ overflow: 'hidden', minHeight: 0 }}>
           <div
-            className="relative pt-4 pb-3 mt-0 bg-blood-900/15 rounded-b-pixel-md"
+            className="pt-4 pb-3 mt-0 bg-blood-900/15 rounded-b-pixel-md"
             style={{
               opacity: isOpen ? 1 : 0,
               transform: isOpen ? 'translateY(0)' : 'translateY(-8px)',
