@@ -175,23 +175,28 @@ export function drawHallwayOpening(
   // neighbor corridor's pixels (double-darkening) or not ours at all.
   const openCell = (tx: number, ty: number): boolean =>
     isPlayable(cfg.tiles, tx, ty, cfg.gridWidth, cfg.gridHeight) || cfg.corridorCells.has(`${tx},${ty}`);
-  let darkX = rx, darkY = ry, darkW = rw, darkH = rh;
   if (horizontal) {
+    let darkY = ry, darkH = rh;
     const dx = side === 'left' ? -1 : 1;
     if (!openCell(x + dx, y - 1)) { darkY -= cfg.borderSize; darkH += cfg.borderSize; }
     if (!openCell(x + dx, y + 1)) { darkH += cfg.sideBorderSize; }
+    drawDarkness(ctx, side, rx, darkY, rw, darkH);
   } else {
+    // Split treatment (user note, 2026-07-16): the FLOOR compresses its
+    // ramp into one band depth so the first corridor tile clearly reads
+    // non-playable, but the flanking WALL pieces are wall faces catching
+    // the same room light as their neighbors — they keep the gentle
+    // full-depth ramp and only drown near the far end. One gradient over
+    // the whole union made the walls unnaturally dark next to the band.
     const dy = side === 'top' ? -1 : 1;
-    if (openCell(x - 1, y) && !openCell(x - 1, y + dy)) { darkX -= cfg.sideBorderSize; darkW += cfg.sideBorderSize; }
-    if (openCell(x + 1, y) && !openCell(x + 1, y + dy)) { darkW += cfg.sideBorderSize; }
+    drawDarkness(ctx, side, rx, ry, rw, rh, Math.min(1, cfg.borderSize / rh));
+    if (openCell(x - 1, y) && !openCell(x - 1, y + dy)) {
+      drawDarkness(ctx, side, rx - cfg.sideBorderSize, ry, cfg.sideBorderSize, rh);
+    }
+    if (openCell(x + 1, y) && !openCell(x + 1, y + dy)) {
+      drawDarkness(ctx, side, rx + rw, ry, cfg.sideBorderSize, rh);
+    }
   }
-  // Ramp compression: vertical corridors are deeper (band + protrusion)
-  // than the sides, and a fade normalized over the full depth left their
-  // first tile reading as playable floor (user note, 2026-07-16). The
-  // ramp completes within ONE band depth — the same absolute darkness
-  // profile on every side — and holds full black through the rest.
-  const rampFraction = horizontal ? 1 : Math.min(1, cfg.borderSize / rh);
-  drawDarkness(ctx, side, darkX, darkY, darkW, darkH, rampFraction);
 }
 
 /**
