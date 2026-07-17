@@ -194,10 +194,23 @@ export function drawHallwayOpening(
     const dy = side === 'top' ? -1 : 1;
     drawDarkness(ctx, side, rx, ry, rw, rh, Math.min(1, cfg.borderSize / rh));
     const flankH = side === 'top' ? rh - cfg.borderSize : rh;
+    // Top flanks: flat pre-shade over the WHOLE flank column (shoulder +
+    // protruding strip) — the sides' locked "walls in shade" treatment
+    // (user, 2026-07-17: fully-lit vertical segments beside the dark mouth
+    // read too bright; revises round 7's fully-lit shoulders). The
+    // protrusion gradient below still sinks the far end to black. Bottom
+    // flanks keep their approved gentle ramp, untouched.
+    const preShadeTopFlank = (px: number) => {
+      if (side !== 'top') return;
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+      ctx.fillRect(px, ry, cfg.sideBorderSize, rh);
+    };
     if (openCell(x - 1, y) && !openCell(x - 1, y + dy)) {
+      preShadeTopFlank(rx - cfg.sideBorderSize);
       drawDarkness(ctx, side, rx - cfg.sideBorderSize, ry, cfg.sideBorderSize, flankH);
     }
     if (openCell(x + 1, y) && !openCell(x + 1, y + dy)) {
+      preShadeTopFlank(rx + rw);
       drawDarkness(ctx, side, rx + rw, ry, cfg.sideBorderSize, flankH);
     }
   }
