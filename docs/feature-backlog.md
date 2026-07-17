@@ -571,7 +571,12 @@ the visual items: baked, event-driven, or transform/opacity only.
   same-tile drags commit, live offset in the status bar. Other
   tools/kinds keep tile snap; one-object-per-tile rule unchanged
   (offsets reach ±12 art px, so art clusters across tiles freely).
-  AWAITING USER TEST.
+  **SLIDERS ADDED same day** (`501ea00`, user request): Object-tool
+  click on a placed object opens ObjectInspectPopover — X/Y sliders +
+  number inputs (±24 art px, live preview, Reset, Remove), one undo
+  entry per popover session. ⚠️ Deliberate change (entity-inspect
+  precedent): Object-tool click no longer toggle-removes — removal =
+  right-click / long-press / roster ✕ / popover. AWAITING USER TEST.
 
 - [x] **FEATURE — Live editor board rendering — SHIPPED 2026-07-17**
   (`155c7db`). The draw helpers were already time-aware — the canvas
