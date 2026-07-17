@@ -2649,7 +2649,10 @@ export function executeAOEAttack(
     }
 
     const persistentEffect: PersistentAreaEffect = {
-      id: `persist_${Date.now()}_${Math.random()}`,
+      // Deterministic id (turn + index) — the determinism rule. Nothing
+      // logical keys on zone ids, but identical runs must produce
+      // identical GameState contents (state-hash / replay diffing).
+      id: `persist_${gameState.currentTurn}_${gameState.persistentAreaEffects.length}`,
       x: centerX,
       y: centerY,
       radius,
