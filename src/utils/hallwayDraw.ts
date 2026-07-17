@@ -24,7 +24,7 @@ export function hallwaySpriteSlot(side: HallwaySide): keyof CustomBorderSprites 
 }
 
 /** Offset from a tile to its neighbor through the given side. */
-const SIDE_OFFSETS: Record<HallwaySide, { dx: number; dy: number }> = {
+export const SIDE_OFFSETS: Record<HallwaySide, { dx: number; dy: number }> = {
   top: { dx: 0, dy: -1 },
   bottom: { dx: 0, dy: 1 },
   left: { dx: -1, dy: 0 },

@@ -1,17 +1,17 @@
 /* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any, no-case-declarations */
 import React, { useRef, useEffect, useMemo, useState, useCallback } from 'react';
-import type { GameState, PlacedCharacter, PlacedEnemy, Projectile, ProjectileVisualState, ParticleEffect, BorderConfig, CharacterAction, EnemyBehavior, TileSprites, ActivationSpriteConfig, StatusEffectInstance, PersistentAreaEffect, LingeringProjectileHazard, Puzzle, PuzzleSkin } from '../../types/game';
+import type { GameState, PlacedCharacter, PlacedEnemy, Projectile, ProjectileVisualState, ParticleEffect, BorderConfig, CharacterAction, EnemyBehavior, TileSprites, ActivationSpriteConfig, StatusEffectInstance, PersistentAreaEffect, LingeringProjectileHazard, Puzzle, PuzzleSkin, EntranceRef } from '../../types/game';
 import { TileType, Direction, ActionType, StatusEffectType } from '../../types/game';
 import { getCharacter } from '../../data/characters';
 import { getEnemy } from '../../data/enemies';
 import { drawSprite, drawDeathSprite, hasDeathAnimation, drawSpawnSprite, hasSpawnAnimation, isSpawnAnimationPlaying, subscribeToSpriteImageLoads, getSpriteDrawHeight, ART_TILE_PX } from '../editor/SpriteEditor';
 import type { CustomCharacter, CustomEnemy, CustomTileType, CustomObject, CustomCollectible, CustomSprite } from '../../utils/assetStorage';
 import { loadPuzzleSkin, loadTileType, loadObject, loadStatusEffectAsset, loadCollectible, resolveImageSource } from '../../utils/assetStorage';
-import { isValidHallway, drawHallwayOpening, hallwaySpriteSlot } from '../../utils/hallwayDraw';
-import { isValidDoor, drawDoor } from '../../utils/doorDraw';
+import { isValidHallway, drawHallwayOpening, hallwaySpriteSlot, SIDE_OFFSETS } from '../../utils/hallwayDraw';
+import { isValidDoor, drawDoor, DOOR_ANIM_DELAY_MS } from '../../utils/doorDraw';
 import { getThemeAsset } from '../../utils/themeAssets';
 import type { Tile } from '../../types/game';
-import { updateProjectiles, updateParticles, executeParallelActions, DESPAWN_SHRINK_MS, TARGET_LOST_LINGER_MS } from '../../engine/simulation';
+import { updateProjectiles, updateParticles, executeParallelActions, findPathBFS, DESPAWN_SHRINK_MS, TARGET_LOST_LINGER_MS } from '../../engine/simulation';
 import { isTileActiveOnTurn } from '../../engine/actions';
 import { subscribeToImageLoads, loadImage, isImageReady } from '../../utils/imageLoader';
 import { blobShadowsEnabled, drawBlobShadow, drawDeathBlobShadow, drawProjectileBlobShadow } from './blobShadows';
@@ -774,6 +774,63 @@ function computeFlyInOrigin(boardW: number, boardH: number): { fromX: number; fr
   }
 }
 
+// ─── Door/hallway walk-in entrance (hallway arc phase 4) ────────────────────
+// Opt-in per sprite (CustomSprite.spawnFromDoor/spawnFromHallway) plus a
+// per-placement assignment (PlacedEnemy.entersFrom): at board reveal the
+// entity walks in from its opening along a BFS path around walls, moving
+// animation facing the travel direction; entities sharing an opening file
+// out one after another, and door walkers hold until the door theater has
+// opened. Same contract as fly-ins: render-only pre-game theater, once per
+// board mount, engine untouched. Stale or ineligible assignments fall back
+// to the normal entrance silently (the markers' own self-skip rule).
+const WALK_IN_MS_PER_TILE = 260;  // a walk, not a glide — slower than enemy flight
+const WALK_IN_STAGGER_MS = 350;   // file-out gap between entities sharing an opening
+// Door walkers wait out the start-of-puzzle door animation: reveal delay +
+// a typical opening sheet (~5 frames at DOOR_ANIM_FPS). A fixed beat keeps
+// this independent of which skin (or the procedural fallback) draws it.
+const WALK_IN_DOOR_WAIT_MS = DOOR_ANIM_DELAY_MS + 500;
+
+interface WalkInState {
+  startTime: number; // may sit in the future (door beat + file-out stagger)
+  durationMs: number;
+  points: Array<{ x: number; y: number }>; // off-grid corridor cell → … → home tile
+}
+
+/** Position + travel vector along the walk path at t ∈ [0,1]. */
+function walkInPointAt(walk: WalkInState, t: number): { x: number; y: number; dx: number; dy: number } {
+  const legs = walk.points.length - 1;
+  const total = Math.min(legs, Math.max(0, t * legs));
+  const leg = Math.min(legs - 1, Math.floor(total));
+  const legT = total - leg;
+  const a = walk.points[leg];
+  const b = walk.points[leg + 1];
+  return { x: a.x + (b.x - a.x) * legT, y: a.y + (b.y - a.y) * legT, dx: b.x - a.x, dy: b.y - a.y };
+}
+
+/**
+ * Resolve a placement's entrance assignment to a still-valid marker of a
+ * kind its sprite opts into. Returns null for "normal entrance" — either
+ * no assignment, the sprite doesn't opt in, or the marker went stale.
+ */
+function resolveWalkInEntrance(
+  enemy: PlacedEnemy,
+  sprite: CustomSprite | undefined,
+  puzzle: Puzzle,
+): EntranceRef | null {
+  const ref = enemy.entersFrom;
+  if (!ref) return null;
+  if (ref.kind === 'door') {
+    if (!sprite?.spawnFromDoor) return null;
+    const marker = (puzzle.doors ?? []).find(d => d.x === ref.x && d.y === ref.y && d.side === ref.side);
+    if (!marker || !isValidDoor(marker, puzzle.tiles, puzzle.width, puzzle.height)) return null;
+  } else {
+    if (!sprite?.spawnFromHallway) return null;
+    const marker = (puzzle.hallways ?? []).find(h => h.x === ref.x && h.y === ref.y && h.side === ref.side);
+    if (!marker || !isValidHallway(marker, puzzle.tiles, puzzle.width, puzzle.height)) return null;
+  }
+  return ref;
+}
+
 // ─── Puddle reflections ─────────────────────────────────────────────────────
 // Tiles whose custom type is marked `reflective` (water, ice, polished
 // stone) mirror the entities on them: a squashed, faint, vertically
@@ -936,6 +993,9 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
   // alongside the spawn animations, so they share their exact cadence.
   const enemyFlyInsRef = useRef<Map<number, FlyInState>>(new Map());
   const characterFlyInsRef = useRef<Map<string, FlyInState>>(new Map());
+  // Door/hallway walk-in entrances (see WalkInState above), enemy index only
+  // — heroes keep their placement entrance. Same lifecycle as fly-ins.
+  const enemyWalkInsRef = useRef<Map<number, WalkInState>>(new Map());
   // Setup-phase glances at freshly placed heroes, keyed by enemy index.
   const enemyGlancesRef = useRef<Map<number, GlanceState>>(new Map());
   // Track lift-off animations for unplaced characters
@@ -1004,6 +1064,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       setEnemySpawnAnimations(new Map());
       enemyFlyInsRef.current.clear();
       characterFlyInsRef.current.clear();
+      enemyWalkInsRef.current.clear();
       enemyGlancesRef.current.clear();
       setLiftOffAnimations([]);
       // Reset death + casting animation tracking (death anims now persist as
@@ -1045,6 +1106,8 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
 
     const now = Date.now();
     const newEnemySpawns = new Map<number, SpawnAnimationState>();
+    // File-out stagger: how many walkers are already queued per opening.
+    const walkOutCounts = new Map<string, number>();
 
     gameState.puzzle.enemies.forEach((enemy, index) => {
       // Only start spawn animation if enemy hasn't already spawned and isn't dead
@@ -1057,9 +1120,27 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
           spawnedEnemiesRef.current.add(index);
           return;
         }
+        const enemySprite = getEnemy(enemy.enemyId)?.customSprite;
+        // Door/hallway walk-in pre-phase: wins over fly-in when assigned and
+        // still valid. BFS path is computed once here; the draw loop lerps it.
+        const walkRef = resolveWalkInEntrance(enemy, enemySprite, gameState.puzzle);
+        if (walkRef) {
+          const off = SIDE_OFFSETS[walkRef.side];
+          const path = findPathBFS(walkRef.x, walkRef.y, enemy.x, enemy.y, gameState);
+          const points = [{ x: walkRef.x + off.dx, y: walkRef.y + off.dy }, ...path];
+          const openingKey = `${walkRef.kind}:${walkRef.x}:${walkRef.y}:${walkRef.side}`;
+          const fileIndex = walkOutCounts.get(openingKey) ?? 0;
+          walkOutCounts.set(openingKey, fileIndex + 1);
+          const wait = (walkRef.kind === 'door' ? WALK_IN_DOOR_WAIT_MS : 0) + fileIndex * WALK_IN_STAGGER_MS;
+          const durationMs = (points.length - 1) * WALK_IN_MS_PER_TILE;
+          enemyWalkInsRef.current.set(index, { startTime: now + wait, durationMs, points });
+          // Spawn sheet (if any) plays on arrival, like a fly-in landing.
+          newEnemySpawns.set(index, { startTime: now + wait + durationMs, x: enemy.x, y: enemy.y });
+          spawnedEnemiesRef.current.add(index);
+          return;
+        }
         // Fly-in pre-phase: delay the spawn sheet until the flight lands.
         let spawnStart = now;
-        const enemySprite = getEnemy(enemy.enemyId)?.customSprite;
         if (enemySprite?.spawnFlyIn) {
           const { fromX, fromY } = computeFlyInOrigin(gameState.puzzle.width, gameState.puzzle.height);
           const distTiles = Math.hypot(enemy.x - fromX, enemy.y - fromY);
@@ -1870,6 +1951,24 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
           }
           const spawnAnim = enemySpawnAnimations.get(index);
           const enemyGlow = getHomingTargetGlow(gameState, enemy.enemyId, true, projectileVisualStateRef.current, index);
+
+          // Door/hallway walk-in? Before its start beat (door opening +
+          // file-out stagger) the entity is still "inside the corridor" and
+          // draws nothing at all; mid-walk it strides the BFS path with its
+          // moving animation facing travel. Pure pre-game theater like the
+          // fly-in below; starting the game mid-walk snaps it to its tile.
+          const walkIn = enemyWalkInsRef.current.get(index);
+          if (walkIn && !gameStarted && !enemy.dead) {
+            const walkElapsed = now - walkIn.startTime;
+            if (walkElapsed < 0) return;
+            if (walkElapsed < walkIn.durationMs) {
+              const p = walkInPointAt(walkIn, walkElapsed / walkIn.durationMs);
+              drawEnemy(ctx, enemy, p.x, p.y, true, directionFromTravel(p.dx, p.dy), gameStarted, undefined, now, undefined, enemyGlow, index);
+              return;
+            }
+            // Arrived — fall through to the normal draw (spawn sheet, if
+            // any, starts now: its startTime was set to the arrival time).
+          }
 
           // Fly-in entrance still in flight? Draw the enemy mid-swoop with
           // its moving animation and skip every other path. Pure pre-game
