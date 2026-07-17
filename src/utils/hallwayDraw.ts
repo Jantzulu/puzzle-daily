@@ -182,19 +182,23 @@ export function drawHallwayOpening(
     if (!openCell(x + dx, y + 1)) { darkH += cfg.sideBorderSize; }
     drawDarkness(ctx, side, rx, darkY, rw, darkH);
   } else {
-    // Split treatment (user note, 2026-07-16): the FLOOR compresses its
+    // Split treatment (user notes, 2026-07-16): the FLOOR compresses its
     // ramp into one band depth so the first corridor tile clearly reads
     // non-playable, but the flanking WALL pieces are wall faces catching
-    // the same room light as their neighbors — they keep the gentle
-    // full-depth ramp and only drown near the far end. One gradient over
-    // the whole union made the walls unnaturally dark next to the band.
+    // the same room light as their neighbors. Bottom flanks (thin cap +
+    // strips) take the gentle full-depth ramp. Top shoulders are FULL
+    // band-height corner pieces — they stay completely lit, matching the
+    // wall run beside them, and only the Side Wall segment protruding
+    // above fades out (its gradient runs clear at the shoulder's top to
+    // black at the far end, so the darkening kicks in partway up).
     const dy = side === 'top' ? -1 : 1;
     drawDarkness(ctx, side, rx, ry, rw, rh, Math.min(1, cfg.borderSize / rh));
+    const flankH = side === 'top' ? rh - cfg.borderSize : rh;
     if (openCell(x - 1, y) && !openCell(x - 1, y + dy)) {
-      drawDarkness(ctx, side, rx - cfg.sideBorderSize, ry, cfg.sideBorderSize, rh);
+      drawDarkness(ctx, side, rx - cfg.sideBorderSize, ry, cfg.sideBorderSize, flankH);
     }
     if (openCell(x + 1, y) && !openCell(x + 1, y + dy)) {
-      drawDarkness(ctx, side, rx + rw, ry, cfg.sideBorderSize, rh);
+      drawDarkness(ctx, side, rx + rw, ry, cfg.sideBorderSize, flankH);
     }
   }
 }
