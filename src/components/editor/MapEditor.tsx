@@ -2353,6 +2353,23 @@ export const MapEditor: React.FC = () => {
             : 'Enemy'
           }
           position={{ x: inspect.screenX, y: inspect.screenY }}
+          entranceOptions={[
+            ...state.doors
+              .filter(d => isValidDoor(d, state.tiles, state.gridWidth, state.gridHeight))
+              .map(d => ({ kind: 'door' as const, x: d.x, y: d.y, side: d.side })),
+            ...state.hallways
+              .filter(h => isValidHallway(h, state.tiles, state.gridWidth, state.gridHeight))
+              .map(h => ({ kind: 'hallway' as const, x: h.x, y: h.y, side: h.side })),
+          ]}
+          onSetEntrance={(ref) => {
+            const index = inspect.index;
+            pushToHistory();
+            setState(prev => {
+              const next = [...prev.enemies];
+              next[index] = { ...next[index], entersFrom: ref };
+              return { ...prev, enemies: next };
+            });
+          }}
           onRemove={() => handleRemovePlacement('enemy', inspect.index)}
           onClose={() => setInspect(null)}
         />

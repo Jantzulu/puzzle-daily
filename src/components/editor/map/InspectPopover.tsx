@@ -2,7 +2,7 @@
 // (with an entity tool active) to see what it is without leaving the board —
 // sprite, kind, HP, facing, behavior sequence, and a Remove button.
 import React from 'react';
-import type { PlacedEnemy } from '../../../types/game';
+import type { EntranceRef, PlacedEnemy } from '../../../types/game';
 import { getEnemy } from '../../../data/enemies';
 import { SpriteThumbnail } from '../SpriteThumbnail';
 import { formatActionSequence } from './Tooltips';
@@ -12,10 +12,17 @@ const FACING_ARROWS: Record<string, string> = {
   south: '↓', southwest: '↙', west: '←', northwest: '↖',
 };
 
+const entranceKey = (r: EntranceRef) => `${r.kind}:${r.x}:${r.y}:${r.side}`;
+const entranceLabel = (r: EntranceRef) =>
+  `${r.kind === 'door' ? 'Door' : 'Hallway'} — (${r.x + 1}, ${r.y + 1}) ${r.side}`;
+
 interface InspectPopoverProps {
   enemy: PlacedEnemy;
   kindLabel: 'Enemy' | 'Ally' | 'Vessel';
   position: { x: number; y: number };
+  /** Valid door/hallway markers on the current board (validity pre-filtered). */
+  entranceOptions: EntranceRef[];
+  onSetEntrance: (ref: EntranceRef | undefined) => void;
   onRemove: () => void;
   onClose: () => void;
 }
@@ -24,11 +31,22 @@ export const InspectPopover: React.FC<InspectPopoverProps> = ({
   enemy,
   kindLabel,
   position,
+  entranceOptions,
+  onSetEntrance,
   onRemove,
   onClose,
 }) => {
   const data = getEnemy(enemy.enemyId);
   const sequence = formatActionSequence(data?.behavior?.pattern);
+  // Entrance assignment: offered only where the sprite opts in (walk-in
+  // eligibility lives on the asset, the assignment on the placement).
+  const sprite = data && 'customSprite' in data ? data.customSprite : undefined;
+  const eligibleEntrances = entranceOptions.filter(r =>
+    r.kind === 'door' ? !!sprite?.spawnFromDoor : !!sprite?.spawnFromHallway
+  );
+  const currentEntrance = enemy.entersFrom && eligibleEntrances.find(
+    r => entranceKey(r) === entranceKey(enemy.entersFrom!)
+  );
 
   return (
     <>
@@ -73,6 +91,30 @@ export const InspectPopover: React.FC<InspectPopoverProps> = ({
             <div key={i} className="text-xs text-parchment-300">{line}</div>
           ))}
         </div>
+
+        {eligibleEntrances.length > 0 && (
+          <div className="mb-2">
+            <div className="text-[10px] uppercase tracking-wide text-stone-500 mb-1">Enters from</div>
+            <select
+              value={currentEntrance ? entranceKey(currentEntrance) : ''}
+              onChange={(e) => {
+                const ref = eligibleEntrances.find(r => entranceKey(r) === e.target.value);
+                onSetEntrance(ref);
+              }}
+              className="w-full px-2 py-1 bg-stone-700 rounded text-xs"
+            >
+              <option value="">Normal entrance</option>
+              {eligibleEntrances.map(r => (
+                <option key={entranceKey(r)} value={entranceKey(r)}>{entranceLabel(r)}</option>
+              ))}
+            </select>
+            {enemy.entersFrom && !currentEntrance && (
+              <p className="text-[10px] text-amber-400 mt-1">
+                Assigned opening no longer exists — normal entrance will play.
+              </p>
+            )}
+          </div>
+        )}
 
         <button
           onClick={onRemove}
