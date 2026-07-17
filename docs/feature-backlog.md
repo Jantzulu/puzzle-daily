@@ -469,8 +469,13 @@ the visual items: baked, event-driven, or transform/opacity only.
 - [ ] **FEATURE — Escapes on defeat.** Per-enemy flag: lethal damage
   plays a walk-out through the nearest opening instead of leaving a
   corpse. Logic unchanged (still counts as defeated — pure visual swap
-  on the death path, deterministic). Ships independently; becomes the
-  boss-escapes hook for the roguelike mode below.
+  on the death path, deterministic). LOCKED 2026-07-17: the departing
+  sprite is a GHOST — logically dead+despawned the instant the blow
+  lands (tile freed, win conditions credited, untargetable, triggers
+  nothing), so the walk-out is render-ref theater that crosses occupied
+  tiles and mid-fight scenes with zero interaction. Optional style
+  knob: slight alpha fade during the exit. Ships independently;
+  becomes the boss-escapes hook for the roguelike mode below.
 
 - [ ] **IDEA — Roguelike puzzle sequences (post-launch mode).** User
   vision 2026-07-17: linked chain of puzzles ("rooms"); the hero
