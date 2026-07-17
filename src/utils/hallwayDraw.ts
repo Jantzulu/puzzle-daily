@@ -185,7 +185,13 @@ export function drawHallwayOpening(
     if (openCell(x - 1, y) && !openCell(x - 1, y + dy)) { darkX -= cfg.sideBorderSize; darkW += cfg.sideBorderSize; }
     if (openCell(x + 1, y) && !openCell(x + 1, y + dy)) { darkW += cfg.sideBorderSize; }
   }
-  drawDarkness(ctx, side, darkX, darkY, darkW, darkH);
+  // Ramp compression: vertical corridors are deeper (band + protrusion)
+  // than the sides, and a fade normalized over the full depth left their
+  // first tile reading as playable floor (user note, 2026-07-16). The
+  // ramp completes within ONE band depth — the same absolute darkness
+  // profile on every side — and holds full black through the rest.
+  const rampFraction = horizontal ? 1 : Math.min(1, cfg.borderSize / rh);
+  drawDarkness(ctx, side, darkX, darkY, darkW, darkH, rampFraction);
 }
 
 /**
@@ -416,6 +422,10 @@ function drawDarkness(
   ctx: CanvasRenderingContext2D,
   side: HallwaySide,
   rx: number, ry: number, rw: number, rh: number,
+  // Fraction of the depth the ramp completes within (1 = full depth).
+  // Deep corridors compress the ramp so the darkness starts as close to
+  // the room as it does on shallow ones, then hold full black.
+  rampFraction = 1,
 ): void {
   let grad: CanvasGradient;
   switch (side) {
@@ -427,12 +437,14 @@ function drawDarkness(
   // Smoothstep-shaped ramp: nearly clear through the mouth third, then an
   // even roll into full black at the far end — the old three-stop ramp hit
   // 50% by midway and read as a hard shadow edge (user note, 2026-07-16).
+  const f = Math.max(0.01, Math.min(1, rampFraction));
   grad.addColorStop(0, 'rgba(0, 0, 0, 0.04)');
-  grad.addColorStop(0.3, 'rgba(0, 0, 0, 0.2)');
-  grad.addColorStop(0.55, 'rgba(0, 0, 0, 0.48)');
-  grad.addColorStop(0.75, 'rgba(0, 0, 0, 0.78)');
-  grad.addColorStop(0.9, 'rgba(0, 0, 0, 0.96)');
-  grad.addColorStop(1, 'rgba(0, 0, 0, 1)');
+  grad.addColorStop(0.3 * f, 'rgba(0, 0, 0, 0.2)');
+  grad.addColorStop(0.55 * f, 'rgba(0, 0, 0, 0.48)');
+  grad.addColorStop(0.75 * f, 'rgba(0, 0, 0, 0.78)');
+  grad.addColorStop(0.9 * f, 'rgba(0, 0, 0, 0.96)');
+  grad.addColorStop(f, 'rgba(0, 0, 0, 1)');
+  if (f < 1) grad.addColorStop(1, 'rgba(0, 0, 0, 1)');
   ctx.fillStyle = grad;
   ctx.fillRect(rx, ry, rw, rh);
 }
