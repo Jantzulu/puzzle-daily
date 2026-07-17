@@ -192,6 +192,31 @@ The Reflect status effect bounces incoming projectiles back:
 
 ## Pending Tasks
 
+### Queued small tasks (user-requested 2026-07-17)
+
+1. **Harden the vsync clock mapping against drift.** Observed
+   2026-07-16: after the page lingered open a while, the game ran
+   visibly FAST — tile transitions abrupt/snappy, attack animations
+   sped up; a computer restart fully cleared it. Prime suspect: the
+   vsync-aligned board clock from `c6fd869` (mobile perf work) maps rAF
+   timestamps onto the wall clock via `performance.timeOrigin`, which
+   is fixed at page load — monotonic-vs-wall drift (sleep, long
+   uptime) desyncs animation time from the turn logic that still uses
+   `Date.now()`. Fix direction: make the epoch mapping continuously
+   self-correcting (re-anchor per frame or past a small skew
+   threshold) without reintroducing the Date.now()-at-callback jitter
+   it was built to remove. Visual layer only; find it by searching
+   `performance.timeOrigin` in AnimatedGameBoard.tsx. (A spawn-task
+   chip for this also exists from 2026-07-16.)
+
+2. **Delay the victory/defeat overlays by ~2 seconds.** The overlays
+   currently appear the moment the win/lose state triggers — too fast;
+   the final action doesn't get a beat to read before being covered.
+   Delay the OVERLAY UI only (a render/UI timer in Game.tsx), never
+   the logical state or scoring — determinism rule. Check interaction
+   with the existing `hasInFlightProjectile` defeat gating and the
+   daily-lock flow so the delay stacks sensibly rather than doubling.
+
 ### Next session — start here
 
 **MOBILE RENDER PERF (profiled on-device 2026-07-15 — JS EXONERATED, awaiting round-2 numbers).** The user's phone shows jitter on a SIMPLE level at DPR 2. History: July-15 cheap wins shipped (gradient caches, vignette bake, atmosphere toggle), user bisected via the ⚡ Effects tab — no toggle changed smoothness. This session built the **frame profiler HUD** (`?perf=1` / Effects tab / `togglePerfHud()`; `frameProfiler.ts`, marks in AnimatedGameBoard's animate loop; commit `845019d`) because the test iPhone can't be remote-profiled from Windows.
