@@ -3780,6 +3780,32 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, sh
           </div>
         )}
 
+        <div className="flex items-center gap-4 mb-1">
+          <label className="flex items-center gap-2 text-sm font-bold cursor-pointer">
+            <input
+              type="checkbox"
+              checked={!!sprite.spawnFromDoor}
+              onChange={(e) => onChange({ ...sprite, spawnFromDoor: e.target.checked || undefined })}
+            />
+            🚪 Door entrance
+          </label>
+          <label className="flex items-center gap-2 text-sm font-bold cursor-pointer">
+            <input
+              type="checkbox"
+              checked={!!sprite.spawnFromHallway}
+              onChange={(e) => onChange({ ...sprite, spawnFromHallway: e.target.checked || undefined })}
+            />
+            🕳️ Hallway entrance
+          </label>
+        </div>
+        <p className="text-[10px] text-stone-500 mb-3">
+          Makes placements of this entity assignable to a door or hallway in the map editor
+          (click the placed entity to pick which one). Assigned entities walk in from that
+          opening when the board reveals, pathing around walls with their moving animation;
+          entities sharing a door file out one after another. Without an assignment the
+          normal entrance (fly-in or spawn animation) plays.
+        </p>
+
         {/* Spawn Sprite Sheet Upload */}
         <div className="mb-4">
           <label className="block text-sm font-bold mb-2">

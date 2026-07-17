@@ -405,6 +405,7 @@ export interface PlacedEnemy {
   party?: EntityParty; // Explicit team override — see EntityParty. Absent = 'enemy'.
   excludeFromWinConditions?: boolean; // Summoned/spawned combatants: never counted by defeat_all_enemies / defeat_boss (locked design: a summon must not become a kill requirement). Carried through enemy→character wrappers like `party`.
   spawnedOnTurn?: number; // Set by mid-game spawning (engine/spawning.ts). While === currentTurn, executeTurn keeps the entity idle (no actions, no own triggers) — it's otherwise fully live (blocks tiles, can be hit, contact damage applies). NOT carried through wrappers: a spawn-turn entity never executes actions, so no wrapper is ever built for it while the field matters.
+  entersFrom?: EntranceRef; // Walk-in entrance assignment (render-only theater, phase 4). Only honored when the entity's sprite opts in (spawnFromDoor/spawnFromHallway) and the referenced marker is still valid; otherwise normal entrance. Set in the map editor's inspect popover.
   despawnOnTurn?: number; // Duration-limited summons: at the END of this turn the entity despawns (locked design: NOT a death — no drops, no death triggers, exit transition only). Killed summons die fully via the normal path instead.
   despawned?: boolean; // Set by expiry despawn alongside dead=true. Render draws NOTHING for a despawned entity (no corpse, no death anim — the exit overlay particle covers the vanish); diedOnTurn stays unset so the tile frees immediately.
   sourceSpellId?: string; // Spell that summoned this entity — despawn loads it for the exit overlay sprite; future per-spell overrides read it too.
@@ -741,6 +742,20 @@ export interface DoorMarker {
   y: number;
   side: 'top' | 'bottom'; // doors only read on front-facing walls
   startState: DoorStartState;
+}
+
+/**
+ * Reference from a placed entity to the door/hallway it walks in from at
+ * board reveal (phase 4, render-only entrance theater). References by
+ * position + side, not array index, so it follows the same stale-marker
+ * rule as the markers themselves: if no matching valid marker exists at
+ * render time, the entity silently falls back to its normal entrance.
+ */
+export interface EntranceRef {
+  kind: 'door' | 'hallway';
+  x: number;
+  y: number;
+  side: HallwaySide;
 }
 
 export interface PlacedCharacter {

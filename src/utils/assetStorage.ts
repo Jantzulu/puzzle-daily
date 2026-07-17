@@ -315,6 +315,14 @@ export interface CustomSprite {
   // Each flight rolls its own arc/wobble.
   spawnFlyInStyle?: 'straight' | 'swoop' | 'flutter' | 'shadow';
 
+  // Door/hallway walk-in entrance eligibility (visual only, same theater
+  // contract as spawnFlyIn). Checking these does NOT change the entrance by
+  // itself — it makes placements of this entity assignable to a door or
+  // hallway marker in the map editor (PlacedEnemy.entersFrom). An assigned
+  // entity walks in from the marker along a BFS path at board reveal.
+  spawnFromDoor?: boolean;
+  spawnFromHallway?: boolean;
+
   // Simple rendering (single sprite for all directions)
   shape?: 'circle' | 'square' | 'triangle' | 'star' | 'diamond' | 'hexagon';
   primaryColor?: string;
