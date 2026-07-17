@@ -1058,10 +1058,11 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
   // Door/hallway walk-in entrances (see WalkInState above), enemy index only
   // — heroes keep their placement entrance. Same lifecycle as fly-ins.
   const enemyWalkInsRef = useRef<Map<number, WalkInState>>(new Map());
-  // Ghost walk-outs (escapes-on-defeat): render-only exit theater for
-  // enemies whose escape stamped this turn. Same WalkInState shape,
-  // reversed duty — logic already removed the entity (despawned).
-  const enemyGhostWalksRef = useRef<Map<number, WalkInState>>(new Map());
+  // Exit walk-outs: render-only theater for enemies that left the board
+  // this turn — escapes-on-defeat (ghostly fade) and DEPART departures
+  // (full opacity). Same WalkInState shape as walk-ins, reversed duty —
+  // logic already removed the entity (despawned).
+  const enemyGhostWalksRef = useRef<Map<number, WalkInState & { ghostFade: boolean }>>(new Map());
   // Setup-phase glances at freshly placed heroes, keyed by enemy index.
   const enemyGlancesRef = useRef<Map<number, GlanceState>>(new Map());
   // Track lift-off animations for unplaced characters
@@ -1671,21 +1672,23 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
     }
   }, [gameState.puzzle.enemies]);
 
-  // Ghost walk-outs (escapes-on-defeat, 2026-07-17): when an enemy's escape
-  // stamps (escapedOnTurn === current turn), build its exit path once — the
-  // ghost strides to the nearest opening and off the board while the game
-  // continues around it. Keyed to the exact stamp turn so replay-stepping
-  // onto LATER turns shows no ghost and no corpse (the entity is simply
-  // gone); stepping back before the death clears the entry so re-stepping
-  // forward replays the exit cleanly.
+  // Exit walk-outs (2026-07-17): when an enemy leaves the board this turn —
+  // escapedOnTurn (escapes-on-defeat, ghostly fade) or departedOnTurn
+  // (DEPART action, full opacity) — build its exit path once: it strides to
+  // the nearest opening and off the board while the game continues around
+  // it. Keyed to the exact stamp turn so replay-stepping onto LATER turns
+  // shows no walker and no corpse (the entity is simply gone); stepping
+  // back before the exit clears the entry so re-stepping forward replays
+  // it cleanly.
   useEffect(() => {
     const now = Date.now();
     gameState.puzzle.enemies.forEach((enemy, index) => {
-      if (enemy.escapedOnTurn === undefined) {
+      const exitTurn = enemy.escapedOnTurn ?? enemy.departedOnTurn;
+      if (exitTurn === undefined) {
         enemyGhostWalksRef.current.delete(index); // reset / retry / step-back
         return;
       }
-      if (enemy.escapedOnTurn !== gameState.currentTurn) return;
+      if (exitTurn !== gameState.currentTurn) return;
       if (enemyGhostWalksRef.current.has(index)) return;
       const points = resolveEscapeExit(enemy, gameState);
       if (!points || points.length < 2) return; // no reachable opening — remains just vanish
@@ -1693,6 +1696,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
         startTime: now,
         durationMs: (points.length - 1) * WALK_IN_MS_PER_TILE,
         points,
+        ghostFade: enemy.escapedOnTurn !== undefined,
       });
     });
   }, [gameState]);
@@ -2052,11 +2056,11 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       renderQueue.forEach(({ type, index, entity }) => {
         if (type === 'enemy') {
           const enemy = entity as PlacedEnemy;
-          // Escapes-on-defeat ghost: the fallen enemy strides to its opening
-          // and off the board. Pure theater — the logic already removed it
-          // (despawned); drawn with the LIVING moving sprite (dead:false
-          // spoof, since drawEnemy corpse-branches on the flag) and a soft
-          // fade that deepens as it goes.
+          // Exit walk-out: the departing enemy strides to its opening and
+          // off the board — ghostly fade for escapes-on-defeat, full
+          // opacity for DEPART departures. Pure theater — the logic already
+          // removed it (despawned); drawn with the LIVING moving sprite
+          // (dead:false spoof, since drawEnemy corpse-branches on the flag).
           const ghost = enemyGhostWalksRef.current.get(index);
           if (ghost) {
             const ghostElapsed = now - ghost.startTime;
@@ -2068,7 +2072,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
               const gt = ghostElapsed / ghost.durationMs;
               const p = walkInPointAt(ghost, gt);
               ctx.save();
-              ctx.globalAlpha = 0.8 - 0.55 * gt;
+              if (ghost.ghostFade) ctx.globalAlpha = 0.8 - 0.55 * gt;
               drawEnemy(ctx, { ...enemy, dead: false }, p.x, p.y, true, directionFromTravel(p.dx, p.dy), gameStarted, undefined, now, undefined, undefined, index);
               ctx.restore();
             }

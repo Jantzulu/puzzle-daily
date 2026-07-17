@@ -2202,6 +2202,9 @@ export function executeTurn(gameState: GameState): GameState {
       newEnemy.teleportFromX = result.teleportFromX;
       newEnemy.teleportFromY = result.teleportFromY;
       newEnemy.iceSlideDistance = result.iceSlideDistance;
+      // DEPART rides the wrapper back (set-only — the action never clears)
+      if (result.despawned) newEnemy.despawned = true;
+      if (result.departedOnTurn !== undefined) newEnemy.departedOnTurn = result.departedOnTurn;
     };
 
     // Helper: execute linkedToNext chain for enemy
@@ -2385,6 +2388,9 @@ export function executeTurn(gameState: GameState): GameState {
       enemy.contactHaltForever = tempCharForTrigger.contactHaltForever;
       enemy.hitStamps = mergeHitStamps(tempCharForTrigger.hitStamps, enemy.hitStamps); // feedback may have stamped `enemy` mid-call
       enemy.dealtStamps = mergeHitStamps(tempCharForTrigger.dealtStamps, enemy.dealtStamps);
+      // A triggered DEPART rides the wrapper back (set-only)
+      if (tempCharForTrigger.despawned) enemy.despawned = true;
+      if (tempCharForTrigger.departedOnTurn !== undefined) enemy.departedOnTurn = tempCharForTrigger.departedOnTurn;
       if (!enemy.dead && enemy.currentHealth <= 0) {
         applyDamageToEntity(enemy, 0, gameState); // combined-lethality: die via the canonical path
       }
@@ -2444,6 +2450,9 @@ export function executeTurn(gameState: GameState): GameState {
       enemy.contactHaltForever = tempCharForTrigger.contactHaltForever;
       enemy.hitStamps = mergeHitStamps(tempCharForTrigger.hitStamps, enemy.hitStamps); // feedback may have stamped `enemy` mid-call
       enemy.dealtStamps = mergeHitStamps(tempCharForTrigger.dealtStamps, enemy.dealtStamps);
+      // A triggered DEPART rides the wrapper back (set-only)
+      if (tempCharForTrigger.despawned) enemy.despawned = true;
+      if (tempCharForTrigger.departedOnTurn !== undefined) enemy.departedOnTurn = tempCharForTrigger.departedOnTurn;
       if (!enemy.dead && enemy.currentHealth <= 0) {
         applyDamageToEntity(enemy, 0, gameState); // combined-lethality: die via the canonical path
       }

@@ -128,6 +128,7 @@ function normalizeActionType(type: string): ActionType {
     'IF_ENEMY': ActionType.IF_ENEMY,
     'WAIT': ActionType.WAIT,
     'TELEPORT': ActionType.TELEPORT,
+    'DEPART': ActionType.DEPART,
     'REPEAT': ActionType.REPEAT,
     'REPEAT_UNTIL': ActionType.REPEAT_UNTIL,
   };
@@ -264,6 +265,20 @@ export function executeAction(
 
     case ActionType.WAIT:
       // Do nothing
+      return updatedCharacter;
+
+    case ActionType.DEPART:
+      // Passerby departure (2026-07-17): the entity leaves the board on its
+      // own terms. NOT a death (summon-expiry semantics): no drops, no death
+      // triggers, no corpse — but dead+despawned so win checks settle and
+      // the tile frees immediately (diedOnTurn deliberately stays unset).
+      // departedOnTurn is the render hook: the board plays a full-opacity
+      // walk-out to the nearest opening (the escape ghost machinery).
+      // Stun/sleep already gate this via canEntityAct above — a disabled
+      // passerby can't slip away.
+      updatedCharacter.dead = true;
+      updatedCharacter.despawned = true;
+      updatedCharacter.departedOnTurn = gameState.currentTurn;
       return updatedCharacter;
 
     case ActionType.IF_WALL:

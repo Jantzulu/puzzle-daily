@@ -159,6 +159,7 @@ export enum ActionType {
   // Special
   WAIT = 'wait',
   TELEPORT = 'teleport',
+  DEPART = 'depart', // Leave the board (passerby v1, 2026-07-17): NOT a death — no drops, no death triggers, no corpse; dead+despawned so win checks settle and the tile frees. Render plays a full-opacity walk-out to the nearest opening. Author the route with normal moves, end with DEPART.
   REPEAT = 'repeat',
   REPEAT_UNTIL = 'repeat_until', // repeats its SEGMENT (since the previous REPEAT_UNTIL or the list start) until untilEvent fires, then falls through
 }
@@ -412,6 +413,7 @@ export interface PlacedEnemy {
   sourceSpellId?: string; // Spell that summoned this entity — despawn loads it for the exit overlay sprite; future per-spell overrides read it too.
   transformedOnTurn?: number; // Vessels: turn this vessel's transform fired (processVesselTransforms). Set once on success — prevents re-transform; unset while the emergence is blocked (retries each turn end).
   escapedOnTurn?: number; // Escapes-on-defeat: turn the escape despawn stamped (processEscapes). Render hook — the board starts the ghost walk-out when this equals the current turn.
+  departedOnTurn?: number; // DEPART action: turn the entity left the board on its own terms (not a death — no drops/triggers). Render hook — full-opacity walk-out when this equals the current turn.
   actionIndex?: number; // For active enemies with behavior patterns
   active?: boolean; // For active enemies
   parallelTrackers?: ParallelActionTracker[]; // For parallel spell execution
@@ -797,6 +799,8 @@ export interface PlacedCharacter {
   pendingProjectileDeath?: boolean; // Deferred death: entity is logically dead but waiting for projectile visual to arrive
   pendingVisualDamage?: number; // Sum of damage from hits that have landed logically but haven't reached visually yet. Bar displays currentHealth + pendingVisualDamage, so each visual arrival drops the bar by exactly that hit's damage.
   diedOnTurn?: number; // See PlacedEnemy.diedOnTurn — deterministic death-turn stamp used by movement blockers to keep tile occupied through the next turn.
+  despawned?: boolean; // See PlacedEnemy.despawned — left the board (no corpse). On characters this mainly transports the DEPART action's result through the enemy wrappers; heroes shouldn't author DEPART.
+  departedOnTurn?: number; // See PlacedEnemy.departedOnTurn — DEPART action stamp (wrapper transport).
 }
 
 export type GameStatus = 'setup' | 'running' | 'victory' | 'defeat';
