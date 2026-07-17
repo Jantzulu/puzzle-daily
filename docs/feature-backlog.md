@@ -297,7 +297,21 @@ do, complementary to [`feature-roadmap.md`](../../puzzle-game/feature-roadmap.md
   - Sprites: idle + death animations ONLY (no directional movement
     sheets, no spawn anims, no spell anims)
   - v1 triggers: transform on DEATH (HP to 0) + TIMED (end of turn N —
-    hatching egg / timed ambush). Source-specific triggers later
+    hatching egg / timed ambush). ~~Source-specific triggers later~~
+    **TRIGGER BATCH SHIPPED 2026-07-17** (`f5d216f` engine + 9 pins in
+    vessel-triggers.test.ts, `d947433` VesselEditor controls; design
+    locked via AskUserQuestion): PROXIMITY hatch
+    (transformProximityRange + party select Heroes/Enemies/Anyone,
+    default Heroes — "egg hatches when a hero walks near"; BASE
+    parties, Euclidean like 'in range' triggers, end-of-turn census,
+    stealth hidden from opposing vessels; live hatch = leaves without
+    dying); STRUCK trigger (transformOnHitKinds
+    melee/projectile/contact/any via hit stamps — connection counts
+    even when deflected/absorbed; killed by a listed kind = break-open
+    emergence); BREAK-OPEN TOGGLE (transformOnBreak, default ON —
+    existing vessels byte-identical; off = smashing just destroys it,
+    drops still fire). All evaluated in processVesselTransforms —
+    real/headless parity by construction. AWAITING USER TEST.
   - Win conditions: rides the shipped designer curation
     (params.excludedEnemyIds) — a decorative barrel gets unchecked; the
     burst-out enemy counts like any authored enemy (continuity emerges

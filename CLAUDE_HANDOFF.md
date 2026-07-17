@@ -192,6 +192,27 @@ The Reflect status effect bounces incoming projectiles back:
 
 ## Pending Tasks
 
+### Vessel triggers — ✅ SHIPPED 2026-07-17 (same session; closes the feature queue)
+
+User greenlit + contributed the proximity idea ("eggs that only hatch
+if a hero walks near"). Design locked via AskUserQuestion: configurable
+proximity party, hit-kind triggers included, break-open became a
+toggle. `f5d216f` engine (three new predicates in
+processVesselTransforms — the existing end-of-turn choke point, parity
+by construction; isEntityStealthed exported from actions.ts; 9 pins in
+vessel-triggers.test.ts) + `d947433` VesselEditor controls. Semantics
+locked: proximity = BASE parties (default hero), Euclidean like
+'in range' events, end-of-turn census (no fly-bys), stealth hidden from
+opposing vessels, live hatch leaves without dying (no drops/corpse);
+struck = hit stamps (CONNECTION counts — deflected/absorbed strikes
+stamp; kill by a listed kind emerges even with break toggle off);
+transformOnBreak default ON (undefined) so every pre-existing vessel
+is byte-identical. AWAITING USER TEST (author an egg vessel, set
+Proximity Hatch range, walk a hero near it in playtest). **The feature
+queue (linger / behavior slots→aimed spells / vessel triggers) is now
+EMPTY — next up per agreed order: hallway dynamics batch, starting
+with escapes-on-defeat.**
+
 ### Player-aimed spell direction — ✅ SHIPPED 2026-07-17 (same session as the queued pair below)
 
 The user clarified the "hero behavior slots" queue item: what they
