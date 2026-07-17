@@ -107,12 +107,13 @@ export const RulesPanel: React.FC<RulesPanelProps> = ({ state, setState }) => (
                   <option value="protect_noble">Protect the Noble</option>
                   <option value="noble_survives_turns">Noble Survives X Turns</option>
                   <option value="noble_reaches_goal">Noble Reaches Goal Tile</option>
+                  <option value="noble_escapes">Noble Escapes the Dungeon</option>
                 </select>
 
                 {/* Noble conditions: warn when nothing placed can satisfy them.
                     Any noble condition also makes a Noble death instant defeat
                     (engine implied-protect rule). */}
-                {(condition.type === 'protect_noble' || condition.type === 'noble_survives_turns' || condition.type === 'noble_reaches_goal') && (() => {
+                {(condition.type === 'protect_noble' || condition.type === 'noble_survives_turns' || condition.type === 'noble_reaches_goal' || condition.type === 'noble_escapes') && (() => {
                   const hasPlacedNoble =
                     state.enemies.some(e => e.party === 'hero' && getEnemy(e.enemyId)?.isNoble) ||
                     state.availableCharacters.some(cid => getCharacter(cid)?.isNoble);
@@ -149,6 +150,52 @@ export const RulesPanel: React.FC<RulesPanelProps> = ({ state, setState }) => (
                     />
                   </div>
                 )}
+
+                {/* Noble escape: pick the exit opening (or any). Guiding a
+                    living Noble onto the opening's floor tile ends its run —
+                    it walks out and counts as escaped. */}
+                {condition.type === 'noble_escapes' && (() => {
+                  const openings = [
+                    ...state.hallways.map(h => ({ x: h.x, y: h.y, side: h.side as string, kind: 'Hallway' })),
+                    ...state.doors.map(d => ({ x: d.x, y: d.y, side: d.side as string, kind: 'Door' })),
+                  ];
+                  if (openings.length === 0) return (
+                    <p className="text-xs text-amber-400 italic">No hallways or doors on this map — add an opening with the Hallway tool</p>
+                  );
+                  const eo = condition.params?.escapeOpening;
+                  return (
+                    <div className="flex items-center gap-2">
+                      <label className="text-xs text-stone-400">Through:</label>
+                      <select
+                        value={eo ? `${eo.x},${eo.y},${eo.side}` : ''}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          let escapeOpening: { x: number; y: number; side: string } | undefined;
+                          if (v) {
+                            const [x, y, side] = v.split(',');
+                            escapeOpening = { x: parseInt(x), y: parseInt(y), side };
+                          }
+                          setState(prev => {
+                            const newConditions = [...prev.winConditions];
+                            newConditions[index] = {
+                              ...newConditions[index],
+                              params: { ...newConditions[index].params, escapeOpening },
+                            };
+                            return { ...prev, winConditions: newConditions };
+                          });
+                        }}
+                        className="flex-1 px-2 py-1 bg-stone-600 rounded text-xs"
+                      >
+                        <option value="">Any opening</option>
+                        {openings.map(o => (
+                          <option key={`${o.kind}:${o.x},${o.y},${o.side}`} value={`${o.x},${o.y},${o.side}`}>
+                            {o.kind} at ({o.x}, {o.y}) — {o.side}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  );
+                })()}
 
                 {/* Per-type kill-requirement curation (user design 2026-07-11):
                     every enemy type placed on the map gets a checkbox; unchecked

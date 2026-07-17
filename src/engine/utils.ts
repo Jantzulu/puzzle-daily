@@ -11,8 +11,12 @@ import { Direction } from '../types/game';
  * two checks here keeps the rule in one place — adding a third condition
  * later (e.g. petrified, banished) only requires touching this helper.
  */
-export function isEntityFunctional(entity: { dead: boolean; pendingProjectileDeath?: boolean }): boolean {
-  return !entity.dead && !entity.pendingProjectileDeath;
+export function isEntityFunctional(entity: { dead: boolean; pendingProjectileDeath?: boolean; despawned?: boolean }): boolean {
+  // despawned added 2026-07-17 (the "third condition" this helper was built
+  // to absorb): a noble that ESCAPED through an opening is alive-despawned —
+  // off the board, so it can't act, be targeted, or block. Every other
+  // despawned entity is also dead, so this only bites the escape state.
+  return !entity.dead && !entity.pendingProjectileDeath && !entity.despawned;
 }
 
 /**

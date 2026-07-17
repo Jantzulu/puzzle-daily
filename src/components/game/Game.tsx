@@ -3183,6 +3183,10 @@ export const Game: React.FC<GameProps> = ({
                             const names = nobleQuestNames(gameState);
                             return names ? `Guide ${names} to the Exit` : 'Guide the Noble to the Exit';
                           }
+                          case 'noble_escapes': {
+                            const names = nobleQuestNames(gameState);
+                            return names ? `Guide ${names} out of the Dungeon` : 'Guide the Noble out of the Dungeon';
+                          }
                           case 'survive_turns':
                             return `Survive ${wc.params?.turns ?? 10} Turns`;
                           case 'win_in_turns':

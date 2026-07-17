@@ -8,6 +8,11 @@ import { loadStatusEffectAsset, loadSpellAsset, loadCollectible, loadEnemy, load
 import { spawnEnemyMidGame } from './spawning';
 import { turnLeft, turnRight, turnAround, getDirectionOffset, calculateDirectionTo, calculateDistance, isAttackFromBehind, isEntityFunctional } from './utils';
 import { entityParty } from './party';
+// Opening validity — pure geometry over the puzzle's tiles, shared with the
+// renderer/editor so the noble-escape exit rule can't drift from what the
+// board actually draws as an opening.
+import { isValidHallway } from '../utils/hallwayDraw';
+import { isValidDoor } from '../utils/doorDraw';
 
 // Debug flag for projectile tracing: flip to true to enable detailed logs
 // covering spawn, per-turn resolve events, per-frame visual interpolation,
@@ -2097,6 +2102,14 @@ export function executeTurn(gameState: GameState): GameState {
       continue;
     }
 
+    // Alive-despawned (a hero-party ally Noble that ESCAPED through an
+    // opening): off the board, never acts again. Every other despawned
+    // entity is also dead and already skipped above.
+    if (newEnemy.despawned) {
+      newEnemies.push(newEnemy);
+      continue;
+    }
+
     // Skip enemies awaiting deferred projectile death — don't let them act
     if (newEnemy.pendingProjectileDeath) {
       newEnemies.push(newEnemy);
@@ -2482,6 +2495,10 @@ export function executeTurn(gameState: GameState): GameState {
   // an emerging enemy is never blocked by an escapee's ghost tile
   processEscapes(gameState);
 
+  // Noble escape exits (noble_escapes win condition) — before the win check
+  // below so victory fires the same turn the last Noble steps out
+  processNobleExits(gameState);
+
   // Vessels break open / hatch — before summon expiry so an emerged enemy
   // exists for this turn's win check
   processVesselTransforms(gameState);
@@ -2573,6 +2590,53 @@ function processEscapes(gameState: GameState): void {
     if (!getEnemy(enemy.enemyId)?.escapesOnDefeat) continue;
     enemy.despawned = true;
     enemy.escapedOnTurn = gameState.currentTurn;
+  }
+}
+
+/** Alive-despawned = exited the board successfully (noble escape). The only
+ * state where despawned is set without dead — every loss path sets dead. */
+function hasEscapedBoard(entity: PlacedCharacter | PlacedEnemy): boolean {
+  return !!entity.despawned && !entity.dead;
+}
+
+/**
+ * Noble escape exits (2026-07-17): when a noble_escapes win condition is
+ * authored, a living Noble standing on a qualifying opening's floor tile at
+ * END of turn exits the board — despawned + departedOnTurn (the render hook
+ * for the walk-out) + active=false, with dead staying FALSE: an escape is a
+ * SUCCESS, so implied-protect and hero-death checks must not read it as a
+ * loss (see hasEscapedBoard excusals in the win/defeat checks). Qualifying
+ * = any valid hallway/door marker, or only the designated one(s) when
+ * params.escapeOpening is set.
+ */
+function processNobleExits(gameState: GameState): void {
+  const escapeConds = gameState.puzzle.winConditions.filter(c => c.type === 'noble_escapes');
+  if (escapeConds.length === 0) return;
+  const puzzle = gameState.puzzle;
+  const openings = [
+    ...(puzzle.hallways ?? []).filter(h => isValidHallway(h, puzzle.tiles, puzzle.width, puzzle.height)),
+    ...(puzzle.doors ?? []).filter(d => isValidDoor(d, puzzle.tiles, puzzle.width, puzzle.height)),
+  ];
+  // A designated opening narrows the exit set; multiple escape conditions
+  // union their designations. No designation anywhere = every opening.
+  const designated = escapeConds.filter(c => c.params?.escapeOpening);
+  const exitTiles = new Set(
+    (designated.length > 0
+      ? openings.filter(o => designated.some(c => {
+          const eo = c.params!.escapeOpening!;
+          return eo.x === o.x && eo.y === o.y && eo.side === o.side;
+        }))
+      : openings
+    ).map(o => `${o.x},${o.y}`)
+  );
+  if (exitTiles.size === 0) return;
+
+  for (const noble of getPlacedNobles(gameState)) {
+    if (!isEntityFunctional(noble)) continue;
+    if (!exitTiles.has(`${Math.floor(noble.x)},${Math.floor(noble.y)}`)) continue;
+    noble.despawned = true;
+    noble.departedOnTurn = gameState.currentTurn;
+    noble.active = false;
   }
 }
 
@@ -2847,17 +2911,20 @@ export function checkVictoryConditions(gameState: GameState): boolean {
         // Vacuously true with no Nobles placed (defeat_boss precedent) —
         // the defeat half (any Noble death = instant defeat) lives in
         // checkDefeatConditions under the uniform implied-protect rule.
+        // A Noble that ESCAPED (noble_escapes combo) is excused — leaving
+        // safely is not a failure to protect.
         const nobles = getPlacedNobles(gameState);
-        if (!nobles.every(isEntityFunctional)) return false;
+        if (!nobles.every(n => isEntityFunctional(n) || hasEscapedBoard(n))) return false;
         break;
       }
 
       case 'noble_survives_turns': {
-        // Victory at the end of turn X with every Noble alive.
+        // Victory at the end of turn X with every Noble alive (or safely
+        // escaped, in a noble_escapes combo).
         const nobleTurns = condition.params?.turns ?? 10;
         if (gameState.currentTurn < nobleTurns) return false;
         const nobles = getPlacedNobles(gameState);
-        if (!nobles.every(isEntityFunctional)) return false;
+        if (!nobles.every(n => isEntityFunctional(n) || hasEscapedBoard(n))) return false;
         break;
       }
 
@@ -2873,6 +2940,17 @@ export function checkVictoryConditions(gameState: GameState): boolean {
           return tile?.type === TileType.GOAL;
         });
         if (!nobleReached) return false;
+        break;
+      }
+
+      case 'noble_escapes': {
+        // Every placed Noble has exited through a qualifying opening
+        // (processNobleExits). Escaped = alive-despawned, the one state
+        // where despawned is set without dead. With no Nobles placed this
+        // can never pass (mirrors noble_reaches_goal — the editor warns).
+        const nobles = getPlacedNobles(gameState);
+        if (nobles.length === 0) return false;
+        if (!nobles.every(hasEscapedBoard)) return false;
         break;
       }
 
@@ -2917,13 +2995,15 @@ function checkDefeatConditions(gameState: GameState): boolean {
 
       case 'protect_noble':
       case 'noble_survives_turns':
-      case 'noble_reaches_goal': {
+      case 'noble_reaches_goal':
+      case 'noble_escapes': {
         // Uniform implied-protect rule: authoring ANY noble condition makes
         // a Noble's death an immediate defeat — a dead King can't be
         // protected, survive N turns, or reach the goal, so don't make the
-        // player wait out the clock to find out.
+        // player wait out the clock to find out. A Noble that ESCAPED is
+        // excused: alive-despawned is a success state, not a loss.
         const nobles = getPlacedNobles(gameState);
-        if (nobles.some(n => !isEntityFunctional(n))) return true;
+        if (nobles.some(n => !isEntityFunctional(n) && !hasEscapedBoard(n))) return true;
         break;
       }
     }

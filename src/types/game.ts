@@ -501,7 +501,8 @@ export type WinConditionType =
   // dead King can't be protected, survive, or reach anything.
   | 'protect_noble'         // Win requires all Nobles alive (pairs with other conditions: "kill everything without losing the King")
   | 'noble_survives_turns'  // Nobles alive at end of turn X (params.turns) = victory
-  | 'noble_reaches_goal';   // A Noble standing on a GOAL tile = victory (reuses the goal-tile placement)
+  | 'noble_reaches_goal'    // A Noble standing on a GOAL tile = victory (reuses the goal-tile placement)
+  | 'noble_escapes';        // Every Noble exits the board through an opening (hallway/door floor tile; params.escapeOpening narrows to one) — the exit stamps despawned WITHOUT dead, the game's one alive-despawned state
 
 /**
  * Parameters for different win condition types
@@ -517,6 +518,10 @@ export interface WinConditionParams {
   // kill requirement (map editor per-type checkboxes). Living entities of
   // these types neither block victory nor appear in the quest label.
   excludedEnemyIds?: string[];
+
+  // For noble_escapes — the designated opening (a hallway or door marker's
+  // {x, y, side}). Unset = any valid opening on the map counts.
+  escapeOpening?: { x: number; y: number; side: string };
 }
 
 export interface WinCondition {

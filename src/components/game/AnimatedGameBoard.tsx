@@ -870,7 +870,7 @@ function resolveWalkInEntrance(
  * beyond the opening, or null when no opening is reachable (the remains
  * simply vanish — the despawn already handled the logic).
  */
-function resolveEscapeExit(enemy: PlacedEnemy, gameState: GameState): Array<{ x: number; y: number }> | null {
+function resolveEscapeExit(enemy: { x: number; y: number }, gameState: GameState): Array<{ x: number; y: number }> | null {
   const puzzle = gameState.puzzle;
   const candidates: Array<{ x: number; y: number; side: keyof typeof SIDE_OFFSETS }> = [];
   for (const h of puzzle.hallways ?? []) {
@@ -1063,6 +1063,9 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
   // (full opacity). Same WalkInState shape as walk-ins, reversed duty —
   // logic already removed the entity (despawned).
   const enemyGhostWalksRef = useRef<Map<number, WalkInState & { ghostFade: boolean }>>(new Map());
+  // Hero exit walk-outs (noble escape objectives): keyed by characterId,
+  // always full opacity — the hero leaves alive and victorious.
+  const characterGhostWalksRef = useRef<Map<string, WalkInState>>(new Map());
   // Setup-phase glances at freshly placed heroes, keyed by enemy index.
   const enemyGlancesRef = useRef<Map<number, GlanceState>>(new Map());
   // Track lift-off animations for unplaced characters
@@ -1133,6 +1136,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       characterFlyInsRef.current.clear();
       enemyWalkInsRef.current.clear();
       enemyGhostWalksRef.current.clear();
+      characterGhostWalksRef.current.clear();
       enemyGlancesRef.current.clear();
       setLiftOffAnimations([]);
       // Reset death + casting animation tracking (death anims now persist as
@@ -1699,6 +1703,24 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
         ghostFade: enemy.escapedOnTurn !== undefined,
       });
     });
+    // Hero exits (noble escape objectives): same rule, keyed by characterId,
+    // always full opacity. A noble escapes standing ON the opening tile, so
+    // the walk is usually just tile → off-grid — a short triumphant stride.
+    gameState.placedCharacters.forEach((char) => {
+      if (char.departedOnTurn === undefined) {
+        characterGhostWalksRef.current.delete(char.characterId);
+        return;
+      }
+      if (char.departedOnTurn !== gameState.currentTurn) return;
+      if (characterGhostWalksRef.current.has(char.characterId)) return;
+      const points = resolveEscapeExit(char, gameState);
+      if (!points || points.length < 2) return;
+      characterGhostWalksRef.current.set(char.characterId, {
+        startTime: now,
+        durationMs: (points.length - 1) * WALK_IN_MS_PER_TILE,
+        points,
+      });
+    });
   }, [gameState]);
 
   // Memoize placedObjects layered into below_entities / above_entities arrays.
@@ -2224,6 +2246,24 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
           }
         } else {
           const character = entity as PlacedCharacter;
+          // Noble escape walk-out: the hero exited through an opening —
+          // stride out at full opacity (alive and victorious), then draw
+          // nothing. Alive-despawned heroes are otherwise invisible.
+          const charExit = characterGhostWalksRef.current.get(character.characterId);
+          if (charExit) {
+            const exitElapsed = now - charExit.startTime;
+            if (exitElapsed >= charExit.durationMs) {
+              characterGhostWalksRef.current.delete(character.characterId);
+              return;
+            }
+            if (exitElapsed >= 0) {
+              const et = exitElapsed / charExit.durationMs;
+              const p = walkInPointAt(charExit, et);
+              drawCharacter(ctx, character, p.x, p.y, true, directionFromTravel(p.dx, p.dy), gameStarted, undefined, now, undefined, undefined, index);
+            }
+            return;
+          }
+          if (character.despawned) return;
           // Use ref for synchronous access (prevents flash at new position)
           const anim = characterPositionsRef.current.get(index);
           let deathAnim = characterDeathAnimationsRef.current.get(character.characterId) || characterDeathAnimations.get(character.characterId);
