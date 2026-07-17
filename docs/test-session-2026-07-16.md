@@ -19,10 +19,13 @@ broken, note it and we fix next session.
   (1.2s down, 1.0s up), gate and control rail still moving as one.
 - [ ] **Quest (?) icon on your phone**: with a long quest, the (?) stays
   left of "Quest:" instead of floating on its own line.
-- [ ] **Selection slide**: on a puzzle with 2+ heroes, tap between hero
-  cards — the highlight tint and the caret should GLIDE to the new card
-  (300ms), fade in from nothing, fade out on deselect. Same on the
-  enemy/ally strips (ally caret is now copper, was blood-red).
+- [ ] **Selection motion** (final design after 5 phone-review rounds): on
+  a puzzle with 2+ heroes, tap between cards — the CARET glides to the
+  new card (300ms) while the flat tint CROSSFADES between cards (it
+  deliberately does not slide; every moving-rectangle variant showed
+  edge artifacts). At rest, the selected card's tint seamlessly joins
+  the info panel below — one surface. Same on enemy/ally strips (ally
+  caret is now copper, was blood-red).
 
 ## 2. Theme settings (2 min)
 
