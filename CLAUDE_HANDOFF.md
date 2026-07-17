@@ -192,6 +192,21 @@ The Reflect status effect bounces incoming projectiles back:
 
 ## Pending Tasks
 
+### Escape objectives (noble_escapes) — ✅ SHIPPED 2026-07-17 (hallway dynamics batch, item 3)
+
+`84a0a7b`: "guide the Noble out of the Dungeon" — full details in the
+backlog entry. Engine facts worth knowing: escaped Nobles are the
+game's ONE alive-despawned state (despawned + departedOnTurn, dead
+FALSE); isEntityFunctional now excludes despawned (the planned "third
+condition" — all pre-existing despawns were also dead, so only the
+escape state is affected); the enemy actor loop gained an explicit
+despawned skip; implied-protect + protect_noble/survives EXCUSE
+escapees via hasEscapedBoard. The exit rule imports isValidHallway/
+isValidDoor into the ENGINE (pure geometry — first engine dependency
+on utils/hallwayDraw+doorDraw; fine, but know it exists). 5 pins.
+AWAITING USER TEST. **Batch remainder: shove-out ejection → mid-game
+waves thin slice → passerby v2 recurring + deliveries.**
+
 ### DEPART action / passerby v1 — ✅ SHIPPED 2026-07-17 (hallway dynamics batch, item 2)
 
 `7bdacf9`: ActionType.DEPART — the shared engine primitive the rest of

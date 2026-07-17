@@ -473,10 +473,22 @@ the visual items: baked, event-driven, or transform/opacity only.
   walk/tumble-out theater). Per-hallway editor toggle ("open ledge" vs
   barred). New puzzle verb built from existing push + despawn pieces.
 
-- [ ] **FEATURE — Escape objectives.** Win conditions. A hallway as the
-  goal: "guide the Noble out through the east hall" — same condition
-  shape as noble_reaches_goal, exit theater reuses walk-out visuals.
-  Escort puzzles get a destination that reads on the board.
+- [x] **FEATURE — Escape objectives — SHIPPED 2026-07-17** (`84a0a7b`).
+  New `noble_escapes` win condition: every Noble must exit through an
+  opening (params.escapeOpening designates one; RulesPanel picker +
+  no-opening warning; quest label "Guide the King out of the Dungeon").
+  processNobleExits at end of turn: living Noble on a valid
+  hallway/door floor tile exits — despawned+departedOnTurn+active=false
+  with dead FALSE (the game's one alive-despawned state; exit rule
+  shares isValidHallway/isValidDoor with the renderer so it can't
+  drift). isEntityFunctional gained !despawned (the planned "third
+  condition") + enemy-loop despawned skip. Implied-protect (now incl.
+  noble_escapes) and protect_noble/survives victory checks EXCUSE
+  escapees via hasEscapedBoard — dying before escaping is still
+  instant defeat (both halves pinned). Render: hero walk-out at full
+  opacity (characterGhostWalksRef); ally Nobles ride the enemy
+  walk-out. 5 pins in noble-escapes.test.ts. AWAITING USER TEST
+  (noble + hallway + noble_escapes condition, playtest the escort).
 
 - [ ] **FEATURE — The passerby.** Enemy/ally authoring. Neutral scripted
   creature crossing the board. **V1 (one-shot crossing) SHIPPED
