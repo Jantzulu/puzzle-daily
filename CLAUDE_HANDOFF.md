@@ -192,30 +192,35 @@ The Reflect status effect bounces incoming projectiles back:
 
 ## Pending Tasks
 
-### Queued small tasks (user-requested 2026-07-17)
+### Queued small tasks (user-requested 2026-07-17) — ✅ BOTH SHIPPED 2026-07-17
 
-1. **Harden the vsync clock mapping against drift.** Observed
-   2026-07-16: after the page lingered open a while, the game ran
-   visibly FAST — tile transitions abrupt/snappy, attack animations
-   sped up; a computer restart fully cleared it. Prime suspect: the
-   vsync-aligned board clock from `c6fd869` (mobile perf work) maps rAF
-   timestamps onto the wall clock via `performance.timeOrigin`, which
-   is fixed at page load — monotonic-vs-wall drift (sleep, long
-   uptime) desyncs animation time from the turn logic that still uses
-   `Date.now()`. Fix direction: make the epoch mapping continuously
-   self-correcting (re-anchor per frame or past a small skew
-   threshold) without reintroducing the Date.now()-at-callback jitter
-   it was built to remove. Visual layer only; find it by searching
-   `performance.timeOrigin` in AnimatedGameBoard.tsx. (A spawn-task
-   chip for this also exists from 2026-07-16.)
+1. ~~**Harden the vsync clock mapping against drift.**~~ **DONE**
+   (`96437e2`): the epoch anchor now lives in `epochAnchorRef` and
+   re-corrects every frame — skew ≤250ms slews away at 2%/frame (a
+   low-pass filter, so the callback scheduling jitter the vsync clock
+   exists to remove is averaged out, not tracked; per-frame correction
+   stays under ~5ms so `now` remains monotonic), skew past 250ms is a
+   step change (sleep resume, NTP jump) and snaps. The old fixed
+   `performance.timeOrigin` + 100ms wall-clock fallback is gone — that
+   design silently tolerated up to 100ms of monotonic-vs-wall drift,
+   which truncated the head of every animation (the "game runs fast
+   until restart" report). Visual layer only. AWAITING long-uptime
+   observation from the user (symptom needs hours to build).
 
-2. **Delay the victory/defeat overlays by ~2 seconds.** The overlays
-   currently appear the moment the win/lose state triggers — too fast;
-   the final action doesn't get a beat to read before being covered.
-   Delay the OVERLAY UI only (a render/UI timer in Game.tsx), never
-   the logical state or scoring — determinism rule. Check interaction
-   with the existing `hasInFlightProjectile` defeat gating and the
-   daily-lock flow so the delay stacks sensibly rather than doubling.
+2. ~~**Delay the victory/defeat overlays by ~2 seconds.**~~ **DONE**
+   (`71e4253`): `outcomeOverlayHeld` UI flag in Game.tsx, set for
+   `OUTCOME_OVERLAY_HOLD_MS` (2000) when an outcome fires — at the
+   turn-execution outcome side-effect site and in
+   `handleProjectileKill` (mid-animation victory). Gates the three
+   overlay visibility conditions (victory / game-over / life-lost)
+   plus their inline render twins. Logical state, scoring, daily-lock
+   persistence, and sounds fire at trigger time as before, so the hold
+   stacks on the engine's `hasInFlightProjectile` defeat gating
+   instead of doubling it. Deliberate scope: CONCEDE skips the hold
+   (no final action to read); collapsed pills, the daily-lock banner
+   (setup-only render), and replay-exit victory re-derivation are
+   ungated. AWAITING USER FEEL-CHECK (is 2s right? knob is the
+   constant).
 
 ### Next session — start here
 
