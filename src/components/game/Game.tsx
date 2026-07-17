@@ -44,6 +44,10 @@ import { ReplaySlabMesh } from './ReplaySlabMesh';
 // Test mode types
 type TestMode = 'none' | 'enemies' | 'characters';
 
+// How long the victory/defeat overlays wait after the outcome triggers
+// before covering the board (UI-only beat; see outcomeOverlayHeld).
+const OUTCOME_OVERLAY_HOLD_MS = 2000;
+
 // Distinct display names of every placed Noble (Noble-marked heroes +
 // hero-party allies), joined for quest text: "the King", "the King and
 // the Princess". Empty string when no Noble is placed.
@@ -280,6 +284,27 @@ export const Game: React.FC<GameProps> = ({
   // modal never renders.
   const [defeatDismissed, setDefeatDismissed] = useState(false);
 
+  // Victory/defeat overlays hold ~2s after the outcome triggers so the final
+  // action gets a beat to read before being covered. UI-only: logical state,
+  // scoring, daily-lock persistence, and outcome sounds all fire at trigger
+  // time (determinism rule). Concede deliberately skips the hold — there's no
+  // final action to read and a delay would feel unresponsive. Reset paths
+  // flip gameStatus back to 'setup', which hides the overlays regardless, so
+  // a stale timer can't resurface anything.
+  const [outcomeOverlayHeld, setOutcomeOverlayHeld] = useState(false);
+  const outcomeHoldTimerRef = useRef<number | null>(null);
+  const beginOutcomeOverlayHold = useCallback(() => {
+    if (outcomeHoldTimerRef.current !== null) clearTimeout(outcomeHoldTimerRef.current);
+    setOutcomeOverlayHeld(true);
+    outcomeHoldTimerRef.current = window.setTimeout(() => {
+      outcomeHoldTimerRef.current = null;
+      setOutcomeOverlayHeld(false);
+    }, OUTCOME_OVERLAY_HOLD_MS);
+  }, []);
+  useEffect(() => () => {
+    if (outcomeHoldTimerRef.current !== null) clearTimeout(outcomeHoldTimerRef.current);
+  }, []);
+
   // Overlay dismiss animation state
   const [dismissingOverlay, setDismissingOverlay] = useState(false);
   const dismissActionRef = useRef<(() => void) | null>(null);
@@ -385,9 +410,9 @@ export const Game: React.FC<GameProps> = ({
   // !enteringReplay: Watch Replay dismisses the overlay, then the rail/slab
   // choreography runs for 500ms before replayMode flips — without the guard
   // the overlay re-rendered (flashed) inside that window.
-  const victoryOverlayVisible = gameState.gameStatus === 'victory' && !!puzzleScore && !replayMode && !enteringReplay && !victoryDismissed;
-  const gameOverOverlayVisible = showGameOver && !defeatDismissed && !replayMode && !enteringReplay;
-  const lifeLostOverlayVisible = gameState.gameStatus === 'defeat' && !showGameOver && !replayMode && !enteringReplay;
+  const victoryOverlayVisible = gameState.gameStatus === 'victory' && !!puzzleScore && !replayMode && !enteringReplay && !victoryDismissed && !outcomeOverlayHeld;
+  const gameOverOverlayVisible = showGameOver && !defeatDismissed && !replayMode && !enteringReplay && !outcomeOverlayHeld;
+  const lifeLostOverlayVisible = gameState.gameStatus === 'defeat' && !showGameOver && !replayMode && !enteringReplay && !outcomeOverlayHeld;
 
   // Keyboard focus stays inside whichever overlay panel is up, and returns
   // to the prior element on close (see useFocusTrap).
@@ -805,6 +830,9 @@ export const Game: React.FC<GameProps> = ({
       }
 
       // Fire side effects (haptics, sounds) outside the state updater
+      if (outcome !== 'running') {
+        beginOutcomeOverlayHold();
+      }
       if (outcome === 'victory') {
         vibrate('victory');
         playGameSound('victory');
@@ -1041,6 +1069,7 @@ export const Game: React.FC<GameProps> = ({
       // Victory! Stop simulation and trigger victory handling
       setIsSimulating(false);
       setGameState(prev => ({ ...prev, gameStatus: 'victory' }));
+      beginOutcomeOverlayHold();
       vibrate('victory');
       playGameSound('victory');
       playVictoryMusic();
@@ -2549,7 +2578,7 @@ export const Game: React.FC<GameProps> = ({
 
 
               {/* Game Over Overlay — dismissible (matches Victory pattern) */}
-              {showGameOver && !defeatDismissed && !replayMode && !enteringReplay && (
+              {showGameOver && !defeatDismissed && !replayMode && !enteringReplay && !outcomeOverlayHeld && (
                 <div
                   role="dialog"
                   aria-modal="true"
@@ -2677,7 +2706,7 @@ export const Game: React.FC<GameProps> = ({
 
               {/* Victory Overlay */}
               {/* Victory Full Overlay — dismissible */}
-              {gameState.gameStatus === 'victory' && puzzleScore && !replayMode && !enteringReplay && !victoryDismissed && (
+              {gameState.gameStatus === 'victory' && puzzleScore && !replayMode && !enteringReplay && !victoryDismissed && !outcomeOverlayHeld && (
                 <div
                   role="dialog"
                   aria-modal="true"
@@ -2875,7 +2904,7 @@ export const Game: React.FC<GameProps> = ({
             </div>
 
             {/* Life Lost Overlay — outside shaking container so transform doesn't break fixed positioning */}
-            {gameState.gameStatus === 'defeat' && !showGameOver && !replayMode && !enteringReplay && (
+            {gameState.gameStatus === 'defeat' && !showGameOver && !replayMode && !enteringReplay && !outcomeOverlayHeld && (
               <div
                 role="dialog"
                 aria-modal="true"
