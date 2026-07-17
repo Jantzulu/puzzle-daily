@@ -345,6 +345,7 @@ export interface Enemy {
 
   // Boss configuration
   isBoss?: boolean; // If true, this enemy is a boss - enables 'defeat_boss' win condition
+  escapesOnDefeat?: boolean; // Escapes-on-defeat (2026-07-17): lethal damage is still a FULL defeat (win credit, drops, death triggers all unchanged) but the entity leaves the board instead of leaving a corpse — despawned once the death settles (processEscapes), unraisable, tile freed. Render plays a ghost walk-out through the nearest opening.
 
   // Noble configuration (the friendly-side Boss equivalent — meaningful on
   // ALLY assets, which share this Enemy shape via the adapter). A placed
@@ -410,6 +411,7 @@ export interface PlacedEnemy {
   despawned?: boolean; // Set by expiry despawn alongside dead=true. Render draws NOTHING for a despawned entity (no corpse, no death anim — the exit overlay particle covers the vanish); diedOnTurn stays unset so the tile frees immediately.
   sourceSpellId?: string; // Spell that summoned this entity — despawn loads it for the exit overlay sprite; future per-spell overrides read it too.
   transformedOnTurn?: number; // Vessels: turn this vessel's transform fired (processVesselTransforms). Set once on success — prevents re-transform; unset while the emergence is blocked (retries each turn end).
+  escapedOnTurn?: number; // Escapes-on-defeat: turn the escape despawn stamped (processEscapes). Render hook — the board starts the ghost walk-out when this equals the current turn.
   actionIndex?: number; // For active enemies with behavior patterns
   active?: boolean; // For active enemies
   parallelTrackers?: ParallelActionTracker[]; // For parallel spell execution

@@ -1212,9 +1212,11 @@ function moveCharacter(
       return updatedChar;
     }
 
-    // Check for dead enemy that blocks movement (like a wall corpse)
+    // Check for dead enemy that blocks movement (like a wall corpse).
+    // Despawned remains (summon expiry, vessel hatch, escapes-on-defeat)
+    // left the board entirely — no corpse to wall/halt on.
     const deadEnemy = gameState.puzzle.enemies.find(
-      (e) => e.x === newX && e.y === newY && e.dead
+      (e) => e.x === newX && e.y === newY && e.dead && !e.despawned
     );
     if (deadEnemy) {
       // Freshly-dead enemies (died this turn or last turn) keep blocking the

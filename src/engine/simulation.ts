@@ -2469,6 +2469,10 @@ export function executeTurn(gameState: GameState): GameState {
   // Process collectible durations (despawn expired items)
   processCollectibleDurations(gameState);
 
+  // Escapes-on-defeat despawn their remains — before vessel transforms so
+  // an emerging enemy is never blocked by an escapee's ghost tile
+  processEscapes(gameState);
+
   // Vessels break open / hatch — before summon expiry so an emerged enemy
   // exists for this turn's win check
   processVesselTransforms(gameState);
@@ -2537,6 +2541,32 @@ export function executeTurn(gameState: GameState): GameState {
  * A blocked tile (living/freshly-dead entity standing there) skips and
  * retries next turn end; transformedOnTurn stamps only on success.
  */
+/**
+ * Escapes-on-defeat (2026-07-17, locked design): a defeated enemy whose
+ * asset carries `escapesOnDefeat` leaves the board instead of leaving a
+ * corpse. The death itself is UNCHANGED — win credit, drops, and death
+ * triggers all fired on the normal death path before this pass runs; this
+ * only despawns the remains (no corpse debris, tile freed, unraisable —
+ * resurrect/necromancy already exclude despawned). Despawn stamps once the
+ * death has SETTLED deterministically (same diedOnTurn rule as vessel
+ * transforms — keying on the render-committed `dead` flag diverged modes
+ * in audit sweep 7). `escapedOnTurn` is the render hook: the board plays
+ * a ghost walk-out through the nearest opening on that turn.
+ */
+function processEscapes(gameState: GameState): void {
+  for (const enemy of gameState.puzzle.enemies) {
+    if (enemy.despawned || enemy.escapedOnTurn !== undefined) continue;
+    const logicallyDead = enemy.dead || !!enemy.pendingProjectileDeath;
+    if (!logicallyDead) continue;
+    const deathSettled = enemy.diedOnTurn === undefined ||
+      gameState.currentTurn >= enemy.diedOnTurn;
+    if (!deathSettled) continue;
+    if (!getEnemy(enemy.enemyId)?.escapesOnDefeat) continue;
+    enemy.despawned = true;
+    enemy.escapedOnTurn = gameState.currentTurn;
+  }
+}
+
 function processVesselTransforms(gameState: GameState): void {
   // Snapshot length: enemies emerged during this pass must not be re-scanned
   const count = gameState.puzzle.enemies.length;
