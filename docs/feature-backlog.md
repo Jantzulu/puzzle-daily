@@ -560,6 +560,28 @@ the visual items: baked, event-driven, or transform/opacity only.
   later rooms. Scope: new game mode — sequence linking + run state +
   editor surface; engine plays one room at a time, unchanged.
 
+### Editor workflow (captured + shipped 2026-07-17)
+
+- [x] **FEATURE — Pixel-perfect object placement — SHIPPED 2026-07-17**
+  (`042cf2e`). PlacedObject.offsetX/Y in ART pixels (stacks on the
+  asset offset; render-only; rides save/load/cloud). Dragging an
+  object with the OBJECT tool is pixel-fine: grab point preserved,
+  anchor tile derived from where the art lands, ±2px snap back to
+  center (stored as undefined = byte-identical to un-nudged),
+  same-tile drags commit, live offset in the status bar. Other
+  tools/kinds keep tile snap; one-object-per-tile rule unchanged
+  (offsets reach ±12 art px, so art clusters across tiles freely).
+  AWAITING USER TEST.
+
+- [x] **FEATURE — Live editor board rendering — SHIPPED 2026-07-17**
+  (`155c7db`). The draw helpers were already time-aware — the canvas
+  just never repainted between edits. Draw effect → callable +
+  ~12fps rAF ticker (sheet steppers gate on their own frameRate, so
+  4–12fps sprites play true; canvas never runs 60Hz; rAF stops when
+  the tab hides). Instant repaint on edits unchanged. Custom TILES
+  may still be static if drawTile isn't time-aware — flag if noticed.
+  AWAITING USER TEST.
+
 ### Profile / cosmetic
 
 - [ ] **Developer badge in profile.** Special badge shown next to a
