@@ -2436,6 +2436,15 @@ export const MapEditor: React.FC = () => {
               return { ...prev, enemies: next };
             });
           }}
+          onSetRecurrence={(rec) => {
+            const index = inspect.index;
+            pushToHistory();
+            setState(prev => {
+              const next = [...prev.enemies];
+              next[index] = { ...next[index], recurrence: rec };
+              return { ...prev, enemies: next };
+            });
+          }}
           onRemove={() => handleRemovePlacement('enemy', inspect.index)}
           onClose={() => setInspect(null)}
         />

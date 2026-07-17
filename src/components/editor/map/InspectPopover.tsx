@@ -23,6 +23,7 @@ interface InspectPopoverProps {
   /** Valid door/hallway markers on the current board (validity pre-filtered). */
   entranceOptions: EntranceRef[];
   onSetEntrance: (ref: EntranceRef | undefined) => void;
+  onSetRecurrence: (rec: { firstTurn: number; repeatEvery?: number } | undefined) => void;
   onRemove: () => void;
   onClose: () => void;
 }
@@ -33,6 +34,7 @@ export const InspectPopover: React.FC<InspectPopoverProps> = ({
   position,
   entranceOptions,
   onSetEntrance,
+  onSetRecurrence,
   onRemove,
   onClose,
 }) => {
@@ -112,6 +114,59 @@ export const InspectPopover: React.FC<InspectPopoverProps> = ({
               <p className="text-[10px] text-amber-400 mt-1">
                 Assigned opening no longer exists — normal entrance will play.
               </p>
+            )}
+          </div>
+        )}
+
+        {/* Scheduled visitor (passerby v2): this placement becomes an inert
+            template; win-exempt copies arrive on the cadence, walking in via
+            the entrance above when assigned. */}
+        {kindLabel !== 'Vessel' && (
+          <div className="mb-2">
+            <div className="text-[10px] uppercase tracking-wide text-stone-500 mb-1">Scheduled visitor</div>
+            <label className="flex items-center gap-2 text-xs cursor-pointer">
+              <input
+                type="checkbox"
+                checked={!!enemy.recurrence}
+                onChange={(e) => onSetRecurrence(e.target.checked ? { firstTurn: 1 } : undefined)}
+                className="w-3.5 h-3.5"
+              />
+              <span>Arrives on a schedule (not present at start)</span>
+            </label>
+            {enemy.recurrence && (
+              <>
+                <div className="flex items-center gap-2 text-xs mt-1">
+                  <label className="text-stone-400">First turn</label>
+                  <input
+                    type="number" min={1} max={999}
+                    value={enemy.recurrence.firstTurn}
+                    onChange={(e) => onSetRecurrence({
+                      firstTurn: Math.max(1, parseInt(e.target.value) || 1),
+                      repeatEvery: enemy.recurrence?.repeatEvery,
+                    })}
+                    className="w-14 px-1.5 py-0.5 bg-stone-700 rounded"
+                  />
+                  <label className="text-stone-400">Every</label>
+                  <input
+                    type="number" min={0} max={999}
+                    value={enemy.recurrence.repeatEvery ?? 0}
+                    onChange={(e) => {
+                      const v = parseInt(e.target.value) || 0;
+                      onSetRecurrence({
+                        firstTurn: enemy.recurrence!.firstTurn,
+                        repeatEvery: v > 0 ? v : undefined,
+                      });
+                    }}
+                    className="w-14 px-1.5 py-0.5 bg-stone-700 rounded"
+                  />
+                  <span className="text-stone-500">turns</span>
+                </div>
+                <p className="text-[10px] text-stone-500 mt-1">
+                  Win-exempt visitors arrive on this cadence (Every 0 = one visit),
+                  walking in via the entrance above when assigned. An occupied
+                  arrival tile skips that visit.
+                </p>
+              </>
             )}
           </div>
         )}

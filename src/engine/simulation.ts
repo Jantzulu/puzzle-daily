@@ -1798,6 +1798,11 @@ export function executeTurn(gameState: GameState): GameState {
 
   gameState.currentTurn++;
 
+  // Scheduled visitors (passerby v2) arrive at the dawn of their turn —
+  // on the board and blocking tiles before anyone acts, idle until next
+  // turn via the standard spawnedOnTurn guard.
+  processScheduledArrivals(gameState);
+
   // Reset held trigger groups at the start of each turn
   // They will be reactivated if entities are standing on hold-mode pressure plates
   resetHeldTriggerGroups(gameState);
@@ -2593,6 +2598,67 @@ function processEscapes(gameState: GameState): void {
   }
 }
 
+/**
+ * Scheduled visitors (passerby v2, 2026-07-17): placements with a
+ * `recurrence` config are inert templates (initializeGameState despawns
+ * them); this pass, at the top of each turn, spawns a fresh WIN-EXEMPT
+ * copy at the template's tile on the cadence — firstTurn, then every
+ * repeatEvery turns after (0/unset = one visit). The copy carries the
+ * template's entersFrom so the board plays a mid-game walk-in, idles its
+ * arrival turn (spawnedOnTurn guard), then runs the asset's behavior —
+ * typically a route ending in DEPART. An arrival tile occupied by a
+ * living or freshly-dead entity SKIPS that visit (deterministic — visits
+ * never queue up).
+ */
+function processScheduledArrivals(gameState: GameState): void {
+  const count = gameState.puzzle.enemies.length; // copies appended below must not be re-scanned
+  for (let i = 0; i < count; i++) {
+    const template = gameState.puzzle.enemies[i];
+    const rec = template.recurrence;
+    if (!rec) continue;
+    // Templates are inerted by initializeGameState; stamp defensively here
+    // too (this pass runs at the dawn of turn 1, before anything acts) so
+    // directly-built states can't leak an acting template.
+    if (!template.despawned) {
+      template.despawned = true;
+      template.excludeFromWinConditions = true;
+    }
+    const turn = gameState.currentTurn;
+    if (turn < rec.firstTurn) continue;
+    const every = rec.repeatEvery ?? 0;
+    if (turn !== rec.firstTurn && (every <= 0 || (turn - rec.firstTurn) % every !== 0)) continue;
+
+    const tx = Math.floor(template.x);
+    const ty = Math.floor(template.y);
+    const blockedByEntity =
+      gameState.puzzle.enemies.some(e =>
+        e !== template &&
+        Math.floor(e.x) === tx && Math.floor(e.y) === ty &&
+        !e.despawned &&
+        (!e.dead || isFreshlyDeadEntity(e, turn))) ||
+      gameState.placedCharacters.some(c =>
+        Math.floor(c.x) === tx && Math.floor(c.y) === ty &&
+        !c.despawned &&
+        (!c.dead || isFreshlyDeadEntity(c, turn)));
+    if (blockedByEntity) continue;
+
+    // Facing deliberately NOT forwarded from the template: enemy facing's
+    // single source of truth is the asset's defaultFacing (see
+    // initializeGameState), and a template's facing field may be a stale
+    // lazily-stamped default. spawnEnemyMidGame falls back to the asset.
+    const visitor = spawnEnemyMidGame(gameState, {
+      enemyId: template.enemyId,
+      x: tx,
+      y: ty,
+      party: template.party,
+      excludeFromWinConditions: true,
+    });
+    if (visitor) {
+      visitor.entersFrom = template.entersFrom; // mid-game walk-in render hook
+    }
+  }
+}
+
 /** Alive-despawned = exited the board successfully (noble escape). The only
  * state where despawned is set without dead — every loss path sets dead. */
 function hasEscapedBoard(entity: PlacedCharacter | PlacedEnemy): boolean {
@@ -3040,6 +3106,14 @@ export function initializeGameState(puzzle: Puzzle): GameState {
           // facing override, so the asset is the single source of truth.
           facing: enemyData?.behavior?.defaultFacing ?? e.facing,
         };
+
+        // Scheduled-visitor TEMPLATE (recurrence): the placement itself
+        // never participates — inert from turn 0 (despawned, win-exempt);
+        // processScheduledArrivals spawns win-exempt copies on its cadence.
+        if (e.recurrence) {
+          placedEnemy.despawned = true;
+          placedEnemy.excludeFromWinConditions = true;
+        }
 
         // Apply initial status effects from enemy definition
         if (enemyData?.initialStatusEffects && enemyData.initialStatusEffects.length > 0) {

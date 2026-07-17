@@ -827,6 +827,7 @@ interface WalkInState {
   startTime: number; // may sit in the future (door beat + file-out stagger)
   durationMs: number;
   points: Array<{ x: number; y: number }>; // off-grid corridor cell → … → home tile
+  midGame?: boolean; // Scheduled-visitor arrival: the walk plays DURING play (the draw's !gameStarted gate is bypassed for these)
 }
 
 /** Position + travel vector along the walk path at t ∈ [0,1]. */
@@ -1726,6 +1727,28 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
         points,
       });
     });
+    // MID-GAME walk-in arrivals (scheduled visitors): an entity spawned
+    // THIS turn with a valid entrance assignment strides in from its
+    // opening while the game plays on. Same construction as the pre-game
+    // entrance walk-ins, minus door beats and file-out staggers (arrivals
+    // are singular). Once created, the entry persists and the draw falls
+    // through to the normal sprite when the walk completes.
+    gameState.puzzle.enemies.forEach((enemy, index) => {
+      if (enemy.spawnedOnTurn === undefined || enemy.spawnedOnTurn !== gameState.currentTurn) return;
+      if (enemyWalkInsRef.current.has(index)) return;
+      const sprite = getEnemy(enemy.enemyId)?.customSprite;
+      const walkRef = resolveWalkInEntrance(enemy, sprite, gameState.puzzle);
+      if (!walkRef) return; // no assignment / sprite not opted in / stale marker — visitor just appears
+      const off = SIDE_OFFSETS[walkRef.side];
+      const path = findPathBFS(walkRef.x, walkRef.y, enemy.x, enemy.y, gameState);
+      const points = [{ x: walkRef.x + off.dx, y: walkRef.y + off.dy }, ...path];
+      enemyWalkInsRef.current.set(index, {
+        startTime: now,
+        durationMs: (points.length - 1) * WALK_IN_MS_PER_TILE,
+        points,
+        midGame: true,
+      });
+    });
   }, [gameState]);
 
   // Memoize placedObjects layered into below_entities / above_entities arrays.
@@ -2127,7 +2150,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
           // moving animation facing travel. Pure pre-game theater like the
           // fly-in below; starting the game mid-walk snaps it to its tile.
           const walkIn = enemyWalkInsRef.current.get(index);
-          if (walkIn && !gameStarted && !enemy.dead) {
+          if (walkIn && (!gameStarted || walkIn.midGame) && !enemy.dead) {
             const walkElapsed = now - walkIn.startTime;
             if (walkElapsed < 0) return;
             if (walkElapsed < walkIn.durationMs) {

@@ -415,6 +415,7 @@ export interface PlacedEnemy {
   escapedOnTurn?: number; // Escapes-on-defeat: turn the escape despawn stamped (processEscapes). Render hook — the board starts the ghost walk-out when this equals the current turn.
   departedOnTurn?: number; // DEPART action: turn the entity left the board on its own terms (not a death — no drops/triggers). Render hook — full-opacity walk-out when this equals the current turn.
   ejectedOnTurn?: number; // Shove-out ejection: turn a push threw this entity through an open-ledge mouth (dead+despawned, summon-expiry semantics — no drops/triggers/corpse). Render hook — fast tumble-out.
+  recurrence?: { firstTurn: number; repeatEvery?: number }; // Scheduled visitor (passerby v2, 2026-07-17): the placement is an inert TEMPLATE (despawned + win-exempt at init, never acts); win-exempt copies spawn at firstTurn and every repeatEvery turns after (0/unset = one visit), arriving via the placement's entersFrom walk-in mid-game. A visit whose arrival tile is occupied is skipped, not queued.
   actionIndex?: number; // For active enemies with behavior patterns
   active?: boolean; // For active enemies
   parallelTrackers?: ParallelActionTracker[]; // For parallel spell execution
