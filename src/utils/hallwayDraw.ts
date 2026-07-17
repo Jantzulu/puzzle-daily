@@ -194,16 +194,17 @@ export function drawHallwayOpening(
     const dy = side === 'top' ? -1 : 1;
     drawDarkness(ctx, side, rx, ry, rw, rh, Math.min(1, cfg.borderSize / rh));
     const flankH = side === 'top' ? rh - cfg.borderSize : rh;
-    // Top flanks: flat pre-shade over the WHOLE flank column (shoulder +
-    // protruding strip) — the sides' locked "walls in shade" treatment
-    // (user, 2026-07-17: fully-lit vertical segments beside the dark mouth
-    // read too bright; revises round 7's fully-lit shoulders). The
-    // protrusion gradient below still sinks the far end to black. Bottom
-    // flanks keep their approved gentle ramp, untouched.
+    // Top flanks, settled over rounds 7-9 (user, 2026-07-17): the SHOULDER
+    // corner pieces stay fully lit — they belong to the wall run beside
+    // them — while the protruding vertical STRIP above gets the sides'
+    // flat 45% "walls in shade" pre-shade on top of its gradient, so the
+    // segment reads dim at the shoulder line and sinks to black at the far
+    // end. (Round 8 shaded the whole column and made the corners too
+    // dark.) Bottom flanks keep their approved gentle ramp, untouched.
     const preShadeTopFlank = (px: number) => {
       if (side !== 'top') return;
       ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
-      ctx.fillRect(px, ry, cfg.sideBorderSize, rh);
+      ctx.fillRect(px, ry, cfg.sideBorderSize, flankH);
     };
     if (openCell(x - 1, y) && !openCell(x - 1, y + dy)) {
       preShadeTopFlank(rx - cfg.sideBorderSize);
