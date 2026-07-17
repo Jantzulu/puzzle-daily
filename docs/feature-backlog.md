@@ -494,16 +494,24 @@ the visual items: baked, event-driven, or transform/opacity only.
   on a known turn — timed pickup pressure, board-readable where/when.
   Likely rides the same scheduled-arrival machinery as passerby v2.
 
-- [ ] **FEATURE — Escapes on defeat.** Per-enemy flag: lethal damage
-  plays a walk-out through the nearest opening instead of leaving a
-  corpse. Logic unchanged (still counts as defeated — pure visual swap
-  on the death path, deterministic). LOCKED 2026-07-17: the departing
-  sprite is a GHOST — logically dead+despawned the instant the blow
-  lands (tile freed, win conditions credited, untargetable, triggers
-  nothing), so the walk-out is render-ref theater that crosses occupied
-  tiles and mid-fight scenes with zero interaction. Optional style
-  knob: slight alpha fade during the exit. Ships independently;
-  becomes the boss-escapes hook for the roguelike mode below.
+- [x] **FEATURE — Escapes on defeat — SHIPPED 2026-07-17** (`bd3525b`
+  logic + 4 pins in escapes-on-defeat.test.ts, `25329ca` ghost renderer
+  + EnemyEditor checkbox [enemies AND allies]). Enemy.escapesOnDefeat:
+  death is a FULL defeat (win credit, drops, death triggers unchanged)
+  but processEscapes despawns the remains once the death settles
+  (diedOnTurn rule — parity-safe; projectile kills settle a turn later
+  than melee, deterministically in both modes). No corpse, tile freed,
+  unraisable. Render: ghost walk-out to the nearest valid hallway/door
+  (BFS, walls-only — crosses occupied tiles), living moving sprite +
+  deepening alpha fade, walk-in cadence; no opening = vanish. Souls
+  pass now skips ALL despawned entities (also fixes expired summons
+  emitting souls). Ridealong movement fix: despawned remains no longer
+  act as corpse walls/halts. AWAITING USER TEST (flag an enemy, kill it
+  on a hallway'd puzzle). Original locked design preserved below the
+  strikethrough for the roguelike boss-escapes hook. ~~Per-enemy flag:
+  lethal damage plays a walk-out through the nearest opening instead of
+  leaving a corpse; the departing sprite is a GHOST — render-ref
+  theater with zero interaction.~~
 
 - [ ] **IDEA — Roguelike puzzle sequences (post-launch mode).** User
   vision 2026-07-17: linked chain of puzzles ("rooms"); the hero

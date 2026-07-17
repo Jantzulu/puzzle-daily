@@ -192,6 +192,29 @@ The Reflect status effect bounces incoming projectiles back:
 
 ## Pending Tasks
 
+### Escapes-on-defeat — ✅ SHIPPED 2026-07-17 (hallway dynamics batch, item 1)
+
+`bd3525b` logic: Enemy.escapesOnDefeat — death stays a FULL defeat (win
+credit, drops, death triggers on the normal path); processEscapes (end
+of turn, before vessel transforms) despawns the remains once the death
+settles on the diedOnTurn clock (parity-safe; projectile kills settle
+one turn after melee kills in BOTH modes — pinned). Escapees are
+unraisable (resurrect/necromancy already exclude despawned) and free
+their tile; ridealong fix: moveCharacter's corpse lookup now skips
+despawned remains (a despawned summon with a corpse-wall trait could
+previously still block). `25329ca` render: ghost walk-out — exit route
+built once when escapedOnTurn === currentTurn (nearest valid
+hallway/door by BFS length, walls-only so the ghost crosses occupied
+tiles, off-grid final point), drawn with the living moving sprite
+(dead:false spoof) under a deepening alpha fade at walk-in cadence;
+replay-stepping onto later turns shows nothing (correct — it's gone);
+no opening = remains vanish. Souls pass now skips despawned entities
+(escapee ghosts aren't doubled; expired summons no longer emit souls).
+EnemyEditor "Escapes on Defeat" checkbox (enemies + allies). AWAITING
+USER TEST: flag an enemy, place it on a puzzle with hallways/doors,
+kill it. **Next in the batch: passerby v1 + the DEPART action** (shared
+primitive for escape objectives + shove-out; design locked in backlog).
+
 ### Vessel triggers — ✅ SHIPPED 2026-07-17 (same session; closes the feature queue)
 
 User greenlit + contributed the proximity idea ("eggs that only hatch
