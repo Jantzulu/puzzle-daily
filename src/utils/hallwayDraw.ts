@@ -232,30 +232,42 @@ function drawFlankWalls(
     return;
   }
 
-  // Top/bottom: Side Wall strips beyond the band, rising from the mouth
-  // shoulders (same emission conditions). Anchored so the art continues
-  // seamlessly out of the shoulder; clipped, not stretched.
-  const protrusion = rh - B;
-  if (protrusion <= 0) return;
+  // Top/bottom: Side Wall strips continuing the flank out of the mouth
+  // pieces (same emission conditions). TILED at the art's natural one-tile
+  // height — never stretched — and anchored at the mouth end so the art
+  // runs seamlessly out of the shoulder/cap, like the vertical wall of a
+  // real void-tile notch (user reference, 2026-07-16).
+  // Top: the full-height shoulder covers the band, so the strip is just
+  // the protrusion above it. Bottom: the mouth piece is a THIN cap, so
+  // the strip runs from the cap all the way to the corridor's end.
   const dy = side === 'top' ? -1 : 1;
-  const py = side === 'top' ? ry : ry + B;
+  const stripY = side === 'top' ? ry : ry + S;
+  const stripH = side === 'top' ? rh - B : rh - S;
+  if (stripH <= 0) return;
   const drawStrip = (sx: number, mirrored: boolean) => {
     const img = cfg.getImage('wallSide');
     if (!img) {
-      drawProceduralCorner(ctx, sx, py, S, protrusion, mirrored ? 'left' : 'right');
+      drawProceduralCorner(ctx, sx, stripY, S, stripH, mirrored ? 'left' : 'right');
       return;
     }
     ctx.save();
     ctx.beginPath();
-    ctx.rect(sx, py, S, protrusion);
+    ctx.rect(sx, stripY, S, stripH);
     ctx.clip();
-    const artY = side === 'top' ? py + protrusion - t : py;
-    if (mirrored) {
-      ctx.translate(sx + S, artY);
-      ctx.scale(-1, 1);
-      ctx.drawImage(img, 0, 0, S, t);
-    } else {
-      ctx.drawImage(img, sx, artY, S, t);
+    const runs = Math.ceil(stripH / t);
+    for (let i = 0; i < runs; i++) {
+      // Anchor at the mouth end: top corridors grow upward from the
+      // shoulder, bottom corridors grow downward from the cap.
+      const ay = side === 'top' ? stripY + stripH - (i + 1) * t : stripY + i * t;
+      if (mirrored) {
+        ctx.save();
+        ctx.translate(sx + S, ay);
+        ctx.scale(-1, 1);
+        ctx.drawImage(img, 0, 0, S, t);
+        ctx.restore();
+      } else {
+        ctx.drawImage(img, sx, ay, S, t);
+      }
     }
     ctx.restore();
   };
@@ -329,12 +341,15 @@ function drawMouthCorners(
       break;
     }
     case 'bottom': {
-      // Outer-perimeter bottom corners are full height, like the band.
+      // THIN caps at the junction — the flank continues below as tiled
+      // Side Wall (drawFlankWalls), matching the vertical wall a real
+      // void-tile notch produces (user reference, 2026-07-16; the earlier
+      // full-height inner corners read as a stretched asset).
       if (playable(x - 1, y) && !playable(x - 1, y + 1)) {
-        piece('innerCornerBottomLeft', x * t - S, (y + 1) * t, S, B, 'right');
+        piece('innerCornerBottomLeftThin', x * t - S, (y + 1) * t, S, S, 'right', 'innerCornerBottomLeft');
       }
       if (playable(x + 1, y) && !playable(x + 1, y + 1)) {
-        piece('innerCornerBottomRight', x * t + t, (y + 1) * t, S, B, 'left');
+        piece('innerCornerBottomRightThin', x * t + t, (y + 1) * t, S, S, 'left', 'innerCornerBottomRight');
       }
       break;
     }

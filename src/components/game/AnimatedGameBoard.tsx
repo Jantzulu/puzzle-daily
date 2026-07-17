@@ -2497,14 +2497,24 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
   const cssWidth = canvasResWidth / dpr;
   const cssHeight = canvasResHeight / dpr;
 
+  // The LAYOUT box is the un-overhung board — the page positions and
+  // centers the puzzle exactly as if hallways didn't exist (locked rule,
+  // user 2026-07-16: "the game board is the important bit"). The canvas
+  // bleeds out of the box via negative margins; corridors run under
+  // neighboring UI or off-screen, which is the intended illusion.
+  const layoutCssWidth = Math.round(canvasWidth * quantizedScale) / dpr;
+  const layoutCssHeight = Math.round(canvasHeight * quantizedScale) / dpr;
+  const overhangLeftCss = (hallwayOverhang.x * quantizedScale) / dpr;
+  const overhangTopCss = (hallwayOverhang.top * quantizedScale) / dpr;
+
   return (
     <div
       key={fadeKey}
       className="animate-fade-in-board"
       style={{
-        width: cssWidth,
-        height: cssHeight,
-        overflow: 'hidden'
+        width: layoutCssWidth,
+        height: layoutCssHeight,
+        overflow: 'visible'
       }}
     >
       <canvas
@@ -2516,6 +2526,8 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
         style={{
           width: cssWidth,
           height: cssHeight,
+          marginLeft: -overhangLeftCss,
+          marginTop: -overhangTopCss,
           imageRendering: 'pixelated'
         }}
       />
@@ -5996,7 +6008,10 @@ export const ResponsiveGameBoard: React.FC<ResponsiveGameBoardProps> = (props) =
   }, []);
 
   return (
-    <div ref={containerRef} className="w-full flex justify-center overflow-hidden">
+    // overflow-x-clip (not hidden): corridor overhang may bleed above/
+    // below the board's layout box by design; sideways bleed clips so it
+    // can never cause horizontal page scroll on phones.
+    <div ref={containerRef} className="w-full flex justify-center overflow-x-clip">
       {measured && <AnimatedGameBoard {...props} maxWidth={maxWidth} maxHeight={maxHeight} replayFrozen={props.replayFrozen} />}
     </div>
   );

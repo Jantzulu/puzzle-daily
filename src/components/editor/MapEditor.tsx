@@ -1876,8 +1876,6 @@ export const MapEditor: React.FC = () => {
   const canvasOverhang = currentHallwayOverhang(hasBorder);
   const canvasElementWidth = canvasWidth + canvasOverhang.x * 2;
   const canvasElementHeight = canvasHeight + canvasOverhang.top + canvasOverhang.bottom;
-  const scaledWrapperWidth = canvasElementWidth * editorScale;
-  const scaledWrapperHeight = canvasElementHeight * editorScale;
 
   // Status-bar text: active tool + selected asset (Phase 2).
   const activeToolLabel = (() => {
@@ -2090,9 +2088,12 @@ export const MapEditor: React.FC = () => {
           <div ref={editorContainerRef} className="flex-shrink-0 space-y-4 w-full lg:w-auto">
             <div
               style={{
-                width: scaledWrapperWidth,
-                height: scaledWrapperHeight,
-                overflow: 'hidden'
+                // Layout box = the un-overhung board (same rule as the game:
+                // hallways must not move or resize anything); the canvas
+                // bleeds out of it via negative margins.
+                width: scaledCanvasWidth,
+                height: scaledCanvasHeight,
+                overflow: 'visible'
               }}
             >
               <canvas
@@ -2103,6 +2104,8 @@ export const MapEditor: React.FC = () => {
                 style={{
                   transform: `scale(${editorScale})`,
                   transformOrigin: 'top left',
+                  marginLeft: -(canvasOverhang.x * editorScale),
+                  marginTop: -(canvasOverhang.top * editorScale),
                   cursor: dragState?.moved ? 'grabbing' : undefined,
                   touchAction: 'none'
                 }}

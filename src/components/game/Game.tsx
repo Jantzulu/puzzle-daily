@@ -2513,7 +2513,11 @@ export const Game: React.FC<GameProps> = ({
                 under the rail's spikes. A relative offset (not margin) so
                 the banner below stays put — the board slides into the
                 board-to-banner gap, halving it (12px base / 14px at lg). */}
-            <div className={`relative top-1.5 lg:top-[7px] z-10 w-full max-w-[900px] overflow-hidden board-rise ${(replayMode || enteringReplay) ? 'board-rise-collapsed ' : ''}${gameState.gameStatus === 'defeat' ? 'animate-screen-shake' : ''}`}>
+            {/* overflow: full clip only while the replay collapse animates
+                (board-rise needs vertical clipping); in normal play only
+                the x-axis clips, so hallway corridors may bleed above and
+                below the board's layout box (intended illusion). */}
+            <div className={`relative top-1.5 lg:top-[7px] z-10 w-full max-w-[900px] board-rise ${(replayMode || enteringReplay) ? 'overflow-hidden board-rise-collapsed ' : 'overflow-x-clip '}${gameState.gameStatus === 'defeat' ? 'animate-screen-shake' : ''}`}>
               <div
                 ref={boardFadeRef}
                 className={`transition-[opacity,transform] duration-700 ease-out ${spritesReady ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
