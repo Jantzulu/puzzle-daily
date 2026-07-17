@@ -68,6 +68,14 @@ interface AnimatedGameBoardProps {
 const TILE_SIZE = 48;
 const BORDER_SIZE = 48; // Border thickness for top/bottom
 const SIDE_BORDER_SIZE = 16; // Thinner side borders to match pixel art style
+// Side hallway corridors match the top/bottom band's depth (user design,
+// 2026-07-16). The extra drawable width beyond the 16px side band is an
+// OVERHANG: added to the canvas backing store + CSS box, but EXCLUDED from
+// the fit-scale/zoom math, so the puzzle's on-screen size never changes
+// because hallways exist — on tight screens the host's overflow clipping
+// eats the corridor tails instead (locked tradeoff). Symmetric when
+// present, so the centered grid stays centered.
+const SIDE_HALLWAY_DEPTH = BORDER_SIZE;
 const ANIMATION_DURATION = 400; // ms per move (faster animation, half the turn interval)
 const MOVE_DURATION = 180; // Movement duration - balance between smoothness and minimizing time on wrong tile
 const IDLE_DURATION = 220; // Idle time on destination tile (where entity actually is)
@@ -89,6 +97,19 @@ const ITEM_DESPAWN_DURATION = 400; // ms for collectible scale-down animation (d
 // rAF. Don't re-raise without fixing the per-frame cost first — see
 // docs/offscreen-sprite-cache-plan.md.
 const MAX_DPR = 2;
+
+/**
+ * Logical px of side-corridor overhang this puzzle needs (0 when it has no
+ * valid left/right hallway). Cheap enough to recompute wherever the sizing
+ * math runs — a handful of markers, two tile probes each.
+ */
+function computeSideOverhang(puzzle: GameState['puzzle'], hasBorder: boolean): number {
+  if (!hasBorder || !puzzle.hallways || puzzle.hallways.length === 0) return 0;
+  const hasSide = puzzle.hallways.some(m =>
+    (m.side === 'left' || m.side === 'right') &&
+    isValidHallway(m, puzzle.tiles, puzzle.width, puzzle.height));
+  return hasSide ? SIDE_HALLWAY_DEPTH - SIDE_BORDER_SIZE : 0;
+}
 
 const COLORS = {
   empty: '#2a2a2a',
@@ -1725,6 +1746,12 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       // Scale context — quantized so tiles land on exact physical pixel boundaries
       ctx.save();
       ctx.scale(quantizedScale, quantizedScale);
+      // Deep-side-corridor overhang: shift EVERYTHING right by the overhang
+      // so the border/tiles land where the sizing math expects and the
+      // corridors get drawable pixels to their left/right. Must mirror the
+      // bake + vignette contexts and handleCanvasClick.
+      const sideOverhang = computeSideOverhang(gameState.puzzle, hasBorderForScale);
+      ctx.translate(sideOverhang, 0);
 
       // Load skin for tile sprites (use override if provided, e.g. for SkinEditor live preview)
       const skin = skinOverride ?? (gameState.puzzle.skinId ? loadPuzzleSkin(gameState.puzzle.skinId) : null);
@@ -1795,6 +1822,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
             bctx.imageSmoothingEnabled = false;
             bctx.save();
             bctx.scale(quantizedScale, quantizedScale);
+            bctx.translate(sideOverhang, 0);
             drawStaticLayers(bctx, gameState.puzzle, gameState.currentTurn, gameState.tileStates, tileSprites, customTileSprites, isEditor, hasBorder, borderStyle, offsetX, offsetY);
             bctx.restore();
           }
@@ -2340,6 +2368,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
             vCtx.clearRect(0, 0, vCanvas.width, vCanvas.height);
             vCtx.save();
             vCtx.scale(quantizedScale, quantizedScale);
+            vCtx.translate(sideOverhang, 0);
             drawStaticVignetteOverlay(vCtx, gameState.puzzle.tiles, gameState.puzzle.width, gameState.puzzle.height, offsetX, offsetY);
             vCtx.restore();
           }
@@ -2392,11 +2421,14 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
     const canvasHeightPx = hasBorder ? gridHeightPx + (BORDER_SIZE * 2) : gridHeightPx;
 
     const rect = canvas.getBoundingClientRect();
-    // Derive actual CSS scale from the rendered element size
-    const currentScale = rect.width / canvasWidthPx;
+    // Derive actual CSS scale from the rendered element size. The element
+    // includes the side-corridor overhang, so measure against the full
+    // logical width and shift the grid origin by the overhang too.
+    const sideOverhang = computeSideOverhang(gameState.puzzle, hasBorder);
+    const currentScale = rect.width / (canvasWidthPx + sideOverhang * 2);
 
     // Account for scale when converting click coordinates
-    const clickX = (e.clientX - rect.left) / currentScale - offsetX;
+    const clickX = (e.clientX - rect.left) / currentScale - offsetX - sideOverhang;
     const clickY = (e.clientY - rect.top) / currentScale - offsetY;
 
     const x = Math.floor(clickX / TILE_SIZE);
@@ -2441,8 +2473,12 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
   const physicalTileSize = integerZoom * ART_TILE_PX;
   const quantizedScale = physicalTileSize / TILE_SIZE;
 
-  // Canvas resolution from quantized scale — tiles land on exact pixel boundaries
-  const canvasResWidth = Math.round(canvasWidth * quantizedScale);
+  // Canvas resolution from quantized scale — tiles land on exact pixel
+  // boundaries. Side-corridor overhang joins the backing store + CSS box
+  // here, AFTER the fit-scale/zoom math above ignored it (see
+  // SIDE_HALLWAY_DEPTH) — the puzzle renders at the same size either way.
+  const sideOverhang = computeSideOverhang(gameState.puzzle, hasBorder);
+  const canvasResWidth = Math.round((canvasWidth + sideOverhang * 2) * quantizedScale);
   const canvasResHeight = Math.round(canvasHeight * quantizedScale);
 
   // CSS display size must exactly match canvas resolution / dpr
@@ -2537,7 +2573,7 @@ function drawStaticLayers(
       borderSize: BORDER_SIZE,
       sideBorderSize: SIDE_BORDER_SIZE,
       verticalDepth: BORDER_SIZE,
-      horizontalDepth: SIDE_BORDER_SIZE,
+      horizontalDepth: SIDE_HALLWAY_DEPTH,
       tiles: puzzle.tiles,
       gridWidth: puzzle.width,
       gridHeight: puzzle.height,

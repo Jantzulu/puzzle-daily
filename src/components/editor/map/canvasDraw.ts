@@ -13,6 +13,11 @@ import { loadImage } from '../../../utils/imageLoader';
 export const TILE_SIZE = 48;
 export const BORDER_SIZE = 48; // Border thickness for top/bottom
 export const SIDE_BORDER_SIZE = 16; // Thinner side borders to match pixel art style
+// Side hallway corridors match the top/bottom band's depth. The width
+// beyond the 16px side band is drawable OVERHANG on the canvas, excluded
+// from the editor's scale math so the board renders the same size whether
+// or not hallways exist (mirrors the game board's rule).
+export const SIDE_HALLWAY_DEPTH = BORDER_SIZE;
 export const MAX_DISPLAY_WIDTH_TILES = 15; // Max tiles before scaling down
 
 export function createEmptyGrid(width: number, height: number): TileOrNull[][] {

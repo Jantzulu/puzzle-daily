@@ -147,33 +147,73 @@ export function drawHallwayOpening(
       cfg.drawFloorTile(ctx, x + off.dx * i, y + off.dy * i);
     }
   }
-  drawSideWalls(ctx, marker, cfg, rx, ry, rw, rh);
-  drawDarkness(ctx, side, rx, ry, rw, rh);
-  ctx.restore();
 
-  // ── Mouth corners (unclipped — they sit in the flanking wall band) ──
+  const horizontal = side === 'left' || side === 'right';
+  if (!horizontal) {
+    // Top/bottom: the mouth corners span the full corridor depth, so the
+    // corridor needs no walls of its own — darken and done.
+    drawDarkness(ctx, side, rx, ry, rw, rh);
+    ctx.restore();
+  } else {
+    // Left/right: the corridor runs sideways, so it carries its own walls
+    // in the rows above/below it (drawn unclipped, then one darkness pass
+    // fades corridor and walls together toward the far end).
+    ctx.restore();
+    drawFlankWalls(ctx, marker, cfg, rx, ry, rw, rh);
+    drawDarkness(ctx, side, rx, ry - cfg.borderSize, rw, cfg.borderSize + rh + cfg.sideBorderSize);
+  }
+
+  // ── Mouth corners (last — they sit at the mouth and stay lit) ──
   drawMouthCorners(ctx, marker, cfg);
 }
 
 /**
- * The corridor's own side walls, drawn INSIDE the corridor clip along its
- * length — what the autotiler would put on a corridor floor cell's exposed
- * edges. Only meaningful once the corridor is deeper than the mouth
- * corners' reach; the darkness fade swallows their far ends. For left/
- * right corridors the walls run horizontally: a wallFront face above
- * (front-facing walls are B tall — it fills the band row above) and a
- * wallTop lip below. For top/bottom corridors the mouth corners already
- * span the full band depth, so nothing extra is drawn here today.
+ * A horizontal corridor's own walls — what the autotiler would put on the
+ * corridor cell's exposed edges: a front-facing wall (B tall) filling the
+ * band row above it, and a wallTop lip (S tall) below. Skipped where the
+ * neighboring cell is floor or another corridor (openings merge). The
+ * darkness pass swallows their far ends along with the floor.
  */
-function drawSideWalls(
+function drawFlankWalls(
   ctx: CanvasRenderingContext2D,
   marker: HallwayMarker,
   cfg: HallwayDrawConfig,
   rx: number, ry: number, rw: number, rh: number,
 ): void {
-  void marker; void ctx; void cfg; void rx; void ry; void rw; void rh;
-  // Slice B (deep side corridors) fills this in: wallFront above and
-  // wallTop below left/right corridors, drawn in the overhang band.
+  const { x, y, side } = marker;
+  const dx = side === 'left' ? -1 : 1;
+  const open = (tx: number, ty: number): boolean =>
+    isPlayable(cfg.tiles, tx, ty, cfg.gridWidth, cfg.gridHeight) || cfg.corridorCells.has(`${tx},${ty}`);
+
+  if (!open(x + dx, y - 1)) {
+    const img = cfg.getImage('wallFront');
+    if (img) {
+      ctx.drawImage(img, rx, ry - cfg.borderSize, rw, cfg.borderSize);
+    } else {
+      drawProceduralWall(ctx, rx, ry - cfg.borderSize, rw, cfg.borderSize, 'bottom');
+    }
+  }
+  if (!open(x + dx, y + 1)) {
+    const img = cfg.getImage('wallTop');
+    if (img) {
+      ctx.drawImage(img, rx, ry + rh, rw, cfg.sideBorderSize);
+    } else {
+      drawProceduralWall(ctx, rx, ry + rh, rw, cfg.sideBorderSize, 'top');
+    }
+  }
+}
+
+/** Procedural stand-in for a missing wall sprite along a corridor flank. */
+function drawProceduralWall(
+  ctx: CanvasRenderingContext2D,
+  px: number, py: number, w: number, h: number,
+  litEdge: 'top' | 'bottom',
+): void {
+  const lip = Math.max(1, Math.round(h / 8));
+  ctx.fillStyle = '#323242';
+  ctx.fillRect(px, py, w, h);
+  ctx.fillStyle = '#3a3a4a';
+  ctx.fillRect(px, litEdge === 'top' ? py : py + h - lip, w, lip);
 }
 
 /**

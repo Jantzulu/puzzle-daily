@@ -56,8 +56,8 @@ const BORDER_SPRITE_SLOTS: { key: keyof CustomBorderSprites; label: string; desc
   // so draw these fully lit.
   { key: 'hallwayTop', label: 'Hallway Top', description: 'Corridor through the top wall (darkness added in-game)', size: '48x48' },
   { key: 'hallwayBottom', label: 'Hallway Bottom', description: 'Corridor through the bottom wall (darkness added in-game)', size: '48x48' },
-  { key: 'hallwayLeft', label: 'Hallway Left', description: 'Corridor through the left wall (darkness added in-game)', size: '16x48' },
-  { key: 'hallwayRight', label: 'Hallway Right', description: 'Corridor through the right wall (darkness added in-game)', size: '16x48' },
+  { key: 'hallwayLeft', label: 'Hallway Left', description: 'Corridor through the left wall (darkness added in-game)', size: '48x48' },
+  { key: 'hallwayRight', label: 'Hallway Right', description: 'Corridor through the right wall (darkness added in-game)', size: '48x48' },
   // Doors (2026-07-16 phase 2) — replace a top/bottom wall segment; the
   // opening sheet is a horizontal strip of square frames (closed → open),
   // closing plays it reversed. Leave the doorway transparent in Door Open
@@ -75,54 +75,56 @@ const TILE_SPRITE_SLOTS: { key: keyof TileSprites; label: string; description: s
 ];
 
 // Highlight region mapping: each border/tile slot key → { x, y, w, h } in canvas pixels
-// Canvas for 6x6 grid: 320×384 (grid=288×288, border top/bottom=48, sides=16)
-// Grid origin: x=16 (SIDE_BORDER_SIZE), y=48 (BORDER_SIZE)
-// Each tile: 48×48. Tile (col,row) → pixel (16+col*48, 48+row*48)
+// Canvas for 6x6 grid: 384×384 — grid=288×288, border top/bottom=48,
+// sides=16, PLUS the 32px side-corridor overhang each side (the preview
+// puzzle has left/right hallways, so AnimatedGameBoard adds it).
+// Grid origin: x=48 (overhang 32 + SIDE_BORDER_SIZE 16), y=48 (BORDER_SIZE)
+// Each tile: 48×48. Tile (col,row) → pixel (48+col*48, 48+row*48)
 // Highlight regions computed from AnimatedGameBoard's actual drawing logic.
-// Canvas pixel coordinates: border left=16, top=48, tile=48px, side=16px.
 // Layout voids: (5,2), (0,3), (1,3), (5,3), (0,4), (1,4)
 // Corner positions derived from computeSmartBorder + drawImage offsets.
 const SLOT_HIGHLIGHT_REGIONS: Record<string, { x: number; y: number; w: number; h: number }[]> = {
   // Outer border slots
-  wallFront:       [{ x: 16, y: 0, w: 288, h: 48 }],
-  wallBottomOuter: [{ x: 16, y: 336, w: 288, h: 48 }],
-  wallSide:        [{ x: 0, y: 48, w: 16, h: 288 }, { x: 304, y: 48, w: 16, h: 288 }],
+  wallFront:       [{ x: 48, y: 0, w: 288, h: 48 }],
+  wallBottomOuter: [{ x: 48, y: 336, w: 288, h: 48 }],
+  wallSide:        [{ x: 32, y: 48, w: 16, h: 288 }, { x: 336, y: 48, w: 16, h: 288 }],
   // wallTop: inner horizontal wall above voids (top edge of tiles below voids)
   // tile(4,2) top edge → above void(5,2); tiles(0,2)&(1,2) bottom → above voids(0,3)&(1,3)
   wallTop: [
-    { x: 256, y: 144, w: 48, h: 24 },   // above void column on right
-    { x: 16,  y: 192, w: 96, h: 24 },   // above void block on left
+    { x: 288, y: 144, w: 48, h: 24 },   // above void column on right
+    { x: 48,  y: 192, w: 96, h: 24 },   // above void block on left
   ],
   // Outer corners (full-size, on perimeter)
-  cornerTopLeft:     [{ x: 0,   y: 0,   w: 16, h: 48 }],   // convex-tl at tile(0,0)
-  cornerTopRight:    [{ x: 304, y: 0,   w: 16, h: 48 }],   // convex-tr at tile(5,0)
-  cornerBottomLeft:  [{ x: 0,   y: 336, w: 16, h: 48 }],   // convex-bl at tile(0,5) isOB
-  cornerBottomRight: [{ x: 304, y: 336, w: 16, h: 48 }],   // convex-br at tile(5,5) isOB
+  cornerTopLeft:     [{ x: 32,  y: 0,   w: 16, h: 48 }],   // convex-tl at tile(0,0)
+  cornerTopRight:    [{ x: 336, y: 0,   w: 16, h: 48 }],   // convex-tr at tile(5,0)
+  cornerBottomLeft:  [{ x: 32,  y: 336, w: 16, h: 48 }],   // convex-bl at tile(0,5) isOB
+  cornerBottomRight: [{ x: 336, y: 336, w: 16, h: 48 }],   // convex-br at tile(5,5) isOB
   // Thin outer corners (convex, non-outer-bottom, at void edges)
-  cornerBottomLeftThin:  [{ x: 0,   y: 192, w: 16, h: 16 }],  // convex-bl at tile(0,2)
-  cornerBottomRightThin: [{ x: 304, y: 144, w: 16, h: 16 }],  // convex-br at tile(5,1)
+  cornerBottomLeftThin:  [{ x: 32,  y: 192, w: 16, h: 16 }],  // convex-bl at tile(0,2)
+  cornerBottomRightThin: [{ x: 336, y: 144, w: 16, h: 16 }],  // convex-br at tile(5,1)
   // Inner corners (concave — where floor meets void diagonally)
-  innerCornerTopLeft:     [{ x: 96,  y: 240, w: 16, h: 48 }],  // concave-tl at tile(2,5)
-  innerCornerTopRight:    [{ x: 256, y: 192, w: 16, h: 48 }],  // concave-tr at tile(4,4) — note: 48h because !isOB maps to BORDER_SIZE in concave-tr
-  innerCornerBottomLeft:  [{ x: 96,  y: 192, w: 16, h: 16 }],  // concave-bl at tile(2,2) !isOB → thin
-  innerCornerBottomRight: [{ x: 256, y: 144, w: 16, h: 16 }],  // concave-br at tile(4,1) !isOB → thin
+  innerCornerTopLeft:     [{ x: 128, y: 240, w: 16, h: 48 }],  // concave-tl at tile(2,5)
+  innerCornerTopRight:    [{ x: 288, y: 192, w: 16, h: 48 }],  // concave-tr at tile(4,4) — note: 48h because !isOB maps to BORDER_SIZE in concave-tr
+  innerCornerBottomLeft:  [{ x: 128, y: 192, w: 16, h: 16 }],  // concave-bl at tile(2,2) !isOB → thin
+  innerCornerBottomRight: [{ x: 288, y: 144, w: 16, h: 16 }],  // concave-br at tile(4,1) !isOB → thin
   // Thin inner corners (same position, used when !isOuterBottom)
-  innerCornerBottomLeftThin:  [{ x: 96,  y: 192, w: 16, h: 16 }],  // concave-bl thin at tile(2,2)
-  innerCornerBottomRightThin: [{ x: 256, y: 144, w: 16, h: 16 }],  // concave-br thin at tile(4,1)
+  innerCornerBottomLeftThin:  [{ x: 128, y: 192, w: 16, h: 16 }],  // concave-bl thin at tile(2,2)
+  innerCornerBottomRightThin: [{ x: 288, y: 144, w: 16, h: 16 }],  // concave-br thin at tile(4,1)
   // Hallway openings — preview markers: top at tile(2,0), bottom at
-  // tile(3,5), left at tile(0,1), right at tile(5,0)
-  hallwayTop:    [{ x: 112, y: 0,   w: 48, h: 48 }],
-  hallwayBottom: [{ x: 160, y: 336, w: 48, h: 48 }],
-  hallwayLeft:   [{ x: 0,   y: 96,  w: 16, h: 48 }],
-  hallwayRight:  [{ x: 304, y: 48,  w: 16, h: 48 }],
+  // tile(3,5), left at tile(0,1), right at tile(5,0). Side corridors are
+  // BORDER_SIZE deep (they reach through the overhang).
+  hallwayTop:    [{ x: 144, y: 0,   w: 48, h: 48 }],
+  hallwayBottom: [{ x: 192, y: 336, w: 48, h: 48 }],
+  hallwayLeft:   [{ x: 0,   y: 96,  w: 48, h: 48 }],
+  hallwayRight:  [{ x: 336, y: 48,  w: 48, h: 48 }],
   // Doors — preview markers: closed at tile(0,0) top, opening at tile(4,0) top
-  doorClosed:  [{ x: 16,  y: 0, w: 48, h: 48 }],
-  doorOpening: [{ x: 208, y: 0, w: 48, h: 48 }],
-  doorOpen:    [{ x: 208, y: 0, w: 48, h: 48 }],
+  doorClosed:  [{ x: 48,  y: 0, w: 48, h: 48 }],
+  doorOpening: [{ x: 240, y: 0, w: 48, h: 48 }],
+  doorOpen:    [{ x: 240, y: 0, w: 48, h: 48 }],
   // Tile slots — highlight a representative tile
-  empty: [{ x: 16,  y: 48,  w: 48, h: 48 }],   // tile(0,0) floor
-  wall:  [{ x: 64,  y: 96,  w: 48, h: 48 }],    // tile(1,1) wall
-  goal:  [{ x: 160, y: 96,  w: 48, h: 48 }],     // tile(3,1) wall (goal)
+  empty: [{ x: 48,  y: 48,  w: 48, h: 48 }],   // tile(0,0) floor
+  wall:  [{ x: 96,  y: 96,  w: 48, h: 48 }],    // tile(1,1) wall
+  goal:  [{ x: 192, y: 96,  w: 48, h: 48 }],     // tile(3,1) wall (goal)
 };
 
 /** Build a minimal GameState for the live skin preview */
@@ -969,7 +971,7 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
                                 />
                                 {/* Highlight overlay for selected border/tile slot */}
                                 {highlightedSlot && SLOT_HIGHLIGHT_REGIONS[highlightedSlot] && (() => {
-                                  const canvasW = 320, canvasH = 384;
+                                  const canvasW = 384, canvasH = 384; // 6x6 preview incl. side-corridor overhang
                                   const regions = SLOT_HIGHLIGHT_REGIONS[highlightedSlot];
                                   return regions.map((region, i) => (
                                     <div

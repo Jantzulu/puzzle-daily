@@ -10,7 +10,7 @@ import { savePuzzle, getSavedPuzzles, deletePuzzle, loadPuzzle, type SavedPuzzle
 import { cacheEditorState, getCachedEditorState, clearCachedEditorState } from '../../utils/editorState';
 import { writeAutoSave, readAutoSave, clearAutoSave, AUTOSAVE_INTERVAL_MS, type AutoSaveData } from '../../utils/autoSave';
 import { getAllPuzzleSkins, loadPuzzleSkin, getCustomTileTypes, loadTileType, getAllObjects, loadObject, getAllCollectibles, getSoundAssets, getCustomVessels, vesselToEnemyAsset, getCustomAllies, allyToEnemyAsset } from '../../utils/assetStorage';
-import { TILE_SIZE, BORDER_SIZE, SIDE_BORDER_SIZE, MAX_DISPLAY_WIDTH_TILES, createEmptyGrid, drawDungeonBorder, drawTile, drawEnemy, drawCollectibleInEditor, drawObject } from './map/canvasDraw';
+import { TILE_SIZE, BORDER_SIZE, SIDE_BORDER_SIZE, SIDE_HALLWAY_DEPTH, MAX_DISPLAY_WIDTH_TILES, createEmptyGrid, drawDungeonBorder, drawTile, drawEnemy, drawCollectibleInEditor, drawObject } from './map/canvasDraw';
 import { isValidHallway, drawHallwayOpening, collectCorridorCells, type HallwayDrawConfig } from '../../utils/hallwayDraw';
 import { loadImage } from '../../utils/imageLoader';
 import type { HallwaySide, DoorStartState } from '../../types/game';
@@ -601,6 +601,17 @@ export const MapEditor: React.FC = () => {
   }, [state.mode, originalPlaytestPuzzle?.id]);
 
 
+  // Extra drawable width per side when a valid left/right hallway exists —
+  // mirrors the game board's overhang rule: added to the canvas, EXCLUDED
+  // from the scale math, so the board renders the same size either way.
+  function currentSideOverhang(hasBorderArg: boolean): number {
+    if (!hasBorderArg) return 0;
+    const hasSide = state.hallways.some(m =>
+      (m.side === 'left' || m.side === 'right') &&
+      isValidHallway(m, state.tiles, state.gridWidth, state.gridHeight));
+    return hasSide ? SIDE_HALLWAY_DEPTH - SIDE_BORDER_SIZE : 0;
+  }
+
   // Draw grid
   useEffect(() => {
     if (state.mode !== 'edit') return;
@@ -617,6 +628,11 @@ export const MapEditor: React.FC = () => {
 
     // Clear
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Side-corridor overhang: shift the whole scene right so deep left/
+    // right hallways get drawable pixels (mirrors the game board).
+    ctx.save();
+    ctx.translate(currentSideOverhang(hasBorder), 0);
 
     // Draw border if skin is selected
     if (hasBorder && currentSkin) {
@@ -648,7 +664,7 @@ export const MapEditor: React.FC = () => {
         borderSize: BORDER_SIZE,
         sideBorderSize: SIDE_BORDER_SIZE,
         verticalDepth: BORDER_SIZE,
-        horizontalDepth: SIDE_BORDER_SIZE,
+        horizontalDepth: SIDE_HALLWAY_DEPTH,
         tiles: state.tiles,
         gridWidth: state.gridWidth,
         gridHeight: state.gridHeight,
@@ -667,7 +683,7 @@ export const MapEditor: React.FC = () => {
         if (!isValidHallway(marker, state.tiles, state.gridWidth, state.gridHeight)) return;
         drawHallwayOpening(ctx, marker, hallwayCfg);
         if (state.selectedTool === 'hallway') {
-          const d = marker.side === 'top' || marker.side === 'bottom' ? BORDER_SIZE : SIDE_BORDER_SIZE;
+          const d = marker.side === 'top' || marker.side === 'bottom' ? BORDER_SIZE : SIDE_HALLWAY_DEPTH;
           const rx = marker.side === 'left' ? marker.x * TILE_SIZE - d : marker.side === 'right' ? (marker.x + 1) * TILE_SIZE : marker.x * TILE_SIZE;
           const ry = marker.side === 'top' ? marker.y * TILE_SIZE - d : marker.side === 'bottom' ? (marker.y + 1) * TILE_SIZE : marker.y * TILE_SIZE;
           const rw = marker.side === 'top' || marker.side === 'bottom' ? TILE_SIZE : d;
@@ -775,6 +791,7 @@ export const MapEditor: React.FC = () => {
     }
 
     ctx.restore();
+    ctx.restore(); // side-corridor overhang translate
   }, [state.tiles, state.enemies, state.collectibles, state.placedObjects, state.hallways, state.doors, state.selectedTool, state.gridWidth, state.gridHeight, state.mode, state.skinId, redrawCounter, highlightTile, dragState]);
 
   // Touch long-press = delete (mirrors right-click). Android fires
@@ -838,7 +855,7 @@ export const MapEditor: React.FC = () => {
       currentScale = editorMaxWidth / canvasWidthPx;
     }
     const rect = canvas.getBoundingClientRect();
-    const mouseX = (e.clientX - rect.left) / currentScale - offsetX;
+    const mouseX = (e.clientX - rect.left) / currentScale - offsetX - currentSideOverhang(hasBorderLocal);
     const mouseY = (e.clientY - rect.top) / currentScale - offsetY;
     const x = Math.floor(mouseX / TILE_SIZE);
     const y = Math.floor(mouseY / TILE_SIZE);
@@ -980,7 +997,7 @@ export const MapEditor: React.FC = () => {
 
     const rect = canvas.getBoundingClientRect();
     // Account for scale when converting click coordinates
-    const clickX = (e.clientX - rect.left) / currentScale - offsetX;
+    const clickX = (e.clientX - rect.left) / currentScale - offsetX - currentSideOverhang(hasBorder);
     const clickY = (e.clientY - rect.top) / currentScale - offsetY;
     const x = Math.floor(clickX / TILE_SIZE);
     const y = Math.floor(clickY / TILE_SIZE);
@@ -1846,6 +1863,11 @@ export const MapEditor: React.FC = () => {
   const editorScale = targetWidth / canvasWidth;
   const scaledCanvasWidth = targetWidth;
   const scaledCanvasHeight = canvasHeight * editorScale;
+  // Side-corridor overhang joins the canvas + wrapper AFTER the scale math
+  // above ignored it — the board renders the same size either way.
+  const canvasOverhang = currentSideOverhang(hasBorder);
+  const canvasElementWidth = canvasWidth + canvasOverhang * 2;
+  const scaledWrapperWidth = canvasElementWidth * editorScale;
 
   // Status-bar text: active tool + selected asset (Phase 2).
   const activeToolLabel = (() => {
@@ -2058,14 +2080,14 @@ export const MapEditor: React.FC = () => {
           <div ref={editorContainerRef} className="flex-shrink-0 space-y-4 w-full lg:w-auto">
             <div
               style={{
-                width: scaledCanvasWidth,
+                width: scaledWrapperWidth,
                 height: scaledCanvasHeight,
                 overflow: 'hidden'
               }}
             >
               <canvas
                 ref={canvasRef}
-                width={canvasWidth}
+                width={canvasElementWidth}
                 height={canvasHeight}
                 className="border-2 border-stone-600 cursor-crosshair rounded"
                 style={{
