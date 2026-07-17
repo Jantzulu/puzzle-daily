@@ -427,6 +427,61 @@ Design answers locked 2026-07-16.
   bundled test puzzle (built-in goblin has no customSprite — opt-in
   lives on user assets). Mid-game waves remain explicitly deferred.
 
+### Hallway dynamics batch (captured 2026-07-17, user-approved brainstorm)
+
+All build on the shipped hallway/door/walk-in arc. Perf rule holds for
+the visual items: baked, event-driven, or transform/opacity only.
+
+- [ ] **IDEA — Eyes in the dark.** Game board corridors. Occasional
+  pair of tiny eyes blinking deep in a corridor's darkness (2px dots,
+  opacity-only, slow randomized timer — render theater, Math.random
+  fine). Killer version: eyes appear in the corridor an entity is
+  assigned to walk in from, foreshadowing the spawn pre-reveal.
+  Relocates the parked "void eyes" flourish idea to its natural home.
+
+- [ ] **FEATURE — Shove-out ejection.** Engine + editor. A push that
+  drives an entity through a hallway mouth ejects it from the board
+  (despawn semantics like summon expiry — no corpse; deterministic;
+  walk/tumble-out theater). Per-hallway editor toggle ("open ledge" vs
+  barred). New puzzle verb built from existing push + despawn pieces.
+
+- [ ] **FEATURE — Escape objectives.** Win conditions. A hallway as the
+  goal: "guide the Noble out through the east hall" — same condition
+  shape as noble_reaches_goal, exit theater reuses walk-out visuals.
+  Escort puzzles get a destination that reads on the board.
+
+- [ ] **FEATURE — The passerby.** Enemy/ally authoring. Neutral scripted
+  creature crossing the board: DESIGN LOCKED 2026-07-17 — NO new
+  pathfinding; the route is a normal authored behavior sequence
+  (WAITs, moves, turns). New engine piece = a DEPART action (leave the
+  board at/adjacent to a designated opening; despawn, no corpse,
+  walk-out theater). Entry = the shipped walk-in assignment. V1 =
+  one-shot crossing. V2 = RECURRING CADENCE: per-placement
+  {firstTurn, repeatEvery} re-spawn via spawnEnemyMidGame
+  (deterministic, turn-keyed) — requires the walk-in theater to fire
+  MID-GAME, i.e. the first thin slice of the deferred waves work.
+  Recurring visitors must be excludeFromWinConditions.
+
+- [ ] **FEATURE — Deliveries.** A collectible tossed in from a hallway
+  on a known turn — timed pickup pressure, board-readable where/when.
+  Likely rides the same scheduled-arrival machinery as passerby v2.
+
+- [ ] **FEATURE — Escapes on defeat.** Per-enemy flag: lethal damage
+  plays a walk-out through the nearest opening instead of leaving a
+  corpse. Logic unchanged (still counts as defeated — pure visual swap
+  on the death path, deterministic). Ships independently; becomes the
+  boss-escapes hook for the roguelike mode below.
+
+- [ ] **IDEA — Roguelike puzzle sequences (post-launch mode).** User
+  vision 2026-07-17: linked chain of puzzles ("rooms"); the hero
+  roster persists across the run — survivors advance, dead heroes are
+  unavailable in later rooms; HP carry-over is a difficulty dial.
+  Hallways/doors are the navigation metaphor: exit a room through an
+  opening, next room's heroes walk in from the matching side (walk-in
+  theater already shipped). Escaped bosses (flag above) can recur in
+  later rooms. Scope: new game mode — sequence linking + run state +
+  editor surface; engine plays one room at a time, unchanged.
+
 ### Profile / cosmetic
 
 - [ ] **Developer badge in profile.** Special badge shown next to a
