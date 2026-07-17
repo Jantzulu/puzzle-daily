@@ -2368,6 +2368,8 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
         const vSig = [
           canvas.width, canvas.height, quantizedScale,
           gameState.puzzle.width, gameState.puzzle.height, offsetX, offsetY,
+          // Hallway openings punch gaps in the edge bands — rebake if they change.
+          (gameState.puzzle.hallways ?? []).map(m => `${m.x},${m.y},${m.side}`).join(';'),
         ].join('|');
         const vPrev = vignetteBakeRef.current;
         if (!vPrev || vPrev.sig !== vSig || vPrev.tiles !== gameState.puzzle.tiles) {
@@ -2380,7 +2382,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
             vCtx.save();
             vCtx.scale(quantizedScale, quantizedScale);
             vCtx.translate(hallwayOverhang.x, hallwayOverhang.top);
-            drawStaticVignetteOverlay(vCtx, gameState.puzzle.tiles, gameState.puzzle.width, gameState.puzzle.height, offsetX, offsetY);
+            drawStaticVignetteOverlay(vCtx, gameState.puzzle.tiles, gameState.puzzle.width, gameState.puzzle.height, offsetX, offsetY, gameState.puzzle.hallways);
             vCtx.restore();
           }
           vignetteBakeRef.current = { canvas: vCanvas, sig: vSig, tiles: gameState.puzzle.tiles };
@@ -5699,13 +5701,14 @@ function getFogNoiseTexture(): HTMLCanvasElement {
 // merged overlay (source-over is associative), so the result is
 // pixel-identical to the old five-fills-per-frame path. Drawn plain
 // source-over here onto the bake's transparent canvas.
-function drawStaticVignetteOverlay(
+export function drawStaticVignetteOverlay(
   ctx: CanvasRenderingContext2D,
   tiles: (import('../../types/game').TileOrNull)[][],
   gridWidth: number,
   gridHeight: number,
   offsetX: number,
   offsetY: number,
+  hallways?: import('../../types/game').HallwayMarker[],
 ) {
   // Edge shadow depths proportional to border thickness for consistent appearance
   const shadowOpacity = 0.6; // Maximum darkness at outer edges
@@ -5723,7 +5726,42 @@ function drawStaticVignetteOverlay(
   // so void areas naturally stay unaffected. Interior walls touching void get darkened
   // from the bounding box edges, which creates the right visual effect.
   //
-  // This is much simpler than trying to compute per-edge shadows and handles all shapes.
+  // Hallway openings punch GAPS in the edge bands: where the wall is
+  // opened into a corridor there is no wall to cast the baked shade, and
+  // the full-length band read as a stark line across the mouth (user
+  // catch, 2026-07-16). Each band fills in segments around the valid
+  // markers' tile spans; the corridor's own darkness does the rest.
+  const validHallways = (hallways ?? []).filter(m => isValidHallway(m, tiles, gridWidth, gridHeight));
+  const edgeGaps = (side: 'top' | 'bottom' | 'left' | 'right'): Array<[number, number]> =>
+    validHallways
+      .filter(m => m.side === side)
+      .map(m => (side === 'left' || side === 'right'
+        ? [offsetY + m.y * TILE_SIZE, offsetY + (m.y + 1) * TILE_SIZE]
+        : [offsetX + m.x * TILE_SIZE, offsetX + (m.x + 1) * TILE_SIZE]) as [number, number])
+      .sort((a, b) => a[0] - b[0]);
+  // Fill a band, skipping the gap intervals along its long axis
+  // (`alongY` = the band is vertical and gaps are y-spans).
+  const fillBandWithGaps = (
+    fillStyle: CanvasGradient,
+    rx: number, ry: number, rw: number, rh: number,
+    alongY: boolean,
+    gaps: Array<[number, number]>,
+  ) => {
+    ctx.fillStyle = fillStyle;
+    let cur = alongY ? ry : rx;
+    const end = alongY ? ry + rh : rx + rw;
+    for (const [g0, g1] of gaps) {
+      if (g0 > cur) {
+        if (alongY) ctx.fillRect(rx, cur, rw, g0 - cur);
+        else ctx.fillRect(cur, ry, g0 - cur, rh);
+      }
+      cur = Math.max(cur, g1);
+    }
+    if (end > cur) {
+      if (alongY) ctx.fillRect(rx, cur, rw, end - cur);
+      else ctx.fillRect(cur, ry, end - cur, rh);
+    }
+  };
   {
     // Regular rectangular puzzle - apply edge shadows to full borders
 
@@ -5731,29 +5769,25 @@ function drawStaticVignetteOverlay(
     const topGradient = ctx.createLinearGradient(0, 0, 0, verticalShadowDepth);
     topGradient.addColorStop(0, `rgba(0, 0, 0, ${shadowOpacity})`);
     topGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-    ctx.fillStyle = topGradient;
-    ctx.fillRect(0, 0, totalWidth, verticalShadowDepth);
+    fillBandWithGaps(topGradient, 0, 0, totalWidth, verticalShadowDepth, false, edgeGaps('top'));
 
     // Bottom edge shadow
     const bottomGradient = ctx.createLinearGradient(0, totalHeight, 0, totalHeight - verticalShadowDepth);
     bottomGradient.addColorStop(0, `rgba(0, 0, 0, ${shadowOpacity})`);
     bottomGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-    ctx.fillStyle = bottomGradient;
-    ctx.fillRect(0, totalHeight - verticalShadowDepth, totalWidth, verticalShadowDepth);
+    fillBandWithGaps(bottomGradient, 0, totalHeight - verticalShadowDepth, totalWidth, verticalShadowDepth, false, edgeGaps('bottom'));
 
     // Left edge shadow
     const leftGradient = ctx.createLinearGradient(0, 0, horizontalShadowDepth, 0);
     leftGradient.addColorStop(0, `rgba(0, 0, 0, ${shadowOpacity})`);
     leftGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-    ctx.fillStyle = leftGradient;
-    ctx.fillRect(0, 0, horizontalShadowDepth, totalHeight);
+    fillBandWithGaps(leftGradient, 0, 0, horizontalShadowDepth, totalHeight, true, edgeGaps('left'));
 
     // Right edge shadow
     const rightGradient = ctx.createLinearGradient(totalWidth, 0, totalWidth - horizontalShadowDepth, 0);
     rightGradient.addColorStop(0, `rgba(0, 0, 0, ${shadowOpacity})`);
     rightGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-    ctx.fillStyle = rightGradient;
-    ctx.fillRect(totalWidth - horizontalShadowDepth, 0, horizontalShadowDepth, totalHeight);
+    fillBandWithGaps(rightGradient, totalWidth - horizontalShadowDepth, 0, horizontalShadowDepth, totalHeight, true, edgeGaps('right'));
   }
 
   // ==========================================

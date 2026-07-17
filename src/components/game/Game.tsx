@@ -3026,7 +3026,10 @@ export const Game: React.FC<GameProps> = ({
                 where the old control panel sat. Not sticky; only the
                 portcullis rail above the board floats. */}
             {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
-              <div className="w-full max-w-2xl px-8 md:px-9 pt-3 pb-4 quest-banner relative overflow-visible mb-1">
+              // z-20: above the board's z-10 so a bottom hallway's corridor
+              // overhang slides UNDER the banner, not over it (user call,
+              // 2026-07-16 — layering only, position untouched).
+              <div className="w-full max-w-2xl px-8 md:px-9 pt-3 pb-4 quest-banner relative z-20 overflow-visible mb-1">
                 {/* Low-poly stone banner behind the quest HUD (see BannerMesh) */}
                 <BannerMesh />
                 {/* Puzzle Number & Quest Row */}
