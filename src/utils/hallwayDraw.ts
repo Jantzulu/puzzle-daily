@@ -213,6 +213,15 @@ function drawFlankWalls(
 
   if (side === 'left' || side === 'right') {
     const dx = side === 'left' ? -1 : 1;
+    // Walls in shade (user pick, 2026-07-16): a flat pre-darkening on the
+    // flank pieces so the corridor reads as ONE dark tunnel silhouette
+    // with a lit floor tongue — without it, wall face, floor, and lip all
+    // fade with the same gradient and the shadow looks stamped three
+    // times in parallel.
+    const shade = (px: number, py: number, w: number, h: number) => {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+      ctx.fillRect(px, py, w, h);
+    };
     if (!open(x + dx, y - 1)) {
       const img = cfg.getImage('wallFront');
       if (img) {
@@ -220,6 +229,7 @@ function drawFlankWalls(
       } else {
         drawProceduralWall(ctx, rx, ry - B, rw, B, 'bottom');
       }
+      shade(rx, ry - B, rw, B);
     }
     if (!open(x + dx, y + 1)) {
       const img = cfg.getImage('wallTop');
@@ -228,6 +238,7 @@ function drawFlankWalls(
       } else {
         drawProceduralWall(ctx, rx, ry + rh, rw, S, 'top');
       }
+      shade(rx, ry + rh, rw, S);
     }
     return;
   }
