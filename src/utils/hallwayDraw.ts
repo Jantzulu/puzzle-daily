@@ -134,45 +134,69 @@ export function drawHallwayOpening(
   ctx.clip();
 
   const interiorImg = cfg.getImage(hallwaySpriteSlot(side));
-  if (interiorImg) {
-    // Skinned corridor interior — authored floor art fills the corridor.
-    ctx.drawImage(interiorImg, rx, ry, rw, rh);
-  } else {
-    // Procedural floor: the caller's floor tile at each off-grid corridor
-    // cell. The clip keeps it adjacent to the room tile so the texture
-    // continues seamlessly through the opening; deep corridors repeat the
-    // tile outward until the rect is covered.
+  const horizontalSide = side === 'left' || side === 'right';
+  // Procedural floor base: the caller's floor tile at each off-grid
+  // corridor cell. The clip keeps it adjacent to the room tile so the
+  // texture continues seamlessly through the opening; deep corridors
+  // repeat the tile outward until the rect is covered. Skipped only when
+  // a skin piece covers the whole corridor by itself.
+  if (!interiorImg || !horizontalSide) {
     const cells = Math.ceil(depth / t);
     for (let i = 1; i <= cells; i++) {
       cfg.drawFloorTile(ctx, x + off.dx * i, y + off.dy * i);
     }
   }
-
-  const horizontal = side === 'left' || side === 'right';
-  if (!horizontal) {
-    // Top/bottom: the mouth corners span the full corridor depth, so the
-    // corridor needs no walls of its own — darken and done.
-    drawDarkness(ctx, side, rx, ry, rw, rh);
-    ctx.restore();
-  } else {
-    // Left/right: the corridor runs sideways, so it carries its own walls
-    // in the rows above/below it (drawn unclipped, then one darkness pass
-    // fades corridor and walls together toward the far end).
-    ctx.restore();
-    drawFlankWalls(ctx, marker, cfg, rx, ry, rw, rh);
-    drawDarkness(ctx, side, rx, ry - cfg.borderSize, rw, cfg.borderSize + rh + cfg.sideBorderSize);
+  if (interiorImg) {
+    if (horizontalSide) {
+      // Skinned corridor interior fills the corridor (48x48 nominal).
+      ctx.drawImage(interiorImg, rx, ry, rw, rh);
+    } else {
+      // Vertical corridors run deeper than the authored piece (band depth
+      // + protrusion) — the art keeps its designed size at the mouth, the
+      // skin floor continues beyond it into the darkness.
+      ctx.drawImage(interiorImg, rx, side === 'top' ? y * t - cfg.borderSize : (y + 1) * t, rw, cfg.borderSize);
+    }
   }
 
-  // ── Mouth corners (last — they sit at the mouth and stay lit) ──
+  ctx.restore();
+
+  // ── Corridor walls + mouth corners (unclipped), then ONE darkness pass
+  // over everything this opening drew — pieces near the mouth stay almost
+  // fully lit and fade together toward the far end, no lit-to-dark seams
+  // (the old per-part darkness left the mouth pieces fully lit against an
+  // already-dark corridor — a hard edge the user called out).
+  const horizontal = side === 'left' || side === 'right';
+  drawFlankWalls(ctx, marker, cfg, rx, ry, rw, rh);
   drawMouthCorners(ctx, marker, cfg);
+
+  // Darkness union: the corridor rect plus each flank/shoulder region we
+  // actually drew. Skipped regions (merged openings, floor around an
+  // interior notch, map corners) must NOT be darkened — they're either a
+  // neighbor corridor's pixels (double-darkening) or not ours at all.
+  const openCell = (tx: number, ty: number): boolean =>
+    isPlayable(cfg.tiles, tx, ty, cfg.gridWidth, cfg.gridHeight) || cfg.corridorCells.has(`${tx},${ty}`);
+  let darkX = rx, darkY = ry, darkW = rw, darkH = rh;
+  if (horizontal) {
+    const dx = side === 'left' ? -1 : 1;
+    if (!openCell(x + dx, y - 1)) { darkY -= cfg.borderSize; darkH += cfg.borderSize; }
+    if (!openCell(x + dx, y + 1)) { darkH += cfg.sideBorderSize; }
+  } else {
+    const dy = side === 'top' ? -1 : 1;
+    if (openCell(x - 1, y) && !openCell(x - 1, y + dy)) { darkX -= cfg.sideBorderSize; darkW += cfg.sideBorderSize; }
+    if (openCell(x + 1, y) && !openCell(x + 1, y + dy)) { darkW += cfg.sideBorderSize; }
+  }
+  drawDarkness(ctx, side, darkX, darkY, darkW, darkH);
 }
 
 /**
- * A horizontal corridor's own walls — what the autotiler would put on the
- * corridor cell's exposed edges: a front-facing wall (B tall) filling the
- * band row above it, and a wallTop lip (S tall) below. Skipped where the
- * neighboring cell is floor or another corridor (openings merge). The
- * darkness pass swallows their far ends along with the floor.
+ * A corridor's own walls — what the autotiler would put on the corridor
+ * cells' exposed edges. Horizontal corridors: a front-facing wall (B tall)
+ * filling the band row above and a wallTop lip (S tall) below. Vertical
+ * corridors: Side Wall strips continuing the mouth shoulders outward
+ * through the protrusion (the part of the corridor deeper than the band —
+ * user ask, 2026-07-16: "vertical walls protruding from the corners").
+ * Skipped where the neighboring cell is floor or another corridor
+ * (openings merge). The darkness pass swallows their far ends.
  */
 function drawFlankWalls(
   ctx: CanvasRenderingContext2D,
@@ -181,25 +205,65 @@ function drawFlankWalls(
   rx: number, ry: number, rw: number, rh: number,
 ): void {
   const { x, y, side } = marker;
-  const dx = side === 'left' ? -1 : 1;
+  const t = cfg.tileSize;
+  const S = cfg.sideBorderSize;
+  const B = cfg.borderSize;
   const open = (tx: number, ty: number): boolean =>
     isPlayable(cfg.tiles, tx, ty, cfg.gridWidth, cfg.gridHeight) || cfg.corridorCells.has(`${tx},${ty}`);
 
-  if (!open(x + dx, y - 1)) {
-    const img = cfg.getImage('wallFront');
-    if (img) {
-      ctx.drawImage(img, rx, ry - cfg.borderSize, rw, cfg.borderSize);
-    } else {
-      drawProceduralWall(ctx, rx, ry - cfg.borderSize, rw, cfg.borderSize, 'bottom');
+  if (side === 'left' || side === 'right') {
+    const dx = side === 'left' ? -1 : 1;
+    if (!open(x + dx, y - 1)) {
+      const img = cfg.getImage('wallFront');
+      if (img) {
+        ctx.drawImage(img, rx, ry - B, rw, B);
+      } else {
+        drawProceduralWall(ctx, rx, ry - B, rw, B, 'bottom');
+      }
     }
+    if (!open(x + dx, y + 1)) {
+      const img = cfg.getImage('wallTop');
+      if (img) {
+        ctx.drawImage(img, rx, ry + rh, rw, S);
+      } else {
+        drawProceduralWall(ctx, rx, ry + rh, rw, S, 'top');
+      }
+    }
+    return;
   }
-  if (!open(x + dx, y + 1)) {
-    const img = cfg.getImage('wallTop');
-    if (img) {
-      ctx.drawImage(img, rx, ry + rh, rw, cfg.sideBorderSize);
-    } else {
-      drawProceduralWall(ctx, rx, ry + rh, rw, cfg.sideBorderSize, 'top');
+
+  // Top/bottom: Side Wall strips beyond the band, rising from the mouth
+  // shoulders (same emission conditions). Anchored so the art continues
+  // seamlessly out of the shoulder; clipped, not stretched.
+  const protrusion = rh - B;
+  if (protrusion <= 0) return;
+  const dy = side === 'top' ? -1 : 1;
+  const py = side === 'top' ? ry : ry + B;
+  const drawStrip = (sx: number, mirrored: boolean) => {
+    const img = cfg.getImage('wallSide');
+    if (!img) {
+      drawProceduralCorner(ctx, sx, py, S, protrusion, mirrored ? 'left' : 'right');
+      return;
     }
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(sx, py, S, protrusion);
+    ctx.clip();
+    const artY = side === 'top' ? py + protrusion - t : py;
+    if (mirrored) {
+      ctx.translate(sx + S, artY);
+      ctx.scale(-1, 1);
+      ctx.drawImage(img, 0, 0, S, t);
+    } else {
+      ctx.drawImage(img, sx, artY, S, t);
+    }
+    ctx.restore();
+  };
+  if (isPlayable(cfg.tiles, x - 1, y, cfg.gridWidth, cfg.gridHeight) && !open(x - 1, y + dy)) {
+    drawStrip(x * t - S, false);
+  }
+  if (isPlayable(cfg.tiles, x + 1, y, cfg.gridWidth, cfg.gridHeight) && !open(x + 1, y + dy)) {
+    drawStrip(x * t + t, true);
   }
 }
 
@@ -334,8 +398,14 @@ function drawDarkness(
     case 'left':   grad = ctx.createLinearGradient(rx + rw, 0, rx, 0); break;
     case 'right':  grad = ctx.createLinearGradient(rx, 0, rx + rw, 0); break;
   }
-  grad.addColorStop(0, 'rgba(0, 0, 0, 0.12)');
-  grad.addColorStop(0.5, 'rgba(0, 0, 0, 0.5)');
+  // Smoothstep-shaped ramp: nearly clear through the mouth third, then an
+  // even roll into full black at the far end — the old three-stop ramp hit
+  // 50% by midway and read as a hard shadow edge (user note, 2026-07-16).
+  grad.addColorStop(0, 'rgba(0, 0, 0, 0.04)');
+  grad.addColorStop(0.3, 'rgba(0, 0, 0, 0.2)');
+  grad.addColorStop(0.55, 'rgba(0, 0, 0, 0.48)');
+  grad.addColorStop(0.75, 'rgba(0, 0, 0, 0.78)');
+  grad.addColorStop(0.9, 'rgba(0, 0, 0, 0.96)');
   grad.addColorStop(1, 'rgba(0, 0, 0, 1)');
   ctx.fillStyle = grad;
   ctx.fillRect(rx, ry, rw, rh);

@@ -18,6 +18,9 @@ export const SIDE_BORDER_SIZE = 16; // Thinner side borders to match pixel art s
 // from the editor's scale math so the board renders the same size whether
 // or not hallways exist (mirrors the game board's rule).
 export const SIDE_HALLWAY_DEPTH = BORDER_SIZE;
+// Top/bottom corridors run one band depth plus this protrusion (Side Wall
+// flanks rising past the band) — mirrors the game board's constant.
+export const VERT_HALLWAY_PROTRUSION = 24;
 export const MAX_DISPLAY_WIDTH_TILES = 15; // Max tiles before scaling down
 
 export function createEmptyGrid(width: number, height: number): TileOrNull[][] {

@@ -10,7 +10,7 @@ import { savePuzzle, getSavedPuzzles, deletePuzzle, loadPuzzle, type SavedPuzzle
 import { cacheEditorState, getCachedEditorState, clearCachedEditorState } from '../../utils/editorState';
 import { writeAutoSave, readAutoSave, clearAutoSave, AUTOSAVE_INTERVAL_MS, type AutoSaveData } from '../../utils/autoSave';
 import { getAllPuzzleSkins, loadPuzzleSkin, getCustomTileTypes, loadTileType, getAllObjects, loadObject, getAllCollectibles, getSoundAssets, getCustomVessels, vesselToEnemyAsset, getCustomAllies, allyToEnemyAsset } from '../../utils/assetStorage';
-import { TILE_SIZE, BORDER_SIZE, SIDE_BORDER_SIZE, SIDE_HALLWAY_DEPTH, MAX_DISPLAY_WIDTH_TILES, createEmptyGrid, drawDungeonBorder, drawTile, drawEnemy, drawCollectibleInEditor, drawObject } from './map/canvasDraw';
+import { TILE_SIZE, BORDER_SIZE, SIDE_BORDER_SIZE, SIDE_HALLWAY_DEPTH, VERT_HALLWAY_PROTRUSION, MAX_DISPLAY_WIDTH_TILES, createEmptyGrid, drawDungeonBorder, drawTile, drawEnemy, drawCollectibleInEditor, drawObject } from './map/canvasDraw';
 import { isValidHallway, drawHallwayOpening, collectCorridorCells, type HallwayDrawConfig } from '../../utils/hallwayDraw';
 import { loadImage } from '../../utils/imageLoader';
 import type { HallwaySide, DoorStartState } from '../../types/game';
@@ -601,15 +601,20 @@ export const MapEditor: React.FC = () => {
   }, [state.mode, originalPlaytestPuzzle?.id]);
 
 
-  // Extra drawable width per side when a valid left/right hallway exists —
+  // Extra drawable canvas beyond the band when valid hallways exist —
   // mirrors the game board's overhang rule: added to the canvas, EXCLUDED
   // from the scale math, so the board renders the same size either way.
-  function currentSideOverhang(hasBorderArg: boolean): number {
-    if (!hasBorderArg) return 0;
-    const hasSide = state.hallways.some(m =>
-      (m.side === 'left' || m.side === 'right') &&
-      isValidHallway(m, state.tiles, state.gridWidth, state.gridHeight));
-    return hasSide ? SIDE_HALLWAY_DEPTH - SIDE_BORDER_SIZE : 0;
+  // `x` applies to both sides; `top`/`bottom` are per-edge.
+  function currentHallwayOverhang(hasBorderArg: boolean): { x: number; top: number; bottom: number } {
+    const overhang = { x: 0, top: 0, bottom: 0 };
+    if (!hasBorderArg) return overhang;
+    for (const m of state.hallways) {
+      if (!isValidHallway(m, state.tiles, state.gridWidth, state.gridHeight)) continue;
+      if (m.side === 'left' || m.side === 'right') overhang.x = SIDE_HALLWAY_DEPTH - SIDE_BORDER_SIZE;
+      else if (m.side === 'top') overhang.top = VERT_HALLWAY_PROTRUSION;
+      else overhang.bottom = VERT_HALLWAY_PROTRUSION;
+    }
+    return overhang;
   }
 
   // Draw grid
@@ -629,10 +634,11 @@ export const MapEditor: React.FC = () => {
     // Clear
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Side-corridor overhang: shift the whole scene right so deep left/
-    // right hallways get drawable pixels (mirrors the game board).
+    // Corridor overhang: shift the whole scene right/down so corridors get
+    // drawable pixels beyond the band (mirrors the game board).
+    const drawOverhang = currentHallwayOverhang(hasBorder);
     ctx.save();
-    ctx.translate(currentSideOverhang(hasBorder), 0);
+    ctx.translate(drawOverhang.x, drawOverhang.top);
 
     // Draw border if skin is selected
     if (hasBorder && currentSkin) {
@@ -663,7 +669,7 @@ export const MapEditor: React.FC = () => {
         tileSize: TILE_SIZE,
         borderSize: BORDER_SIZE,
         sideBorderSize: SIDE_BORDER_SIZE,
-        verticalDepth: BORDER_SIZE,
+        verticalDepth: BORDER_SIZE + VERT_HALLWAY_PROTRUSION,
         horizontalDepth: SIDE_HALLWAY_DEPTH,
         tiles: state.tiles,
         gridWidth: state.gridWidth,
@@ -683,7 +689,7 @@ export const MapEditor: React.FC = () => {
         if (!isValidHallway(marker, state.tiles, state.gridWidth, state.gridHeight)) return;
         drawHallwayOpening(ctx, marker, hallwayCfg);
         if (state.selectedTool === 'hallway') {
-          const d = marker.side === 'top' || marker.side === 'bottom' ? BORDER_SIZE : SIDE_HALLWAY_DEPTH;
+          const d = marker.side === 'top' || marker.side === 'bottom' ? BORDER_SIZE + VERT_HALLWAY_PROTRUSION : SIDE_HALLWAY_DEPTH;
           const rx = marker.side === 'left' ? marker.x * TILE_SIZE - d : marker.side === 'right' ? (marker.x + 1) * TILE_SIZE : marker.x * TILE_SIZE;
           const ry = marker.side === 'top' ? marker.y * TILE_SIZE - d : marker.side === 'bottom' ? (marker.y + 1) * TILE_SIZE : marker.y * TILE_SIZE;
           const rw = marker.side === 'top' || marker.side === 'bottom' ? TILE_SIZE : d;
@@ -855,8 +861,9 @@ export const MapEditor: React.FC = () => {
       currentScale = editorMaxWidth / canvasWidthPx;
     }
     const rect = canvas.getBoundingClientRect();
-    const mouseX = (e.clientX - rect.left) / currentScale - offsetX - currentSideOverhang(hasBorderLocal);
-    const mouseY = (e.clientY - rect.top) / currentScale - offsetY;
+    const pointerOverhang = currentHallwayOverhang(hasBorderLocal);
+    const mouseX = (e.clientX - rect.left) / currentScale - offsetX - pointerOverhang.x;
+    const mouseY = (e.clientY - rect.top) / currentScale - offsetY - pointerOverhang.top;
     const x = Math.floor(mouseX / TILE_SIZE);
     const y = Math.floor(mouseY / TILE_SIZE);
     if (x < 0 || y < 0 || x >= state.gridWidth || y >= state.gridHeight) return null;
@@ -996,9 +1003,10 @@ export const MapEditor: React.FC = () => {
     }
 
     const rect = canvas.getBoundingClientRect();
+    const clickOverhang = currentHallwayOverhang(hasBorder);
     // Account for scale when converting click coordinates
-    const clickX = (e.clientX - rect.left) / currentScale - offsetX - currentSideOverhang(hasBorder);
-    const clickY = (e.clientY - rect.top) / currentScale - offsetY;
+    const clickX = (e.clientX - rect.left) / currentScale - offsetX - clickOverhang.x;
+    const clickY = (e.clientY - rect.top) / currentScale - offsetY - clickOverhang.top;
     const x = Math.floor(clickX / TILE_SIZE);
     const y = Math.floor(clickY / TILE_SIZE);
 
@@ -1863,11 +1871,13 @@ export const MapEditor: React.FC = () => {
   const editorScale = targetWidth / canvasWidth;
   const scaledCanvasWidth = targetWidth;
   const scaledCanvasHeight = canvasHeight * editorScale;
-  // Side-corridor overhang joins the canvas + wrapper AFTER the scale math
+  // Corridor overhang joins the canvas + wrapper AFTER the scale math
   // above ignored it — the board renders the same size either way.
-  const canvasOverhang = currentSideOverhang(hasBorder);
-  const canvasElementWidth = canvasWidth + canvasOverhang * 2;
+  const canvasOverhang = currentHallwayOverhang(hasBorder);
+  const canvasElementWidth = canvasWidth + canvasOverhang.x * 2;
+  const canvasElementHeight = canvasHeight + canvasOverhang.top + canvasOverhang.bottom;
   const scaledWrapperWidth = canvasElementWidth * editorScale;
+  const scaledWrapperHeight = canvasElementHeight * editorScale;
 
   // Status-bar text: active tool + selected asset (Phase 2).
   const activeToolLabel = (() => {
@@ -2081,14 +2091,14 @@ export const MapEditor: React.FC = () => {
             <div
               style={{
                 width: scaledWrapperWidth,
-                height: scaledCanvasHeight,
+                height: scaledWrapperHeight,
                 overflow: 'hidden'
               }}
             >
               <canvas
                 ref={canvasRef}
                 width={canvasElementWidth}
-                height={canvasHeight}
+                height={canvasElementHeight}
                 className="border-2 border-stone-600 cursor-crosshair rounded"
                 style={{
                   transform: `scale(${editorScale})`,
