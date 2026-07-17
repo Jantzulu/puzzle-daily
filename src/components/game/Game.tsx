@@ -46,7 +46,7 @@ type TestMode = 'none' | 'enemies' | 'characters';
 
 // How long the victory/defeat overlays wait after the outcome triggers
 // before covering the board (UI-only beat; see outcomeOverlayHeld).
-const OUTCOME_OVERLAY_HOLD_MS = 2000;
+const OUTCOME_OVERLAY_HOLD_MS = 1500;
 
 // Distinct display names of every placed Noble (Noble-marked heroes +
 // hero-party allies), joined for quest text: "the King", "the King and
