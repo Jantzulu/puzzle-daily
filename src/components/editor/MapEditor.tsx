@@ -23,6 +23,7 @@ import { RulesPanel } from './map/RulesPanel';
 import { DetailsPanel } from './map/DetailsPanel';
 import { PlacedRoster, type RosterKind } from './map/PlacedRoster';
 import { InspectPopover } from './map/InspectPopover';
+import { ObjectInspectPopover } from './map/ObjectInspectPopover';
 import { ToolsRow } from './map/ToolsRow';
 import { TilePalette } from './map/TilePalette';
 import { EnemyPalette } from './map/EnemyPalette';
@@ -184,6 +185,11 @@ export const MapEditor: React.FC = () => {
   // Entity inspect popover (Phase 3): opened by a plain click on a placed
   // entity while an entity tool is active.
   const [inspect, setInspect] = useState<{ index: number; screenX: number; screenY: number } | null>(null);
+  // Object inspect popover (2026-07-17): plain click on a placed object with
+  // the Object tool — offset sliders for precise alignment. One undo entry
+  // per popover session (the ref arms on open, fires on the first change).
+  const [objectInspect, setObjectInspect] = useState<{ index: number; screenX: number; screenY: number } | null>(null);
+  const objectInspectHistoryPushedRef = useRef(false);
   // Combat log state + helpers will be re-introduced in Phase 5 (data plumbing
   // via <Game/> onTurnExecuted callback + a sidebar layout). Removed here so
   // the file stays clean while that's in flight; bring back as a small focused
@@ -1017,6 +1023,12 @@ export const MapEditor: React.FC = () => {
           // Plain click on an entity with an entity tool: inspect instead of
           // toggle-remove (removal lives on right-click and in the popover).
           setInspect({ index: ds.index, screenX: e.clientX, screenY: e.clientY });
+        } else if (ds.kind === 'object' && state.selectedTool === 'object') {
+          // Plain click on an object with the Object tool: offset popover
+          // (sliders for precise alignment). Same pattern as entities —
+          // removal moves to right-click / long-press / roster / popover.
+          objectInspectHistoryPushedRef.current = false;
+          setObjectInspect({ index: ds.index, screenX: e.clientX, screenY: e.clientY });
         } else {
           // Released in place — run the normal click for this tile.
           saveSnapshotBeforeDraw();
@@ -2561,6 +2573,38 @@ export const MapEditor: React.FC = () => {
           }}
           onRemove={() => handleRemovePlacement('enemy', inspect.index)}
           onClose={() => setInspect(null)}
+        />
+      )}
+
+      {/* Object inspect popover (2026-07-17): offset sliders */}
+      {objectInspect && state.placedObjects[objectInspect.index] && (
+        <ObjectInspectPopover
+          obj={state.placedObjects[objectInspect.index]}
+          position={{ x: objectInspect.screenX, y: objectInspect.screenY }}
+          onSetOffsets={(offsetX, offsetY) => {
+            const index = objectInspect.index;
+            // One undo entry per popover session: slider drags fire onChange
+            // per notch, but only the first change snapshots history.
+            if (!objectInspectHistoryPushedRef.current) {
+              objectInspectHistoryPushedRef.current = true;
+              pushToHistory();
+            }
+            setState(prev => {
+              const next = [...prev.placedObjects];
+              next[index] = {
+                ...next[index],
+                // 0 stores as undefined — matches the drag's convention.
+                offsetX: offsetX || undefined,
+                offsetY: offsetY || undefined,
+              };
+              return { ...prev, placedObjects: next };
+            });
+          }}
+          onRemove={() => {
+            handleRemovePlacement('object', objectInspect.index);
+            setObjectInspect(null);
+          }}
+          onClose={() => setObjectInspect(null)}
         />
       )}
 
