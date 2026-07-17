@@ -453,6 +453,9 @@ export const MapEditor: React.FC = () => {
   // Hallway tool sub-mode (phase 2 doors): what a wall-edge click places.
   const [openingMode, setOpeningMode] = useState<'hallway' | 'door' | 'both'>('hallway');
   const [doorStartState, setDoorStartState] = useState<DoorStartState>('closed');
+  // Applies to hallways placed next: open ledge = pushes can throw entities
+  // out through this mouth (shove-out ejection). Default barred.
+  const [hallwayOpenLedge, setHallwayOpenLedge] = useState(false);
 
   // Enemy/Ally/Vessel/Object/Collectible selection — each placement tool
   // keeps its own selected id so switching tools never places the wrong
@@ -1052,12 +1055,12 @@ export const MapEditor: React.FC = () => {
             if (hallwayIdx >= 0) { hallways = [...hallways]; hallways.splice(hallwayIdx, 1); }
             if (doorIdx >= 0) { doors = [...doors]; doors.splice(doorIdx, 1); }
           } else {
-            hallways = [...hallways, { x, y, side }];
+            hallways = [...hallways, { x, y, side, ...(hallwayOpenLedge ? { openLedge: true } : {}) }];
             doors = [...doors, { x, y, side: side as 'top' | 'bottom', startState: doorStartState }];
           }
         } else if (wantsHallway) {
           if (hallwayIdx >= 0) { hallways = [...hallways]; hallways.splice(hallwayIdx, 1); }
-          else hallways = [...hallways, { x, y, side }];
+          else hallways = [...hallways, { x, y, side, ...(hallwayOpenLedge ? { openLedge: true } : {}) }];
         } else if (wantsDoor) {
           if (doorIdx >= 0) { doors = [...doors]; doors.splice(doorIdx, 1); }
           else doors = [...doors, { x, y, side: side as 'top' | 'bottom', startState: doorStartState }];
@@ -2357,10 +2360,22 @@ export const MapEditor: React.FC = () => {
                       </p>
                     </div>
                   )}
+                  {openingMode !== 'door' && (
+                    <label className="flex items-center gap-2 cursor-pointer text-stone-300">
+                      <input
+                        type="checkbox"
+                        checked={hallwayOpenLedge}
+                        onChange={(e) => setHallwayOpenLedge(e.target.checked)}
+                        className="rounded"
+                      />
+                      <span>Open ledge — pushes can throw entities out here</span>
+                    </label>
+                  )}
                   <p>
                     Click near the <span className="text-copper-400">edge</span> of a floor tile
                     that borders the void or the outside. Click the same edge again to remove.
-                    Purely visual dressing — nothing can walk in or out.
+                    Openings also serve walk-in entrances, Noble escapes, departures — and,
+                    when marked an open ledge, shove-out ejections.
                   </p>
                   <p className="text-stone-500">
                     Door sprites come from the puzzle's skin (Door Closed / Opening / Open

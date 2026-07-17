@@ -36,6 +36,9 @@ import { getDirectionOffset, turnLeft, turnRight, turnAround, isInBounds, calcul
 import { loadSpellAsset, loadTileType, loadStatusEffectAsset, loadCollectible } from '../utils/assetStorage';
 import { isEntityCharmed, effectiveParty, entityParty, isAttackTarget, combatId } from './party';
 import { spawnEnemyMidGame } from './spawning';
+// Open-ledge geometry for shove-out ejection — same validity + side offsets
+// the renderer draws openings from (pure functions, no canvas).
+import { isValidHallway, SIDE_OFFSETS } from '../utils/hallwayDraw';
 import type { EntityParty } from '../types/game';
 import type { CollectibleEffectConfig, PlacedCollectible } from '../types/game';
 import { canEntityAct, canEntityCastSpell, canEntityMove, hasHasteBonus, isHomingDebug, handleEntityDeathDrop, applyInstantStatusStrip } from './simulation';
@@ -3862,8 +3865,24 @@ function executePushSpell(
     let finalX = target.x;
     let finalY = target.y;
     let tilesActuallyPushed = 0;
+    let ejected = false;
 
     for (let i = 0; i < pushDistance; i++) {
+      // Shove-out ejection (2026-07-17): stepping THROUGH an open-ledge
+      // hallway mouth — a cardinal push matching the marker's side —
+      // throws the entity off the board, including a push that starts on
+      // the mouth tile itself (0 tiles moved). Diagonal pushes never
+      // eject; they stop at the edge like always. Barred (default)
+      // mouths behave exactly as before.
+      const ledge = (gameState.puzzle.hallways ?? []).find(h =>
+        h.openLedge &&
+        h.x === Math.floor(finalX) && h.y === Math.floor(finalY) &&
+        SIDE_OFFSETS[h.side].dx === pushDirOffset.dx &&
+        SIDE_OFFSETS[h.side].dy === pushDirOffset.dy &&
+        isValidHallway(h, gameState.puzzle.tiles, gameState.puzzle.width, gameState.puzzle.height)
+      );
+      if (ledge) { ejected = true; break; }
+
       const nextX = finalX + pushDirOffset.dx;
       const nextY = finalY + pushDirOffset.dy;
 
@@ -3899,6 +3918,24 @@ function executePushSpell(
       tilesActuallyPushed++;
     }
 
+
+    // Shove-out: the entity goes THROUGH the mouth and off the board.
+    // Summon-expiry death semantics: dead+despawned, no drops, no death
+    // triggers, no corpse; counts as defeated (an ejected vessel never
+    // hatches — despawned skips its transform). diedOnTurn stays unset so
+    // the mouth tile frees immediately. ejectedOnTurn drives the render's
+    // fast tumble-out. The damage rider is moot — the target is gone.
+    if (ejected) {
+      target.x = finalX;
+      target.y = finalY;
+      target.dead = true;
+      target.despawned = true;
+      target.ejectedOnTurn = gameState.currentTurn;
+      if (spell.sprites.damageEffect) {
+        spawnParticle(finalX, finalY, spell.sprites.damageEffect, 400, gameState);
+      }
+      continue;
+    }
 
     // Apply push (move entity to final position)
     if (tilesActuallyPushed > 0) {

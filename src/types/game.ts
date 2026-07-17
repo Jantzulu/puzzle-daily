@@ -414,6 +414,7 @@ export interface PlacedEnemy {
   transformedOnTurn?: number; // Vessels: turn this vessel's transform fired (processVesselTransforms). Set once on success — prevents re-transform; unset while the emergence is blocked (retries each turn end).
   escapedOnTurn?: number; // Escapes-on-defeat: turn the escape despawn stamped (processEscapes). Render hook — the board starts the ghost walk-out when this equals the current turn.
   departedOnTurn?: number; // DEPART action: turn the entity left the board on its own terms (not a death — no drops/triggers). Render hook — full-opacity walk-out when this equals the current turn.
+  ejectedOnTurn?: number; // Shove-out ejection: turn a push threw this entity through an open-ledge mouth (dead+despawned, summon-expiry semantics — no drops/triggers/corpse). Render hook — fast tumble-out.
   actionIndex?: number; // For active enemies with behavior patterns
   active?: boolean; // For active enemies
   parallelTrackers?: ParallelActionTracker[]; // For parallel spell execution
@@ -736,6 +737,7 @@ export interface HallwayMarker {
   x: number;
   y: number;
   side: HallwaySide;
+  openLedge?: boolean; // Shove-out ejection (2026-07-17): a push driving an entity through this mouth throws it off the board (default barred — pushes stop at the edge as always)
 }
 
 /**
@@ -806,6 +808,7 @@ export interface PlacedCharacter {
   diedOnTurn?: number; // See PlacedEnemy.diedOnTurn — deterministic death-turn stamp used by movement blockers to keep tile occupied through the next turn.
   despawned?: boolean; // See PlacedEnemy.despawned — left the board (no corpse). On characters this mainly transports the DEPART action's result through the enemy wrappers; heroes shouldn't author DEPART.
   departedOnTurn?: number; // See PlacedEnemy.departedOnTurn — DEPART action stamp (wrapper transport).
+  ejectedOnTurn?: number; // See PlacedEnemy.ejectedOnTurn — heroes can be shoved off open ledges too (a real death for them).
 }
 
 export type GameStatus = 'setup' | 'running' | 'victory' | 'defeat';

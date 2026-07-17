@@ -816,6 +816,7 @@ function computeFlyInOrigin(boardW: number, boardH: number): { fromX: number; fr
 // board mount, engine untouched. Stale or ineligible assignments fall back
 // to the normal entrance silently (the markers' own self-skip rule).
 const WALK_IN_MS_PER_TILE = 260;  // a walk, not a glide — slower than enemy flight
+const EJECT_MS_PER_TILE = 110;    // shove-out tumble — thrown, not strolling
 const WALK_IN_STAGGER_MS = 350;   // file-out gap between entities sharing an opening
 // Door walkers wait out the start-of-puzzle door animation: reveal delay +
 // a typical opening sheet (~5 frames at DOOR_ANIM_FPS). A fixed beat keeps
@@ -1687,7 +1688,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
   useEffect(() => {
     const now = Date.now();
     gameState.puzzle.enemies.forEach((enemy, index) => {
-      const exitTurn = enemy.escapedOnTurn ?? enemy.departedOnTurn;
+      const exitTurn = enemy.escapedOnTurn ?? enemy.departedOnTurn ?? enemy.ejectedOnTurn;
       if (exitTurn === undefined) {
         enemyGhostWalksRef.current.delete(index); // reset / retry / step-back
         return;
@@ -1696,9 +1697,11 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       if (enemyGhostWalksRef.current.has(index)) return;
       const points = resolveEscapeExit(enemy, gameState);
       if (!points || points.length < 2) return; // no reachable opening — remains just vanish
+      // Ejections tumble out fast (thrown); escapes and departures stride.
+      const msPerTile = enemy.ejectedOnTurn !== undefined ? EJECT_MS_PER_TILE : WALK_IN_MS_PER_TILE;
       enemyGhostWalksRef.current.set(index, {
         startTime: now,
-        durationMs: (points.length - 1) * WALK_IN_MS_PER_TILE,
+        durationMs: (points.length - 1) * msPerTile,
         points,
         ghostFade: enemy.escapedOnTurn !== undefined,
       });
@@ -1707,17 +1710,19 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
     // always full opacity. A noble escapes standing ON the opening tile, so
     // the walk is usually just tile → off-grid — a short triumphant stride.
     gameState.placedCharacters.forEach((char) => {
-      if (char.departedOnTurn === undefined) {
+      const charExitTurn = char.departedOnTurn ?? char.ejectedOnTurn;
+      if (charExitTurn === undefined) {
         characterGhostWalksRef.current.delete(char.characterId);
         return;
       }
-      if (char.departedOnTurn !== gameState.currentTurn) return;
+      if (charExitTurn !== gameState.currentTurn) return;
       if (characterGhostWalksRef.current.has(char.characterId)) return;
       const points = resolveEscapeExit(char, gameState);
       if (!points || points.length < 2) return;
+      const charMsPerTile = char.ejectedOnTurn !== undefined ? EJECT_MS_PER_TILE : WALK_IN_MS_PER_TILE;
       characterGhostWalksRef.current.set(char.characterId, {
         startTime: now,
-        durationMs: (points.length - 1) * WALK_IN_MS_PER_TILE,
+        durationMs: (points.length - 1) * charMsPerTile,
         points,
       });
     });
@@ -2246,9 +2251,11 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
           }
         } else {
           const character = entity as PlacedCharacter;
-          // Noble escape walk-out: the hero exited through an opening —
-          // stride out at full opacity (alive and victorious), then draw
-          // nothing. Alive-despawned heroes are otherwise invisible.
+          // Hero exit walk-out: a Noble escape strides out victorious; a
+          // shoved-out hero tumbles through the mouth. Drawn with the
+          // living sprite (dead:false spoof — an ejected hero is dead, but
+          // the tumble shows it going over the edge, not a corpse), then
+          // nothing. Despawned heroes are otherwise invisible.
           const charExit = characterGhostWalksRef.current.get(character.characterId);
           if (charExit) {
             const exitElapsed = now - charExit.startTime;
@@ -2259,7 +2266,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
             if (exitElapsed >= 0) {
               const et = exitElapsed / charExit.durationMs;
               const p = walkInPointAt(charExit, et);
-              drawCharacter(ctx, character, p.x, p.y, true, directionFromTravel(p.dx, p.dy), gameStarted, undefined, now, undefined, undefined, index);
+              drawCharacter(ctx, { ...character, dead: false }, p.x, p.y, true, directionFromTravel(p.dx, p.dy), gameStarted, undefined, now, undefined, undefined, index);
             }
             return;
           }
