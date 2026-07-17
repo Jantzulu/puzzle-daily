@@ -3,6 +3,7 @@ import { toast } from '../shared/Toast';
 import { findAssetUsages, formatUsageWarning } from '../../utils/assetDependencies';
 import { scaledNameClass } from '../../utils/textScale';
 import { Direction } from '../../types/game';
+import type { HitStampKind } from '../../types/game';
 import type { CustomVessel, CustomSprite } from '../../utils/assetStorage';
 import { saveVessel, deleteVessel, getCustomVessels, getAllCollectibles } from '../../utils/assetStorage';
 import { getAllEnemies } from '../../data/enemies';
@@ -24,12 +25,20 @@ const FACING_OPTIONS: { value: Direction; label: string }[] = [
   { value: Direction.NORTHWEST, label: '↖ North-West' },
 ];
 
+const HIT_KIND_OPTIONS: { value: HitStampKind; label: string }[] = [
+  { value: 'melee', label: 'Melee' },
+  { value: 'projectile', label: 'Projectile' },
+  { value: 'contact', label: 'Contact' },
+  { value: 'any', label: 'Any hit' },
+];
+
 /**
  * Vessel Editor — breakable static entities (docs/feature-backlog.md):
  * barrels, urns, mimic chests, hatching eggs. Variable HP, idle + death
- * animations only, optional transform into a nested enemy on break or on
- * a timer. Vessels resolve through the enemy pipeline in-game, so this
- * editor only authors what a vessel actually uses.
+ * animations only, optional transform into a nested enemy on break, on a
+ * timer, on proximity, or when struck by a chosen hit kind. Vessels resolve
+ * through the enemy pipeline in-game, so this editor only authors what a
+ * vessel actually uses.
  */
 export const VesselEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSelectedId }) => {
   const isMobile = useIsMobile();
@@ -306,6 +315,21 @@ export const VesselEditor: React.FC<{ initialSelectedId?: string }> = ({ initial
                   {editing.transformEnemyId && (
                     <>
                       <div>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={editing.transformOnBreak !== false}
+                            onChange={(e) => updateVessel({ transformOnBreak: e.target.checked ? undefined : false })}
+                            className="rounded"
+                          />
+                          <span className="text-sm">Transforms when broken</span>
+                        </label>
+                        <p className="text-xs text-stone-400 mt-1 ml-6">
+                          Off = breaking it just destroys it (loot still drops, nothing emerges) —
+                          for eggs that only hatch by timer, proximity, or a specific strike.
+                        </p>
+                      </div>
+                      <div>
                         <label className="block text-sm mb-1">Hatch Timer (turns) <span className="text-stone-400 font-normal">(optional)</span></label>
                         <input type="number" min="0" max="99" value={editing.transformAfterTurns ?? 0}
                           onChange={(e) => {
@@ -315,8 +339,61 @@ export const VesselEditor: React.FC<{ initialSelectedId?: string }> = ({ initial
                           className="w-full px-3 py-2 bg-stone-700 rounded" />
                         <p className="text-xs text-stone-400 mt-1">
                           Transforms at the end of this many turns even if unbroken (hatching egg,
-                          timed ambush). 0 = only transforms when broken. Breaking it early always
-                          triggers the transformation.
+                          timed ambush). 0 = off.
+                        </p>
+                      </div>
+                      <div>
+                        <label className="block text-sm mb-1">Proximity Hatch (range) <span className="text-stone-400 font-normal">(optional)</span></label>
+                        <div className="flex gap-2">
+                          <input type="number" min="0" max="99" value={editing.transformProximityRange ?? 0}
+                            onChange={(e) => {
+                              const v = parseInt(e.target.value) || 0;
+                              updateVessel({ transformProximityRange: v > 0 ? v : undefined });
+                            }}
+                            className="w-24 px-3 py-2 bg-stone-700 rounded" />
+                          {(editing.transformProximityRange ?? 0) > 0 && (
+                            <select
+                              value={editing.transformProximityParty ?? 'hero'}
+                              onChange={(e) => updateVessel({ transformProximityParty: e.target.value as 'hero' | 'enemy' | 'any' })}
+                              className="flex-1 px-3 py-2 bg-stone-700 rounded"
+                            >
+                              <option value="hero">Senses Heroes</option>
+                              <option value="enemy">Senses Enemies</option>
+                              <option value="any">Senses Anyone</option>
+                            </select>
+                          )}
+                        </div>
+                        <p className="text-xs text-stone-400 mt-1">
+                          Hatches when a living matching unit stands within this range at the end
+                          of a turn (same distance rule as "in range" triggers — range 1 doesn't
+                          include diagonals). 0 = off. Stealthed opponents don't trigger it.
+                        </p>
+                      </div>
+                      <div>
+                        <label className="block text-sm mb-1">Hatches When Struck By <span className="text-stone-400 font-normal">(optional)</span></label>
+                        <div className="flex flex-wrap gap-3">
+                          {HIT_KIND_OPTIONS.map((opt) => (
+                            <label key={opt.value} className="flex items-center gap-1.5 cursor-pointer text-sm">
+                              <input
+                                type="checkbox"
+                                checked={editing.transformOnHitKinds?.includes(opt.value) ?? false}
+                                onChange={(e) => {
+                                  const current = editing.transformOnHitKinds ?? [];
+                                  const next = e.target.checked
+                                    ? [...current, opt.value]
+                                    : current.filter(k => k !== opt.value);
+                                  updateVessel({ transformOnHitKinds: next.length > 0 ? next : undefined });
+                                }}
+                                className="rounded"
+                              />
+                              {opt.label}
+                            </label>
+                          ))}
+                        </div>
+                        <p className="text-xs text-stone-400 mt-1">
+                          A landed hit of a checked kind hatches it — no need to break it (struck
+                          gong wakes the golem). Hits count even if deflected or absorbed. "Any"
+                          also covers area, damage-over-time, tile, and push hits.
                         </p>
                       </div>
                       <div>
