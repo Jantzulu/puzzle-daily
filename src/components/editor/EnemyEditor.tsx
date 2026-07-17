@@ -654,6 +654,12 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string; assetKind?: 'en
                         <p className="text-xs text-stone-400 ml-1">Boss enemies enable the "Defeat the Boss" win condition.</p>
                       </>
                     )}
+                    <label className="flex items-center gap-2 p-2 rounded bg-stone-800 border border-stone-700">
+                      <input type="checkbox" checked={editing.escapesOnDefeat || false}
+                        onChange={(e) => updateEnemy({ escapesOnDefeat: e.target.checked || undefined })} className="w-4 h-4" />
+                      <span className="text-sm font-medium">Escapes on Defeat</span>
+                    </label>
+                    <p className="text-xs text-stone-400 ml-1">Lethal damage still counts as a full defeat (win conditions, loot, death triggers all unchanged), but instead of leaving a corpse a ghost walks out through the nearest hallway or door. No openings on the map = it simply vanishes. Cannot be raised by necromancy afterwards.</p>
                     <p className="text-xs text-stone-500 ml-1 mt-1">Other traits (Ghost, Wall, Halt, Priority, Sturdy, Thorns, Trample) are assigned via starting status effects.</p>
                   </CollapsiblePanel>
 

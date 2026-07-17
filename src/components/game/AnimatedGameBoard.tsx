@@ -863,6 +863,36 @@ function resolveWalkInEntrance(
   return ref;
 }
 
+/**
+ * Escapes-on-defeat exit route: nearest valid opening (hallway or door)
+ * from the fallen enemy's tile, by BFS path length (walls only — the ghost
+ * crosses occupied tiles freely). Returns walk points ending OFF-grid
+ * beyond the opening, or null when no opening is reachable (the remains
+ * simply vanish — the despawn already handled the logic).
+ */
+function resolveEscapeExit(enemy: PlacedEnemy, gameState: GameState): Array<{ x: number; y: number }> | null {
+  const puzzle = gameState.puzzle;
+  const candidates: Array<{ x: number; y: number; side: keyof typeof SIDE_OFFSETS }> = [];
+  for (const h of puzzle.hallways ?? []) {
+    if (isValidHallway(h, puzzle.tiles, puzzle.width, puzzle.height)) candidates.push(h);
+  }
+  for (const d of puzzle.doors ?? []) {
+    if (isValidDoor(d, puzzle.tiles, puzzle.width, puzzle.height)) candidates.push(d);
+  }
+  let best: Array<{ x: number; y: number }> | null = null;
+  let bestExit: { x: number; y: number } | null = null;
+  for (const c of candidates) {
+    const path = findPathBFS(enemy.x, enemy.y, c.x, c.y, gameState);
+    if (path.length === 0) continue;
+    if (!best || path.length < best.length) {
+      best = path;
+      const off = SIDE_OFFSETS[c.side];
+      bestExit = { x: c.x + off.dx, y: c.y + off.dy };
+    }
+  }
+  return best && bestExit ? [...best, bestExit] : null;
+}
+
 // ─── Puddle reflections ─────────────────────────────────────────────────────
 // Tiles whose custom type is marked `reflective` (water, ice, polished
 // stone) mirror the entities on them: a squashed, faint, vertically
@@ -1028,6 +1058,10 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
   // Door/hallway walk-in entrances (see WalkInState above), enemy index only
   // — heroes keep their placement entrance. Same lifecycle as fly-ins.
   const enemyWalkInsRef = useRef<Map<number, WalkInState>>(new Map());
+  // Ghost walk-outs (escapes-on-defeat): render-only exit theater for
+  // enemies whose escape stamped this turn. Same WalkInState shape,
+  // reversed duty — logic already removed the entity (despawned).
+  const enemyGhostWalksRef = useRef<Map<number, WalkInState>>(new Map());
   // Setup-phase glances at freshly placed heroes, keyed by enemy index.
   const enemyGlancesRef = useRef<Map<number, GlanceState>>(new Map());
   // Track lift-off animations for unplaced characters
@@ -1097,6 +1131,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       enemyFlyInsRef.current.clear();
       characterFlyInsRef.current.clear();
       enemyWalkInsRef.current.clear();
+      enemyGhostWalksRef.current.clear();
       enemyGlancesRef.current.clear();
       setLiftOffAnimations([]);
       // Reset death + casting animation tracking (death anims now persist as
@@ -1636,6 +1671,32 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
     }
   }, [gameState.puzzle.enemies]);
 
+  // Ghost walk-outs (escapes-on-defeat, 2026-07-17): when an enemy's escape
+  // stamps (escapedOnTurn === current turn), build its exit path once — the
+  // ghost strides to the nearest opening and off the board while the game
+  // continues around it. Keyed to the exact stamp turn so replay-stepping
+  // onto LATER turns shows no ghost and no corpse (the entity is simply
+  // gone); stepping back before the death clears the entry so re-stepping
+  // forward replays the exit cleanly.
+  useEffect(() => {
+    const now = Date.now();
+    gameState.puzzle.enemies.forEach((enemy, index) => {
+      if (enemy.escapedOnTurn === undefined) {
+        enemyGhostWalksRef.current.delete(index); // reset / retry / step-back
+        return;
+      }
+      if (enemy.escapedOnTurn !== gameState.currentTurn) return;
+      if (enemyGhostWalksRef.current.has(index)) return;
+      const points = resolveEscapeExit(enemy, gameState);
+      if (!points || points.length < 2) return; // no reachable opening — remains just vanish
+      enemyGhostWalksRef.current.set(index, {
+        startTime: now,
+        durationMs: (points.length - 1) * WALK_IN_MS_PER_TILE,
+        points,
+      });
+    });
+  }, [gameState]);
+
   // Memoize placedObjects layered into below_entities / above_entities arrays.
   // The animate loop runs at 60fps and was running both filter+sort+forEach
   // chains plus a loadObject() lookup per object every frame. placedObjects
@@ -1991,6 +2052,28 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       renderQueue.forEach(({ type, index, entity }) => {
         if (type === 'enemy') {
           const enemy = entity as PlacedEnemy;
+          // Escapes-on-defeat ghost: the fallen enemy strides to its opening
+          // and off the board. Pure theater — the logic already removed it
+          // (despawned); drawn with the LIVING moving sprite (dead:false
+          // spoof, since drawEnemy corpse-branches on the flag) and a soft
+          // fade that deepens as it goes.
+          const ghost = enemyGhostWalksRef.current.get(index);
+          if (ghost) {
+            const ghostElapsed = now - ghost.startTime;
+            if (ghostElapsed >= ghost.durationMs) {
+              enemyGhostWalksRef.current.delete(index); // exited — gone for good
+              return;
+            }
+            if (ghostElapsed >= 0) {
+              const gt = ghostElapsed / ghost.durationMs;
+              const p = walkInPointAt(ghost, gt);
+              ctx.save();
+              ctx.globalAlpha = 0.8 - 0.55 * gt;
+              drawEnemy(ctx, { ...enemy, dead: false }, p.x, p.y, true, directionFromTravel(p.dx, p.dy), gameStarted, undefined, now, undefined, undefined, index);
+              ctx.restore();
+            }
+            return;
+          }
           // Expired summons draw NOTHING — no corpse, no death animation
           // (despawn is not a death; the exit overlay particle covers the
           // vanish). Early return also skips the death-anim first-frame
@@ -2279,7 +2362,9 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       if (deathSoulsEnabled()) {
         enemyDeathAnimationsRef.current.forEach((deathAnim, idx) => {
           const enemy = gameState.puzzle.enemies[idx];
-          if (!enemy?.dead) return;
+          // Despawned = left the board (summon expiry, vessel hatch, escape
+          // ghost) — no corpse on the field, so no soul rises from it.
+          if (!enemy?.dead || enemy.despawned) return;
           const sprite = getEnemy(enemy.enemyId)?.customSprite;
           if (sprite && hasDeathAnimation(sprite)) drawSoul(ctx, sprite, deathAnim, now);
         });
