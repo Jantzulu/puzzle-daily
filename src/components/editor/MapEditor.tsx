@@ -44,7 +44,7 @@ import { VersionHistoryModal } from './VersionHistoryModal';
 import { logActivity } from '../../services/activityLogService';
 import { createHistoryManager } from '../../utils/historyManager';
 import { subscribeToImageLoads } from '../../utils/imageLoader';
-import { subscribeToSpriteImageLoads } from './SpriteEditor';
+import { subscribeToSpriteImageLoads, ART_TILE_PX } from './SpriteEditor';
 import { useFilteredAssets } from './FolderDropdown';
 import { PuzzleLibraryModal } from './PuzzleLibraryModal';
 import { solvePuzzleAsync, quickValidate, type SolverResult } from '../../engine/puzzleSolver';
@@ -171,6 +171,15 @@ export const MapEditor: React.FC = () => {
     toX: number;
     toY: number;
     moved: boolean;
+    // Pixel-fine object drag (Object tool active on an object): the sprite
+    // follows the cursor in whole ART pixels instead of tile snaps.
+    // grabDX/DY preserve the grab point (grid px from the object's anchor);
+    // artOffsetX/Y is the live per-placement offset committed on release.
+    pixelMode?: boolean;
+    grabDX?: number;
+    grabDY?: number;
+    artOffsetX?: number;
+    artOffsetY?: number;
   } | null>(null);
   // Entity inspect popover (Phase 3): opened by a plain click on a placed
   // entity while an entity tool is active.
@@ -741,7 +750,7 @@ export const MapEditor: React.FC = () => {
     }).sort((a, b) => a.y - b.y);
 
     belowObjects.forEach((obj) => {
-      drawObject(ctx, obj.x, obj.y, obj.objectId);
+      drawObject(ctx, obj.x, obj.y, obj.objectId, obj.offsetX ?? 0, obj.offsetY ?? 0);
     });
 
     // Draw enemies
@@ -765,7 +774,7 @@ export const MapEditor: React.FC = () => {
     }).sort((a, b) => a.y - b.y);
 
     aboveObjects.forEach((obj) => {
-      drawObject(ctx, obj.x, obj.y, obj.objectId);
+      drawObject(ctx, obj.x, obj.y, obj.objectId, obj.offsetX ?? 0, obj.offsetY ?? 0);
     });
 
     // Roster hover highlight (Phase 2): copper wash + outline on the hovered
@@ -788,7 +797,9 @@ export const MapEditor: React.FC = () => {
         if (en) drawEnemy(ctx, toX, toY, en.enemyId);
       } else if (kind === 'object') {
         const ob = state.placedObjects[index];
-        if (ob) drawObject(ctx, toX, toY, ob.objectId);
+        if (ob) drawObject(ctx, toX, toY, ob.objectId,
+          dragState.pixelMode ? (dragState.artOffsetX ?? 0) : (ob.offsetX ?? 0),
+          dragState.pixelMode ? (dragState.artOffsetY ?? 0) : (ob.offsetY ?? 0));
       } else {
         const co = state.collectibles[index];
         if (co) drawCollectibleInEditor(ctx, { ...co, x: toX, y: toY });
@@ -836,6 +847,27 @@ export const MapEditor: React.FC = () => {
           handleRemovePlacement(grabbed.kind, grabbed.index);
         }, 650);
       }
+      // Pixel-fine mode: dragging an OBJECT with the Object tool active
+      // moves it in whole art pixels — the grab point on the sprite is
+      // preserved so nothing jumps. Other kinds/tools keep tile snapping.
+      if (grabbed.kind === 'object' && state.selectedTool === 'object') {
+        const obj = state.placedObjects[grabbed.index];
+        const p = gridPointFromMouseEvent(e);
+        if (obj && p) {
+          const zoom = TILE_SIZE / ART_TILE_PX;
+          const anchorX = obj.x * TILE_SIZE + TILE_SIZE / 2 + (obj.offsetX ?? 0) * zoom;
+          const anchorY = obj.y * TILE_SIZE + TILE_SIZE / 2 + (obj.offsetY ?? 0) * zoom;
+          setDragState({
+            ...grabbed, fromX: tile.x, fromY: tile.y, toX: obj.x, toY: obj.y, moved: false,
+            pixelMode: true,
+            grabDX: p.px - anchorX,
+            grabDY: p.py - anchorY,
+            artOffsetX: obj.offsetX ?? 0,
+            artOffsetY: obj.offsetY ?? 0,
+          });
+          return;
+        }
+      }
       setDragState({ ...grabbed, fromX: tile.x, fromY: tile.y, toX: tile.x, toY: tile.y, moved: false });
       return;
     }
@@ -845,9 +877,10 @@ export const MapEditor: React.FC = () => {
     handleCanvasClick(e);
   };
 
-  // Tile under the mouse, or null when outside the grid. Mirrors the
-  // coordinate math in handleCanvasClick (scale + border offsets).
-  const tileFromMouseEvent = (e: React.MouseEvent<HTMLCanvasElement>): { x: number; y: number } | null => {
+  // Pointer position in GRID-space pixels (unfloored) — the shared
+  // coordinate math (scale + border offsets + hallway overhang) behind both
+  // the tile lookup and the pixel-fine object drag.
+  const gridPointFromMouseEvent = (e: React.MouseEvent<HTMLCanvasElement>): { px: number; py: number } | null => {
     const canvas = canvasRef.current;
     if (!canvas) return null;
     const hasBorderLocal = state.skinId !== undefined && state.skinId !== '';
@@ -865,10 +898,19 @@ export const MapEditor: React.FC = () => {
     }
     const rect = canvas.getBoundingClientRect();
     const pointerOverhang = currentHallwayOverhang(hasBorderLocal);
-    const mouseX = (e.clientX - rect.left) / currentScale - offsetX - pointerOverhang.x;
-    const mouseY = (e.clientY - rect.top) / currentScale - offsetY - pointerOverhang.top;
-    const x = Math.floor(mouseX / TILE_SIZE);
-    const y = Math.floor(mouseY / TILE_SIZE);
+    return {
+      px: (e.clientX - rect.left) / currentScale - offsetX - pointerOverhang.x,
+      py: (e.clientY - rect.top) / currentScale - offsetY - pointerOverhang.top,
+    };
+  };
+
+  // Tile under the mouse, or null when outside the grid. Mirrors the
+  // coordinate math in handleCanvasClick (scale + border offsets).
+  const tileFromMouseEvent = (e: React.MouseEvent<HTMLCanvasElement>): { x: number; y: number } | null => {
+    const p = gridPointFromMouseEvent(e);
+    if (!p) return null;
+    const x = Math.floor(p.px / TILE_SIZE);
+    const y = Math.floor(p.py / TILE_SIZE);
     if (x < 0 || y < 0 || x >= state.gridWidth || y >= state.gridHeight) return null;
     return { x, y };
   };
@@ -877,6 +919,34 @@ export const MapEditor: React.FC = () => {
     const tile = tileFromMouseEvent(e);
     setCursorTile(prev => (prev?.x === tile?.x && prev?.y === tile?.y ? prev : tile));
     if (dragState) {
+      // Pixel-fine object drag: the anchor point follows the cursor (grab
+      // point preserved); tile = whichever tile the anchor lands in, offset
+      // = the art-pixel remainder from that tile's center. A gentle snap
+      // zeroes tiny offsets so re-centering on a tile stays easy.
+      if (dragState.pixelMode) {
+        const p = gridPointFromMouseEvent(e);
+        if (p) {
+          const zoom = TILE_SIZE / ART_TILE_PX;
+          const ax = p.px - (dragState.grabDX ?? 0);
+          const ay = p.py - (dragState.grabDY ?? 0);
+          const tx = Math.min(state.gridWidth - 1, Math.max(0, Math.floor(ax / TILE_SIZE)));
+          const ty = Math.min(state.gridHeight - 1, Math.max(0, Math.floor(ay / TILE_SIZE)));
+          let ox = Math.round((ax - (tx * TILE_SIZE + TILE_SIZE / 2)) / zoom);
+          let oy = Math.round((ay - (ty * TILE_SIZE + TILE_SIZE / 2)) / zoom);
+          if (Math.abs(ox) <= 2 && Math.abs(oy) <= 2) { ox = 0; oy = 0; }
+          const orig = state.placedObjects[dragState.index];
+          const movedNow = dragState.moved || !orig ||
+            tx !== orig.x || ty !== orig.y ||
+            ox !== (orig.offsetX ?? 0) || oy !== (orig.offsetY ?? 0);
+          if (movedNow && longPressTimerRef.current) clearLongPressTimer();
+          setDragState(prev => {
+            if (!prev) return prev;
+            if (prev.toX === tx && prev.toY === ty && prev.artOffsetX === ox && prev.artOffsetY === oy && prev.moved === movedNow) return prev;
+            return { ...prev, toX: tx, toY: ty, artOffsetX: ox, artOffsetY: oy, moved: movedNow };
+          });
+        }
+        return;
+      }
       if (longPressTimerRef.current && tile && (tile.x !== dragState.fromX || tile.y !== dragState.fromY)) {
         clearLongPressTimer(); // it's a drag now, not a long-press
       }
@@ -909,7 +979,8 @@ export const MapEditor: React.FC = () => {
       const ds = dragState;
       setDragState(null);
       if (ds.moved) {
-        if (ds.toX !== ds.fromX || ds.toY !== ds.fromY) commitMove(ds);
+        // Pixel drags commit even on the same tile — the offset changed.
+        if (ds.pixelMode || ds.toX !== ds.fromX || ds.toY !== ds.fromY) commitMove(ds);
       } else if (e) {
         const entityToolActive = state.selectedTool === 'enemy' || state.selectedTool === 'ally' || state.selectedTool === 'vessel';
         if (ds.kind === 'enemy' && entityToolActive) {
@@ -935,7 +1006,8 @@ export const MapEditor: React.FC = () => {
 
   // Commit a drag-move (Phase 3): blocked only when the target tile already
   // holds a same-kind placement — mirrors the one-per-tile toggle rule.
-  const commitMove = (ds: { kind: RosterKind; index: number; toX: number; toY: number }) => {
+  // Pixel-mode object drags also commit the per-placement art-px offset.
+  const commitMove = (ds: { kind: RosterKind; index: number; toX: number; toY: number; pixelMode?: boolean; artOffsetX?: number; artOffsetY?: number }) => {
     const { kind, index, toX, toY } = ds;
     const occupied = kind === 'enemy'
       ? state.enemies.some((p, i) => i !== index && p.x === toX && p.y === toY)
@@ -956,7 +1028,15 @@ export const MapEditor: React.FC = () => {
       }
       if (kind === 'object') {
         const next = [...prev.placedObjects];
-        next[index] = { ...next[index], x: toX, y: toY };
+        next[index] = ds.pixelMode
+          ? {
+              ...next[index], x: toX, y: toY,
+              // 0 stores as undefined so a re-centered object is byte-
+              // identical to a never-nudged one.
+              offsetX: ds.artOffsetX || undefined,
+              offsetY: ds.artOffsetY || undefined,
+            }
+          : { ...next[index], x: toX, y: toY };
         return { ...prev, placedObjects: next };
       }
       const next = [...prev.collectibles];
@@ -2221,7 +2301,11 @@ export const MapEditor: React.FC = () => {
               {/* Status bar: active tool + cursor tile */}
               <div className="flex items-center justify-between bg-stone-800 rounded px-3 py-1.5 text-xs text-stone-400">
                 <span className="truncate">{activeToolLabel}</span>
-                <span className="flex-shrink-0 tabular-nums">{cursorTile ? `(${cursorTile.x + 1}, ${cursorTile.y + 1})` : '—'}</span>
+                <span className="flex-shrink-0 tabular-nums">
+                  {dragState?.pixelMode && dragState.moved
+                    ? `(${dragState.toX + 1}, ${dragState.toY + 1}) ${(dragState.artOffsetX ?? 0) >= 0 ? '+' : ''}${dragState.artOffsetX ?? 0}, ${(dragState.artOffsetY ?? 0) >= 0 ? '+' : ''}${dragState.artOffsetY ?? 0}px`
+                    : cursorTile ? `(${cursorTile.x + 1}, ${cursorTile.y + 1})` : '—'}
+                </span>
               </div>
               {/* Tile Selector - Shows when Tile tool is selected */}
               {(state.selectedTool === 'custom' || state.selectedTool === 'void' || state.selectedTool === 'empty' || state.selectedTool === 'wall') && (

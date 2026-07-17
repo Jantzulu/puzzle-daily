@@ -1988,7 +1988,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       profPhase('items');
       // Draw objects below entities (sorted by y for proper layering)
       placedObjectsBelow.forEach(obj => {
-        drawPlacedObject(ctx, obj.objectId, obj.x, obj.y);
+        drawPlacedObject(ctx, obj.objectId, obj.x, obj.y, obj.offsetX ?? 0, obj.offsetY ?? 0);
       });
 
       // Vsync-aligned animation clock. Every stored startTime is Date.now()-
@@ -2528,7 +2528,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
 
       // Draw objects above entities (sorted by y for proper layering)
       placedObjectsAbove.forEach(obj => {
-        drawPlacedObject(ctx, obj.objectId, obj.x, obj.y);
+        drawPlacedObject(ctx, obj.objectId, obj.x, obj.y, obj.offsetX ?? 0, obj.offsetY ?? 0);
       });
 
       // Restore context (undo translate offset)
@@ -5024,7 +5024,7 @@ function drawCollectible(
   if (needsScale) ctx.restore();
 }
 
-function drawPlacedObject(ctx: CanvasRenderingContext2D, objectId: string, x: number, y: number) {
+function drawPlacedObject(ctx: CanvasRenderingContext2D, objectId: string, x: number, y: number, placeOffsetX = 0, placeOffsetY = 0) {
   const objectData = loadObject(objectId);
   if (!objectData) return;
 
@@ -5033,9 +5033,10 @@ function drawPlacedObject(ctx: CanvasRenderingContext2D, objectId: string, x: nu
 
   // Offsets are whole art pixels (native-size rule); legacy tile-fraction
   // offsets and the old scale knob are migrated away in assetStorage.
+  // Placement offsets (pixel-perfect editor drag) stack on the asset's own.
   const zoom = TILE_SIZE / ART_TILE_PX;
-  const offsetX = (objectData.offsetX ?? 0) * zoom;
-  const offsetY = (objectData.offsetY ?? 0) * zoom;
+  const offsetX = ((objectData.offsetX ?? 0) + placeOffsetX) * zoom;
+  const offsetY = ((objectData.offsetY ?? 0) + placeOffsetY) * zoom;
 
   // Calculate center position based on anchor point, then apply offsets.
   let centerX = px + TILE_SIZE / 2;

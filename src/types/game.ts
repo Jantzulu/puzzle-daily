@@ -447,6 +447,13 @@ export interface PlacedObject {
   objectId: string;
   x: number;
   y: number;
+  // Pixel-perfect placement (2026-07-17): per-PLACEMENT nudge in whole ART
+  // pixels (24/tile, native-size rule), added on top of the asset's own
+  // offsetX/offsetY. Written by the map editor's pixel-fine drag (Object
+  // tool active). Render-only — objects are pure decoration; the anchor
+  // tile (x, y) still owns z-sorting and the one-object-per-tile rule.
+  offsetX?: number;
+  offsetY?: number;
 }
 
 export interface PlacedCollectible {

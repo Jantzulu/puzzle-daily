@@ -455,7 +455,7 @@ export function drawCollectibleInEditor(
   ctx.fill();
 }
 
-export function drawObject(ctx: CanvasRenderingContext2D, x: number, y: number, objectId: string) {
+export function drawObject(ctx: CanvasRenderingContext2D, x: number, y: number, objectId: string, placeOffsetX = 0, placeOffsetY = 0) {
   const objectData = loadObject(objectId);
   if (!objectData) return;
 
@@ -464,9 +464,10 @@ export function drawObject(ctx: CanvasRenderingContext2D, x: number, y: number, 
 
   // Offsets are whole art pixels (native-size rule); legacy tile-fraction
   // offsets and the old scale knob are migrated away in assetStorage.
+  // Placement offsets (pixel-perfect drag) stack on the asset's own.
   const zoom = TILE_SIZE / ART_TILE_PX;
-  const offsetX = (objectData.offsetX ?? 0) * zoom;
-  const offsetY = (objectData.offsetY ?? 0) * zoom;
+  const offsetX = ((objectData.offsetX ?? 0) + placeOffsetX) * zoom;
+  const offsetY = ((objectData.offsetY ?? 0) + placeOffsetY) * zoom;
 
   // Calculate center position based on anchor point, then apply offsets.
   let centerX = px + TILE_SIZE / 2;
