@@ -2213,12 +2213,15 @@ export const MapEditor: React.FC = () => {
           <div ref={editorContainerRef} className="flex-shrink-0 space-y-4 w-full lg:w-auto">
             <div
               style={{
-                // Layout box = the un-overhung board (same rule as the game:
-                // hallways must not move or resize anything); the canvas
-                // bleeds out of it via negative margins.
-                width: scaledCanvasWidth,
-                height: scaledCanvasHeight,
-                overflow: 'visible'
+                // The editor, unlike the game board, RESERVES layout space
+                // for the corridor overhang (2026-07-18): the game's
+                // negative-margin bleed "sells the illusion" on the play
+                // page, but in the workspace it ran corridors under the
+                // sidebar and the heroes strip. The scale math still
+                // ignores the overhang, so the puzzle renders the same
+                // size with or without hallways — the page just makes room.
+                width: scaledCanvasWidth + canvasOverhang.x * 2 * editorScale,
+                height: scaledCanvasHeight + (canvasOverhang.top + canvasOverhang.bottom) * editorScale,
               }}
             >
               <canvas
@@ -2229,8 +2232,6 @@ export const MapEditor: React.FC = () => {
                 style={{
                   transform: `scale(${editorScale})`,
                   transformOrigin: 'top left',
-                  marginLeft: -(canvasOverhang.x * editorScale),
-                  marginTop: -(canvasOverhang.top * editorScale),
                   cursor: dragState?.moved ? 'grabbing' : undefined,
                   touchAction: 'none'
                 }}
