@@ -5,6 +5,7 @@ import {
   setThemeAsset,
   deleteThemeAsset,
   compressImage,
+  fileToDataUrl,
   exportThemeAssets,
   importThemeAssets,
   notifyThemeAssetsChanged,
@@ -127,8 +128,11 @@ const LogoVariantsEditor: React.FC<LogoVariantsEditorProps> = ({ variants, onCha
 
     setIsUploading(true);
     try {
-      // Compress the image (logo-sized)
-      const dataUrl = await compressImage(file, 128, 64, 0.85);
+      // Same lossless path as the main logo — re-encoding degrades pixel art
+      const dataUrl =
+        file.size <= 2 * 1024 * 1024
+          ? await fileToDataUrl(file)
+          : await compressImage(file, 2048, 256, 0.85);
 
       // Upload to Supabase Storage (falls back to data URL if upload fails)
       const result = await uploadImageWithFallback('logo_variant', dataUrl);
@@ -320,7 +324,9 @@ const AssetUpload: React.FC<AssetUploadProps> = ({ assetKey, value, onChange, on
 
   // Determine max dimensions based on asset type
   const getMaxDimensions = () => {
-    if (assetKey === 'logo') return { maxWidth: 128, maxHeight: 64 };
+    // Logos are horizontal sprite sheets — must pass through at native
+    // resolution or every frame gets crushed (grainy navbar logo)
+    if (assetKey === 'logo') return { maxWidth: 2048, maxHeight: 256 };
     if (assetKey.startsWith('icon')) return { maxWidth: 64, maxHeight: 64 };
     if (assetKey.startsWith('bg')) return { maxWidth: 1024, maxHeight: 1024 };
     return { maxWidth: 512, maxHeight: 512 };
@@ -332,8 +338,13 @@ const AssetUpload: React.FC<AssetUploadProps> = ({ assetKey, value, onChange, on
       setIsLoading(true);
       try {
         const { maxWidth, maxHeight } = getMaxDimensions();
-        // Compress the image first
-        const dataUrl = await compressImage(file, maxWidth, maxHeight, 0.85);
+        // Logos are pixel art: any canvas re-encode degrades them (non-PNG
+        // sources came back as JPEG). Upload the file byte-for-byte unless
+        // it's unreasonably large.
+        const dataUrl =
+          assetKey === 'logo' && file.size <= 2 * 1024 * 1024
+            ? await fileToDataUrl(file)
+            : await compressImage(file, maxWidth, maxHeight, 0.85);
 
         // Upload to Supabase Storage (falls back to data URL if upload fails)
         const result = await uploadImageWithFallback(assetKey, dataUrl);

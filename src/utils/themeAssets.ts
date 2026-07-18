@@ -433,13 +433,21 @@ export function loadThemeAssets(): ThemeAssets {
 }
 
 /**
- * Fetch theme assets from Supabase cloud (assets_draft table).
- * Used on first load when localStorage is empty (e.g. player build on different domain).
- * Caches result in localStorage for subsequent loads.
+ * Fetch theme assets from Supabase cloud (assets_live table).
+ * Player app: always fetches to pick up published updates.
+ * Editor app: pass preferLocal so unpushed local edits survive a refresh —
+ * the cloud copy would otherwise overwrite them (use manual pull to sync).
  */
 let cloudFetchPromise: Promise<ThemeAssets | null> | null = null;
 
-export async function fetchThemeAssetsFromCloud(): Promise<ThemeAssets | null> {
+export async function fetchThemeAssetsFromCloud(
+  options: { preferLocal?: boolean } = {}
+): Promise<ThemeAssets | null> {
+  // Editor keeps its local (possibly unpushed) edits as the source of truth
+  if (options.preferLocal && localStorage.getItem(STORAGE_KEY)) {
+    return loadThemeAssets();
+  }
+
   // Deduplicate concurrent calls
   if (cloudFetchPromise) return cloudFetchPromise;
 
@@ -579,9 +587,9 @@ export function compressImage(
         }
         ctx.drawImage(img, 0, 0, width, height);
 
-        // Try WebP first (better compression), fall back to JPEG for photos or PNG for transparency
-        const isPng = file.type === 'image/png';
-        const format = isPng ? 'image/png' : 'image/jpeg';
+        // JPEG only for JPEG sources (photos); everything else (PNG/GIF/WebP)
+        // encodes as lossless PNG — JPEG frays pixel art and drops transparency
+        const format = file.type === 'image/jpeg' ? 'image/jpeg' : 'image/png';
         const dataUrl = canvas.toDataURL(format, quality);
 
         resolve(dataUrl);

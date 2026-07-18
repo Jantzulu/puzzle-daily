@@ -579,7 +579,9 @@ function App() {
   // If localStorage is empty (e.g. player build on different domain), fetch from cloud
   useEffect(() => {
     applyThemeAssets();
-    fetchThemeAssetsFromCloud();
+    // preferLocal: editor edits live in localStorage until pushed — don't let
+    // the assets_live copy clobber them on refresh
+    fetchThemeAssetsFromCloud({ preferLocal: true });
     const unsubscribe = subscribeToThemeAssets(() => {
       applyThemeAssets();
     });
