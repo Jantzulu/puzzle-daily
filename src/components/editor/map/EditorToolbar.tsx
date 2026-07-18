@@ -116,18 +116,17 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
 
   return (
     <div className="mb-4 md:mb-6 flex flex-wrap items-center gap-2">
-      {/* Title. leading-normal is load-bearing: .theme-root h1 overrides the
-          font-SIZE (heading setting × 2 ≈ 32px+) but text-lg's fixed 28px
-          line-height survived, and truncate's overflow:hidden clipped the
-          glyph tops in the too-short line box (worst on mobile, where the
-          line box was smallest). A relative line-height tracks whatever size
-          the theme forces. */}
-      <h1
-        className="text-lg md:text-2xl leading-normal font-bold truncate max-w-[200px] md:max-w-[320px] mr-1"
+      {/* Title. Deliberately NOT an h1 (2026-07-18, user): .theme-root h1
+          forces the themed heading font-size (~32px+) onto it, which both
+          oversized the title and clipped glyph tops inside truncate's
+          overflow:hidden. A plain element keeps the compact size it asks
+          for; the full name lives in the tooltip. */}
+      <div
+        className="text-base md:text-lg leading-normal font-bold truncate max-w-[180px] md:max-w-[260px] mr-1"
         title={puzzleName || 'Map Editor'}
       >
         {puzzleName || 'Map Editor'}
-      </h1>
+      </div>
 
       {/* Primary verbs */}
       <button
@@ -405,8 +404,10 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
         )}
       </div>
 
-      {/* Right cluster: grid size + undo/redo + shortcuts */}
-      <div className="flex items-center gap-2 ml-auto flex-wrap">
+      {/* Grid size + undo/redo + shortcuts — sit WITH the verbs instead of
+          pushed to the page's far corner (2026-07-18, user: the controls
+          belong near the puzzle, and on one row with the title). */}
+      <div className="flex items-center gap-2 flex-wrap">
         <div className="flex items-center gap-3 bg-stone-800 px-3 py-1.5 rounded">
           <span className="text-sm font-medium text-parchment-300 hidden sm:inline">Grid:</span>
           <div className="flex items-center gap-1">
