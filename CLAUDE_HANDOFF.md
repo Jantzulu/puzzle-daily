@@ -192,6 +192,39 @@ The Reflect status effect bounces incoming projectiles back:
 
 ## Pending Tasks
 
+### Soul-return + sub-attributes pair — ✅ SHIPPED 2026-07-21
+
+**Soul-return on resurrect (`d5f3569` + lint follow-up `b1c681b`,
+render-only):** the departing soul's inverse — the corpse silhouette
+fades IN while descending into the revived body (SOUL_RETURN_MS 1200,
+ease-in, same silhouette trick/wobble/toggle/death-sheet gate as
+drawSoul). Stamped in the EXISTING death-flip effects' revival branches
+(prev*DeadStateRef) on a mid-run dead→alive flip; gate is
+`gameStatus !== 'setup'` — retry/reset flips arrive as setup and stay
+silent, finishing-turn resurrects (victory/defeat) still play. Descent
+targets the entity's CURRENT tile; refs self-clean (finish, re-death,
+puzzle change). Necromancy never fires it by construction — it raises a
+NEW entity and despawns the corpse.
+
+**Sub-attributes (`78a1e65`):** AttributeEntry = string | {text,
+subItems} on Character + Enemy. NO stored-data migration — strings
+remain the storage form; editors convert an entry to the object shape
+only when a sub-item is added and COLLAPSE BACK to a string when the
+last is removed (untouched assets stay byte-identical; cloud diffs
+stay clean). All reads/writes via utils/attributeShape.ts
+(attributeText / attributeSubItems / withAttributeText /
+withAttributeSubItems) — never typeof inline. Editors: "+ Sub-item"
+affordance mirroring sub-steps in CharacterEditor + EnemyEditor
+(allies ride EnemyEditor). Renderers: EnemyDisplay, CharacterSelector,
+compendium EnemyDetail — indented ◦ lines. Known pre-existing gaps
+deliberately untouched: compendium CharacterDetail renders NO
+attributes section; vessels can't carry attributes
+(vesselToEnemyAsset field-copy drops them).
+
+636 tests, tsc, lint (51-warning baseline), build green. BOTH AWAITING
+USER TEST (authored resurrect spell needed for the soul; sub-items
+need editor login).
+
 ### Info-panel previews — ✅ SHIPPED 2026-07-21 (`65abfbf`)
 
 Full-disclosure rule (user-locked): the game-page info panels preview

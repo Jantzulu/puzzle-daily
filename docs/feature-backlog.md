@@ -619,13 +619,17 @@ several of those elements with art. This batch is the new working list.
 Deliveries (see hallway dynamics batch) and eyes-in-the-dark (same
 section) are also active picks from this conversation.
 
-- [ ] **FEATURE — Entity editors: sub-attributes (nesting parity with
-  action steps).** In CharacterEditor/EnemyEditor the descriptive
-  Action Steps list supports nested sub-steps (`step.subSteps`,
-  "+ Sub-step" button), but the Attributes list is a flat `string[]`
-  — no way to nest detail under an attribute. Add the same sub-item
-  affordance. Touches the data shape (migration) + every surface that
-  renders attributes (Slab/info panels). *Captured 2026-07-21.*
+- [x] **FEATURE — Entity editors: sub-attributes (nesting parity with
+  action steps).** ✅ SHIPPED 2026-07-21 (`78a1e65`): AttributeEntry =
+  string | {text, subItems} — strings stay the storage form (no
+  migration; editors convert to objects only when a sub-item exists,
+  collapse back when emptied); utils/attributeShape.ts helpers gate
+  every read/write. "+ Sub-item" in CharacterEditor + EnemyEditor
+  (allies ride it); rendered in both info panels + compendium
+  EnemyDetail as indented ◦ lines. Pre-existing gaps left as-is:
+  compendium CharacterDetail has no attributes section; vessels can't
+  carry attributes (vesselToEnemyAsset drops them). Original capture:
+  the Attributes list was a flat `string[]`. *Captured 2026-07-21.*
 
 - [ ] **POLISH/AUDIT — Dev-page Settings tab cleanup.** The Settings
   tab's organization is "a mess": tab layout is scattered, some
@@ -633,10 +637,15 @@ section) are also active picks from this conversation.
   at all. Wants a full audit (what does each setting still do?) plus a
   visual/organization pass. *Captured 2026-07-21.*
 
-- [ ] **POLISH — Soul-return visual on resurrect.** Souls leave the
-  body on death; the inverse should play when an entity is revived by
-  a RESURRECT ability (explicitly NOT necromancy — that raises a
-  different thing). *Captured 2026-07-21.*
+- [x] **POLISH — Soul-return visual on resurrect.** ✅ SHIPPED
+  2026-07-21 (`d5f3569` + `b1c681b`): inverse of the departing soul —
+  corpse silhouette fades in while descending into the revived body
+  (1200ms ease-in), stamped on mid-run dead→alive flips in the existing
+  death-flip effects; retry/reset (gameStatus setup) stays silent;
+  same death_souls toggle + death-sheet gate. Necromancy excluded by
+  construction (raises a NEW entity, no dead→alive flip). Render-only.
+  Original capture: souls leave the body on death; the inverse should
+  play on RESURRECT (explicitly NOT necromancy). *Captured 2026-07-21.*
 
 - [x] **FEATURE — Info panels preview scheduled/future entities.**
   ✅ SHIPPED 2026-07-21 (`65abfbf`): EnemyDisplay gives visitor
