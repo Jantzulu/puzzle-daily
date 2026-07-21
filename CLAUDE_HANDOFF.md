@@ -192,6 +192,36 @@ The Reflect status effect bounces incoming projectiles back:
 
 ## Pending Tasks
 
+### Escort objectives + quest text override + per-puzzle help — ✅ SHIPPED 2026-07-21 (`de01f1a`)
+
+Three-part batch (backlog entries all marked shipped):
+- **`entity_escapes` win condition** — noble_escapes generalized to
+  arbitrary designated ASSETS (params.escortEntityIds: hero
+  characterIds + enemy/ally enemyIds; every placed entity of each
+  designated asset must escape). Two authorable detection rules
+  (params.escapeRule): **'standing'** (default) = end-of-turn census on
+  an opening tile via `processEscortExits` (same timing/semantics as
+  processNobleExits — alive-despawned state, defeat_all excusal); or
+  **'walk_through'** = direction-of-travel step out the mouth, sharing
+  the flee-trait machinery in actions.ts (`mouthExitKind` resolves
+  'escort' | 'flee' | null; `exitThroughMouth` stamps the exit —
+  escort exits stay ALIVE-despawned unlike flee's DEPART, so they
+  satisfy the objective instead of reading as defeated).
+  params.escapeOpening narrows to one opening for both rules.
+  IMPLIED-PROTECT: a designated entity dying = instant defeat.
+- **WinCondition.customLabel** — authored quest-banner text shown
+  verbatim instead of the auto-phrased label (Game.tsx label pass).
+- **Puzzle.questDescription** — Details-tab textarea rendered as a
+  highlighted preamble block above the generic quest (?) help
+  (HelpOverlay `preamble` prop, plain-text JSX — never the rich-HTML
+  path). Rides EditorState + the EditorPuzzleState autosave cache.
+
+Editor: RulesPanel escort picker (designated-asset multi-select +
+escape rule + opening + custom label). 8 pins in
+escort-objective.test.ts; 627 tests, tsc, lint, prod build green.
+AWAITING USER TEST (designate an entity, route it out, check banner
+text + help preamble).
+
 ### Flee-through-openings — ✅ SHIPPED 2026-07-21 (`f29397e`)
 
 `Enemy.exitsThroughOpenings` (EnemyEditor checkbox, enemies + allies):

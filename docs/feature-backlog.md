@@ -675,8 +675,14 @@ section) are also active picks from this conversation.
   the arrow's next-step prediction must run the same mouth-check-
   before-wallBehavior rule as the engine. *Captured 2026-07-21.*
 
-- [ ] **FEATURE — Escort-through-opening win condition (captured
-  2026-07-21).** Generalize noble_escapes: quest to get a SPECIFIC
+- [x] **FEATURE — Escort-through-opening win condition (captured
+  2026-07-21).** ✅ SHIPPED same day (`de01f1a`) as `entity_escapes` —
+  designation by ASSET id (params.escortEntityIds), escape rule
+  authorable per condition (params.escapeRule: 'standing' census
+  default, or 'walk_through' direction-of-travel — both rules shipped
+  rather than the standing-only lock proposed below). Implied-protect: a
+  designated entity dying = instant defeat. Original capture below.
+  Generalize noble_escapes: quest to get a SPECIFIC
   enemy OR hero OR ally through a specific-or-any hallway/door.
   Machinery that already exists from the Noble work: alive-despawned
   exit state, end-of-turn census (processNobleExits), escapeOpening
@@ -690,14 +696,17 @@ section) are also active picks from this conversation.
   Only condition-designated entities ever escape this way — an
   undesignated hero standing on a mouth goes nowhere.
 
-- [ ] **FEATURE — Quest text override (captured 2026-07-21).** Optional
+- [x] **FEATURE — Quest text override (captured 2026-07-21).**
+  ✅ SHIPPED same day (`de01f1a`, WinCondition.customLabel). Optional
   custom-label field per win condition; the quest banner shows the
   authored text verbatim when present, auto-phrasing otherwise.
   Pairs naturally with the escort condition (auto-phrasing will
   mangle it). Small.
 
-- [ ] **FEATURE — Per-puzzle quest description in the (?) help panel
-  (captured 2026-07-21).** Optional Puzzle field (Details tab
+- [x] **FEATURE — Per-puzzle quest description in the (?) help panel
+  (captured 2026-07-21).** ✅ SHIPPED same day (`de01f1a`,
+  Puzzle.questDescription → HelpOverlay preamble block).
+  Optional Puzzle field (Details tab
   textarea, a sentence or two) rendered in the quest help window as
   its own puzzle-specific section, clearly differentiated from the
   generic what-is-a-quest content (which stays). Rides save/load/
