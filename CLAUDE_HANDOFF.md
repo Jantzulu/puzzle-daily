@@ -192,6 +192,24 @@ The Reflect status effect bounces incoming projectiles back:
 
 ## Pending Tasks
 
+### Info-panel previews — ✅ SHIPPED 2026-07-21 (`65abfbf`)
+
+Full-disclosure rule (user-locked): the game-page info panels preview
+EVERYTHING scheduled. EnemyDisplay now keeps scheduled-visitor
+templates (recurrence + despawned + no spawnedOnTurn) in the grouping —
+they render a real card (selectable/expandable like any other), dimmed
+opacity-60 (distinct from the dead opacity-50), with a "Visits turn N[,
+every M]" copper line under the HP row; they add zero to "remaining"
+(win-exempt) and the party split routes hero-party visitors to the
+Allies side. Departed copies/expired summons still drop out
+(spawnedOnTurn distinguishes them from templates). ItemsDisplay:
+delivery placements contribute "Delivered turn N[, gone turn D][,
+repeats every M]" lines (deduped per item; ItemWithSources.deliveries).
+NOTE: walk-in-assigned enemies (entersFrom, no recurrence) never needed
+work — they're normal on-board placements; the walk-in is render
+theater. Vessels have NO game-page panel at all (pre-existing,
+untouched). AWAITING USER TEST alongside deliveries.
+
 ### Deliveries — ✅ SHIPPED 2026-07-21 (`cfa97c0` engine, `e8ba121` render, `5a2758b` editor)
 
 `PlacedCollectible.delivery {arriveTurn, deadlineTurn?, repeatEvery?,

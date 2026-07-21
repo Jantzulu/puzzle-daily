@@ -638,7 +638,14 @@ section) are also active picks from this conversation.
   a RESURRECT ability (explicitly NOT necromancy — that raises a
   different thing). *Captured 2026-07-21.*
 
-- [ ] **FEATURE — Info panels preview scheduled/future entities.** The
+- [x] **FEATURE — Info panels preview scheduled/future entities.**
+  ✅ SHIPPED 2026-07-21 (`65abfbf`): EnemyDisplay gives visitor
+  templates a real dimmed card ("Visits turn N, every M" — selectable/
+  expandable, zero "remaining" weight, ally-side works); ItemsDisplay
+  adds "Delivered turn N, gone turn D, repeats every M" lines to
+  delivery items. Walk-in-assigned enemies without recurrence were
+  already visible (normal placements — the walk-in is render theater).
+  Original capture below. The
   board info panels only show entities currently on the board — an
   enemy scheduled to walk in from a hallway on turn 3 is invisible in
   the Enemies tab until it spawns. Players should be able to read the
