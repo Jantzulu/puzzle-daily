@@ -643,7 +643,12 @@ section) are also active picks from this conversation.
   defeat_all_enemies — curate via win checkboxes) + existing walk-out
   render, per-step for multi-tile moves. Open sub-decision: does a
   CLOSED door count as an exit (lean: no — shut door is a wall until
-  it opens). *Captured 2026-07-21.*
+  it opens). **Visual requirement (user, same day): the movement
+  arrow must show the exit** — when the entity will leave through the
+  mouth next turn, the arrow keeps pointing INTO the hallway instead
+  of adopting the wall-behavior turn (e.g. no "turn right" preview);
+  the arrow's next-step prediction must run the same mouth-check-
+  before-wallBehavior rule as the engine. *Captured 2026-07-21.*
 
 - [ ] **IDEA — Slab "see it in action" entity showcases (information
   levels).** Feedback from playtesters: the in-game Test buttons
