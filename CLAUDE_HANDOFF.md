@@ -629,7 +629,57 @@ stay in the backlog, not requested yet.
    ungated. AWAITING USER FEEL-CHECK (is 2s right? knob is the
    constant).
 
-### Next session — start here
+### Next session — start here (set 2026-07-21)
+
+**The user asked for the next session to tackle the two open pre-launch
+items from the showcase arc.** Both are captured in
+docs/feature-backlog.md with design state noted; read those entries
+first. Settings audit is ON HOLD (user, 2026-07-21) — do not resume it
+unprompted.
+
+**1. Showcase distribution + Slab reveal timing** (backlog: "Showcase
+distribution + Slab REVEAL TIMING" — design LOCKED with the user, do
+not relitigate):
+- Build the player-app fetch path for published showcase puzzles:
+  players today receive ONLY the daily (daily_schedule→puzzles_live via
+  supabaseService.fetchTodaysPuzzle); their saved_puzzles is empty, so
+  the Slab's device-local puzzle scan finds nothing. Publishing to
+  puzzles_live WITHOUT a daily schedule is the distribution channel.
+- Implement the reveal rule on top: showcase publishing PRIMES (assets
+  live, demo playable) but never REVEALS; an asset's Slab page appears
+  when the first RELEASED, NON-showcase puzzle whose transitive asset
+  graph contains it goes live (scheduled daily = its date arriving).
+  The graph walk is `collectPuzzleAssetIds` in
+  utils/publishDependencies.ts — exported for exactly this.
+  hideFromCompendium stays the manual override on top.
+- Open implementation questions to settle while building: where the
+  reveal computation runs (client over fetched released-puzzle list vs
+  a derived column stamped at publish time), and caching (mirror
+  dailyPuzzleCache). Related small leak: the "Select Dungeon" dropdown
+  in Game.tsx renders for players (task chip offered 2026-07-21;
+  hideTestButtons precedent).
+
+**2. Content production dashboard** (backlog: "Content production
+dashboard" — **DESIGN WITH THE USER FIRST**, explicitly): per-asset /
+per-puzzle completion at a glance (description written? published?
+showcase attached + primed? debut level scheduled?). Data joins three
+sources: Supabase publish columns (assets_draft/assets_live status),
+puzzle JSON (showcase config, questDescription), and asset JSON
+(descriptions, hideFromCompendium). The "primed, awaiting debut" state
+from item 1 is a natural column. Open design: completeness criteria
+per asset type, where it lives (Asset Manager tab vs own page),
+manual checklist fields vs derived-only. Bring options, ask before
+building.
+
+**Also outstanding:** the 2026-07-21 mega-batch is AWAITING USER TEST
+(escort objectives, deliveries, info-panel previews, soul-return,
+sub-attributes, Slab showcases + round 2, spawn levers,
+flee-through-openings) — expect feedback rounds to interleave.
+
+---
+
+**Prior "start here" (2026-07-15, mobile perf — arc CLOSED, kept for
+context):**
 
 **MOBILE RENDER PERF (profiled on-device 2026-07-15 — JS EXONERATED, awaiting round-2 numbers).** The user's phone shows jitter on a SIMPLE level at DPR 2. History: July-15 cheap wins shipped (gradient caches, vignette bake, atmosphere toggle), user bisected via the ⚡ Effects tab — no toggle changed smoothness. This session built the **frame profiler HUD** (`?perf=1` / Effects tab / `togglePerfHud()`; `frameProfiler.ts`, marks in AnimatedGameBoard's animate loop; commit `845019d`) because the test iPhone can't be remote-profiled from Windows.
 
