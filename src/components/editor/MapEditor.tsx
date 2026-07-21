@@ -24,6 +24,7 @@ import { DetailsPanel } from './map/DetailsPanel';
 import { PlacedRoster, type RosterKind } from './map/PlacedRoster';
 import { InspectPopover } from './map/InspectPopover';
 import { ObjectInspectPopover } from './map/ObjectInspectPopover';
+import { CollectibleInspectPopover } from './map/CollectibleInspectPopover';
 import { ToolsRow } from './map/ToolsRow';
 import { TilePalette } from './map/TilePalette';
 import { EnemyPalette } from './map/EnemyPalette';
@@ -190,6 +191,10 @@ export const MapEditor: React.FC = () => {
   // per popover session (the ref arms on open, fires on the first change).
   const [objectInspect, setObjectInspect] = useState<{ index: number; screenX: number; screenY: number } | null>(null);
   const objectInspectHistoryPushedRef = useRef(false);
+  // Collectible inspect popover (2026-07-21): plain click on a placed item
+  // with the Item tool — delivery schedule authoring. Same session rules.
+  const [collectibleInspect, setCollectibleInspect] = useState<{ index: number; screenX: number; screenY: number } | null>(null);
+  const collectibleInspectHistoryPushedRef = useRef(false);
   // Combat log state + helpers will be re-introduced in Phase 5 (data plumbing
   // via <Game/> onTurnExecuted callback + a sidebar layout). Removed here so
   // the file stays clean while that's in flight; bring back as a small focused
@@ -1030,6 +1035,12 @@ export const MapEditor: React.FC = () => {
           // removal moves to right-click / long-press / roster / popover.
           objectInspectHistoryPushedRef.current = false;
           setObjectInspect({ index: ds.index, screenX: e.clientX, screenY: e.clientY });
+        } else if (ds.kind === 'collectible' && state.selectedTool === 'collectible') {
+          // Plain click on a placed item with the Item tool: delivery
+          // popover — replaces the old click-toggle-remove, matching the
+          // entity/object precedent (removal = right-click / long-press).
+          collectibleInspectHistoryPushedRef.current = false;
+          setCollectibleInspect({ index: ds.index, screenX: e.clientX, screenY: e.clientY });
         } else {
           // Released in place — run the normal click for this tile.
           saveSnapshotBeforeDraw();
@@ -2631,6 +2642,40 @@ export const MapEditor: React.FC = () => {
             setObjectInspect(null);
           }}
           onClose={() => setObjectInspect(null)}
+        />
+      )}
+
+      {/* Collectible inspect popover (2026-07-21): delivery schedule */}
+      {collectibleInspect && state.collectibles[collectibleInspect.index] && (
+        <CollectibleInspectPopover
+          col={state.collectibles[collectibleInspect.index]}
+          position={{ x: collectibleInspect.screenX, y: collectibleInspect.screenY }}
+          entranceOptions={[
+            ...state.doors
+              .filter(d => isValidDoor(d, state.tiles, state.gridWidth, state.gridHeight))
+              .map(d => ({ kind: 'door' as const, x: d.x, y: d.y, side: d.side })),
+            ...state.hallways
+              .filter(h => isValidHallway(h, state.tiles, state.gridWidth, state.gridHeight))
+              .map(h => ({ kind: 'hallway' as const, x: h.x, y: h.y, side: h.side })),
+          ]}
+          onSetDelivery={(delivery) => {
+            const index = collectibleInspect.index;
+            // Same one-undo-per-popover-session rule as the object popover.
+            if (!collectibleInspectHistoryPushedRef.current) {
+              collectibleInspectHistoryPushedRef.current = true;
+              pushToHistory();
+            }
+            setState(prev => {
+              const next = [...prev.collectibles];
+              next[index] = { ...next[index], delivery };
+              return { ...prev, collectibles: next };
+            });
+          }}
+          onRemove={() => {
+            handleRemovePlacement('collectible', collectibleInspect.index);
+            setCollectibleInspect(null);
+          }}
+          onClose={() => setCollectibleInspect(null)}
         />
       )}
 

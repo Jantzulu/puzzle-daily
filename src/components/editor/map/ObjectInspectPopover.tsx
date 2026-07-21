@@ -56,8 +56,9 @@ const AxisControl: React.FC<{
 );
 
 // Blank = lever off (undefined). Values clamp to >= min so "appears at
-// turn 0" can't be authored (that's just the blank default).
-const TurnInput: React.FC<{
+// turn 0" can't be authored (that's just the blank default). Exported for
+// the collectible popover's delivery section (same input semantics).
+export const TurnInput: React.FC<{
   label: string;
   value: number | undefined;
   min: number;
