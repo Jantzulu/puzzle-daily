@@ -774,20 +774,30 @@ section) are also active picks from this conversation.
   later (never delete; they're optional props, trivial to re-enable).**
   *Captured 2026-07-21.*
 
-- [ ] **FEATURE — Showcase distribution to players (captured
-  2026-07-21).** The Slab enumerates puzzles from the DEVICE (bundled +
-  localStorage saved_puzzles). Team devices get showcase puzzles via
-  the editor's cloud pull, so showcases work internally today — but a
-  real player's saved_puzzles is EMPTY (players only receive the daily
-  via daily_schedule→puzzles_live). Before launch, the player app needs
-  a fetch path for published showcase puzzles (e.g. query puzzles_live
-  for rows whose puzzle JSON has `showcase`, cache like the daily) —
-  publishing to puzzles_live WITHOUT scheduling as a daily is the
-  natural channel: approved/published status required, never appears in
-  rotation. Related leak noted same day: the "Select Dungeon" dropdown
-  in Game.tsx renders for players too (comment says dev-use; only the
-  bundled test puzzle shows since saved_puzzles is empty — but it
-  should be gated like the Test buttons before launch).
+- [ ] **FEATURE — Showcase distribution + Slab REVEAL TIMING (captured
+  2026-07-21, design LOCKED with user same day).** Two coupled
+  pre-launch pieces:
+  (a) DISTRIBUTION: the Slab enumerates puzzles from the DEVICE
+  (bundled + localStorage saved_puzzles). Team devices get showcase
+  puzzles via the editor's cloud pull; a real player's saved_puzzles is
+  EMPTY (players only receive the daily via
+  daily_schedule→puzzles_live). The player app needs a fetch path for
+  published showcase puzzles (query puzzles_live for rows whose JSON
+  has `showcase`, cache like the daily) — publishing WITHOUT
+  scheduling as a daily is the channel; never appears in rotation.
+  (b) REVEAL RULE (user design): publishing a SHOWCASE level primes
+  everything (its assets go live for playability) but must NOT reveal
+  anything in the Slab. An asset's Slab page appears the moment the
+  first RELEASED, NON-showcase puzzle containing it goes live (for a
+  scheduled daily: its date arriving) — and because the showcase was
+  primed earlier, the page arrives complete, demo attached. Rule:
+  asset visible in player Slab iff ∃ released puzzle WITHOUT
+  `showcase` config whose transitive asset graph
+  (collectPuzzleAssetIds — the hardened walker, `b5b610f`, exported
+  for exactly this) contains the asset. hideFromCompendium stays the
+  manual override on top. Related leak: the "Select Dungeon" dropdown
+  in Game.tsx renders for players too (dev-use comment; gate like the
+  Test buttons before launch — task chip offered).
 
 - [ ] **FEATURE — Content production dashboard (captured 2026-07-21,
   DESIGN WITH USER before building).** Team-internal at-a-glance

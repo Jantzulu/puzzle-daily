@@ -192,6 +192,26 @@ The Reflect status effect bounces incoming projectiles back:
 
 ## Pending Tasks
 
+### Publish-dependency walker hardened — ✅ SHIPPED 2026-07-21 (`b5b610f`)
+
+Publishing a puzzle auto-publishes its unpublished dependencies (the
+ONLY asset-publish path besides theme settings — there is no standalone
+publish-asset button). The old scanner missed transitive refs; the new
+`collectPuzzleAssetIds` fixpoint walker (publishDependencies.ts,
+EXPORTED for the future Slab reveal rule) deep-walks the puzzle and
+every discovered asset object via the uniform reference-field
+vocabulary — statuses from spells/starting effects, death drops,
+THROW_PLACE items, vessel transformEnemyId (raw vessel object; the
+getEnemy adapter drops it), summonEnemyId, showcase heroes + attach
+targets, both tile-id field names, contactDamageSpellVisualId.
+Builtins skip; deleted ids surface as isMissing. NEW REFERENCE FIELDS
+MUST use an existing name from REF_FIELDS or be added there. 5 pins in
+publish-dependencies.test.ts. **Slab reveal-timing design locked with
+user (see backlog "Showcase distribution + Slab REVEAL TIMING"):
+showcase publishing primes but never reveals; an asset's Slab page
+appears when the first released NON-showcase puzzle containing it
+(per this walker) goes live.**
+
 ### Showcase round 2 — ✅ SHIPPED 2026-07-21 (`a0057ad`, user feedback batch)
 
 (1) Showcases attach to ANY Slab asset type — ShowcaseSection on all
