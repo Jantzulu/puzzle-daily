@@ -3,6 +3,7 @@ import type { PlacedEnemy, EnemyBehavior, ActionStep } from '../../types/game';
 import { getEnemy } from '../../data/enemies';
 import { SpriteThumbnail } from '../editor/SpriteThumbnail';
 import { RichTextRenderer } from '../editor/RichTextEditor';
+import { attributeText, attributeSubItems } from '../../utils/attributeShape';
 import { HelpButton } from './HelpOverlay';
 import { GemMesh } from './GemMesh';
 import { LintelMesh } from './LintelMesh';
@@ -459,9 +460,17 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
                     <p className="text-xs font-semibold text-stone-500 uppercase tracking-wide mb-1 text-center">Attributes</p>
                     <ul className="text-xs lg:text-sm text-stone-300 space-y-1">
                       {renderedEnemyData.attributes!.map((attr, idx) => (
-                        <li key={idx} className="flex items-baseline gap-1">
-                          <span className="text-stone-400 flex-shrink-0">•</span>
-                          <RichTextRenderer html={attr} />
+                        <li key={idx}>
+                          <div className="flex items-baseline gap-1">
+                            <span className="text-stone-400 flex-shrink-0">•</span>
+                            <RichTextRenderer html={attributeText(attr)} />
+                          </div>
+                          {(attributeSubItems(attr) || []).map((sub, subIdx) => (
+                            <div key={subIdx} className="flex items-baseline gap-1 ml-3 mt-0.5">
+                              <span className="text-stone-500 flex-shrink-0">◦</span>
+                              <RichTextRenderer html={sub} />
+                            </div>
+                          ))}
                         </li>
                       ))}
                     </ul>

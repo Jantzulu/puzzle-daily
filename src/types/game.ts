@@ -28,6 +28,20 @@ export interface ActionStep {
   subSteps?: string[];
 }
 
+/**
+ * Attribute entry (2026-07-21): nesting parity with action steps — an
+ * attribute bullet may carry indented sub-items. Plain strings remain
+ * valid (all pre-existing data); editors keep entries as strings until a
+ * sub-item is added and collapse back when the last one is removed, so
+ * untouched assets stay byte-identical. Read through
+ * utils/attributeShape.ts helpers, never by typeof at call sites.
+ */
+export interface AttributeItem {
+  text: string;
+  subItems?: string[];
+}
+export type AttributeEntry = string | AttributeItem;
+
 // ==========================================
 // CUSTOM TILE TYPE SYSTEM
 // ==========================================
@@ -292,7 +306,7 @@ export interface Character {
   isNoble?: boolean; // Noble marker (backlog: heroes can be Nobles too) — this hero counts for the noble win/lose conditions when placed
   behavior: CharacterAction[];
   actionSteps?: ActionStep[]; // Numbered action steps displayed on play/playtest pages
-  attributes?: string[];    // Attribute bullets displayed alongside action steps
+  attributes?: AttributeEntry[];    // Attribute bullets displayed alongside action steps (string or {text, subItems})
   canOverlapEntities?: boolean; // If true, can walk through other entities and trigger overlap events (ghost mode)
   behavesLikeWall?: boolean; // If true, triggers wall collision behaviors when alive
   behavesLikeWallDead?: boolean; // If true, triggers wall collision behaviors when dead
@@ -333,7 +347,7 @@ export interface Enemy {
   behavior?: EnemyBehavior;
   tooltipSteps?: string[]; // Legacy — superseded by actionSteps
   actionSteps?: ActionStep[]; // Numbered steps describing what this enemy does
-  attributes?: string[]; // Passive traits shown alongside action steps
+  attributes?: AttributeEntry[]; // Passive traits shown alongside action steps (string or {text, subItems})
   canOverlapEntities?: boolean; // If true, can walk through other entities and trigger overlap events (ghost mode)
   behavesLikeWall?: boolean; // If true, triggers wall collision behaviors when alive
   behavesLikeWallDead?: boolean; // If true, triggers wall collision behaviors when dead

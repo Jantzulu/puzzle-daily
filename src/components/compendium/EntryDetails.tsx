@@ -15,6 +15,7 @@ import {
 import type { StatusEffectAsset, ActionStep } from '../../types/game';
 import { SpriteThumbnail } from '../editor/SpriteThumbnail';
 import { RichTextRenderer } from '../editor/RichTextEditor';
+import { attributeText, attributeSubItems } from '../../utils/attributeShape';
 import { TileSpritePreview, StatusEffectIcon } from './EntryCards';
 
 // ============ SHARED UI HELPERS ============
@@ -170,9 +171,17 @@ export const EnemyDetail: React.FC<{ enemy: CustomEnemy }> = ({ enemy }) => {
           <h3>Attributes</h3>
           <ul className="space-y-1 text-sm" style={{ color: 'var(--text-primary)' }}>
             {enemy.attributes.map((attr, idx) => (
-              <li key={idx} className="flex items-baseline gap-1">
-                <span className="flex-shrink-0">•</span>
-                <RichTextRenderer html={attr} />
+              <li key={idx}>
+                <div className="flex items-baseline gap-1">
+                  <span className="flex-shrink-0">•</span>
+                  <RichTextRenderer html={attributeText(attr)} />
+                </div>
+                {(attributeSubItems(attr) || []).map((sub, subIdx) => (
+                  <div key={subIdx} className="flex items-baseline gap-1 ml-3 mt-0.5">
+                    <span className="flex-shrink-0">◦</span>
+                    <RichTextRenderer html={sub} />
+                  </div>
+                ))}
               </li>
             ))}
           </ul>

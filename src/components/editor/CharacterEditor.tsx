@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { toast } from '../shared/Toast';
 import { findAssetUsages, formatUsageWarning } from '../../utils/assetDependencies';
 import { scaledNameClass } from '../../utils/textScale';
+import { attributeText, attributeSubItems, withAttributeText, withAttributeSubItems } from '../../utils/attributeShape';
 import { Direction, ActionType } from '../../types/game';
 import type { CharacterAction } from '../../types/game';
 import type { CustomCharacter, CustomSprite } from '../../utils/assetStorage';
@@ -560,54 +561,97 @@ export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ init
                         </p>
                         <div className="space-y-2">
                           {(editing.attributes || []).map((attr, index) => (
-                            <div key={index} className="flex gap-2 items-center">
-                              <div className="flex flex-col gap-0.5">
+                            <div key={index}>
+                              <div className="flex gap-2 items-center">
+                                <div className="flex flex-col gap-0.5">
+                                  <button
+                                    onClick={() => {
+                                      if (index === 0) return;
+                                      const newAttrs = [...(editing.attributes || [])];
+                                      [newAttrs[index - 1], newAttrs[index]] = [newAttrs[index], newAttrs[index - 1]];
+                                      updateCharacter({ attributes: newAttrs });
+                                    }}
+                                    disabled={index === 0}
+                                    className="px-1 py-0.5 text-xs bg-stone-600 rounded hover:bg-stone-500 disabled:opacity-30"
+                                  >
+                                    ↑
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      const attrs = editing.attributes || [];
+                                      if (index === attrs.length - 1) return;
+                                      const newAttrs = [...attrs];
+                                      [newAttrs[index], newAttrs[index + 1]] = [newAttrs[index + 1], newAttrs[index]];
+                                      updateCharacter({ attributes: newAttrs });
+                                    }}
+                                    disabled={index === (editing.attributes?.length || 0) - 1}
+                                    className="px-1 py-0.5 text-xs bg-stone-600 rounded hover:bg-stone-500 disabled:opacity-30"
+                                  >
+                                    ↓
+                                  </button>
+                                </div>
+                                <span className="text-stone-400 text-sm">•</span>
+                                <div className="flex-1">
+                                  <RichTextEditor
+                                    value={attributeText(attr)}
+                                    onChange={(value) => {
+                                      const newAttrs = [...(editing.attributes || [])];
+                                      newAttrs[index] = withAttributeText(newAttrs[index], value);
+                                      updateCharacter({ attributes: newAttrs });
+                                    }}
+                                    placeholder="Enter attribute..."
+                                  />
+                                </div>
                                 <button
                                   onClick={() => {
-                                    if (index === 0) return;
-                                    const newAttrs = [...(editing.attributes || [])];
-                                    [newAttrs[index - 1], newAttrs[index]] = [newAttrs[index], newAttrs[index - 1]];
-                                    updateCharacter({ attributes: newAttrs });
+                                    const newAttrs = (editing.attributes || []).filter((_, i) => i !== index);
+                                    updateCharacter({ attributes: newAttrs.length > 0 ? newAttrs : undefined });
                                   }}
-                                  disabled={index === 0}
-                                  className="px-1 py-0.5 text-xs bg-stone-600 rounded hover:bg-stone-500 disabled:opacity-30"
+                                  className="px-2 py-1 text-sm bg-blood-700 rounded hover:bg-blood-600"
                                 >
-                                  ↑
-                                </button>
-                                <button
-                                  onClick={() => {
-                                    const attrs = editing.attributes || [];
-                                    if (index === attrs.length - 1) return;
-                                    const newAttrs = [...attrs];
-                                    [newAttrs[index], newAttrs[index + 1]] = [newAttrs[index + 1], newAttrs[index]];
-                                    updateCharacter({ attributes: newAttrs });
-                                  }}
-                                  disabled={index === (editing.attributes?.length || 0) - 1}
-                                  className="px-1 py-0.5 text-xs bg-stone-600 rounded hover:bg-stone-500 disabled:opacity-30"
-                                >
-                                  ↓
+                                  ✕
                                 </button>
                               </div>
-                              <span className="text-stone-400 text-sm">•</span>
-                              <div className="flex-1">
-                                <RichTextEditor
-                                  value={attr}
-                                  onChange={(value) => {
-                                    const newAttrs = [...(editing.attributes || [])];
-                                    newAttrs[index] = value;
-                                    updateCharacter({ attributes: newAttrs });
-                                  }}
-                                  placeholder="Enter attribute..."
-                                />
-                              </div>
+
+                              {/* Sub-items (nesting parity with action sub-steps) */}
+                              {(attributeSubItems(attr) || []).map((sub, subIndex) => (
+                                <div key={subIndex} className="flex gap-2 items-center mt-1 ml-10">
+                                  <span className="text-stone-500 text-xs">◦</span>
+                                  <div className="flex-1">
+                                    <RichTextEditor
+                                      value={sub}
+                                      onChange={(value) => {
+                                        const newAttrs = [...(editing.attributes || [])];
+                                        const newSubs = [...(attributeSubItems(newAttrs[index]) || [])];
+                                        newSubs[subIndex] = value;
+                                        newAttrs[index] = withAttributeSubItems(newAttrs[index], newSubs);
+                                        updateCharacter({ attributes: newAttrs });
+                                      }}
+                                      placeholder="Sub-detail..."
+                                    />
+                                  </div>
+                                  <button
+                                    onClick={() => {
+                                      const newAttrs = [...(editing.attributes || [])];
+                                      const newSubs = (attributeSubItems(newAttrs[index]) || []).filter((_, i) => i !== subIndex);
+                                      newAttrs[index] = withAttributeSubItems(newAttrs[index], newSubs);
+                                      updateCharacter({ attributes: newAttrs });
+                                    }}
+                                    className="px-2 py-1 text-xs bg-blood-800 rounded hover:bg-blood-700 flex-shrink-0"
+                                  >✕</button>
+                                </div>
+                              ))}
+
+                              {/* Add sub-item button */}
                               <button
                                 onClick={() => {
-                                  const newAttrs = (editing.attributes || []).filter((_, i) => i !== index);
-                                  updateCharacter({ attributes: newAttrs.length > 0 ? newAttrs : undefined });
+                                  const newAttrs = [...(editing.attributes || [])];
+                                  newAttrs[index] = withAttributeSubItems(newAttrs[index], [...(attributeSubItems(newAttrs[index]) || []), '']);
+                                  updateCharacter({ attributes: newAttrs });
                                 }}
-                                className="px-2 py-1 text-sm bg-blood-700 rounded hover:bg-blood-600"
+                                className="mt-1 ml-10 px-2 py-0.5 text-xs text-stone-400 hover:text-stone-200 bg-stone-700 rounded hover:bg-stone-600"
                               >
-                                ✕
+                                + Sub-item
                               </button>
                             </div>
                           ))}
