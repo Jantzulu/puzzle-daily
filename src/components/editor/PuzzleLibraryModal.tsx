@@ -811,8 +811,10 @@ export const PuzzleLibraryModal: React.FC<PuzzleLibraryModalProps> = ({
           puzzleName={publishModalPuzzle.name}
           dependencies={publishDeps}
           onPublish={async () => {
-            const unpublished = publishDeps.filter(d => !d.isPublished && !d.isMissing);
-            for (const dep of unpublished) {
+            // All non-missing deps, not just new ones — see MapEditor's
+            // onPublish: re-publish is how edited live assets refresh.
+            const publishable = publishDeps.filter(d => !d.isMissing);
+            for (const dep of publishable) {
               await publishAsset(dep.assetId);
             }
             const success = await publishPuzzle(publishModalPuzzle.id);

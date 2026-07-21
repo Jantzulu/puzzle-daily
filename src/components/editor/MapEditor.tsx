@@ -2792,16 +2792,19 @@ export const MapEditor: React.FC = () => {
         dependencies={publishDeps}
         onPublish={async () => {
           const puzzle = getCurrentPuzzle();
-          // Publish all unpublished dependencies first
-          const unpublished = publishDeps.filter(d => !d.isPublished && !d.isMissing);
-          for (const dep of unpublished) {
+          // Re-upsert EVERY dependency, not just new ones — re-publishing a
+          // puzzle is the one gesture that refreshes edited-but-already-live
+          // assets (without this, an asset edit after first publish never
+          // reaches assets_live).
+          const publishable = publishDeps.filter(d => !d.isMissing);
+          for (const dep of publishable) {
             await publishAsset(dep.assetId);
           }
           // Publish the puzzle itself
           const success = await publishPuzzle(puzzle.id);
           if (success) {
             setPublishStatus('published');
-            toast.success(`Published "${state.puzzleName}" with ${unpublished.length} asset${unpublished.length !== 1 ? 's' : ''}`);
+            toast.success(`Published "${state.puzzleName}" with ${publishable.length} asset${publishable.length !== 1 ? 's' : ''}`);
           } else {
             toast.error('Failed to publish puzzle');
           }

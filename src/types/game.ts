@@ -823,6 +823,14 @@ export interface Puzzle {
   // section, above the generic what-is-a-quest content.
   questDescription?: string;
 
+  // Publish stamp (2026-07-21): the puzzle's full transitive asset-id list
+  // (collectPuzzleAssetIds), written by publishPuzzle into the LIVE copy
+  // only — never authored, never present on drafts. Lets asset-less player
+  // devices compute the Slab reveal set from a cheap column select instead
+  // of re-walking dependencies they can't resolve. Refreshed on every
+  // re-publish alongside the content itself.
+  publishedAssetIds?: string[];
+
   // Slab showcase / "information level" (2026-07-21): presence marks this
   // puzzle as a looping demo board embedded on compendium entity pages.
   // The viewer can only start/reset it — heroes are pre-placed by the

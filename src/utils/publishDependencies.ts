@@ -159,6 +159,21 @@ export function collectPuzzleAssetIds(puzzle: Puzzle): Map<string, { type: strin
 }
 
 /**
+ * Return a copy of the puzzle carrying its publish stamp: the sorted,
+ * non-missing transitive asset-id list. Runs on the EDITOR device (the
+ * walker resolves through local asset stores), at publish time — the one
+ * moment the full graph is knowable. Missing (deleted) refs are excluded:
+ * they can't be published, so they must never count toward a Slab reveal.
+ */
+export function stampPublishedAssetIds(puzzle: Puzzle): Puzzle {
+  const publishedAssetIds = Array.from(collectPuzzleAssetIds(puzzle).entries())
+    .filter(([, dep]) => !dep.isMissing)
+    .map(([id]) => id)
+    .sort();
+  return { ...puzzle, publishedAssetIds };
+}
+
+/**
  * Extract all asset IDs referenced by a puzzle (transitively) and check
  * their publish status against assets_live.
  */

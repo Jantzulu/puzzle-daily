@@ -67,6 +67,7 @@ export const PublishDependencyModal: React.FC<PublishDependencyModalProps> = ({
           <p className="text-sm text-stone-400 mt-1">
             This puzzle references {dependencies.length} asset{dependencies.length !== 1 ? 's' : ''}.
             {unpublished.length > 0 && ` ${unpublished.length} will be published along with the puzzle.`}
+            {published.length > 0 && ` ${published.length} already-live asset${published.length !== 1 ? 's' : ''} will be refreshed to your latest local version${published.length !== 1 ? 's' : ''}.`}
           </p>
         </div>
 
@@ -120,7 +121,10 @@ export const PublishDependencyModal: React.FC<PublishDependencyModalProps> = ({
           {/* Already published */}
           {published.length > 0 && (
             <div>
-              <h3 className="text-sm font-medium text-green-400 mb-2">Already Published ({published.length})</h3>
+              <h3 className="text-sm font-medium text-green-400 mb-2">Live — Will Be Refreshed ({published.length})</h3>
+              <p className="text-xs text-stone-500 mb-2">
+                Re-publishing pushes your latest local version of these, so edits to already-live assets reach players.
+              </p>
               <div className="space-y-1">
                 {published.map(dep => (
                   <div key={dep.assetId} className="flex items-center gap-2 text-sm text-green-200/70 bg-green-900/10 rounded px-2 py-1">
@@ -162,7 +166,7 @@ export const PublishDependencyModal: React.FC<PublishDependencyModalProps> = ({
                   : 'bg-green-600 hover:bg-green-700 text-white'
             }`}
           >
-            {isPublishing ? 'Publishing...' : `Publish All (${unpublished.length + 1})`}
+            {isPublishing ? 'Publishing...' : `Publish All (${unpublished.length + published.length + 1})`}
           </button>
         </div>
       </div>

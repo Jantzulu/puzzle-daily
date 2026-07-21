@@ -2,6 +2,7 @@ import { supabase } from '../lib/supabase';
 import type { DbPuzzle, DbAsset } from '../lib/supabase';
 import { logActivity } from './activityLogService';
 import { localDateKey } from '../utils/localDate';
+import { stampPublishedAssetIds } from '../utils/publishDependencies';
 
 async function getCurrentUserId(): Promise<string | undefined> {
   const { data } = await supabase.auth.getUser();
@@ -240,13 +241,15 @@ export async function publishPuzzle(puzzleId: string, scheduledDate?: string): P
     return false;
   }
 
-  // Insert into live table
+  // Insert into live table. The live copy (and only the live copy) carries
+  // the publishedAssetIds stamp — computed here on the editor device, where
+  // the walker can resolve every local asset (see stampPublishedAssetIds).
   const { error: liveError } = await supabase
     .from('puzzles_live')
     .upsert({
       id: puzzle.id,
       name: puzzle.name,
-      data: puzzle.data,
+      data: stampPublishedAssetIds(puzzle.data as unknown as Puzzle),
       published_at: new Date().toISOString(),
       scheduled_date: scheduledDate || null,
       is_daily: !!scheduledDate,

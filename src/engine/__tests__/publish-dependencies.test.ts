@@ -21,7 +21,7 @@ import {
   createTestCollectible,
 } from './helpers';
 import { ActionType, Direction } from '../../types/game';
-import { collectPuzzleAssetIds } from '../../utils/publishDependencies';
+import { collectPuzzleAssetIds, stampPublishedAssetIds } from '../../utils/publishDependencies';
 
 beforeEach(() => {
   clearAllRegistries();
@@ -104,5 +104,26 @@ describe('collectPuzzleAssetIds (transitive publish deps)', () => {
     expect(deps.get('bless')?.type).toBe('spell');
     expect(deps.get('coinpile')?.type).toBe('collectible');
     expect(deps.get('deleted-item')?.isMissing).toBe(true);
+  });
+
+  it('stampPublishedAssetIds writes the sorted non-missing id list, leaving the input untouched', () => {
+    regStatus('burn', { id: 'burn', name: 'Burn', type: 'damage_over_time', createdAt: '' });
+    regSpell('firebolt', { id: 'firebolt', name: 'Firebolt', appliesStatusEffect: { statusAssetId: 'burn' } });
+    regEnemy(createTestEnemyDef({
+      id: 'imp',
+      isCustom: true,
+      behavior: { type: 'active', pattern: [{ type: ActionType.SPELL, spellId: 'firebolt' }], defaultFacing: Direction.EAST },
+    } as never));
+    const puzzle = createTestPuzzle({
+      enemies: [createTestEnemy({ enemyId: 'imp', x: 1, y: 1 })],
+      collectibles: [createTestCollectible({ type: undefined, collectibleId: 'deleted-item', x: 4, y: 3, collected: false })],
+    });
+    const stamped = stampPublishedAssetIds(puzzle);
+    // Sorted, transitive, and the missing ref is excluded — a deleted asset
+    // must never count toward a Slab reveal.
+    expect(stamped.publishedAssetIds).toEqual(['burn', 'firebolt', 'imp']);
+    // Pure: the draft puzzle object is never mutated (stamps live only on
+    // the published copy).
+    expect(puzzle.publishedAssetIds).toBeUndefined();
   });
 });
