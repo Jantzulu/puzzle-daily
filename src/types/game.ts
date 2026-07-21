@@ -1843,6 +1843,7 @@ export interface StatusEffectAsset {
   createdAt: string;
   isBuiltIn?: boolean;            // Built-in vs custom
   folderId?: string;              // Optional folder assignment
+  hideFromCompendium?: boolean;   // Hide from the Slab even when published (showcase-only assets etc.)
 }
 
 /**

@@ -496,6 +496,20 @@ export const CollectibleEditor: React.FC<{ initialSelectedId?: string }> = ({ in
                     If enabled, characters cannot be placed on tiles with this collectible during setup (they can still walk over it)
                   </p>
                 </div>
+                <div className="pt-2 border-t border-stone-700">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={editing.hideFromCompendium || false}
+                      onChange={e => setEditing({ ...editing, hideFromCompendium: e.target.checked || undefined })}
+                      className="rounded"
+                    />
+                    <span>Hide from the Slab</span>
+                  </label>
+                  <p className="text-xs text-stone-400 mt-1 ml-6">
+                    No compendium page even when published — for showcase-only variants and the like.
+                  </p>
+                </div>
               </CollapsiblePanel>
 
               {/* Sound */}

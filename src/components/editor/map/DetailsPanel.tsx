@@ -10,6 +10,7 @@ import { suggestTags } from '../../../utils/puzzleTagSuggestions';
 import type { EditorState } from './editorState';
 import { getEnemy } from '../../../data/enemies';
 import { getCharacter } from '../../../data/characters';
+import { loadTileType, loadCollectible, getStatusEffectAssets } from '../../../utils/assetStorage';
 
 interface DetailsPanelProps {
   state: EditorState;
@@ -159,42 +160,81 @@ export const DetailsPanel: React.FC<DetailsPanelProps> = ({
         <div>
           <label className="block text-xs text-stone-400 mb-1">Attached to (shows on these Slab pages)</label>
           {(() => {
-            const candidates: Array<{ id: string; name: string }> = [];
+            // Any Slab-listable asset can host a showcase (user, 2026-07-21).
+            // Entities/tiles/items are derived from what's in the puzzle;
+            // status effects can't be (they hide inside spells), so the
+            // whole non-builtin set is offered.
+            const groups: Array<{ label: string; items: Array<{ id: string; name: string }> }> = [];
             const seen = new Set<string>();
+            const entities: Array<{ id: string; name: string }> = [];
             for (const e of state.enemies) {
               if (seen.has(e.enemyId)) continue;
               seen.add(e.enemyId);
-              candidates.push({ id: e.enemyId, name: getEnemy(e.enemyId)?.name ?? e.enemyId });
+              entities.push({ id: e.enemyId, name: getEnemy(e.enemyId)?.name ?? e.enemyId });
             }
             for (const id of state.availableCharacters) {
               if (seen.has(id)) continue;
               seen.add(id);
-              candidates.push({ id, name: getCharacter(id)?.name ?? id });
+              entities.push({ id, name: getCharacter(id)?.name ?? id });
             }
-            if (candidates.length === 0) {
+            if (entities.length > 0) groups.push({ label: 'Entities & heroes', items: entities });
+
+            const tileItems: Array<{ id: string; name: string }> = [];
+            for (const row of state.tiles) {
+              for (const tile of row) {
+                const tid = tile?.customType || tile?.customTileTypeId;
+                if (!tid || seen.has(tid)) continue;
+                seen.add(tid);
+                tileItems.push({ id: tid, name: loadTileType(tid)?.name ?? tid });
+              }
+            }
+            if (tileItems.length > 0) groups.push({ label: 'Tiles', items: tileItems });
+
+            const itemItems: Array<{ id: string; name: string }> = [];
+            for (const c of state.collectibles) {
+              if (!c.collectibleId || seen.has(c.collectibleId)) continue;
+              seen.add(c.collectibleId);
+              itemItems.push({ id: c.collectibleId, name: loadCollectible(c.collectibleId)?.name ?? c.collectibleId });
+            }
+            if (itemItems.length > 0) groups.push({ label: 'Items', items: itemItems });
+
+            const statusItems = getStatusEffectAssets()
+              .filter(s => !s.isBuiltIn)
+              .map(s => ({ id: s.id, name: s.name }));
+            if (statusItems.length > 0) groups.push({ label: 'Status effects', items: statusItems });
+
+            if (groups.length === 0) {
               return <p className="text-xs text-stone-500">Place entities / pick heroes first.</p>;
             }
+            const toggle = (id: string, on: boolean) => setState(prev => ({
+              ...prev,
+              showcaseEntityIds: on
+                ? prev.showcaseEntityIds.filter(x => x !== id)
+                : [...prev.showcaseEntityIds, id],
+            }));
             return (
-              <div className="flex flex-wrap gap-1">
-                {candidates.map(c => {
-                  const on = state.showcaseEntityIds.includes(c.id);
-                  return (
-                    <button
-                      key={c.id}
-                      onClick={() => setState(prev => ({
-                        ...prev,
-                        showcaseEntityIds: on
-                          ? prev.showcaseEntityIds.filter(id => id !== c.id)
-                          : [...prev.showcaseEntityIds, c.id],
-                      }))}
-                      className={`px-1.5 py-0.5 text-xs rounded border ${
-                        on ? 'bg-copper-700 border-copper-500 text-parchment-200' : 'bg-stone-700 border-stone-600 hover:bg-stone-600'
-                      }`}
-                    >
-                      {on ? '✓ ' : ''}{c.name}
-                    </button>
-                  );
-                })}
+              <div className="space-y-1.5">
+                {groups.map(g => (
+                  <div key={g.label}>
+                    <p className="text-[10px] uppercase tracking-wide text-stone-500 mb-0.5">{g.label}</p>
+                    <div className="flex flex-wrap gap-1">
+                      {g.items.map(c => {
+                        const on = state.showcaseEntityIds.includes(c.id);
+                        return (
+                          <button
+                            key={c.id}
+                            onClick={() => toggle(c.id, on)}
+                            className={`px-1.5 py-0.5 text-xs rounded border ${
+                              on ? 'bg-copper-700 border-copper-500 text-parchment-200' : 'bg-stone-700 border-stone-600 hover:bg-stone-600'
+                            }`}
+                          >
+                            {on ? '✓ ' : ''}{c.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
               </div>
             );
           })()}

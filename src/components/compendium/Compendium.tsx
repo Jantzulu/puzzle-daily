@@ -77,19 +77,22 @@ export const Compendium: React.FC = () => {
     return unsubscribe;
   }, []);
 
-  // Load all assets
-  const characters = useMemo(() => getCustomCharacters(), []);
-  const enemies = useMemo(() => getCustomEnemies(), []);
+  // Load all assets. hideFromCompendium (2026-07-21) hides an asset from
+  // the Slab even when published — showcase-only variants etc.
+  const characters = useMemo(() => getCustomCharacters().filter(c => !c.hideFromCompendium), []);
+  const enemies = useMemo(() => getCustomEnemies().filter(e => !e.hideFromCompendium), []);
   // Vessels render through the enemy adapter — same card/detail components
-  const vessels = useMemo(() => getCustomVessels().map(vesselToEnemyAsset), []);
+  const vessels = useMemo(() => getCustomVessels().filter(v => !v.hideFromCompendium).map(vesselToEnemyAsset), []);
   // Allies too — full enemy-shaped assets on the hero side
-  const allies = useMemo(() => getCustomAllies().map(allyToEnemyAsset), []);
-  const statusEffects = useMemo(() => getStatusEffectAssets().filter(e => !e.isBuiltIn), []);
+  const allies = useMemo(() => getCustomAllies().filter(a => !a.hideFromCompendium).map(allyToEnemyAsset), []);
+  const statusEffects = useMemo(() => getStatusEffectAssets().filter(e => !e.isBuiltIn && !e.hideFromCompendium), []);
   const tiles = useMemo(() => getCustomTileTypes().filter(t =>
-    t.behaviors.length > 0 || t.preventPlacement || t.baseType === 'wall' ||
-    (t.offStateBehaviors && t.offStateBehaviors.length > 0) || t.onStateBlocksMovement
+    !t.hideFromCompendium && (
+      t.behaviors.length > 0 || t.preventPlacement || t.baseType === 'wall' ||
+      (t.offStateBehaviors && t.offStateBehaviors.length > 0) || t.onStateBlocksMovement
+    )
   ), []);
-  const items = useMemo(() => getCustomCollectibles(), []);
+  const items = useMemo(() => getCustomCollectibles().filter(i => !i.hideFromCompendium), []);
 
   // Filter by search
   const filteredCharacters = useMemo(() =>
@@ -270,13 +273,13 @@ export const Compendium: React.FC = () => {
       return <><EnemyDetail enemy={selectedAlly} /><ShowcaseSection assetId={selectedAlly.id} /></>;
     }
     if (activeTab === 'status_effects' && selectedEffect) {
-      return <StatusEffectDetail effect={selectedEffect} />;
+      return <><StatusEffectDetail effect={selectedEffect} /><ShowcaseSection assetId={selectedEffect.id} /></>;
     }
     if (activeTab === 'special_tiles' && selectedTile) {
-      return <TileDetail tile={selectedTile} />;
+      return <><TileDetail tile={selectedTile} /><ShowcaseSection assetId={selectedTile.id} /></>;
     }
     if (activeTab === 'items' && selectedItem) {
-      return <ItemDetail item={selectedItem} />;
+      return <><ItemDetail item={selectedItem} /><ShowcaseSection assetId={selectedItem.id} /></>;
     }
     return null;
   })();

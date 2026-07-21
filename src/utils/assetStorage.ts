@@ -403,6 +403,7 @@ export interface CustomSprite {
 export interface CustomCharacter extends Character {
   customSprite?: CustomSprite;
   isCustom: boolean;
+  hideFromCompendium?: boolean; // Hide from the Slab even when published (showcase-only assets etc.)
   createdAt: string;
   folderId?: string; // Optional folder assignment
 }
@@ -410,6 +411,7 @@ export interface CustomCharacter extends Character {
 export interface CustomEnemy extends Enemy {
   customSprite?: CustomSprite;
   isCustom: boolean;
+  hideFromCompendium?: boolean; // Hide from the Slab even when published (showcase-only assets etc.)
   createdAt: string;
   folderId?: string; // Optional folder assignment
 }
@@ -429,6 +431,7 @@ export interface CustomTileType {
   hideBehaviorIndicators?: boolean;  // Hide default behavior overlays (purple teleport, blue ice, etc.)
   preventPlacement?: boolean;        // Prevent characters from being placed here during setup (but allow walking)
   reflective?: boolean;              // Water/ice/polished floor: entities on it cast a faint mirrored reflection (visual only)
+  hideFromCompendium?: boolean;      // Hide from the Slab even when published (showcase-only assets etc.)
   isCustom: boolean;
   createdAt: string;
   folderId?: string; // Optional folder assignment
@@ -474,6 +477,7 @@ export interface CustomCollectible {
 
   // Metadata
   folderId?: string;
+  hideFromCompendium?: boolean;  // Hide from the Slab even when published (showcase-only assets etc.)
   isCustom: boolean;
   createdAt: string;
 }
@@ -682,6 +686,7 @@ export interface CustomVessel {
   transformOnHitKinds?: HitStampKind[]; // Non-empty enables the struck trigger: a CONNECTED hit of any listed kind hatches the vessel at that turn's end (stamps record connection, not damage-got-through — deflected/absorbed hits still count). Alive = leaves without dying; killed by a listed kind = break-open emergence even with transformOnBreak false
   droppedCollectibleId?: string; // Loot on break — fires via the normal death-drop path (a transforming vessel usually shouldn't also drop)
   sounds?: Enemy['sounds'];
+  hideFromCompendium?: boolean; // Hide from the Slab even when published (showcase-only assets etc.)
   isCustom: boolean;
   createdAt: string;
   folderId?: string;
@@ -705,6 +710,7 @@ export const vesselToEnemyAsset = (vessel: CustomVessel): CustomEnemy => ({
   customSprite: vessel.customSprite,
   droppedCollectibleId: vessel.droppedCollectibleId,
   sounds: vessel.sounds,
+  hideFromCompendium: vessel.hideFromCompendium,
   isCustom: true,
   createdAt: vessel.createdAt,
   folderId: vessel.folderId,

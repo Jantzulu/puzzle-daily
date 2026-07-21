@@ -977,6 +977,22 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
                     </p>
                   </div>
 
+                  {/* Hide from the Slab */}
+                  <div className="pt-3 border-t border-stone-700">
+                    <label className="flex items-center text-sm text-stone-300 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={editing.hideFromCompendium || false}
+                        onChange={e => setEditing({ ...editing, hideFromCompendium: e.target.checked || undefined })}
+                        className="mr-2"
+                      />
+                      Hide from the Slab
+                    </label>
+                    <p className="text-xs text-stone-500 mt-1">
+                      No compendium page even when published — for showcase-only variants and the like.
+                    </p>
+                  </div>
+
                   {/* Reflective Surface Option */}
                   <div className="pt-3 border-t border-stone-700">
                     <label className="flex items-center text-sm text-stone-300 cursor-pointer">

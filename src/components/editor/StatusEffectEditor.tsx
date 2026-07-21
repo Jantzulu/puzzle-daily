@@ -168,6 +168,7 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
   const [immuneToDispel, setImmuneToDispel] = useState(effect?.immuneToDispel ?? false);
   const [immuneToCleanse, setImmuneToCleanse] = useState(effect?.immuneToCleanse ?? false);
   const [hideFromStatusBar, setHideFromStatusBar] = useState(effect?.hideFromStatusBar ?? false);
+  const [hideFromCompendium, setHideFromCompendium] = useState(effect?.hideFromCompendium ?? false);
 
   const handleSave = () => {
     if (!name.trim()) {
@@ -211,6 +212,7 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
       immuneToDispel: immuneToDispel || undefined,
       immuneToCleanse: immuneToCleanse || undefined,
       hideFromStatusBar: (type === StatusEffectType.DISPEL || type === StatusEffectType.CLEANSE) ? hideFromStatusBar : undefined,
+      hideFromCompendium: hideFromCompendium || undefined,
       createdAt: effect?.createdAt || new Date().toISOString(),
       folderId: effect?.folderId,
     };
@@ -1045,6 +1047,16 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
               </label>
             </div>
           )}
+
+          <label className="flex items-center gap-2 cursor-pointer select-none pt-1">
+            <input
+              type="checkbox"
+              checked={hideFromCompendium}
+              onChange={(e) => setHideFromCompendium(e.target.checked)}
+              className="rounded"
+            />
+            <span className="text-xs">Hide from the Slab (no compendium page even when published)</span>
+          </label>
         </div>
 
         {/* Right Column - Visuals */}

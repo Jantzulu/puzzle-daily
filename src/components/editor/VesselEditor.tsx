@@ -290,6 +290,18 @@ export const VesselEditor: React.FC<{ initialSelectedId?: string }> = ({ initial
                       className="w-full px-3 py-2 bg-stone-700 rounded" />
                     <p className="text-xs text-stone-400 mt-1">How much damage it takes to break — some vessels are sturdier than others</p>
                   </div>
+                  <div>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={editing.hideFromCompendium || false}
+                        onChange={(e) => updateVessel({ hideFromCompendium: e.target.checked || undefined })}
+                        className="rounded"
+                      />
+                      <span className="text-sm">Hide from the Slab</span>
+                    </label>
+                    <p className="text-xs text-stone-400 mt-1 ml-6">No compendium page even when published — for showcase-only variants and the like.</p>
+                  </div>
                 </CollapsiblePanel>
 
                 <CollapsiblePanel title="Transformation" className="space-y-3">

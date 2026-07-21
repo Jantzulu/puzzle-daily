@@ -718,6 +718,12 @@ export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ init
                         <span className="text-sm font-medium text-copper-300">Noble</span>
                       </label>
                       <p className="text-xs text-stone-400 ml-1">Nobles power the noble win conditions — Protect the Noble, Keep the Noble alive for N turns, Guide the Noble to the Exit. If any noble condition is set, this hero dying means defeat.</p>
+                      <label className="flex items-center gap-2 p-2 rounded bg-stone-700/40 border border-stone-600/50">
+                        <input type="checkbox" checked={editing.hideFromCompendium || false}
+                          onChange={(e) => updateCharacter({ hideFromCompendium: e.target.checked || undefined })} className="w-4 h-4" />
+                        <span className="text-sm font-medium">Hide from the Slab</span>
+                      </label>
+                      <p className="text-xs text-stone-400 ml-1">No compendium page even when published — for showcase-only variants and the like.</p>
                       <p className="text-xs text-stone-500 ml-1 mt-1">Traits (Ghost, Wall, Halt, Sturdy, Thorns, Trample) are assigned via starting status effects.</p>
                     </CollapsiblePanel>
 

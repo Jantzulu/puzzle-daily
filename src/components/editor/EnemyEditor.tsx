@@ -710,6 +710,12 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string; assetKind?: 'en
                       <span className="text-sm font-medium">Exits Through Openings</span>
                     </label>
                     <p className="text-xs text-stone-400 ml-1">When a movement step would carry it straight out through a hallway or door mouth, it walks off the board instead of turning at the wall. Leaving this way is not a death (no loot, no death triggers) but does count toward "defeat all enemies" — exclude it via the win condition's enemy list if it's just passing through. Walking past an opening never triggers this.</p>
+                    <label className="flex items-center gap-2 p-2 rounded bg-stone-800 border border-stone-700 mt-2">
+                      <input type="checkbox" checked={editing.hideFromCompendium || false}
+                        onChange={(e) => updateEnemy({ hideFromCompendium: e.target.checked || undefined })} className="w-4 h-4" />
+                      <span className="text-sm font-medium">Hide from the Slab</span>
+                    </label>
+                    <p className="text-xs text-stone-400 ml-1">No compendium page even when published — for showcase-only variants and the like.</p>
                     <p className="text-xs text-stone-500 ml-1 mt-1">Other traits (Ghost, Wall, Halt, Priority, Sturdy, Thorns, Trample) are assigned via starting status effects.</p>
                   </CollapsiblePanel>
 
