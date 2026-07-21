@@ -83,22 +83,30 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
   }, [selectedEnemyId]);
 
   // Group all enemies by type (alive + dead) for initial counts
-  const enemyGroups = new Map<string, { totalCount: number; livingCount: number }>();
+  const enemyGroups = new Map<string, { totalCount: number; livingCount: number; scheduled: Array<{ firstTurn: number; repeatEvery?: number }> }>();
   for (const enemy of enemies) {
-    // Expired summons left the board without dying — drop them from the
-    // tally entirely instead of counting them as slain.
-    if (enemy.despawned) continue;
+    // Scheduled-visitor TEMPLATES are despawned but announce FUTURE arrivals
+    // — the info panels preview everything (full-disclosure rule,
+    // 2026-07-21), so they get a card with a visits label instead of
+    // vanishing. Departed copies (spawnedOnTurn set) and expired summons
+    // still drop from the tally entirely instead of counting as slain.
+    const isTemplate = enemy.despawned && enemy.recurrence !== undefined && enemy.spawnedOnTurn === undefined;
+    if (enemy.despawned && !isTemplate) continue;
     // Party split: the enemy tally shows kill targets only; the ally tally
     // shows hero-party units (placed allies, hero-side summons). Explicit
     // stamp check: the quest label does the full entityParty derivation,
     // but everything hero-party here carries the explicit field.
     if (isAllySide ? enemy.party !== 'hero' : enemy.party === 'hero') continue;
-    const existing = enemyGroups.get(enemy.enemyId);
-    if (existing) {
-      existing.totalCount++;
-      if (!enemy.dead) existing.livingCount++;
+    let group = enemyGroups.get(enemy.enemyId);
+    if (!group) {
+      group = { totalCount: 0, livingCount: 0, scheduled: [] };
+      enemyGroups.set(enemy.enemyId, group);
+    }
+    if (isTemplate) {
+      group.scheduled.push({ firstTurn: enemy.recurrence!.firstTurn, repeatEvery: enemy.recurrence!.repeatEvery });
     } else {
-      enemyGroups.set(enemy.enemyId, { totalCount: 1, livingCount: enemy.dead ? 0 : 1 });
+      group.totalCount++;
+      if (!enemy.dead) group.livingCount++;
     }
   }
   const uniqueEnemyIds = Array.from(enemyGroups.keys());
@@ -285,10 +293,18 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
           const enemyData = getEnemy(enemyId);
           if (!enemyData) return null;
 
-          const { totalCount, livingCount } = enemyGroups.get(enemyId)!;
+          const { totalCount, livingCount, scheduled } = enemyGroups.get(enemyId)!;
           const isSelected = selectedEnemyId === enemyId;
-          const allDead = livingCount === 0;
+          // Scheduled-only cards (visitor templates, nothing on the board
+          // yet) read as "not here yet", not as slain.
+          const scheduledOnly = totalCount === 0;
+          const allDead = totalCount > 0 && livingCount === 0;
           const moveInfo = getEnemyMovementInfo(enemyData.behavior);
+          const visitLabels = Array.from(new Set(scheduled.map(s =>
+            s.repeatEvery && s.repeatEvery > 0
+              ? `Visits turn ${s.firstTurn}, every ${s.repeatEvery}`
+              : `Visits turn ${s.firstTurn}`
+          )));
 
           return (
             <div
@@ -301,7 +317,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
                   // deliberately does not slide — see SlidingSelection).
                   ? (isAllySide ? 'bg-copper-900/15' : 'bg-blood-900/15')
                   : '[@media(hover:hover)]:hover:bg-stone-700/30'
-              } ${allDead ? 'opacity-50' : ''}`}
+              } ${allDead ? 'opacity-50' : scheduledOnly ? 'opacity-60' : ''}`}
             >
               {/* Sprite — takes full card width, uniform height across the row */}
               <div className="relative w-full">
@@ -361,6 +377,13 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
                   )}
                 </div>
               </div>
+
+              {/* Scheduled visits (full-disclosure preview) */}
+              {visitLabels.length > 0 && (
+                <div className="text-[9px] text-copper-300 leading-tight mt-0.5 text-center w-full">
+                  {visitLabels.join(' · ')}
+                </div>
+              )}
 
               {/* "More Info" + down caret (unselected) */}
               <div className="mt-0.5 flex flex-col items-center justify-center" style={{ minHeight: '20px' }}>

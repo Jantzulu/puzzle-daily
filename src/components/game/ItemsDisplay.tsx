@@ -6,6 +6,7 @@ import { getEnemy, type EnemyWithSprite } from '../../data/enemies';
 import { loadCollectible, loadSpellAsset, type CustomSprite, type CustomCollectible } from '../../utils/assetStorage';
 import { SpriteThumbnail } from '../editor/SpriteThumbnail';
 import { HelpButton } from './HelpOverlay';
+import { hasDeliverySchedule, deliveryRepeat } from '../../utils/deliverySchedule';
 
 interface ItemsDisplayProps {
   puzzle: Puzzle;
@@ -38,6 +39,9 @@ interface ItemWithSources {
   onMap: boolean;
   dropSources: EntitySource[];
   spellSources: SpellSource[];
+  // Delivery schedules among this item's placements (full-disclosure
+  // preview, 2026-07-21) — formatted labels, deduped.
+  deliveries: string[];
 }
 
 /**
@@ -58,9 +62,18 @@ function getPuzzleItemsWithSources(puzzle: Puzzle): ItemWithSources[] {
             onMap: true,
             dropSources: [],
             spellSources: [],
+            deliveries: [],
           });
         } else {
           itemMap.get(collectible.id)!.onMap = true;
+        }
+        if (hasDeliverySchedule(placed)) {
+          const d = placed.delivery!;
+          let label = `Delivered turn ${d.arriveTurn}`;
+          if (d.deadlineTurn !== undefined && d.deadlineTurn > d.arriveTurn) label += `, gone turn ${d.deadlineTurn}`;
+          if (deliveryRepeat(d) !== undefined) label += `, repeats every ${d.repeatEvery}`;
+          const entry = itemMap.get(collectible.id)!;
+          if (!entry.deliveries.includes(label)) entry.deliveries.push(label);
         }
       }
     }
@@ -78,6 +91,7 @@ function getPuzzleItemsWithSources(puzzle: Puzzle): ItemWithSources[] {
             onMap: false,
             dropSources: [],
             spellSources: [],
+            deliveries: [],
           });
         }
         const item = itemMap.get(collectible.id)!;
@@ -109,6 +123,7 @@ function getPuzzleItemsWithSources(puzzle: Puzzle): ItemWithSources[] {
             onMap: false,
             dropSources: [],
             spellSources: [],
+            deliveries: [],
           });
         }
         const item = itemMap.get(collectible.id)!;
@@ -147,6 +162,7 @@ function getPuzzleItemsWithSources(puzzle: Puzzle): ItemWithSources[] {
           onMap: false,
           dropSources: [],
           spellSources: [],
+          deliveries: [],
         });
       }
       const item = itemMap.get(collectible.id)!;
@@ -232,7 +248,7 @@ export const ItemsDisplay: React.FC<ItemsDisplayProps> = ({ puzzle, className = 
 
       {/* Ledger rows, two columns when the width is there */}
       <div className="md:columns-2 md:gap-x-5">
-        {itemsWithSources.map(({ collectible, onMap, dropSources, spellSources }) => (
+        {itemsWithSources.map(({ collectible, onMap, dropSources, spellSources, deliveries }) => (
           <div
             key={collectible.id}
             className="py-1.5 break-inside-avoid"
@@ -268,6 +284,12 @@ export const ItemsDisplay: React.FC<ItemsDisplayProps> = ({ puzzle, className = 
                     Cannot place heroes on this tile
                   </div>
                 )}
+                {/* Delivery schedules (full-disclosure preview) */}
+                {deliveries.map((label) => (
+                  <div key={label} className="text-xs lg:text-sm text-copper-300">
+                    {label}
+                  </div>
+                ))}
               </div>
             </div>
 
