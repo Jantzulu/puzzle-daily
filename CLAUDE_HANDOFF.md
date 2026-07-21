@@ -216,9 +216,10 @@ stay clean). All reads/writes via utils/attributeShape.ts
 withAttributeSubItems) — never typeof inline. Editors: "+ Sub-item"
 affordance mirroring sub-steps in CharacterEditor + EnemyEditor
 (allies ride EnemyEditor). Renderers: EnemyDisplay, CharacterSelector,
-compendium EnemyDetail — indented ◦ lines. Known pre-existing gaps
-deliberately untouched: compendium CharacterDetail renders NO
-attributes section; vessels can't carry attributes
+compendium EnemyDetail AND CharacterDetail — indented ◦ lines
+(CharacterDetail's missing attributes section was a pre-existing gap,
+closed at user request same day). Remaining pre-existing gap
+deliberately untouched: vessels can't carry attributes
 (vesselToEnemyAsset field-copy drops them).
 
 636 tests, tsc, lint (51-warning baseline), build green. BOTH AWAITING

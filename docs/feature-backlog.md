@@ -626,9 +626,10 @@ section) are also active picks from this conversation.
   collapse back when emptied); utils/attributeShape.ts helpers gate
   every read/write. "+ Sub-item" in CharacterEditor + EnemyEditor
   (allies ride it); rendered in both info panels + compendium
-  EnemyDetail as indented ◦ lines. Pre-existing gaps left as-is:
-  compendium CharacterDetail has no attributes section; vessels can't
-  carry attributes (vesselToEnemyAsset drops them). Original capture:
+  EnemyDetail as indented ◦ lines; CharacterDetail's missing
+  attributes section closed at user request same day. Gap left as-is:
+  vessels can't carry attributes (vesselToEnemyAsset drops them).
+  Original capture:
   the Attributes list was a flat `string[]`. *Captured 2026-07-21.*
 
 - [ ] **POLISH/AUDIT — Dev-page Settings tab cleanup.** The Settings

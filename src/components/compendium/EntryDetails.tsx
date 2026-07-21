@@ -90,6 +90,30 @@ export const CharacterDetail: React.FC<{ character: CustomCharacter }> = ({ char
           </ol>
         </div>
       )}
+
+      {/* Attributes (2026-07-21 — the enemy page always had these; heroes
+          now match, sub-items included) */}
+      {character.attributes && character.attributes.length > 0 && (
+        <div className="compendium-detail-section">
+          <h3>Attributes</h3>
+          <ul className="space-y-1 text-sm" style={{ color: 'var(--text-primary)' }}>
+            {character.attributes.map((attr, idx) => (
+              <li key={idx}>
+                <div className="flex items-baseline gap-1">
+                  <span className="flex-shrink-0">•</span>
+                  <RichTextRenderer html={attributeText(attr)} />
+                </div>
+                {(attributeSubItems(attr) || []).map((sub, subIdx) => (
+                  <div key={subIdx} className="flex items-baseline gap-1 ml-3 mt-0.5">
+                    <span className="flex-shrink-0">◦</span>
+                    <RichTextRenderer html={sub} />
+                  </div>
+                ))}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 };
