@@ -794,7 +794,6 @@ export interface PlacedCharacter {
   currentHealth: number;
   party?: EntityParty; // Explicit team override — see EntityParty. Absent = structural lookup ('enemy' if this id lives in puzzle.enemies — enemy casters are wrapped as characters — else 'hero').
   excludeFromWinConditions?: boolean; // See PlacedEnemy.excludeFromWinConditions — symmetric so a party-flipped combatant keeps its exemption in either list.
-  despawned?: boolean; // See PlacedEnemy.despawned — no character-side writer yet (heroes don't expire), but corpse-finders filter the union on it and future character-shaped summons will use it.
   maxHealth?: number;  // Stamped at placement from the source Character.health, so the no_damage_taken quest can compare against the original max regardless of mid-puzzle Character asset edits.
   actionIndex: number;
   active: boolean;
@@ -823,7 +822,7 @@ export interface PlacedCharacter {
   pendingProjectileDeath?: boolean; // Deferred death: entity is logically dead but waiting for projectile visual to arrive
   pendingVisualDamage?: number; // Sum of damage from hits that have landed logically but haven't reached visually yet. Bar displays currentHealth + pendingVisualDamage, so each visual arrival drops the bar by exactly that hit's damage.
   diedOnTurn?: number; // See PlacedEnemy.diedOnTurn — deterministic death-turn stamp used by movement blockers to keep tile occupied through the next turn.
-  despawned?: boolean; // See PlacedEnemy.despawned — left the board (no corpse). On characters this mainly transports the DEPART action's result through the enemy wrappers; heroes shouldn't author DEPART.
+  despawned?: boolean; // See PlacedEnemy.despawned — left the board (no corpse). Transports DEPART results through the enemy wrappers (heroes shouldn't author DEPART); corpse-finders filter the union on it. Was declared twice by the 2026-07-17 noble-escape and DEPART sessions — keep it single.
   departedOnTurn?: number; // See PlacedEnemy.departedOnTurn — DEPART action stamp (wrapper transport).
   ejectedOnTurn?: number; // See PlacedEnemy.ejectedOnTurn — heroes can be shoved off open ledges too (a real death for them).
 }

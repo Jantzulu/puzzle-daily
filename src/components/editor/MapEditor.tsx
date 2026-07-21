@@ -2601,6 +2601,24 @@ export const MapEditor: React.FC = () => {
               return { ...prev, placedObjects: next };
             });
           }}
+          onSetSchedule={(schedule) => {
+            const index = objectInspect.index;
+            // Same one-undo-per-popover-session rule as the offsets.
+            if (!objectInspectHistoryPushedRef.current) {
+              objectInspectHistoryPushedRef.current = true;
+              pushToHistory();
+            }
+            setState(prev => {
+              const next = [...prev.placedObjects];
+              next[index] = {
+                ...next[index],
+                spawnTurn: schedule.spawnTurn,
+                despawnTurn: schedule.despawnTurn,
+                repeatEvery: schedule.repeatEvery,
+              };
+              return { ...prev, placedObjects: next };
+            });
+          }}
           onRemove={() => {
             handleRemovePlacement('object', objectInspect.index);
             setObjectInspect(null);

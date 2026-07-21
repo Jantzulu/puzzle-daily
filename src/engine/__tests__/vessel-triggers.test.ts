@@ -165,7 +165,7 @@ describe('proximity hatch', () => {
       characters: [createTestCharacter({
         characterId: 'sneak', x: 5, y: 2, facing: Direction.EAST,
         currentHealth: 10, actionIndex: 0, active: true,
-        statusEffects: [{ id: 'stealth-fx', type: StatusEffectType.STEALTH, remainingTurns: 99, value: 0 }],
+        statusEffects: [{ id: 'stealth-fx', statusAssetId: 'stealth-fx', type: StatusEffectType.STEALTH, duration: 99, appliedOnTurn: 0, value: 0 }],
       })],
     });
     executeTurn(gs);
