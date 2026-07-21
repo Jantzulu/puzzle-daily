@@ -13,6 +13,7 @@ import { entityParty } from './party';
 // board actually draws as an opening.
 import { isValidHallway } from '../utils/hallwayDraw';
 import { isValidDoor } from '../utils/doorDraw';
+import { hasDeliverySchedule, deliveryWindowLength, deliveryRepeat, isDeliveryArrivalDawn, isCollectiblePresent } from '../utils/deliverySchedule';
 
 // Debug flag for projectile tracing: flip to true to enable detailed logs
 // covering spawn, per-turn resolve events, per-frame visual interpolation,
@@ -1328,9 +1329,10 @@ function findDropPosition(
       }
     }
 
-    // Check if there's already an uncollected collectible at this position
+    // Check if there's already a present collectible at this position
+    // (delivery-aware: a pending delivery must not act as an invisible blocker)
     const existingCollectible = collectibles.find(
-      c => !c.collected && c.x === checkX && c.y === checkY
+      c => isCollectiblePresent(c) && c.x === checkX && c.y === checkY
     );
     if (existingCollectible) {
       return false;
@@ -1802,6 +1804,9 @@ export function executeTurn(gameState: GameState): GameState {
   // on the board and blocking tiles before anyone acts, idle until next
   // turn via the standard spawnedOnTurn guard.
   processScheduledArrivals(gameState);
+
+  // Collectible deliveries land and expire on the same dawn clock.
+  processDeliveries(gameState);
 
   // Reset held trigger groups at the start of each turn
   // They will be reactivated if entities are standing on hold-mode pressure plates
@@ -2662,6 +2667,50 @@ function processScheduledArrivals(gameState: GameState): void {
   }
 }
 
+/**
+ * Collectible deliveries (2026-07-21). Runs at dawn right after scheduled
+ * visitors, in both modes — parity by construction. Deadlines resolve before
+ * arrivals so a back-to-back window (deadline turn = next cycle's dawn) frees
+ * the tile for its own replacement. `collected` is never written here: a
+ * missed delivery must keep blocking collect_all (the defeat check turns that
+ * into an immediate loss), unlike duration expiry which flags collected as
+ * its removal marker.
+ */
+function processDeliveries(gameState: GameState): void {
+  const turn = gameState.currentTurn;
+  for (const c of gameState.puzzle.collectibles) {
+    if (!hasDeliverySchedule(c) || c.collected) continue;
+    const d = c.delivery!;
+    const windowLen = deliveryWindowLength(d);
+    const repeat = deliveryRepeat(d);
+
+    // Deadline: an uncollected delivery vanishes at the dawn that closes its
+    // instance's window (exclusive, anchored on the turn it actually landed).
+    if (c.delivered && windowLen !== undefined) {
+      const landed = c.deliveredOnTurn ?? d.arriveTurn;
+      if (turn >= landed + windowLen) {
+        c.delivered = false;
+        if (repeat === undefined) c.deliveryMissedOnTurn = turn;
+      }
+    }
+    if (c.delivered || c.deliveryMissedOnTurn !== undefined) continue;
+
+    // Arrival: on a cycle dawn, onto a tile free of any other present
+    // collectible. A blocked cycle is MISSED (deterministic, visits never
+    // queue) — permanently for a one-shot, retried next cycle with repeat.
+    if (!isDeliveryArrivalDawn(d, turn)) continue;
+    const blocked = gameState.puzzle.collectibles.some(
+      o => o !== c && isCollectiblePresent(o) && o.x === c.x && o.y === c.y
+    );
+    if (blocked) {
+      if (repeat === undefined) c.deliveryMissedOnTurn = turn;
+      continue;
+    }
+    c.delivered = true;
+    c.deliveredOnTurn = turn;
+  }
+}
+
 /** Alive-despawned = exited the board successfully (noble escape). The only
  * state where despawned is set without dead — every loss path sets dead. */
 function hasEscapedBoard(entity: PlacedCharacter | PlacedEnemy): boolean {
@@ -3151,6 +3200,24 @@ function checkDefeatConditions(gameState: GameState): boolean {
         if (targets.some(t => !isEntityFunctional(t) && !hasEscapedBoard(t))) return true;
         break;
       }
+
+      case 'collect_all':
+        // Delivery pressure (2026-07-21): a permanently missed delivery can
+        // never be collected, so collect_all just became unwinnable — fail
+        // immediately (implied-protect philosophy) instead of leaving the
+        // player to wait out a quest that can't complete.
+        if (gameState.puzzle.collectibles.some(c => c.deliveryMissedOnTurn !== undefined && !c.collected)) return true;
+        break;
+
+      case 'collect_keys':
+        // Same rule, but only key deliveries (win_key effect) matter.
+        if (gameState.puzzle.collectibles.some(c => {
+          if (c.deliveryMissedOnTurn === undefined || c.collected) return false;
+          if (!c.collectibleId) return false;
+          const data = loadCollectible(c.collectibleId);
+          return data?.effects.some(e => e.type === 'win_key') ?? false;
+        })) return true;
+        break;
     }
   }
 
@@ -3218,8 +3285,18 @@ export function initializeGameState(puzzle: Puzzle): GameState {
       }),
       collectibles: puzzle.collectibles.map((c) => {
         const placed = { ...c, collected: false };
-        // Initialize duration from base collectible asset if it has one
-        if (placed.collectibleId && placed.duration === undefined) {
+        // Delivery runtime state must not leak across runs.
+        if (placed.delivery) {
+          placed.delivered = false;
+          placed.deliveredOnTurn = undefined;
+          placed.deliveryMissedOnTurn = undefined;
+        }
+        // Initialize duration from base collectible asset if it has one.
+        // Deliveries deliberately skip asset-duration init: duration expiry
+        // removes via collected=true (satisfying collect_all — the legacy
+        // semantic), which would be a free-win backdoor for a required
+        // delivery. The delivery deadline is their native pressure knob.
+        if (placed.collectibleId && placed.duration === undefined && !hasDeliverySchedule(placed)) {
           const asset = loadCollectible(placed.collectibleId);
           if (asset?.duration && asset.duration > 0) {
             placed.duration = asset.duration;

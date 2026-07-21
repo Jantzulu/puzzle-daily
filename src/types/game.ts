@@ -466,6 +466,27 @@ export interface PlacedObject {
   repeatEvery?: number;  // repeats the [spawn, despawn) window on this cadence
 }
 
+/**
+ * Delivery schedule for a placed collectible (2026-07-21): the item is
+ * tossed onto its tile from an opening on a known turn instead of being
+ * present from setup. Same dawn semantics as the object spawn levers:
+ * executeTurn increments at dawn, so arriveTurn 3 lands the moment turn 3
+ * begins, before anything acts. deadlineTurn is EXCLUSIVE — an uncollected
+ * delivery is gone at that dawn (the timed-pickup pressure); one-shot
+ * deliveries that miss are missed FOREVER, and if a win condition requires
+ * the item (collect_all, or collect_keys on a key) that is an immediate
+ * defeat. repeatEvery re-runs the window on a cadence until collected; it
+ * needs a bounded window and is ignored without a valid deadlineTurn.
+ * arriveTurn < 1 = invalid config, treated as no delivery (fail visible).
+ */
+export interface DeliveryConfig {
+  arriveTurn: number;
+  deadlineTurn?: number;
+  repeatEvery?: number;
+  // Render-only toss origin. Unset or stale = nearest valid opening.
+  entersFrom?: EntranceRef;
+}
+
 export interface PlacedCollectible {
   // Legacy backwards compatibility
   type?: 'coin' | 'gem';
@@ -498,6 +519,15 @@ export interface PlacedCollectible {
   placerPermanentlyImmune?: boolean;       // Placer can never pick up
   overridePermissions?: CollectiblePickupPermissions; // Override base collectible permissions
   sourceSpellId?: string;                  // Spell that created this (for ItemsDisplay)
+
+  // Delivery fields (2026-07-21). `delivery` is authored config; the rest is
+  // runtime state stripped by initializeGameState. `collected` stays strictly
+  // pickup-domain for deliveries — a missed delivery is NOT flagged collected
+  // (unlike duration expiry), so it can never satisfy collect_all.
+  delivery?: DeliveryConfig;
+  delivered?: boolean;             // currently on the board
+  deliveredOnTurn?: number;        // dawn the current instance landed (cycle anchor + render)
+  deliveryMissedOnTurn?: number;   // permanently missed (one-shot deadline/blocked-tile)
 }
 
 /**

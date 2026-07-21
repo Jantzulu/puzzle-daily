@@ -40,6 +40,7 @@ import { spawnEnemyMidGame } from './spawning';
 // the renderer draws openings from (pure functions, no canvas).
 import { isValidHallway, SIDE_OFFSETS } from '../utils/hallwayDraw';
 import { isValidDoor } from '../utils/doorDraw';
+import { isCollectiblePresent } from '../utils/deliverySchedule';
 import type { EntityParty } from '../types/game';
 import type { CollectibleEffectConfig, PlacedCollectible } from '../types/game';
 import { canEntityAct, canEntityCastSpell, canEntityMove, hasHasteBonus, isHomingDebug, handleEntityDeathDrop, applyInstantStatusStrip } from './simulation';
@@ -3456,8 +3457,10 @@ export function processCollectiblePickup(
   y: number,
   gameState: GameState
 ): void {
+  // Delivery-aware: a pending (undelivered) delivery on this tile is not
+  // pickup-able — walking over the ghost does nothing.
   const collectible = gameState.puzzle.collectibles.find(
-    (c) => c.x === x && c.y === y && !c.collected
+    (c) => c.x === x && c.y === y && isCollectiblePresent(c)
   );
 
   if (!collectible) return;
