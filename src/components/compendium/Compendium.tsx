@@ -27,6 +27,7 @@ import {
   TileDetail,
   ItemDetail,
 } from './EntryDetails';
+import { ShowcaseSection } from './ShowcaseBoard';
 
 type TabId = 'characters' | 'allies' | 'enemies' | 'vessels' | 'status_effects' | 'special_tiles' | 'items';
 
@@ -252,19 +253,21 @@ export const Compendium: React.FC = () => {
     </div>
   );
 
-  // Get detail content based on active tab
+  // Get detail content based on active tab. Entity tabs append the Slab
+  // showcase section (2026-07-21) — looping demo boards from puzzles
+  // whose showcase config lists this asset.
   const detailContent = (() => {
     if (activeTab === 'characters' && selectedCharacter) {
-      return <CharacterDetail character={selectedCharacter} />;
+      return <><CharacterDetail character={selectedCharacter} /><ShowcaseSection assetId={selectedCharacter.id} /></>;
     }
     if (activeTab === 'enemies' && selectedEnemy) {
-      return <EnemyDetail enemy={selectedEnemy} />;
+      return <><EnemyDetail enemy={selectedEnemy} /><ShowcaseSection assetId={selectedEnemy.id} /></>;
     }
     if (activeTab === 'vessels' && selectedVessel) {
-      return <EnemyDetail enemy={selectedVessel} />;
+      return <><EnemyDetail enemy={selectedVessel} /><ShowcaseSection assetId={selectedVessel.id} /></>;
     }
     if (activeTab === 'allies' && selectedAlly) {
-      return <EnemyDetail enemy={selectedAlly} />;
+      return <><EnemyDetail enemy={selectedAlly} /><ShowcaseSection assetId={selectedAlly.id} /></>;
     }
     if (activeTab === 'status_effects' && selectedEffect) {
       return <StatusEffectDetail effect={selectedEffect} />;
