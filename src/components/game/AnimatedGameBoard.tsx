@@ -994,6 +994,10 @@ interface GlanceState {
 const SOUL_RISE_MS = 1800;
 const SOUL_RISE_TILES = 0.9;
 const SOUL_PEAK_ALPHA = 0.32;
+// Soul-return (2026-07-21): the inverse plays when a RESURRECT brings an
+// entity back — the soul descends into the body. Necromancy never fires
+// this by construction (it raises a NEW entity; no dead→alive flip).
+const SOUL_RETURN_MS = 1200;
 
 const SOULS_KEY = 'death_souls';
 let soulsToggleCache: boolean | null = null;
@@ -1046,6 +1050,28 @@ function drawSoul(
   ctx.restore();
 }
 
+/** The departing soul's mirror: fades IN while descending into the revived
+ *  body (ease-in — drifts, then sinks home). Same silhouette trick. */
+function drawSoulReturn(
+  ctx: CanvasRenderingContext2D,
+  sprite: CustomSprite,
+  x: number,
+  y: number,
+  facing: Direction,
+  startTime: number,
+  now: number,
+): void {
+  const t = (now - startTime) / SOUL_RETURN_MS;
+  if (t < 0 || t >= 1) return;
+  const height = 1 - t * t;
+  const px = x * TILE_SIZE + TILE_SIZE / 2 + Math.sin(t * Math.PI * 3) * 1.5;
+  const py = y * TILE_SIZE + TILE_SIZE / 2 - SOUL_RISE_TILES * TILE_SIZE * height;
+  ctx.save();
+  ctx.globalAlpha = SOUL_PEAK_ALPHA * t;
+  drawDeathSpritePixelPerfect(ctx, sprite, px, py, TILE_SIZE, facing, 0);
+  ctx.restore();
+}
+
 /** Snap a travel vector (screen coords, +y down) to the nearest of 8 directions. */
 function directionFromTravel(dx: number, dy: number): Direction {
   const oct = Math.round(Math.atan2(dy, dx) / (Math.PI / 4)); // -4..4, 0 = east
@@ -1090,6 +1116,11 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
   const enemyDeathAnimationsRef = useRef<Map<number, DeathAnimationState>>(new Map());
   const prevCharacterDeadStateRef = useRef<Map<string, boolean>>(new Map());
   const prevEnemyDeadStateRef = useRef<Map<number, boolean>>(new Map());
+  // Soul-return one-shots (2026-07-21): stamped on a mid-run dead→alive
+  // flip (RESURRECT), consumed by the souls draw pass. Refs only — read
+  // every rAF frame; entries self-delete when the descent finishes.
+  const characterSoulReturnsRef = useRef<Map<string, { startTime: number }>>(new Map());
+  const enemySoulReturnsRef = useRef<Map<number, { startTime: number }>>(new Map());
 
   // Track spawn animations - keyed by entity ID (characterId + position or enemy index)
   const [characterSpawnAnimations, setCharacterSpawnAnimations] = useState<Map<string, SpawnAnimationState>>(new Map());
@@ -1192,6 +1223,8 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       enemyDeathAnimationsRef.current = new Map();
       prevCharacterDeadStateRef.current.clear();
       prevEnemyDeadStateRef.current.clear();
+      characterSoulReturnsRef.current.clear();
+      enemySoulReturnsRef.current.clear();
       characterCastStartTimes.clear();
       enemyCastStartTimes.clear();
       // New puzzle = fresh door theater (doors replay their start-of-
@@ -1670,6 +1703,13 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
         // Revived / puzzle retry — drop the stale death anim so a later death
         // starts fresh from frame 0 (no mid-animation flash on the next attempt).
         if (newDeathAnimations.delete(char.characterId)) hasChanges = true;
+        // Soul-return: a MID-RUN revival is a RESURRECT — play the departing
+        // soul's inverse. Retry/reset flips arrive with the game back in
+        // setup, so they stay silent; a resurrect landing on the finishing
+        // turn arrives as victory/defeat and still plays.
+        if (gameState.gameStatus !== 'setup') {
+          characterSoulReturnsRef.current.set(char.characterId, { startTime: now });
+        }
       }
 
       prevCharacterDeadStateRef.current.set(char.characterId, isDeadNow);
@@ -1708,6 +1748,10 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
         // Revived / puzzle retry — drop the stale death anim so a later death
         // starts fresh from frame 0 (no mid-animation flash on the next attempt).
         if (newDeathAnimations.delete(idx)) hasChanges = true;
+        // Soul-return: mid-run revival = RESURRECT (see character twin).
+        if (gameState.gameStatus !== 'setup') {
+          enemySoulReturnsRef.current.set(idx, { startTime: now });
+        }
       }
 
       prevEnemyDeadStateRef.current.set(idx, isDeadNow);
@@ -2632,6 +2676,32 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
           if (!character?.dead) return;
           const sprite = getCharacter(charId)?.customSprite;
           if (sprite && hasDeathAnimation(sprite)) drawSoul(ctx, sprite, deathAnim, now);
+        });
+
+        // Returning souls (RESURRECT) — the inverse descent onto the revived
+        // body's CURRENT tile. Entries self-delete when finished, or if the
+        // entity died again / left before the descent completed.
+        enemySoulReturnsRef.current.forEach((ret, idx) => {
+          const enemy = gameState.puzzle.enemies[idx];
+          if (now - ret.startTime >= SOUL_RETURN_MS || !enemy || enemy.dead || enemy.despawned) {
+            enemySoulReturnsRef.current.delete(idx);
+            return;
+          }
+          const sprite = getEnemy(enemy.enemyId)?.customSprite;
+          if (sprite && hasDeathAnimation(sprite)) {
+            drawSoulReturn(ctx, sprite, enemy.x, enemy.y, enemy.facing || Direction.SOUTH, ret.startTime, now);
+          }
+        });
+        characterSoulReturnsRef.current.forEach((ret, charId) => {
+          const character = gameState.placedCharacters.find(c => c.characterId === charId);
+          if (now - ret.startTime >= SOUL_RETURN_MS || !character || character.dead) {
+            characterSoulReturnsRef.current.delete(charId);
+            return;
+          }
+          const sprite = getCharacter(charId)?.customSprite;
+          if (sprite && hasDeathAnimation(sprite)) {
+            drawSoulReturn(ctx, sprite, character.x, character.y, character.facing, ret.startTime, now);
+          }
         });
       }
 
