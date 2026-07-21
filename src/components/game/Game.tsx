@@ -137,6 +137,14 @@ export interface GameProps {
    * this, so the button never renders for players.
    */
   onShowCombatLog?: () => void;
+
+  /**
+   * Hide the hero/enemy Test buttons (2026-07-21). PlayerApp passes true —
+   * playtesters found the buttons undercut the puzzle challenge; mechanics
+   * learning lives in the Slab showcases instead. Optional prop only, never
+   * deleted — the dev app keeps them, and re-enabling is one prop flip.
+   */
+  hideTestButtons?: boolean;
 }
 
 export const Game: React.FC<GameProps> = ({
@@ -145,6 +153,7 @@ export const Game: React.FC<GameProps> = ({
   onExitToEditor,
   onTurnExecuted,
   onShowCombatLog,
+  hideTestButtons = false,
 }) => {
   const officialPuzzles = getAllPuzzles();
   const [savedPuzzles, setSavedPuzzles] = useState<SavedPuzzle[]>(() => getSavedPuzzles());
@@ -3304,7 +3313,7 @@ export const Game: React.FC<GameProps> = ({
                     placedCharacterIds={gameState.placedCharacters.map(c => c.characterId)}
                     maxPlaceable={gameState.puzzle.maxPlaceableCharacters ?? gameState.puzzle.maxCharacters}
                     onClearAll={testMode === 'none' && gameState.gameStatus === 'setup' ? handleWipe : undefined}
-                    onTest={testMode === 'none' && gameState.gameStatus === 'setup' ? handleTestCharactersWithScroll : undefined}
+                    onTest={!hideTestButtons && testMode === 'none' && gameState.gameStatus === 'setup' ? handleTestCharactersWithScroll : undefined}
                     themeAssets={themeAssets}
                     disabled={gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none'}
                     noPanel
@@ -3340,7 +3349,7 @@ export const Game: React.FC<GameProps> = ({
                 <EnemyDisplay
                   enemies={gameState.puzzle.enemies}
                   onTest={handleTestEnemiesWithScroll}
-                  showTestButton={gameState.gameStatus === 'setup' && testMode === 'none'}
+                  showTestButton={!hideTestButtons && gameState.gameStatus === 'setup' && testMode === 'none'}
                   themeAssets={themeAssets}
                   noPanel
                 />
