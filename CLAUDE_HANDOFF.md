@@ -192,6 +192,50 @@ The Reflect status effect bounces incoming projectiles back:
 
 ## Pending Tasks
 
+### Deliveries — ✅ SHIPPED 2026-07-21 (`cfa97c0` engine, `e8ba121` render, `5a2758b` editor)
+
+`PlacedCollectible.delivery {arriveTurn, deadlineTurn?, repeatEvery?,
+entersFrom?}` — the item is tossed onto its tile from an opening at the
+DAWN of arriveTurn (`processDeliveries`, right after scheduled visitors;
+parity by construction). deadlineTurn is EXCLUSIVE (object-lever
+semantics) and is the timed-pickup pressure: an uncollected delivery is
+gone at that dawn — missed FOREVER for a one-shot, retried on the
+cadence with repeatEvery (which needs a bounded window). A blocked
+arrival tile (another present collectible) skips that cycle
+deterministically (visitor rule, user-locked design).
+
+**Census rule (deliberate):** `collected` stays strictly pickup-domain —
+a missed delivery is never flagged collected (unlike duration expiry's
+collected=true removal marker), so it can't silently satisfy
+collect_all; instead a permanently missed delivery required by
+collect_all — or collect_keys when the item has win_key — is an
+IMMEDIATE defeat (implied-protect philosophy). Deliveries also skip
+asset-duration init (duration expiry would be a free-win backdoor; the
+deadline is their pressure knob). All position-based collectible
+queries go through `isCollectiblePresent` (utils/deliverySchedule.ts —
+pure schedule math shared by engine/render/editor); a pending delivery
+is neither pickup-able nor an invisible blocker.
+
+Render: pending = ghost sprite at 35% alpha + corner badge with the
+arrival turn (the game canvas has NO tap-inspect — the badge IS the
+where/when telegraph); landing = 420ms toss-in arc from the authored
+`entersFrom` opening (stale → nearest valid opening; none → fade-in);
+landed with deadline = turns-remaining countdown badge, urgent tint on
+the last turn. Anim state keyed by collectible INDEX (gameState
+deep-clones at turn boundaries — refs aren't stable, unlike placed
+objects); scrubs/puzzle swaps snap.
+
+Editor: Item-tool plain click on a placed collectible opens
+CollectibleInspectPopover (Arrives/Vanishes/Repeats + "Tossed in from"
+opening select w/ stale warning; one undo per popover session) —
+replaces click-toggle-remove, same migration entities/objects made.
+Drag-sweep painting keeps the old toggle (object-tool precedent).
+
+9 pins in deliveries.test.ts incl. real/headless parity; 636 tests,
+tsc, lint, prod build green. AWAITING USER TEST (author a delivery on
+a hallway'd puzzle; check ghost/badge/toss + a missed-deadline defeat
+under collect_all).
+
 ### Escort objectives + quest text override + per-puzzle help — ✅ SHIPPED 2026-07-21 (`de01f1a`)
 
 Three-part batch (backlog entries all marked shipped):

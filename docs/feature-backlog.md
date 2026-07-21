@@ -538,9 +538,21 @@ the visual items: baked, event-driven, or transform/opacity only.
     opener future wave features build on. 6 pins in
     scheduled-arrivals.test.ts. AWAITING USER TEST.
 
-- [ ] **FEATURE — Deliveries.** A collectible tossed in from a hallway
-  on a known turn — timed pickup pressure, board-readable where/when.
-  Likely rides the same scheduled-arrival machinery as passerby v2.
+- [x] **FEATURE — Deliveries — ✅ SHIPPED 2026-07-21** (engine
+  `cfa97c0` + 9 pins in deliveries.test.ts, render `e8ba121`, editor
+  `5a2758b`). PlacedCollectible.delivery {arriveTurn, deadlineTurn?,
+  repeatEvery?, entersFrom?}: lands at dawn (processDeliveries, next to
+  scheduled visitors); deadline exclusive = the timed pressure — missed
+  one-shot is missed forever, and a missed item that collect_all /
+  collect_keys requires = immediate defeat (implied-protect; `collected`
+  stays pickup-only so a miss can't free-win the census). Blocked tile
+  skips the cycle (visitor rule, user-locked). Render: ghost + arrival
+  badge pre-landing, toss-in arc from the (nearest or authored) opening,
+  countdown badge under a deadline. Editor: Item-tool click popover.
+  Design locked via AskUserQuestion (deadline optional per placement /
+  skip-on-blocked / ghost+telegraph). Original capture: a collectible
+  tossed in from a hallway on a known turn — timed pickup pressure,
+  board-readable where/when.
 
 - [x] **FEATURE — Escapes on defeat — SHIPPED 2026-07-17** (`bd3525b`
   logic + 4 pins in escapes-on-defeat.test.ts, `25329ca` ghost renderer
