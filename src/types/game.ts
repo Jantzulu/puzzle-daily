@@ -347,6 +347,7 @@ export interface Enemy {
   // Boss configuration
   isBoss?: boolean; // If true, this enemy is a boss - enables 'defeat_boss' win condition
   escapesOnDefeat?: boolean; // Escapes-on-defeat (2026-07-17): lethal damage is still a FULL defeat (win credit, drops, death triggers all unchanged) but the entity leaves the board instead of leaving a corpse — despawned once the death settles (processEscapes), unraisable, tile freed. Render plays a ghost walk-out through the nearest opening.
+  exitsThroughOpenings?: boolean; // Flee-through-openings (2026-07-21, direction-of-travel rule): a movement step that would pass THROUGH a valid hallway/door mouth (standing on the marker tile, stepping out its open side) leaves the board instead of consulting wall behavior — DEPART semantics (no drops/triggers/corpse; reads as defeated to defeat_all_enemies, curate via win checkboxes). Checked before wall behavior AND inside IF_WALL (a mouth ahead is an exit, not a wall), so facing — and the movement arrow — never adopts the phantom turn. Walking PAST a mouth never triggers; diagonals never exit; door open/closed visual state is not consulted (matches the noble-escape exit rule).
 
   // Noble configuration (the friendly-side Boss equivalent — meaningful on
   // ALLY assets, which share this Enemy shape via the adapter). A placed
