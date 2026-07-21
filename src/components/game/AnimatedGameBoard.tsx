@@ -10,6 +10,7 @@ import { loadPuzzleSkin, loadTileType, loadObject, loadStatusEffectAsset, loadCo
 import { isValidHallway, drawHallwayOpening, collectCorridorCells, SIDE_OFFSETS, type HallwayDrawConfig } from '../../utils/hallwayDraw';
 import { isValidDoor, drawDoor, DOOR_ANIM_DELAY_MS } from '../../utils/doorDraw';
 import { getThemeAsset } from '../../utils/themeAssets';
+import { isPlacedObjectVisible } from '../../utils/objectSchedule';
 import type { Tile } from '../../types/game';
 import { updateProjectiles, updateParticles, executeParallelActions, findPathBFS, DESPAWN_SHRINK_MS, TARGET_LOST_LINGER_MS } from '../../engine/simulation';
 import { isTileActiveOnTurn } from '../../engine/actions';
@@ -1986,8 +1987,11 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       }
 
       profPhase('items');
-      // Draw objects below entities (sorted by y for proper layering)
+      // Draw objects below entities (sorted by y for proper layering).
+      // Scheduled decoration (spawn levers) is gated per frame on the
+      // current turn — cheap integer math, no memo invalidation needed.
       placedObjectsBelow.forEach(obj => {
+        if (!isPlacedObjectVisible(obj, gameState.currentTurn)) return;
         drawPlacedObject(ctx, obj.objectId, obj.x, obj.y, obj.offsetX ?? 0, obj.offsetY ?? 0);
       });
 
@@ -2528,6 +2532,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
 
       // Draw objects above entities (sorted by y for proper layering)
       placedObjectsAbove.forEach(obj => {
+        if (!isPlacedObjectVisible(obj, gameState.currentTurn)) return;
         drawPlacedObject(ctx, obj.objectId, obj.x, obj.y, obj.offsetX ?? 0, obj.offsetY ?? 0);
       });
 

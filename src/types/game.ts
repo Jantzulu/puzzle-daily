@@ -454,6 +454,15 @@ export interface PlacedObject {
   // tile (x, y) still owns z-sorting and the one-object-per-tile rule.
   offsetX?: number;
   offsetY?: number;
+  // Object spawn levers (2026-07-21): optional per-placement schedule so
+  // decoration can appear/vanish mid-game (eyes in a corridor's dark, rats,
+  // drips). Render-only — objects stay pure decoration; visibility derives
+  // from the current turn via isPlacedObjectVisible (utils/objectSchedule).
+  // All undefined = present from load, forever (existing placements are
+  // byte-identical). Setup is turn 0; turns dawn like scheduled visitors.
+  spawnTurn?: number;    // appears at the dawn of this turn
+  despawnTurn?: number;  // gone at the dawn of this turn (exclusive)
+  repeatEvery?: number;  // repeats the [spawn, despawn) window on this cadence
 }
 
 export interface PlacedCollectible {
