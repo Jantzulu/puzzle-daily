@@ -675,6 +675,34 @@ section) are also active picks from this conversation.
   the arrow's next-step prediction must run the same mouth-check-
   before-wallBehavior rule as the engine. *Captured 2026-07-21.*
 
+- [ ] **FEATURE — Escort-through-opening win condition (captured
+  2026-07-21).** Generalize noble_escapes: quest to get a SPECIFIC
+  enemy OR hero OR ally through a specific-or-any hallway/door.
+  Machinery that already exists from the Noble work: alive-despawned
+  exit state, end-of-turn census (processNobleExits), escapeOpening
+  picker in RulesPanel, hero + ally walk-out renders, escapee-excusal
+  bookkeeping. New: entity designation UI (asset-id based, like kill
+  curation), enemy-escape semantics. Claude's recommended locks
+  (pending user confirm): escape rule = STANDING-ON-TILE census (reuse
+  the Noble rule; flee-through-openings stays a trait, not an
+  objective); designated enemies that escape are EXCUSED from
+  defeat_all (neither credit nor blocker), like escaped Nobles.
+  Only condition-designated entities ever escape this way — an
+  undesignated hero standing on a mouth goes nowhere.
+
+- [ ] **FEATURE — Quest text override (captured 2026-07-21).** Optional
+  custom-label field per win condition; the quest banner shows the
+  authored text verbatim when present, auto-phrasing otherwise.
+  Pairs naturally with the escort condition (auto-phrasing will
+  mangle it). Small.
+
+- [ ] **FEATURE — Per-puzzle quest description in the (?) help panel
+  (captured 2026-07-21).** Optional Puzzle field (Details tab
+  textarea, a sentence or two) rendered in the quest help window as
+  its own puzzle-specific section, clearly differentiated from the
+  generic what-is-a-quest content (which stays). Rides save/load/
+  cloud like other puzzle fields. Small.
+
 - [ ] **IDEA — Slab "see it in action" entity showcases (information
   levels).** Feedback from playtesters: the in-game Test buttons
   undercut the puzzle challenge; mechanics learning belongs in the
