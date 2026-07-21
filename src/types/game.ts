@@ -545,6 +545,27 @@ export interface PlacedCollectible {
 }
 
 /**
+ * Slab showcase config (2026-07-21). entityIds are ASSET ids (enemy/ally/
+ * vessel enemyIds and hero characterIds) — each listed asset's compendium
+ * page offers this puzzle as a "see it in action" demo. heroes are the
+ * author-placed roster (one entry per characterId; heroes not on the
+ * puzzle's availableCharacters roster or off-grid self-skip at build).
+ */
+export interface ShowcaseHero {
+  characterId: string;
+  x: number;
+  y: number;
+}
+
+export interface ShowcaseConfig {
+  entityIds: string[];
+  heroes: ShowcaseHero[];
+  // Demo length in turns before the loop resets (widget default applies
+  // when unset).
+  loopTurns?: number;
+}
+
+/**
  * Win condition types for puzzles
  */
 export type WinConditionType =
@@ -801,6 +822,13 @@ export interface Puzzle {
   // or two shown in the quest (?) help panel as its own puzzle-specific
   // section, above the generic what-is-a-quest content.
   questDescription?: string;
+
+  // Slab showcase / "information level" (2026-07-21): presence marks this
+  // puzzle as a looping demo board embedded on compendium entity pages.
+  // The viewer can only start/reset it — heroes are pre-placed by the
+  // author (showcase.heroes), the sim runs testMode (no victory/defeat)
+  // for loopTurns turns and loops. Deterministic sim = the video.
+  showcase?: ShowcaseConfig;
 
   // Metadata — tags and description for organization
   tags?: string[];        // User-defined tags (e.g., "tutorial", "hard", "boss")

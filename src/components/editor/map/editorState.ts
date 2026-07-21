@@ -1,7 +1,7 @@
 // EditorState shape + defaults for the map editor. Extracted verbatim from
 // MapEditor.tsx (Phase 1 decomposition, 2026-07-14). Distinct from
 // src/utils/editorState.ts, which handles cross-tab caching of this state.
-import type { TileOrNull, PlacedEnemy, PlacedCollectible, PlacedObject, WinCondition, BorderConfig, SideQuest, HallwayMarker, DoorMarker } from '../../../types/game';
+import type { TileOrNull, PlacedEnemy, PlacedCollectible, PlacedObject, WinCondition, BorderConfig, SideQuest, HallwayMarker, DoorMarker, ShowcaseHero } from '../../../types/game';
 import { createEmptyGrid } from './canvasDraw';
 
 export type ToolType = 'empty' | 'wall' | 'void' | 'enemy' | 'ally' | 'vessel' | 'collectible' | 'object' | 'custom' | 'characters' | 'hallway';
@@ -44,6 +44,12 @@ export interface EditorState {
   // Training arena
   isTraining: boolean;
 
+  // Slab showcase / information level (2026-07-21)
+  isShowcase: boolean;
+  showcaseEntityIds: string[];
+  showcaseHeroes: ShowcaseHero[];
+  showcaseLoopTurns?: number;
+
   // Editor state
   selectedTool: ToolType;
   isDrawing: boolean;
@@ -82,6 +88,12 @@ export const createDefaultEditorState = (): EditorState => ({
 
   // Training arena
   isTraining: false,
+
+  // Slab showcase
+  isShowcase: false,
+  showcaseEntityIds: [],
+  showcaseHeroes: [],
+  showcaseLoopTurns: undefined,
 
   selectedTool: 'wall',
   isDrawing: false,

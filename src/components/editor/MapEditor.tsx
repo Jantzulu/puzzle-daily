@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { toast } from '../shared/Toast';
 import { useSearchParams } from 'react-router-dom';
-import type { Puzzle, TileOrNull, PlacedEnemy, PlacedCollectible, PlacedObject, BorderConfig, GameState } from '../../types/game';
+import type { Puzzle, TileOrNull, PlacedEnemy, PlacedCollectible, PlacedObject, BorderConfig, GameState, ShowcaseConfig, ShowcaseHero } from '../../types/game';
 import { TileType, Direction } from '../../types/game';
 import { getAllCharacters, getCharacter } from '../../data/characters';
 import { getAllEnemies } from '../../data/enemies';
@@ -10,7 +10,7 @@ import { savePuzzle, getSavedPuzzles, deletePuzzle, loadPuzzle, type SavedPuzzle
 import { cacheEditorState, getCachedEditorState, clearCachedEditorState } from '../../utils/editorState';
 import { writeAutoSave, readAutoSave, clearAutoSave, AUTOSAVE_INTERVAL_MS, type AutoSaveData } from '../../utils/autoSave';
 import { getAllPuzzleSkins, loadPuzzleSkin, getCustomTileTypes, loadTileType, getAllObjects, loadObject, getAllCollectibles, getSoundAssets, getCustomVessels, vesselToEnemyAsset, getCustomAllies, allyToEnemyAsset } from '../../utils/assetStorage';
-import { TILE_SIZE, BORDER_SIZE, SIDE_BORDER_SIZE, SIDE_HALLWAY_DEPTH, VERT_HALLWAY_PROTRUSION, MAX_DISPLAY_WIDTH_TILES, createEmptyGrid, drawDungeonBorder, drawTile, drawEnemy, drawCollectibleInEditor, drawObject } from './map/canvasDraw';
+import { TILE_SIZE, BORDER_SIZE, SIDE_BORDER_SIZE, SIDE_HALLWAY_DEPTH, VERT_HALLWAY_PROTRUSION, MAX_DISPLAY_WIDTH_TILES, createEmptyGrid, drawDungeonBorder, drawTile, drawEnemy, drawShowcaseHero, drawCollectibleInEditor, drawObject } from './map/canvasDraw';
 import { isValidHallway, drawHallwayOpening, collectCorridorCells, type HallwayDrawConfig } from '../../utils/hallwayDraw';
 import { loadImage } from '../../utils/imageLoader';
 import type { HallwaySide, DoorStartState } from '../../types/game';
@@ -63,6 +63,20 @@ const SIDEBAR_TABS = [
   ['details', 'Details'],
 ] as const;
 
+// Slab showcase config for the built Puzzle. Stale placements self-skip:
+// heroes off the roster or off-grid are filtered here (the noble-marker
+// rule), while the autosave cache keeps them raw so WIP survives.
+const buildShowcase = (s: EditorState): ShowcaseConfig | undefined => {
+  if (!s.isShowcase) return undefined;
+  return {
+    entityIds: s.showcaseEntityIds,
+    heroes: s.showcaseHeroes.filter(h =>
+      s.availableCharacters.includes(h.characterId) &&
+      h.x >= 0 && h.x < s.gridWidth && h.y >= 0 && h.y < s.gridHeight),
+    loopTurns: s.showcaseLoopTurns,
+  };
+};
+
 export const MapEditor: React.FC = () => {
   const _isMobile = useIsMobile();
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -87,6 +101,11 @@ export const MapEditor: React.FC = () => {
         description: cached.description || '',
         // Default isTraining for older cached state
         isTraining: cached.isTraining ?? false,
+        // Showcase rides the cache as the built config object
+        isShowcase: !!cached.showcase,
+        showcaseEntityIds: cached.showcase?.entityIds || [],
+        showcaseHeroes: cached.showcase?.heroes || [],
+        showcaseLoopTurns: cached.showcase?.loopTurns,
         // Filter out references to deleted characters
         availableCharacters: (cached.availableCharacters || []).filter(id => getCharacter(id) != null),
       };
@@ -132,6 +151,7 @@ export const MapEditor: React.FC = () => {
     enemies: state.enemies,
     collectibles: state.collectibles,
     placedObjects: state.placedObjects,
+    showcaseHeroes: state.showcaseHeroes,
   }));
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
@@ -210,6 +230,7 @@ export const MapEditor: React.FC = () => {
     enemies: PlacedEnemy[];
     collectibles: PlacedCollectible[];
     placedObjects: PlacedObject[];
+    showcaseHeroes: ShowcaseHero[];
   } | null>(null);
 
   // Save snapshot before drawing starts (call on mouseDown)
@@ -219,8 +240,9 @@ export const MapEditor: React.FC = () => {
       enemies: JSON.parse(JSON.stringify(state.enemies)),
       collectibles: JSON.parse(JSON.stringify(state.collectibles)),
       placedObjects: JSON.parse(JSON.stringify(state.placedObjects)),
+      showcaseHeroes: JSON.parse(JSON.stringify(state.showcaseHeroes)),
     };
-  }, [state.tiles, state.enemies, state.collectibles, state.placedObjects]);
+  }, [state.tiles, state.enemies, state.collectibles, state.placedObjects, state.showcaseHeroes]);
 
   // Push state to history after drawing completes (call on mouseUp if changes were made)
   const pushToHistoryAfterDraw = useCallback(() => {
@@ -233,6 +255,7 @@ export const MapEditor: React.FC = () => {
       enemies: state.enemies,
       collectibles: state.collectibles,
       placedObjects: state.placedObjects,
+      showcaseHeroes: state.showcaseHeroes,
     };
 
     // Check if anything actually changed
@@ -250,7 +273,7 @@ export const MapEditor: React.FC = () => {
     setCanUndo(historyRef.current.canUndo);
     setCanRedo(historyRef.current.canRedo);
     snapshotBeforeDrawRef.current = null;
-  }, [state.tiles, state.enemies, state.collectibles, state.placedObjects]);
+  }, [state.tiles, state.enemies, state.collectibles, state.placedObjects, state.showcaseHeroes]);
 
   // Sync the canUndo/canRedo state with the history manager
   const syncHistoryState = useCallback(() => {
@@ -265,10 +288,11 @@ export const MapEditor: React.FC = () => {
       enemies: state.enemies,
       collectibles: state.collectibles,
       placedObjects: state.placedObjects,
+      showcaseHeroes: state.showcaseHeroes,
     };
     historyRef.current.push(currentState);
     syncHistoryState();
-  }, [state.tiles, state.enemies, state.collectibles, state.placedObjects, syncHistoryState]);
+  }, [state.tiles, state.enemies, state.collectibles, state.placedObjects, state.showcaseHeroes, syncHistoryState]);
 
   // Undo handler
   const handleUndo = useCallback(() => {
@@ -280,6 +304,7 @@ export const MapEditor: React.FC = () => {
         enemies: previous.enemies,
         collectibles: previous.collectibles,
         placedObjects: previous.placedObjects,
+        showcaseHeroes: previous.showcaseHeroes ?? prev.showcaseHeroes,
       }));
       setRedrawCounter(c => c + 1);
       syncHistoryState();
@@ -296,6 +321,7 @@ export const MapEditor: React.FC = () => {
         enemies: next.enemies,
         collectibles: next.collectibles,
         placedObjects: next.placedObjects,
+        showcaseHeroes: next.showcaseHeroes ?? prev.showcaseHeroes,
       }));
       setRedrawCounter(c => c + 1);
       syncHistoryState();
@@ -482,6 +508,8 @@ export const MapEditor: React.FC = () => {
   // kind from a stale selection.
   const [selectedEnemyId, setSelectedEnemyId] = useState<string | null>(null);
   const [selectedAllyId, setSelectedAllyId] = useState<string | null>(null);
+  // Showcase hero being placed with the Heroes tool (showcase puzzles only)
+  const [showcasePlaceHeroId, setShowcasePlaceHeroId] = useState<string | null>(null);
   const [selectedVesselId, setSelectedVesselId] = useState<string | null>(null);
   const [selectedObjectId, setSelectedObjectId] = useState<string | null>(null);
   const [selectedCollectibleId, setSelectedCollectibleId] = useState<string | null>(null);
@@ -560,6 +588,11 @@ export const MapEditor: React.FC = () => {
         tags: state.tags,
         description: state.description,
         isTraining: state.isTraining,
+        // Cache keeps showcase RAW (no stale-hero filtering) so WIP survives
+        // tab switches even if a placed hero briefly leaves the roster.
+        showcase: state.isShowcase
+          ? { entityIds: state.showcaseEntityIds, heroes: state.showcaseHeroes, loopTurns: state.showcaseLoopTurns }
+          : undefined,
         selectedTool: state.selectedTool,
       });
     }
@@ -767,6 +800,13 @@ export const MapEditor: React.FC = () => {
     belowObjects.forEach((obj) => {
       drawObject(ctx, obj.x, obj.y, obj.objectId, obj.offsetX ?? 0, obj.offsetY ?? 0);
     });
+
+    // Showcase heroes (author-placed demo roster) — copper-ringed
+    if (state.isShowcase) {
+      state.showcaseHeroes.forEach((hero) => {
+        drawShowcaseHero(ctx, hero.x, hero.y, hero.characterId);
+      });
+    }
 
     // Draw enemies
     state.enemies.forEach((enemy) => {
@@ -1203,6 +1243,38 @@ export const MapEditor: React.FC = () => {
       });
       return;
     }
+    if (state.selectedTool === 'characters') {
+      // Showcase hero placement (2026-07-21): only meaningful on showcase
+      // puzzles — the demo's heroes are author-placed, one per hero id.
+      // Click places/moves the picked hero; clicking a placed hero removes
+      // it. Normal puzzles keep the tool roster-only (canvas inert).
+      if (!state.isShowcase) return;
+      if (!showcasePlaceHeroId) {
+        // Still allow click-to-remove without a pick armed.
+        setState(prev => {
+          const atTile = prev.showcaseHeroes.findIndex(h => h.x === x && h.y === y);
+          if (atTile < 0) return prev;
+          const heroes = [...prev.showcaseHeroes];
+          heroes.splice(atTile, 1);
+          return { ...prev, showcaseHeroes: heroes };
+        });
+        return;
+      }
+      setState(prev => {
+        const heroes = [...prev.showcaseHeroes];
+        const atTile = heroes.findIndex(h => h.x === x && h.y === y);
+        if (atTile >= 0) {
+          heroes.splice(atTile, 1);
+          return { ...prev, showcaseHeroes: heroes };
+        }
+        const existing = heroes.findIndex(h => h.characterId === showcasePlaceHeroId);
+        if (existing >= 0) heroes.splice(existing, 1); // one placement per hero — placing again moves it
+        heroes.push({ characterId: showcasePlaceHeroId, x, y });
+        return { ...prev, showcaseHeroes: heroes };
+      });
+      return;
+    }
+
     if (state.selectedTool === 'enemy' || state.selectedTool === 'ally' || state.selectedTool === 'vessel') {
       // All three place into puzzle.enemies through the same pipeline; the
       // party stamp below (keyed on the ASSET id, not the tool) is what
@@ -1422,6 +1494,7 @@ export const MapEditor: React.FC = () => {
       tags: state.tags.length > 0 ? state.tags : undefined,
       description: state.description || undefined,
       isTraining: state.isTraining || undefined,
+      showcase: buildShowcase(state),
     };
   };
 
@@ -1517,6 +1590,10 @@ export const MapEditor: React.FC = () => {
       tags: puzzle.tags || [],
       description: puzzle.description || '',
       isTraining: puzzle.isTraining ?? false,
+      isShowcase: !!puzzle.showcase,
+      showcaseEntityIds: puzzle.showcase?.entityIds || [],
+      showcaseHeroes: puzzle.showcase?.heroes || [],
+      showcaseLoopTurns: puzzle.showcase?.loopTurns,
     }));
 
     setShowLibrary(false);
@@ -1568,6 +1645,10 @@ export const MapEditor: React.FC = () => {
       tags: puzzle.tags || [],
       description: puzzle.description || '',
       isTraining: puzzle.isTraining ?? false,
+      isShowcase: !!puzzle.showcase,
+      showcaseEntityIds: puzzle.showcase?.entityIds || [],
+      showcaseHeroes: puzzle.showcase?.heroes || [],
+      showcaseLoopTurns: puzzle.showcase?.loopTurns,
     }));
     clearAutoSave();
     setRecoveryData(null);
@@ -1609,6 +1690,10 @@ export const MapEditor: React.FC = () => {
       tags: [],
       description: '',
       isTraining: false,
+      isShowcase: false,
+      showcaseEntityIds: [],
+      showcaseHeroes: [],
+      showcaseLoopTurns: undefined,
       selectedTool: 'wall',
       isDrawing: false,
       mode: 'edit',
@@ -1648,6 +1733,10 @@ export const MapEditor: React.FC = () => {
         tags: puzzle.tags || [],
         description: puzzle.description || '',
         isTraining: puzzle.isTraining ?? false,
+        isShowcase: !!puzzle.showcase,
+        showcaseEntityIds: puzzle.showcase?.entityIds || [],
+        showcaseHeroes: puzzle.showcase?.heroes || [],
+        showcaseLoopTurns: puzzle.showcase?.loopTurns,
       }));
 
       toast.success('Puzzle loaded successfully!');
@@ -1887,6 +1976,7 @@ export const MapEditor: React.FC = () => {
       doors: state.doors.length > 0 ? state.doors : undefined,
       parCharacters: state.parCharacters,
       parTurns: state.parTurns,
+      showcase: buildShowcase(state),
     };
 
     // Store deep copy of original puzzle for reset; <Game/> renders against this.
@@ -2466,6 +2556,10 @@ export const MapEditor: React.FC = () => {
                   onSearchChange={setToolSearchTerm}
                   availableCharacters={state.availableCharacters}
                   onToggleCharacter={handleToggleAvailableCharacter}
+                  showcaseMode={state.isShowcase}
+                  placingHeroId={showcasePlaceHeroId}
+                  onPickPlacingHero={setShowcasePlaceHeroId}
+                  placedHeroIds={state.showcaseHeroes.map(h => h.characterId)}
                 />
               )}
 
@@ -2819,6 +2913,10 @@ export const MapEditor: React.FC = () => {
             tags: puzzle.tags || [],
             description: puzzle.description || '',
             isTraining: puzzle.isTraining ?? false,
+            isShowcase: !!puzzle.showcase,
+            showcaseEntityIds: puzzle.showcase?.entityIds || [],
+            showcaseHeroes: puzzle.showcase?.heroes || [],
+            showcaseLoopTurns: puzzle.showcase?.loopTurns,
           }));
           logActivity({
             action: 'update',

@@ -15,6 +15,13 @@ interface HeroesPaletteProps {
   onSearchChange: (term: string) => void;
   availableCharacters: string[];
   onToggleCharacter: (characterId: string, checked: boolean) => void;
+  // Showcase authoring (2026-07-21): on showcase puzzles the demo's heroes
+  // are placed by the author — pick a roster hero here, then click the
+  // board. Absent on normal puzzles.
+  showcaseMode?: boolean;
+  placingHeroId?: string | null;
+  onPickPlacingHero?: (id: string | null) => void;
+  placedHeroIds?: string[];
 }
 
 export const HeroesPalette: React.FC<HeroesPaletteProps> = ({
@@ -26,10 +33,47 @@ export const HeroesPalette: React.FC<HeroesPaletteProps> = ({
   onSearchChange,
   availableCharacters,
   onToggleCharacter,
+  showcaseMode = false,
+  placingHeroId = null,
+  onPickPlacingHero,
+  placedHeroIds = [],
 }) => (
   <div className="bg-stone-800 p-4 rounded">
     <h2 className="text-lg font-bold mb-1">Available Heroes</h2>
     <p className="text-xs text-stone-400 mb-3">Click to toggle which heroes players can use (max 5)</p>
+    {showcaseMode && (
+      <div className="mb-3 p-2 bg-stone-700/60 rounded border border-copper-700/40">
+        <p className="text-xs font-semibold text-copper-300 mb-1">Showcase — place demo heroes</p>
+        {availableCharacters.length === 0 ? (
+          <p className="text-xs text-stone-400">Add heroes to the roster below first.</p>
+        ) : (
+          <div className="flex flex-wrap gap-1">
+            {availableCharacters.map(id => {
+              const char = characters.find(c => c.id === id);
+              const isPicked = placingHeroId === id;
+              const isPlaced = placedHeroIds.includes(id);
+              return (
+                <button
+                  key={id}
+                  onClick={() => onPickPlacingHero?.(isPicked ? null : id)}
+                  className={`px-1.5 py-0.5 text-xs rounded border ${
+                    isPicked
+                      ? 'bg-copper-700 border-copper-500 text-parchment-200'
+                      : 'bg-stone-700 border-stone-600 hover:bg-stone-600'
+                  }`}
+                  title={isPlaced ? 'On the board — click the board to move, or click its tile to remove' : 'Pick, then click a board tile to place'}
+                >
+                  {isPlaced ? '✓ ' : ''}{char?.name ?? id}
+                </button>
+              );
+            })}
+          </div>
+        )}
+        <p className="text-[10px] text-stone-500 mt-1">
+          Pick a hero, then click the board. Clicking a placed hero's tile removes it.
+        </p>
+      </div>
+    )}
     <FolderDropdown
       category="characters"
       selectedFolderId={characterFolderId}

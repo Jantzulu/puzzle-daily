@@ -6,7 +6,7 @@
  * Only "Clear Grid" or page refresh will clear the state.
  */
 
-import type { TileOrNull, PlacedEnemy, PlacedCollectible, PlacedObject, WinCondition, BorderConfig, SideQuest, HallwayMarker, DoorMarker } from '../types/game';
+import type { TileOrNull, PlacedEnemy, PlacedCollectible, PlacedObject, WinCondition, BorderConfig, SideQuest, HallwayMarker, DoorMarker, ShowcaseConfig } from '../types/game';
 
 export interface EditorPuzzleState {
   gridWidth: number;
@@ -47,6 +47,9 @@ export interface EditorPuzzleState {
 
   // Training arena
   isTraining?: boolean;
+
+  // Slab showcase (2026-07-21); optional for older caches
+  showcase?: ShowcaseConfig;
 
   // Editor state
   selectedTool: string;

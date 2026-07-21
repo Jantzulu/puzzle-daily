@@ -8,6 +8,8 @@ import type { Puzzle, PuzzleSkin, SoundAsset } from '../../../types/game';
 import { TagInput } from '../../shared/TagInput';
 import { suggestTags } from '../../../utils/puzzleTagSuggestions';
 import type { EditorState } from './editorState';
+import { getEnemy } from '../../../data/enemies';
+import { getCharacter } from '../../../data/characters';
 
 interface DetailsPanelProps {
   state: EditorState;
@@ -137,5 +139,83 @@ export const DetailsPanel: React.FC<DetailsPanelProps> = ({
       <span className="text-sm">Training Arena</span>
     </label>
     <p className="text-xs text-stone-400 mt-0.5">Show in Training Grounds page</p>
+
+    {/* Slab showcase / information level (2026-07-21) */}
+    <label className="flex items-center gap-2 mt-2 cursor-pointer">
+      <input
+        type="checkbox"
+        checked={state.isShowcase}
+        onChange={(e) => setState(prev => ({ ...prev, isShowcase: e.target.checked }))}
+        className="w-4 h-4 accent-copper-500"
+      />
+      <span className="text-sm">Slab Showcase (information level)</span>
+    </label>
+    <p className="text-xs text-stone-400 mt-0.5">
+      A looping demo embedded on Slab entity pages — viewers can only start it,
+      never place. Place demo heroes with the Heroes tool.
+    </p>
+    {state.isShowcase && (
+      <div className="mt-2 p-2 bg-stone-700/50 rounded space-y-2">
+        <div>
+          <label className="block text-xs text-stone-400 mb-1">Attached to (shows on these Slab pages)</label>
+          {(() => {
+            const candidates: Array<{ id: string; name: string }> = [];
+            const seen = new Set<string>();
+            for (const e of state.enemies) {
+              if (seen.has(e.enemyId)) continue;
+              seen.add(e.enemyId);
+              candidates.push({ id: e.enemyId, name: getEnemy(e.enemyId)?.name ?? e.enemyId });
+            }
+            for (const id of state.availableCharacters) {
+              if (seen.has(id)) continue;
+              seen.add(id);
+              candidates.push({ id, name: getCharacter(id)?.name ?? id });
+            }
+            if (candidates.length === 0) {
+              return <p className="text-xs text-stone-500">Place entities / pick heroes first.</p>;
+            }
+            return (
+              <div className="flex flex-wrap gap-1">
+                {candidates.map(c => {
+                  const on = state.showcaseEntityIds.includes(c.id);
+                  return (
+                    <button
+                      key={c.id}
+                      onClick={() => setState(prev => ({
+                        ...prev,
+                        showcaseEntityIds: on
+                          ? prev.showcaseEntityIds.filter(id => id !== c.id)
+                          : [...prev.showcaseEntityIds, c.id],
+                      }))}
+                      className={`px-1.5 py-0.5 text-xs rounded border ${
+                        on ? 'bg-copper-700 border-copper-500 text-parchment-200' : 'bg-stone-700 border-stone-600 hover:bg-stone-600'
+                      }`}
+                    >
+                      {on ? '✓ ' : ''}{c.name}
+                    </button>
+                  );
+                })}
+              </div>
+            );
+          })()}
+        </div>
+        <label className="flex items-center justify-between gap-2 text-xs">
+          <span className="text-stone-400">Demo length (turns per loop)</span>
+          <input
+            type="number" min={1} placeholder="10"
+            value={state.showcaseLoopTurns ?? ''}
+            onChange={(e) => {
+              const v = e.target.value === '' ? undefined : Math.max(1, parseInt(e.target.value) || 1);
+              setState(prev => ({ ...prev, showcaseLoopTurns: v }));
+            }}
+            className="w-16 px-1.5 py-0.5 bg-stone-700 rounded tabular-nums"
+          />
+        </label>
+        <p className="text-[10px] text-stone-500">
+          {state.showcaseHeroes.length} demo hero{state.showcaseHeroes.length === 1 ? '' : 'es'} placed.
+          The demo runs with no victory or defeat and loops.
+        </p>
+      </div>
+    )}
   </div>
 );

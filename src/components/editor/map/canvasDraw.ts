@@ -5,6 +5,7 @@
 import type { TileOrNull, PuzzleSkin } from '../../../types/game';
 import { TileType } from '../../../types/game';
 import { getEnemy } from '../../../data/enemies';
+import { getCharacter } from '../../../data/characters';
 import { drawSprite, getSpriteDrawHeight, ART_TILE_PX } from '../SpriteEditor';
 import { loadTileType, loadObject, loadCollectible, resolveImageSource } from '../../../utils/assetStorage';
 import type { CustomTileType } from '../../../utils/assetStorage';
@@ -381,6 +382,29 @@ export function drawEnemy(ctx: CanvasRenderingContext2D, x: number, y: number, e
 
   // Fallback to red circle if no custom sprite
   ctx.fillStyle = '#f44336';
+  ctx.beginPath();
+  ctx.arc(px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE / 3, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+/** Showcase hero placement (2026-07-21): the hero's sprite plus a copper
+ *  ring so author-placed demo heroes read differently from enemies. */
+export function drawShowcaseHero(ctx: CanvasRenderingContext2D, x: number, y: number, characterId: string) {
+  const px = x * TILE_SIZE;
+  const py = y * TILE_SIZE;
+  ctx.save();
+  ctx.strokeStyle = 'rgba(184, 115, 51, 0.9)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE / 2 - 3, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+  const charData = getCharacter(characterId);
+  if (charData && 'customSprite' in charData && charData.customSprite) {
+    drawSprite(ctx, charData.customSprite, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE);
+    return;
+  }
+  ctx.fillStyle = '#2196f3';
   ctx.beginPath();
   ctx.arc(px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE / 3, 0, Math.PI * 2);
   ctx.fill();
