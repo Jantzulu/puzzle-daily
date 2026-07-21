@@ -11,6 +11,7 @@ import { isValidHallway, drawHallwayOpening, collectCorridorCells, SIDE_OFFSETS,
 import { isValidDoor, drawDoor, DOOR_ANIM_DELAY_MS } from '../../utils/doorDraw';
 import { getThemeAsset } from '../../utils/themeAssets';
 import { isPlacedObjectVisible } from '../../utils/objectSchedule';
+import { hasDeliverySchedule, deliveryWindowLength, nextDeliveryTurn } from '../../utils/deliverySchedule';
 import type { Tile } from '../../types/game';
 import { updateProjectiles, updateParticles, executeParallelActions, findPathBFS, DESPAWN_SHRINK_MS, TARGET_LOST_LINGER_MS } from '../../engine/simulation';
 import { isTileActiveOnTurn } from '../../engine/actions';
@@ -91,6 +92,8 @@ const TELEPORT_APPEAR_DURATION = 100; // Small delay after walking to teleport t
 const DROP_PLACE_DURATION = 250; // ms for hero drop-in effect when placed during setup
 const DROP_PLACE_OFFSET = 0.4; // tiles above final position (subtle)
 const ITEM_SPAWN_DURATION = 400; // ms for collectible scale-up animation (thrown/placed items)
+const DELIVERY_TOSS_MS = 420;    // ms for a delivery's toss-in arc from its opening
+const DELIVERY_GHOST_ALPHA = 0.35; // pre-arrival ghost telegraphy
 const ITEM_DESPAWN_DURATION = 400; // ms for collectible scale-down animation (duration expiry)
 
 // Cap device pixel ratio to limit canvas backbuffer size on high-DPI mobile.
@@ -894,6 +897,45 @@ function resolveEscapeExit(enemy: { x: number; y: number }, gameState: GameState
     }
   }
   return best && bestExit ? [...best, bestExit] : null;
+}
+
+/**
+ * Delivery toss origin: the authored entersFrom opening if still valid,
+ * else the nearest valid opening to the landing tile (straight-line — the
+ * toss flies over the board, no BFS needed). Returns the off-grid cell
+ * just beyond the mouth, or null when the map has no openings (the item
+ * simply fades in where it lands).
+ */
+function resolveDeliveryOrigin(c: { x: number; y: number; delivery?: { entersFrom?: EntranceRef } }, puzzle: Puzzle): { x: number; y: number } | null {
+  const candidates: Array<{ x: number; y: number; side: keyof typeof SIDE_OFFSETS }> = [];
+  const ref = c.delivery?.entersFrom;
+  if (ref) {
+    if (ref.kind === 'door') {
+      const marker = (puzzle.doors ?? []).find(m => m.x === ref.x && m.y === ref.y && m.side === ref.side);
+      if (marker && isValidDoor(marker, puzzle.tiles, puzzle.width, puzzle.height)) candidates.push(marker);
+    } else {
+      const marker = (puzzle.hallways ?? []).find(m => m.x === ref.x && m.y === ref.y && m.side === ref.side);
+      if (marker && isValidHallway(marker, puzzle.tiles, puzzle.width, puzzle.height)) candidates.push(marker);
+    }
+  }
+  if (candidates.length === 0) {
+    for (const h of puzzle.hallways ?? []) {
+      if (isValidHallway(h, puzzle.tiles, puzzle.width, puzzle.height)) candidates.push(h);
+    }
+    for (const d of puzzle.doors ?? []) {
+      if (isValidDoor(d, puzzle.tiles, puzzle.width, puzzle.height)) candidates.push(d);
+    }
+  }
+  let best: { x: number; y: number } | null = null;
+  let bestDist = Infinity;
+  for (const m of candidates) {
+    const off = SIDE_OFFSETS[m.side];
+    const ox = m.x + off.dx;
+    const oy = m.y + off.dy;
+    const dist = (ox - c.x) * (ox - c.x) + (oy - c.y) * (oy - c.y);
+    if (dist < bestDist) { bestDist = dist; best = { x: ox, y: oy }; }
+  }
+  return best;
 }
 
 // ─── Puddle reflections ─────────────────────────────────────────────────────
@@ -1795,6 +1837,20 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
     objectTransitionsRef.current.lastTurn = null;
   }, [placedObjects]);
 
+  // Delivery toss/flip state, keyed by collectible INDEX — unlike placed
+  // objects, gameState is deep-cloned at turn boundaries so collectible
+  // object references are not stable across turns. Same snap rule as the
+  // object transitions: only single-turn steps animate. Date.now()-domain
+  // deliberately (matches objectTransitionsRef's rationale).
+  const deliveryAnimsRef = useRef<{
+    lastTurn: number | null;
+    map: Map<number, { delivered: boolean; tossStart: number; from: { x: number; y: number } | null }>;
+  }>({ lastTurn: null, map: new Map() });
+  useEffect(() => {
+    deliveryAnimsRef.current.map.clear();
+    deliveryAnimsRef.current.lastTurn = null;
+  }, [gameState.puzzle.id]);
+
   // Memoize the entity render queue. Entity definitions only change at turn
   // boundaries (when setGameState deep-clones), so per-frame rebuild +
   // getEnemy/getCharacter lookups + sort are wasted work — collapse to one
@@ -2107,12 +2163,66 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
         });
       }
 
-      // Draw collectibles
-      gameState.puzzle.collectibles.forEach((collectible) => {
-        if (!collectible.collected) {
-          drawCollectible(ctx, collectible, imageCache.current, now);
-        }
-      });
+      // Draw collectibles — delivery-aware (2026-07-21). Pending deliveries
+      // render as a ghost + arrival-turn badge (board-readable where/when);
+      // a fresh landing plays a toss-in arc from its opening; a landed
+      // delivery with a deadline shows the turns-remaining countdown.
+      // Permanently missed deliveries draw nothing.
+      {
+        const sched = deliveryAnimsRef.current;
+        const flipDelta = sched.lastTurn === null ? 0 : gameState.currentTurn - sched.lastTurn;
+        sched.lastTurn = gameState.currentTurn;
+        gameState.puzzle.collectibles.forEach((collectible, ci) => {
+          if (!hasDeliverySchedule(collectible)) {
+            if (!collectible.collected) drawCollectible(ctx, collectible, imageCache.current, now);
+            return;
+          }
+          if (collectible.collected) return;
+          const d = collectible.delivery!;
+          const nowDelivered = collectible.delivered === true;
+          let st = sched.map.get(ci);
+          if (!st) {
+            st = { delivered: nowDelivered, tossStart: -Infinity, from: null };
+            sched.map.set(ci, st);
+          } else if (st.delivered !== nowDelivered) {
+            st.delivered = nowDelivered;
+            st.tossStart = nowDelivered && Math.abs(flipDelta) === 1 ? now : -Infinity;
+            st.from = nowDelivered ? resolveDeliveryOrigin(collectible, gameState.puzzle) : null;
+          }
+          if (!nowDelivered) {
+            if (collectible.deliveryMissedOnTurn !== undefined) return;
+            let next = nextDeliveryTurn(d, gameState.currentTurn);
+            if (next !== undefined && next <= gameState.currentTurn) {
+              next = nextDeliveryTurn(d, gameState.currentTurn + 1);
+            }
+            ctx.save();
+            ctx.globalAlpha *= DELIVERY_GHOST_ALPHA;
+            drawCollectible(ctx, collectible, imageCache.current, now);
+            ctx.restore();
+            if (next !== undefined) drawDeliveryBadge(ctx, collectible.x, collectible.y, `${next}`, false);
+            return;
+          }
+          const tossT = (now - st.tossStart) / DELIVERY_TOSS_MS;
+          if (st.from && tossT >= 0 && tossT < 1) {
+            const ease = 1 - (1 - tossT) * (1 - tossT); // easeOutQuad
+            const arc = Math.sin(Math.PI * tossT) * TILE_SIZE * 0.6;
+            ctx.save();
+            ctx.translate(
+              (st.from.x - collectible.x) * (1 - ease) * TILE_SIZE,
+              (st.from.y - collectible.y) * (1 - ease) * TILE_SIZE - arc
+            );
+            drawCollectible(ctx, collectible, imageCache.current, now);
+            ctx.restore();
+          } else {
+            drawCollectible(ctx, collectible, imageCache.current, now);
+          }
+          const windowLen = deliveryWindowLength(d);
+          if (windowLen !== undefined && collectible.deliveredOnTurn !== undefined) {
+            const remaining = collectible.deliveredOnTurn + windowLen - gameState.currentTurn;
+            if (remaining >= 1) drawDeliveryBadge(ctx, collectible.x, collectible.y, `${remaining}`, remaining === 1);
+          }
+        });
+      }
 
       profPhase('projectiles');
       // Draw projectiles (Phase 2 - between tiles and entities).
@@ -4965,6 +5075,29 @@ function drawDirectionIndicator(
   ctx.closePath();
   ctx.fill();
 
+  ctx.restore();
+}
+
+/**
+ * Delivery corner badge: pre-arrival it shows the ARRIVAL turn, landed with
+ * a deadline it shows TURNS REMAINING (urgent tint on the last turn). Tiny
+ * fillRect + text — no per-frame gradient/filter work (pinned perf rule).
+ */
+function drawDeliveryBadge(ctx: CanvasRenderingContext2D, tileX: number, tileY: number, text: string, urgent: boolean) {
+  const size = Math.round(TILE_SIZE * 0.3);
+  const bx = tileX * TILE_SIZE + TILE_SIZE - size - 2;
+  const by = tileY * TILE_SIZE + 2;
+  ctx.save();
+  ctx.fillStyle = urgent ? 'rgba(122, 34, 22, 0.9)' : 'rgba(26, 21, 16, 0.82)';
+  ctx.fillRect(bx, by, size, size);
+  ctx.strokeStyle = urgent ? 'rgba(226, 88, 34, 0.9)' : 'rgba(184, 115, 51, 0.7)';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(bx + 0.5, by + 0.5, size - 1, size - 1);
+  ctx.fillStyle = urgent ? '#ffb4a2' : '#e8d5b0';
+  ctx.font = `bold ${Math.max(8, Math.round(size * 0.7))}px sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, bx + size / 2, by + size / 2 + 0.5);
   ctx.restore();
 }
 
