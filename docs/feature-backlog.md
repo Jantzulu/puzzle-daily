@@ -741,8 +741,21 @@ section) are also active picks from this conversation.
   generic what-is-a-quest content (which stays). Rides save/load/
   cloud like other puzzle fields. Small.
 
-- [ ] **IDEA — Slab "see it in action" entity showcases (information
-  levels).** Feedback from playtesters: the in-game Test buttons
+- [x] **IDEA — Slab "see it in action" entity showcases (information
+  levels).** ✅ SHIPPED 2026-07-21 in three slices: `7b09b78` authoring
+  (Puzzle.showcase {entityIds, heroes, loopTurns?}; Details-tab toggle +
+  attached-to picker + demo length; Heroes tool places demo heroes on
+  showcase puzzles — pick in the palette strip, click the board;
+  copper-ringed on canvas, undoable, stale heroes self-skip at build,
+  raw in the autosave cache) | `2a2b688` Slab embed (ShowcaseSection on
+  hero/ally/enemy/vessel detail pages: MiniGridPreview + ▶ until
+  tapped, ONE live board at a time; ShowcaseBoard = TrainingGrounds sim
+  pattern in miniature — testMode, author heroes incl. initial status
+  effects, loopTurns then 900ms beat then rebuild, loops; watch/close
+  only) | `33afc0d` player-app Test buttons hidden
+  (GameProps.hideTestButtons, PlayerApp only — dev app + editor keep
+  them; optional prop, never deleted). Original capture below.
+  Feedback from playtesters: the in-game Test buttons
   undercut the puzzle challenge; mechanics learning belongs in the
   Slab. Vision: per-entity looping demos (like LoL ability videos) —
   either recorded clips or small live game boards. Live-board sketch

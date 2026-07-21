@@ -192,6 +192,43 @@ The Reflect status effect bounces incoming projectiles back:
 
 ## Pending Tasks
 
+### Slab showcase ("information levels") — ✅ SHIPPED 2026-07-21 (3 slices)
+
+**`7b09b78` authoring:** `Puzzle.showcase {entityIds, heroes,
+loopTurns?}` — entityIds are ASSET ids (which compendium pages the demo
+appears on), heroes are author-placed (ShowcaseHero {characterId,x,y},
+one per hero). Details tab: "Slab Showcase (information level)" toggle
++ attached-to picker (placed enemy assets + roster heroes) + demo
+length. The Heroes tool (7) gains canvas placement ON SHOWCASE PUZZLES
+ONLY: pick a roster hero in the palette's showcase strip, click the
+board to place/move; clicking a placed hero's tile removes it. Drawn
+copper-ringed (drawShowcaseHero). showcaseHeroes joined the undo
+history snapshot shape ({tiles, enemies, collectibles, placedObjects,
+showcaseHeroes} — 7 sites). Stale heroes (off roster/off grid)
+self-skip in buildShowcase at save/playtest; the autosave cache stores
+them RAW so WIP survives tab switches. Rides all 8 build/load sites +
+both editorState types.
+
+**`2a2b688` Slab embed:** ShowcaseSection appended to hero/ally/enemy/
+vessel detail pages in Compendium.tsx; enumerates bundled + saved
+puzzles by showcase.entityIds. Static MiniGridPreview + ▶ overlay until
+tapped; ONE live ShowcaseBoard at a time (mobile canvas-count rule).
+ShowcaseBoard = TrainingGrounds sim in miniature: initializeGameState +
+testMode (no victory/defeat) + heroes built like Game's placements
+(incl. initialStatusEffects), ResponsiveGameBoard + the same
+setInterval/deep-copy loop. Runs loopTurns (default 10), 900ms beat,
+rebuild, loops; early sandbox end (all heroes done) also loops. Loop
+boundary is DERIVED (no paused flag — lint rule about sync setState in
+effects). Viewers watch/close only — never place.
+
+**`33afc0d` player Test buttons hidden:** GameProps.hideTestButtons,
+passed only by PlayerApp — dev app + editor playtest keep the buttons.
+Optional prop, never deleted; re-enabling is one prop flip.
+
+636 tests, tsc, lint baseline, build green. AWAITING USER TEST (flag a
+puzzle, place demo heroes, attach an entity, check the Slab page on
+both apps; confirm the player app's setup screen no longer shows Test).
+
 ### Soul-return + sub-attributes pair — ✅ SHIPPED 2026-07-21
 
 **Soul-return on resurrect (`d5f3569` + lint follow-up `b1c681b`,
