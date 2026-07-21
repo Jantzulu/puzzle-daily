@@ -460,12 +460,23 @@ Design answers locked 2026-07-16.
 All build on the shipped hallway/door/walk-in arc. Perf rule holds for
 the visual items: baked, event-driven, or transform/opacity only.
 
-- [ ] **IDEA — Eyes in the dark.** Game board corridors. Occasional
-  pair of tiny eyes blinking deep in a corridor's darkness (2px dots,
-  opacity-only, slow randomized timer — render theater, Math.random
-  fine). Killer version: eyes appear in the corridor an entity is
-  assigned to walk in from, foreshadowing the spawn pre-reveal.
-  Relocates the parked "void eyes" flourish idea to its natural home.
+- [ ] **IDEA — Eyes in the dark.** ~~Bespoke corridor eyes~~
+  **SUPERSEDED 2026-07-21 (user redesign): build OBJECT SPAWN LEVERS
+  instead** — objects are already user-authored animated spritesheets
+  placeable with pixel offsets, so ambient theater (eyes, rats, drips)
+  becomes authored content, not engine features. Per-PLACEMENT levers
+  on PlacedObject: spawnTurn (appear at dawn of turn N), despawnTurn
+  (vanish at turn N), repeatEvery (recurrence — visibility window
+  repeats on cadence, mirroring scheduled visitors' shape). Defaults:
+  all undefined = present from load, stays forever (existing
+  placements byte-identical). Pure render-side visibility keyed on
+  current turn (objects are decoration — zero determinism exposure);
+  controls live in ObjectInspectPopover. ALSO: raise the object offset
+  cap ±24 → ±48 art px so art reaches deep into side corridors (48px).
+  Draw order vs corridor darkness deliberately NOT handled — user
+  controls sprite opacity/brightness in their art. The old automatic
+  foreshadow idea is covered manually (author eyes with despawnTurn =
+  the walk-in's arrival turn). GREENLIT — building 2026-07-21.
 
 - [x] **FEATURE — Shove-out ejection — SHIPPED 2026-07-17** (`589dc04`).
   HallwayMarker.openLedge (default barred — existing hallways
