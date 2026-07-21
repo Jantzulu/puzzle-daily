@@ -596,11 +596,13 @@ several of those elements with art. This batch is the new working list.
 Deliveries (see hallway dynamics batch) and eyes-in-the-dark (same
 section) are also active picks from this conversation.
 
-- [ ] **FEATURE — Entity editors: "sub attribute" to pair with sub
-  action steps.** INCOMPLETE CAPTURE — the user's message was cut off
-  mid-sentence ("one can add 'sub action step' but no 'sub
-  attribute'…"). Awaiting clarification before triage. *Captured
-  2026-07-21.*
+- [ ] **FEATURE — Entity editors: sub-attributes (nesting parity with
+  action steps).** In CharacterEditor/EnemyEditor the descriptive
+  Action Steps list supports nested sub-steps (`step.subSteps`,
+  "+ Sub-step" button), but the Attributes list is a flat `string[]`
+  — no way to nest detail under an attribute. Add the same sub-item
+  affordance. Touches the data shape (migration) + every surface that
+  renders attributes (Slab/info panels). *Captured 2026-07-21.*
 
 - [ ] **POLISH/AUDIT — Dev-page Settings tab cleanup.** The Settings
   tab's organization is "a mess": tab layout is scattered, some
@@ -635,7 +637,14 @@ section) are also active picks from this conversation.
   discussed: flag specific puzzles as "information levels" linked to
   their entities; in the Slab the player can only START the sim, never
   place; it runs max turns with no victory/defeat and resets cleanly.
-  Design discussion in progress (2026-07-21). **Test buttons
+  Design discussion in progress (2026-07-21). **Design locked so far
+  (user, same day): live boards over videos (deterministic sim = the
+  video, never stale; one demo board mounted at a time per the mobile
+  canvas-count rule, static preview until tapped). Flagging a puzzle
+  as a showcase REVEALS the extra authoring UI: the ability to place
+  the hero(es) directly on the board in the editor, plus an
+  assignment area picking which entity/entities the showcase is
+  attached to.** **Test buttons
   themselves: DO NOTHING for now — at most HIDE from the player app
   later (never delete; they're optional props, trivial to re-enable).**
   *Captured 2026-07-21.*
