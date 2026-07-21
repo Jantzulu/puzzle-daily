@@ -652,6 +652,15 @@ not relitigate):
   The graph walk is `collectPuzzleAssetIds` in
   utils/publishDependencies.ts — exported for exactly this.
   hideFromCompendium stays the manual override on top.
+- Locked additions (user follow-up, same day): released TRAINING
+  levels DO reveal (player-visible content; only showcases prime
+  without revealing); archived past dailies keep pages revealed; and
+  the reveal set is ONE SHARED PREDICATE for every player-facing asset
+  surface — the Slab list AND the Training Grounds sandbox roster
+  (currently getAllCharacters() unfiltered, TrainingGrounds.tsx:62)
+  both read revealed(asset) = in-a-released-non-showcase-puzzle &&
+  !hideFromCompendium. The sandbox inherits what the Slab shows,
+  never more.
 - Open implementation questions to settle while building: where the
   reveal computation runs (client over fetched released-puzzle list vs
   a derived column stamped at publish time), and caching (mirror

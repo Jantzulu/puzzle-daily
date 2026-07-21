@@ -795,7 +795,17 @@ section) are also active picks from this conversation.
   `showcase` config whose transitive asset graph
   (collectPuzzleAssetIds — the hardened walker, `b5b610f`, exported
   for exactly this) contains the asset. hideFromCompendium stays the
-  manual override on top. Related leak: the "Select Dungeon" dropdown
+  manual override on top.
+  Locked additions (user, 2026-07-21 follow-up): (i) released TRAINING
+  levels DO reveal — they're player-visible content (the tutorial uses
+  first-published heroes anyway); only showcase levels prime without
+  revealing. Archived past dailies keep pages revealed (one-way door).
+  (ii) ONE SHARED "revealed" PREDICATE drives every player-facing
+  asset surface: the Slab page list AND the Training Grounds sandbox
+  roster (today it offers getAllCharacters() unfiltered —
+  TrainingGrounds.tsx:62) both read revealed(asset) = in-a-released-
+  non-showcase-puzzle && !hideFromCompendium. The sandbox "inherits
+  what the Slab shows", never more. Related leak: the "Select Dungeon" dropdown
   in Game.tsx renders for players too (dev-use comment; gate like the
   Test buttons before launch — task chip offered).
 
