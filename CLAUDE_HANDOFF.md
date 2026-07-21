@@ -192,6 +192,42 @@ The Reflect status effect bounces incoming projectiles back:
 
 ## Pending Tasks
 
+### Object spawn levers (scheduled decoration) — ✅ SHIPPED 2026-07-21
+
+The 2026-07-21 session started a NEW working list (old flourish
+short-list SCRAPPED; see backlog "New batch (captured 2026-07-21)" for
+the full set + locked designs: preview-everything info panels,
+direction-of-travel flee-through-openings incl. honest movement arrow,
+Slab showcase "information levels", sub-attributes, Settings audit,
+soul-return on resurrect). **Agreed build order: flee-through-openings
+→ (this feature — done early because the user redesigned
+eyes-in-the-dark into it) → deliveries → info-panel previews → small
+pair → Slab showcase (+ hide-not-delete test buttons rides it) →
+Settings audit.**
+
+`051e078` engine: PlacedObject.spawnTurn/despawnTurn/repeatEvery —
+visibility = pure integer math (`isPlacedObjectVisible`,
+utils/objectSchedule.ts, 8 pins) gated at both AnimatedGameBoard draw
+sites; dawn semantics match scheduled visitors (despawn exclusive;
+repeat needs a bounded window; invalid windows fail VISIBLE). All
+undefined = byte-identical. Editor canvas deliberately ungated
+(authoring view shows everything). `9d88fd6` editor UI **+ ridealong
+tsc fixes in the SAME commit** (a PowerShell here-string mangled the
+intended first commit message; commit message only describes the tsc
+half): ObjectInspectPopover Schedule section (blank = lever off;
+Repeats-every disabled until Disappears bounds the window, cleared if
+the bound clears), offset sliders ±24 → ±48 (OFFSET_MAX; drag needs no
+clamp — half-tile by construction), MapEditor onSetSchedule under the
+one-undo-per-popover-session rule; tsc half = PlacedCharacter's
+duplicate `despawned` (both 2026-07-17 sessions added one) merged, and
+the vessel-triggers stealth pin's status literal well-typed. `tsc -b`
+clean again — **CI gates only tests+lint, so run `npx tsc -b --noEmit`
+before commits that touch types.** 611 tests green. AWAITING USER TEST
+(author an object, set a schedule in the popover, playtest). Eyes in
+the dark = user authors an eyes spritesheet object + levers; draw
+order vs corridor darkness deliberately their problem (sprite
+brightness), offset reach now covers corridor depth.
+
 ### Scheduled visitors / passerby v2 + mid-game walk-ins — ✅ SHIPPED 2026-07-17 (hallway dynamics batch, item 5)
 
 `2b55d42`: PlacedEnemy.recurrence {firstTurn, repeatEvery} — placement
