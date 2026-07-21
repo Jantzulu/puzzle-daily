@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any, no-case-declarations */
 import React, { useRef, useEffect, useMemo, useState, useCallback } from 'react';
-import type { GameState, PlacedCharacter, PlacedEnemy, Projectile, ProjectileVisualState, ParticleEffect, BorderConfig, CharacterAction, EnemyBehavior, TileSprites, ActivationSpriteConfig, StatusEffectInstance, PersistentAreaEffect, LingeringProjectileHazard, Puzzle, PuzzleSkin, EntranceRef } from '../../types/game';
+import type { GameState, PlacedCharacter, PlacedEnemy, PlacedObject, Projectile, ProjectileVisualState, ParticleEffect, BorderConfig, CharacterAction, EnemyBehavior, TileSprites, ActivationSpriteConfig, StatusEffectInstance, PersistentAreaEffect, LingeringProjectileHazard, Puzzle, PuzzleSkin, EntranceRef } from '../../types/game';
 import { TileType, Direction, ActionType, StatusEffectType } from '../../types/game';
 import { getCharacter } from '../../data/characters';
 import { getEnemy } from '../../data/enemies';
@@ -1777,6 +1777,24 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       .sort((a, b) => a.y - b.y);
   }, [placedObjects]);
 
+  // Object spawn-lever transitions (2026-07-21): per-placement visual state
+  // keyed by placement REFERENCE (stable across turns — the memos above
+  // already rely on that stability). changedAt = -Infinity means "no
+  // transition": entries are seeded that way on first sight so objects
+  // visible at load never fade in, and the map resets when the placements
+  // array swaps (puzzle change / reset) so those snap too. Deliberately
+  // Date.now()-domain, not the vsync clock — the sheet helpers sample
+  // Date.now() internally and an opacity fade doesn't need motion-grade
+  // sampling.
+  const objectTransitionsRef = useRef<{
+    lastTurn: number | null;
+    map: Map<PlacedObject, { visible: boolean; changedAt: number }>;
+  }>({ lastTurn: null, map: new Map() });
+  useEffect(() => {
+    objectTransitionsRef.current.map.clear();
+    objectTransitionsRef.current.lastTurn = null;
+  }, [placedObjects]);
+
   // Memoize the entity render queue. Entity definitions only change at turn
   // boundaries (when setGameState deep-clones), so per-frame rebuild +
   // getEnemy/getCharacter lookups + sort are wasted work — collapse to one
@@ -1987,13 +2005,66 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       }
 
       profPhase('items');
+      // Object spawn-lever visibility + transitions. One flip-detection
+      // sweep per frame over ALL placements (the below/above split shares
+      // it), then each draw site renders through drawScheduledObject.
+      // Transitions only animate on single-turn steps — retry/replay
+      // scrubs snap (changedAt stays -Infinity).
+      const objSched = objectTransitionsRef.current;
+      if (placedObjects && placedObjects.length > 0) {
+        const flipDelta = objSched.lastTurn === null ? 0 : gameState.currentTurn - objSched.lastTurn;
+        const nowMs = Date.now();
+        placedObjects.forEach(obj => {
+          const vis = isPlacedObjectVisible(obj, gameState.currentTurn);
+          const st = objSched.map.get(obj);
+          if (!st) {
+            objSched.map.set(obj, { visible: vis, changedAt: -Infinity });
+          } else if (st.visible !== vis) {
+            st.visible = vis;
+            st.changedAt = Math.abs(flipDelta) === 1 ? nowMs : -Infinity;
+          }
+        });
+        objSched.lastTurn = gameState.currentTurn;
+      }
+      const drawScheduledObject = (obj: PlacedObject) => {
+        const st = objSched.map.get(obj);
+        const visible = st?.visible ?? isPlacedObjectVisible(obj, gameState.currentTurn);
+        const changedAt = st?.changedAt ?? -Infinity;
+        const elapsed = Date.now() - changedAt;
+        const sprite = loadObject(obj.objectId)?.customSprite;
+        if (visible) {
+          if (sprite && hasSpawnAnimation(sprite) && isSpawnAnimationPlaying(sprite, changedAt)) {
+            drawPlacedObject(ctx, obj.objectId, obj.x, obj.y, obj.offsetX ?? 0, obj.offsetY ?? 0, { kind: 'spawn', startTime: changedAt });
+            return;
+          }
+          if (elapsed < OBJECT_FADE_MS && !(sprite && hasSpawnAnimation(sprite))) {
+            ctx.save();
+            ctx.globalAlpha *= Math.min(1, Math.max(0, elapsed / OBJECT_FADE_MS));
+            drawPlacedObject(ctx, obj.objectId, obj.x, obj.y, obj.offsetX ?? 0, obj.offsetY ?? 0);
+            ctx.restore();
+            return;
+          }
+          drawPlacedObject(ctx, obj.objectId, obj.x, obj.y, obj.offsetX ?? 0, obj.offsetY ?? 0);
+          return;
+        }
+        // Hidden: grant a short visual grace to finish the despawn theater
+        // (same deferred-visual philosophy as pendingProjectileDeath).
+        if (changedAt === -Infinity) return;
+        if (sprite && hasDeathAnimation(sprite)) {
+          if (elapsed < deathAnimationDurationMs(sprite)) {
+            drawPlacedObject(ctx, obj.objectId, obj.x, obj.y, obj.offsetX ?? 0, obj.offsetY ?? 0, { kind: 'death', startTime: changedAt });
+          }
+          return;
+        }
+        if (elapsed < OBJECT_FADE_MS) {
+          ctx.save();
+          ctx.globalAlpha *= Math.min(1, Math.max(0, 1 - elapsed / OBJECT_FADE_MS));
+          drawPlacedObject(ctx, obj.objectId, obj.x, obj.y, obj.offsetX ?? 0, obj.offsetY ?? 0);
+          ctx.restore();
+        }
+      };
       // Draw objects below entities (sorted by y for proper layering).
-      // Scheduled decoration (spawn levers) is gated per frame on the
-      // current turn — cheap integer math, no memo invalidation needed.
-      placedObjectsBelow.forEach(obj => {
-        if (!isPlacedObjectVisible(obj, gameState.currentTurn)) return;
-        drawPlacedObject(ctx, obj.objectId, obj.x, obj.y, obj.offsetX ?? 0, obj.offsetY ?? 0);
-      });
+      placedObjectsBelow.forEach(drawScheduledObject);
 
       // Vsync-aligned animation clock. Every stored startTime is Date.now()-
       // domain, but sampling motion with Date.now() AT CALLBACK EXECUTION
@@ -2531,10 +2602,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       }
 
       // Draw objects above entities (sorted by y for proper layering)
-      placedObjectsAbove.forEach(obj => {
-        if (!isPlacedObjectVisible(obj, gameState.currentTurn)) return;
-        drawPlacedObject(ctx, obj.objectId, obj.x, obj.y, obj.offsetX ?? 0, obj.offsetY ?? 0);
-      });
+      placedObjectsAbove.forEach(drawScheduledObject);
 
       // Restore context (undo translate offset)
       ctx.restore();
@@ -5029,7 +5097,23 @@ function drawCollectible(
   if (needsScale) ctx.restore();
 }
 
-function drawPlacedObject(ctx: CanvasRenderingContext2D, objectId: string, x: number, y: number, placeOffsetX = 0, placeOffsetY = 0) {
+// Default appear/disappear fade for scheduled objects without authored
+// transition sheets (object spawn levers). Opacity-only per the pinned
+// rendering principle.
+const OBJECT_FADE_MS = 300;
+
+// Mirrors isSpawnAnimationPlaying's duration math for the death sheet —
+// the board must stop drawing a despawned object once its one-shot ends
+// (entities hold the corpse frame; decoration should be gone).
+function deathAnimationDurationMs(sprite: CustomSprite): number {
+  if (sprite.deathSpriteSheet) {
+    const rate = sprite.deathSpriteSheet.frameRate || 10;
+    return (sprite.deathSpriteSheet.frameCount / rate) * 1000;
+  }
+  return 500; // static death image — same default as the spawn helper
+}
+
+function drawPlacedObject(ctx: CanvasRenderingContext2D, objectId: string, x: number, y: number, placeOffsetX = 0, placeOffsetY = 0, transition?: { kind: 'spawn' | 'death'; startTime: number }) {
   const objectData = loadObject(objectId);
   if (!objectData) return;
 
@@ -5059,6 +5143,16 @@ function drawPlacedObject(ctx: CanvasRenderingContext2D, objectId: string, x: nu
 
   // Draw custom sprite if available
   if (objectData.customSprite) {
+    // Scheduled transition one-shots (spawn levers): the caller has already
+    // checked the sheet exists and is still playing.
+    if (transition?.kind === 'spawn') {
+      drawSpawnSpritePixelPerfect(ctx, objectData.customSprite, centerX, centerY, TILE_SIZE, transition.startTime);
+      return;
+    }
+    if (transition?.kind === 'death') {
+      drawDeathSpritePixelPerfect(ctx, objectData.customSprite, centerX, centerY, TILE_SIZE, undefined, transition.startTime);
+      return;
+    }
     drawSpritePixelPerfect(ctx, objectData.customSprite, centerX, centerY, TILE_SIZE);
   } else {
     // Fallback: draw a simple brown square (centered, with offsets applied)

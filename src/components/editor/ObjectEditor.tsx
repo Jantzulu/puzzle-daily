@@ -565,6 +565,7 @@ export const ObjectEditor: React.FC<{ initialSelectedId?: string }> = ({ initial
               <StaticSpriteEditor
                 sprite={editing.customSprite}
                 onChange={updateSprite}
+                showTransitionStates
               />
             )}
           </CollapsiblePanel>

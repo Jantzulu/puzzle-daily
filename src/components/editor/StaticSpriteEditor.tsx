@@ -13,6 +13,11 @@ interface StaticSpriteEditorProps {
   sprite: CustomSprite;
   onChange: (sprite: CustomSprite) => void;
   size?: number;
+  // Object spawn levers (2026-07-21): expose one-shot spawn/despawn sheets
+  // (CustomSprite's existing spawnSpriteSheet/deathSpriteSheet slots) for
+  // assets whose placements can appear/vanish mid-game via a schedule.
+  // Opt-in so tiles/collectibles don't grow meaningless controls.
+  showTransitionStates?: boolean;
 }
 
 const PREVIEW_SIZE = 96;
@@ -44,7 +49,8 @@ const TRIGGER_TYPES = [
 export const StaticSpriteEditor: React.FC<StaticSpriteEditorProps> = ({
   sprite,
   onChange,
-  size = PREVIEW_SIZE
+  size = PREVIEW_SIZE,
+  showTransitionStates = false
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [previewMode, setPreviewMode] = useState<'default' | 'triggered'>('default');
@@ -337,6 +343,39 @@ export const StaticSpriteEditor: React.FC<StaticSpriteEditorProps> = ({
       ...sprite,
       [key]: { ...current, ...updates },
     });
+  };
+
+  // Transition sheets are one-shot by design (loop: false) — the board
+  // plays spawn once then settles into idle, and hides after despawn ends.
+  const handleTransitionSheetUpload = (key: 'spawnSpriteSheet' | 'deathSpriteSheet', e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.warning('Please upload an image file (PNG, JPG)');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const imageData = event.target?.result as string;
+      const existing = sprite[key];
+      onChange({
+        ...sprite,
+        [key]: {
+          imageData,
+          imageUrl: undefined,
+          frameCount: existing?.frameCount || 4,
+          frameRate: existing?.frameRate || 8,
+          loop: false,
+        },
+      });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const updateTransitionSheet = (key: 'spawnSpriteSheet' | 'deathSpriteSheet', updates: Partial<SpriteSheetConfig>) => {
+    const current = sprite[key];
+    if (!current) return;
+    onChange({ ...sprite, [key]: { ...current, ...updates } });
   };
 
   const handleShapeChange = (shape: string) => {
@@ -814,6 +853,71 @@ export const StaticSpriteEditor: React.FC<StaticSpriteEditorProps> = ({
           </>
         )}
       </div>
+
+      {/* Transition animations (object spawn levers, 2026-07-21): one-shot
+          spawn/despawn sheets played when a SCHEDULED placement appears or
+          disappears mid-game. Without them the board uses a quick fade. */}
+      {showTransitionStates && (
+        <div className="bg-stone-700 p-3 rounded">
+          <h4 className="text-sm font-bold mb-2">Transition Animations (Optional)</h4>
+          <p className="text-xs text-stone-400 mb-2">
+            Played once when a scheduled placement appears or disappears
+            mid-game (set in the map editor's object popover). Without a
+            sheet, the object fades in/out instead.
+          </p>
+          {([
+            { key: 'spawnSpriteSheet' as const, label: 'Appear (spawn)' },
+            { key: 'deathSpriteSheet' as const, label: 'Disappear (despawn)' },
+          ]).map(({ key, label }) => {
+            const sheet = sprite[key];
+            return (
+              <div key={key} className="mb-2 last:mb-0">
+                <label className="text-xs text-stone-400 block mb-1">{label}</label>
+                {sheet?.imageData || sheet?.imageUrl ? (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-green-400 flex-shrink-0">✓ Sheet set</span>
+                    <label className="text-xs text-stone-400">
+                      Frames
+                      <input
+                        type="number" min={1}
+                        value={sheet.frameCount}
+                        onChange={(e) => updateTransitionSheet(key, { frameCount: Math.max(1, Number(e.target.value) || 1) })}
+                        className="w-12 ml-1 px-1 py-0.5 bg-stone-600 rounded tabular-nums"
+                      />
+                    </label>
+                    <label className="text-xs text-stone-400">
+                      FPS
+                      <input
+                        type="number" min={1}
+                        value={sheet.frameRate}
+                        onChange={(e) => updateTransitionSheet(key, { frameRate: Math.max(1, Number(e.target.value) || 1) })}
+                        className="w-12 ml-1 px-1 py-0.5 bg-stone-600 rounded tabular-nums"
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => onChange({ ...sprite, [key]: undefined })}
+                      className="ml-auto px-2 py-0.5 text-xs bg-blood-700 hover:bg-blood-600 rounded"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ) : (
+                  <label className="inline-block px-2 py-1 text-xs bg-stone-600 hover:bg-stone-500 rounded cursor-pointer">
+                    Upload spritesheet…
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleTransitionSheetUpload(key, e)}
+                      className="hidden"
+                    />
+                  </label>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Shape Options (only shown if no default image/spritesheet) */}
       {!hasDefaultImage && !hasDefaultSpriteSheet && (
