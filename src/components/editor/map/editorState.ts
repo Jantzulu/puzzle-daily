@@ -38,6 +38,8 @@ export interface EditorState {
   // Tags & description
   tags: string[];
   description: string;
+  // Per-puzzle quest description (2026-07-21) — shown in the quest (?) help
+  questDescription?: string;
 
   // Training arena
   isTraining: boolean;
@@ -76,6 +78,7 @@ export const createDefaultEditorState = (): EditorState => ({
   // Tags & description
   tags: [],
   description: '',
+  questDescription: undefined,
 
   // Training arena
   isTraining: false,

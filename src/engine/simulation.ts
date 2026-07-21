@@ -2504,6 +2504,9 @@ export function executeTurn(gameState: GameState): GameState {
   // below so victory fires the same turn the last Noble steps out
   processNobleExits(gameState);
 
+  // Escort exits (entity_escapes, standing rule) — same timing rationale
+  processEscortExits(gameState);
+
   // Vessels break open / hatch — before summon expiry so an emerged enemy
   // exists for this turn's win check
   processVesselTransforms(gameState);
@@ -2703,6 +2706,54 @@ function processNobleExits(gameState: GameState): void {
     noble.despawned = true;
     noble.departedOnTurn = gameState.currentTurn;
     noble.active = false;
+  }
+}
+
+/**
+ * Escort designees: every placed entity whose ASSET id is in the condition's
+ * escortEntityIds — heroes by characterId, enemies/allies by enemyId.
+ */
+function getEscortDesignated(gameState: GameState, ids: string[]): Array<PlacedCharacter | PlacedEnemy> {
+  return [
+    ...gameState.placedCharacters.filter(c => ids.includes(c.characterId)),
+    ...gameState.puzzle.enemies.filter(e => ids.includes(e.enemyId)),
+  ];
+}
+
+/**
+ * Escort exits (entity_escapes, 2026-07-21): noble_escapes generalized to
+ * arbitrary designated entities. Same alive-despawned success stamps as
+ * processNobleExits. Handles ONLY 'standing' conditions (the default,
+ * end-of-turn census on the opening tile) — 'walk_through' conditions
+ * resolve in moveCharacter when the entity steps out through the mouth.
+ * Each condition is processed independently: its own designees against its
+ * own opening (or any valid opening when unset).
+ */
+function processEscortExits(gameState: GameState): void {
+  const conds = gameState.puzzle.winConditions.filter(c => c.type === 'entity_escapes');
+  if (conds.length === 0) return;
+  const puzzle = gameState.puzzle;
+  const openings = [
+    ...(puzzle.hallways ?? []).filter(h => isValidHallway(h, puzzle.tiles, puzzle.width, puzzle.height)),
+    ...(puzzle.doors ?? []).filter(d => isValidDoor(d, puzzle.tiles, puzzle.width, puzzle.height)),
+  ];
+  for (const cond of conds) {
+    if (cond.params?.escapeRule === 'walk_through') continue;
+    const ids = cond.params?.escortEntityIds ?? [];
+    if (ids.length === 0) continue;
+    const eo = cond.params?.escapeOpening;
+    const exitTiles = new Set(
+      (eo ? openings.filter(o => o.x === eo.x && o.y === eo.y && o.side === eo.side) : openings)
+        .map(o => `${o.x},${o.y}`)
+    );
+    if (exitTiles.size === 0) continue;
+    for (const ent of getEscortDesignated(gameState, ids)) {
+      if (!isEntityFunctional(ent)) continue;
+      if (!exitTiles.has(`${Math.floor(ent.x)},${Math.floor(ent.y)}`)) continue;
+      ent.despawned = true;
+      ent.departedOnTurn = gameState.currentTurn;
+      ent.active = false;
+    }
   }
 }
 
@@ -3020,6 +3071,22 @@ export function checkVictoryConditions(gameState: GameState): boolean {
         break;
       }
 
+      case 'entity_escapes': {
+        // Escort: EVERY designated asset must have at least one placed
+        // entity, and ALL its placed entities must have escaped — a
+        // designated hero the player never placed keeps the quest open
+        // rather than silently passing without them. Unconfigured
+        // condition (no ids) can never pass; the editor warns.
+        const escortIds = condition.params?.escortEntityIds ?? [];
+        if (escortIds.length === 0) return false;
+        for (const id of escortIds) {
+          const targets = getEscortDesignated(gameState, [id]);
+          if (targets.length === 0) return false;
+          if (!targets.every(hasEscapedBoard)) return false;
+        }
+        break;
+      }
+
       case 'collect_keys':
         // Must collect all collectibles that have win_key effects
         // Load collectible data to check which ones are keys
@@ -3070,6 +3137,18 @@ function checkDefeatConditions(gameState: GameState): boolean {
         // excused: alive-despawned is a success state, not a loss.
         const nobles = getPlacedNobles(gameState);
         if (nobles.some(n => !isEntityFunctional(n) && !hasEscapedBoard(n))) return true;
+        break;
+      }
+
+      case 'entity_escapes': {
+        // Implied-protect extends to escort designees (deliberate,
+        // 2026-07-21): a designated entity DYING — even a designated
+        // enemy — makes the escort unwinnable, so fail immediately
+        // instead of making the player wait out the clock. Escaped
+        // designees are excused (success state).
+        const escortIds = condition.params?.escortEntityIds ?? [];
+        const targets = getEscortDesignated(gameState, escortIds);
+        if (targets.some(t => !isEntityFunctional(t) && !hasEscapedBoard(t))) return true;
         break;
       }
     }

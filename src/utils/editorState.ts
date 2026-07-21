@@ -38,6 +38,9 @@ export interface EditorPuzzleState {
   hallways?: HallwayMarker[];
   doors?: DoorMarker[];
 
+  // Per-puzzle quest description (2026-07-21); optional for older caches
+  questDescription?: string;
+
   // Tags & description
   tags?: string[];
   description?: string;

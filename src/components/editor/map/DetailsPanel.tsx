@@ -51,6 +51,17 @@ export const DetailsPanel: React.FC<DetailsPanelProps> = ({
       />
     </div>
     <div>
+      <label className="block text-sm mb-1">Quest Description</label>
+      <textarea
+        value={state.questDescription ?? ''}
+        onChange={(e) => setState(prev => ({ ...prev, questDescription: e.target.value || undefined }))}
+        placeholder="Optional: a sentence or two shown to the player in the quest (?) help panel..."
+        rows={3}
+        className="w-full px-3 py-2 bg-stone-700 rounded text-sm resize-none"
+      />
+      <p className="text-xs text-stone-400 mt-1">Appears as "About this Puzzle" above the generic quest help. Blank = generic help only.</p>
+    </div>
+    <div>
       <div className="flex items-center justify-between mb-1">
         <label className="text-sm">Tags</label>
         <button

@@ -521,7 +521,20 @@ export type WinConditionType =
   | 'protect_noble'         // Win requires all Nobles alive (pairs with other conditions: "kill everything without losing the King")
   | 'noble_survives_turns'  // Nobles alive at end of turn X (params.turns) = victory
   | 'noble_reaches_goal'    // A Noble standing on a GOAL tile = victory (reuses the goal-tile placement)
-  | 'noble_escapes';        // Every Noble exits the board through an opening (hallway/door floor tile; params.escapeOpening narrows to one) — the exit stamps despawned WITHOUT dead, the game's one alive-despawned state
+  | 'noble_escapes'         // Every Noble exits the board through an opening (hallway/door floor tile; params.escapeOpening narrows to one) — the exit stamps despawned WITHOUT dead, the game's one alive-despawned state
+  // Escort (2026-07-21): noble_escapes generalized to ARBITRARY designated
+  // entities — get specific enemies, heroes, or allies through a specific-
+  // or-any opening. params.escortEntityIds designates by ASSET id; every
+  // designated asset must have >=1 placed entity and ALL its placed
+  // entities must escape. params.escapeRule picks detection: 'standing'
+  // (default — end-of-turn census on the opening tile, the Noble rule) or
+  // 'walk_through' (the entity must physically step out through the mouth,
+  // flee-trait style). Escapes use the alive-despawned success state, so
+  // escaped designated ENEMIES are excused from defeat_all (isEntityFunctional
+  // excludes despawned) rather than counted as kills. IMPLIED-PROTECT: a
+  // designated entity DYING (not escaping) = instant defeat — the quest
+  // became unwinnable, same philosophy as the noble rule.
+  | 'entity_escapes';
 
 /**
  * Parameters for different win condition types
@@ -538,14 +551,29 @@ export interface WinConditionParams {
   // these types neither block victory nor appear in the quest label.
   excludedEnemyIds?: string[];
 
-  // For noble_escapes — the designated opening (a hallway or door marker's
-  // {x, y, side}). Unset = any valid opening on the map counts.
+  // For noble_escapes AND entity_escapes — the designated opening (a hallway
+  // or door marker's {x, y, side}). Unset = any valid opening on the map.
   escapeOpening?: { x: number; y: number; side: string };
+
+  // For entity_escapes — ASSET ids (enemy/ally enemyIds and hero
+  // characterIds) of the entities to guide out. Every designated asset must
+  // have at least one placed entity, and all its placed entities must escape.
+  escortEntityIds?: string[];
+
+  // For entity_escapes — how the exit is detected. 'standing' (default):
+  // end-of-turn census on the opening tile (the Noble rule). 'walk_through':
+  // the entity must step out through the mouth (direction-of-travel, same
+  // geometry as the flee trait, resolved in moveCharacter).
+  escapeRule?: 'standing' | 'walk_through';
 }
 
 export interface WinCondition {
   type: WinConditionType;
   params?: WinConditionParams;
+  // Quest text override (2026-07-21): authored text shown VERBATIM in the
+  // quest banner instead of the auto-phrased label. For objectives the
+  // auto-phrasing can't express well.
+  customLabel?: string;
 }
 
 // ============================================
@@ -724,6 +752,11 @@ export interface Puzzle {
 
   // Side quests (optional bonus objectives)
   sideQuests?: SideQuest[];
+
+  // Per-puzzle quest description (2026-07-21): a designer-authored sentence
+  // or two shown in the quest (?) help panel as its own puzzle-specific
+  // section, above the generic what-is-a-quest content.
+  questDescription?: string;
 
   // Metadata — tags and description for organization
   tags?: string[];        // User-defined tags (e.g., "tutorial", "hard", "boss")

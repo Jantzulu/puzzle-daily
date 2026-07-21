@@ -1052,31 +1052,62 @@ function entityExitsThroughOpenings(character: PlacedCharacter): boolean {
 // opening's mouth. The mouth's far side is always void/wall/out-of-bounds
 // (that's what makes the marker valid), so any matching step is necessarily
 // also a wall collision — callers gate on their existing wall checks first.
-function openingMouthAt(gameState: GameState, x: number, y: number, direction: Direction): boolean {
+// `only` narrows to one designated opening (escort walk-through).
+function openingMouthAt(
+  gameState: GameState, x: number, y: number, direction: Direction,
+  only?: { x: number; y: number; side: string }
+): boolean {
   const off = getDirectionOffset(direction);
   if (Math.abs(off.dx) + Math.abs(off.dy) !== 1) return false;
   const p = gameState.puzzle;
   const fx = Math.floor(x);
   const fy = Math.floor(y);
+  const matches = (m: { x: number; y: number; side: string }) =>
+    m.x === fx && m.y === fy &&
+    SIDE_OFFSETS[m.side as keyof typeof SIDE_OFFSETS].dx === off.dx &&
+    SIDE_OFFSETS[m.side as keyof typeof SIDE_OFFSETS].dy === off.dy &&
+    (!only || (only.x === m.x && only.y === m.y && only.side === m.side));
   const hallwayMatch = (p.hallways ?? []).some(h =>
-    h.x === fx && h.y === fy &&
-    SIDE_OFFSETS[h.side].dx === off.dx && SIDE_OFFSETS[h.side].dy === off.dy &&
-    isValidHallway(h, p.tiles, p.width, p.height)
+    matches(h) && isValidHallway(h, p.tiles, p.width, p.height)
   );
   if (hallwayMatch) return true;
   return (p.doors ?? []).some(d =>
-    d.x === fx && d.y === fy &&
-    SIDE_OFFSETS[d.side].dx === off.dx && SIDE_OFFSETS[d.side].dy === off.dy &&
-    isValidDoor(d, p.tiles, p.width, p.height)
+    matches(d) && isValidDoor(d, p.tiles, p.width, p.height)
   );
 }
 
-// DEPART semantics verbatim (see ActionType.DEPART): not a death — no drops,
-// no death triggers, no corpse; dead+despawned so win checks settle and the
-// tile frees; diedOnTurn stays unset; departedOnTurn is the render hook for
-// the full-opacity walk-out.
-function departThroughOpening(character: PlacedCharacter, gameState: GameState): PlacedCharacter {
-  character.dead = true;
+// Escort walk-through (entity_escapes with escapeRule 'walk_through'): the
+// designated entity must physically step out through a qualifying mouth —
+// the condition's designated opening, or any valid opening when unset.
+function escortWalkThroughMatch(character: PlacedCharacter, gameState: GameState, x: number, y: number, direction: Direction): boolean {
+  return gameState.puzzle.winConditions.some(c =>
+    c.type === 'entity_escapes' &&
+    c.params?.escapeRule === 'walk_through' &&
+    (c.params?.escortEntityIds ?? []).includes(character.characterId) &&
+    openingMouthAt(gameState, x, y, direction, c.params?.escapeOpening)
+  );
+}
+
+// The single decision point the wall-collision sites consult. Escort wins
+// over flee when both apply — escaping (success state) beats departing.
+function mouthExitKind(character: PlacedCharacter, gameState: GameState, x: number, y: number, direction: Direction): 'escort' | 'flee' | null {
+  if (escortWalkThroughMatch(character, gameState, x, y, direction)) return 'escort';
+  if (entityExitsThroughOpenings(character) && openingMouthAt(gameState, x, y, direction)) return 'flee';
+  return null;
+}
+
+// Exit stamps. 'flee' = DEPART semantics verbatim (see ActionType.DEPART):
+// not a death — no drops, no death triggers, no corpse; dead+despawned so
+// win checks settle and the tile frees; diedOnTurn stays unset. 'escort' =
+// the noble-escape ALIVE-despawned success state (dead stays FALSE, so
+// implied-protect and hero-death checks read it as a win in progress).
+// departedOnTurn is the render hook for the full-opacity walk-out either way.
+function exitThroughMouth(character: PlacedCharacter, gameState: GameState, kind: 'escort' | 'flee'): PlacedCharacter {
+  if (kind === 'flee') {
+    character.dead = true;
+  } else {
+    character.active = false;
+  }
   character.despawned = true;
   character.departedOnTurn = gameState.currentTurn;
   return character;
@@ -1133,13 +1164,13 @@ function moveCharacter(
     }
   }
 
-  // Flee-through-openings: the blocked first step goes out through a valid
-  // mouth — leave the board instead of consulting ANY wall behavior
-  // (turn/stop/continue alike). Must run before the turn handling below so
-  // facing never adopts the phantom turn.
-  if (willHitWall && entityExitsThroughOpenings(updatedChar) &&
-      openingMouthAt(gameState, updatedChar.x, updatedChar.y, direction)) {
-    return departThroughOpening(updatedChar, gameState);
+  // Mouth exits (flee trait / escort walk-through): the blocked first step
+  // goes out through a qualifying mouth — leave the board instead of
+  // consulting ANY wall behavior (turn/stop/continue alike). Must run
+  // before the turn handling below so facing never adopts the phantom turn.
+  if (willHitWall) {
+    const exitKind = mouthExitKind(updatedChar, gameState, updatedChar.x, updatedChar.y, direction);
+    if (exitKind) return exitThroughMouth(updatedChar, gameState, exitKind);
   }
 
   // If we'll hit a wall immediately, handle collision NOW (don't waste a turn)
@@ -1183,12 +1214,10 @@ function moveCharacter(
       isTileBlockingMovement(gameState.puzzle.tiles[newY]?.[newX], gameState);
 
     if (isWallCollision) {
-      // Flee-through-openings: mid-move steps exit too (a 2-tile mover that
-      // reaches the mouth on step 1 walks out on step 2, same turn).
-      if (entityExitsThroughOpenings(updatedChar) &&
-          openingMouthAt(gameState, updatedChar.x, updatedChar.y, currentDirection)) {
-        return departThroughOpening(updatedChar, gameState);
-      }
+      // Mouth exits: mid-move steps exit too (a 2-tile mover that reaches
+      // the mouth on step 1 walks out on step 2, same turn).
+      const exitKind = mouthExitKind(updatedChar, gameState, updatedChar.x, updatedChar.y, currentDirection);
+      if (exitKind) return exitThroughMouth(updatedChar, gameState, exitKind);
       // Handle wall collision based on behavior
       switch (onWallCollision) {
         case 'turn_left':
@@ -1528,13 +1557,13 @@ function moveCharacter(
       }
     }
 
-    // Flee-through-openings: landing on a mouth tile facing out is the
-    // moment BEFORE the exit — the anticipatory turn must not fire, or the
-    // entity (and its facing arrow) would turn away from the door it's
-    // about to leave through. It stays pointed at the mouth and departs on
-    // its next move.
-    const facingOutTheMouth = entityExitsThroughOpenings(updatedChar) &&
-      openingMouthAt(gameState, updatedChar.x, updatedChar.y, updatedChar.facing);
+    // Mouth exits (flee trait / escort walk-through): landing on a mouth
+    // tile facing out is the moment BEFORE the exit — the anticipatory turn
+    // must not fire, or the entity (and its facing arrow) would turn away
+    // from the door it's about to leave through. It stays pointed at the
+    // mouth and exits on its next move.
+    const facingOutTheMouth =
+      mouthExitKind(updatedChar, gameState, updatedChar.x, updatedChar.y, updatedChar.facing) !== null;
 
     if (willHitWallNext && !facingOutTheMouth) {
       // Turn now to avoid wasting next turn
@@ -1589,13 +1618,14 @@ function handleIfWall(
     (!movingIsGhost && isWallLikeCharacter) ||
     (!movingIsGhost && isBlockingCorpse);
 
-  // Flee-through-openings: for a flagged entity a valid mouth dead ahead is
-  // an EXIT, not a wall — IF_WALL must not fire, or an authored "turn at
-  // walls" would steer the entity away from the door it's about to leave
-  // through (and its facing arrow would lie about the exit). The mouth's far
-  // side can't hold entities, so when this matches the wall IS the mouth.
-  const mouthAhead = entityExitsThroughOpenings(character) &&
-    openingMouthAt(gameState, character.x, character.y, character.facing);
+  // Mouth exits (flee trait / escort walk-through): for a qualifying entity
+  // a valid mouth dead ahead is an EXIT, not a wall — IF_WALL must not fire,
+  // or an authored "turn at walls" would steer the entity away from the door
+  // it's about to leave through (and its facing arrow would lie about the
+  // exit). The mouth's far side can't hold entities, so when this matches
+  // the wall IS the mouth.
+  const mouthAhead =
+    mouthExitKind(character, gameState, character.x, character.y, character.facing) !== null;
 
   if (isWall && !mouthAhead && action.params?.then) {
     // Execute the "then" actions

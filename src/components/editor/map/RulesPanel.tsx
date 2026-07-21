@@ -108,6 +108,7 @@ export const RulesPanel: React.FC<RulesPanelProps> = ({ state, setState }) => (
                   <option value="noble_survives_turns">Noble Survives X Turns</option>
                   <option value="noble_reaches_goal">Noble Reaches Goal Tile</option>
                   <option value="noble_escapes">Noble Escapes the Dungeon</option>
+                  <option value="entity_escapes">Escort Through an Opening</option>
                 </select>
 
                 {/* Noble conditions: warn when nothing placed can satisfy them.
@@ -151,10 +152,91 @@ export const RulesPanel: React.FC<RulesPanelProps> = ({ state, setState }) => (
                   </div>
                 )}
 
-                {/* Noble escape: pick the exit opening (or any). Guiding a
-                    living Noble onto the opening's floor tile ends its run —
+                {/* Escort (entity_escapes, 2026-07-21): designate WHO to
+                    guide out (asset ids — placed enemies/allies + heroes in
+                    the pool) and how the exit is detected. Implied-protect:
+                    a designated entity dying loses the puzzle. */}
+                {condition.type === 'entity_escapes' && (() => {
+                  const ids = condition.params?.escortEntityIds ?? [];
+                  const setIds = (next: string[]) => {
+                    setState(prev => {
+                      const newConditions = [...prev.winConditions];
+                      newConditions[index] = {
+                        ...newConditions[index],
+                        params: {
+                          ...newConditions[index].params,
+                          escortEntityIds: next.length > 0 ? next : undefined,
+                        },
+                      };
+                      return { ...prev, winConditions: newConditions };
+                    });
+                  };
+                  const candidates: Array<{ id: string; name: string; kind: string }> = [
+                    ...Array.from(new Set(state.enemies.map(e => e.enemyId))).map(id => ({
+                      id,
+                      name: getEnemy(id)?.name ?? id,
+                      kind: state.enemies.some(e => e.enemyId === id && e.party === 'hero') ? 'Ally' : 'Enemy',
+                    })),
+                    ...state.availableCharacters.map(id => ({
+                      id,
+                      name: getCharacter(id)?.name ?? id,
+                      kind: 'Hero',
+                    })),
+                  ];
+                  return (
+                    <div className="space-y-1 mt-1">
+                      <p className="text-xs text-stone-400">Guide out:</p>
+                      {candidates.length === 0 && (
+                        <p className="text-xs text-amber-400 italic">Place enemies/allies or add heroes to choose escort targets</p>
+                      )}
+                      {candidates.map(c => (
+                        <label key={c.id} className="flex items-center gap-2 text-xs cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={ids.includes(c.id)}
+                            onChange={(e) => setIds(e.target.checked ? [...ids, c.id] : ids.filter(i => i !== c.id))}
+                            className="w-3.5 h-3.5"
+                          />
+                          <span>{c.name} <span className="text-stone-500">({c.kind})</span></span>
+                        </label>
+                      ))}
+                      {ids.length === 0 && candidates.length > 0 && (
+                        <p className="text-xs text-amber-400 italic">Nothing designated — the quest can never complete</p>
+                      )}
+                      <div className="flex items-center gap-2">
+                        <label className="text-xs text-stone-400">Counts when:</label>
+                        <select
+                          value={condition.params?.escapeRule ?? 'standing'}
+                          onChange={(e) => {
+                            const v = e.target.value as 'standing' | 'walk_through';
+                            setState(prev => {
+                              const newConditions = [...prev.winConditions];
+                              newConditions[index] = {
+                                ...newConditions[index],
+                                params: {
+                                  ...newConditions[index].params,
+                                  escapeRule: v === 'standing' ? undefined : v,
+                                },
+                              };
+                              return { ...prev, winConditions: newConditions };
+                            });
+                          }}
+                          className="flex-1 px-2 py-1 bg-stone-600 rounded text-xs"
+                        >
+                          <option value="standing">Standing on the opening tile (end of turn)</option>
+                          <option value="walk_through">Walking out through the mouth</option>
+                        </select>
+                      </div>
+                      <p className="text-xs text-stone-500">If a designated entity dies, the puzzle is lost. Escaped enemies don't count as kills.</p>
+                    </div>
+                  );
+                })()}
+
+                {/* Noble escape + escort: pick the exit opening (or any).
+                    Guiding a living target onto the opening's floor tile
+                    (or walking it out, in walk-through mode) ends its run —
                     it walks out and counts as escaped. */}
-                {condition.type === 'noble_escapes' && (() => {
+                {(condition.type === 'noble_escapes' || condition.type === 'entity_escapes') && (() => {
                   const openings = [
                     ...state.hallways.map(h => ({ x: h.x, y: h.y, side: h.side as string, kind: 'Hallway' })),
                     ...state.doors.map(d => ({ x: d.x, y: d.y, side: d.side as string, kind: 'Door' })),
@@ -266,6 +348,26 @@ export const RulesPanel: React.FC<RulesPanelProps> = ({ state, setState }) => (
                     />
                   </div>
                 )}
+
+                {/* Quest text override (2026-07-21): authored text replaces
+                    the auto-phrased quest banner label verbatim. */}
+                <input
+                  type="text"
+                  value={condition.customLabel ?? ''}
+                  onChange={(e) => {
+                    setState(prev => {
+                      const newConditions = [...prev.winConditions];
+                      newConditions[index] = {
+                        ...newConditions[index],
+                        customLabel: e.target.value || undefined,
+                      };
+                      return { ...prev, winConditions: newConditions };
+                    });
+                  }}
+                  placeholder="Custom quest text (optional)"
+                  className="w-full mt-1 px-2 py-1 bg-stone-600 rounded text-xs placeholder:text-stone-500"
+                  title="Shown verbatim in the quest banner instead of the automatic text"
+                />
               </div>
 
               {/* Remove button (only if more than 1 condition) */}

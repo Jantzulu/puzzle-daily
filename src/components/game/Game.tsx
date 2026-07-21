@@ -3111,11 +3111,20 @@ export const Game: React.FC<GameProps> = ({
                         the quest text itself wraps and the icon stays left of
                         "Quest:". min-w-0 lets the group shrink into the row. */}
                     <span className="flex items-center gap-2 min-w-0">
-                    <HelpButton sectionId="game_general" className="flex-shrink-0" />
+                    <HelpButton
+                      sectionId="game_general"
+                      className="flex-shrink-0"
+                      preamble={gameState.puzzle.questDescription?.trim()
+                        ? { title: 'About this Puzzle', text: gameState.puzzle.questDescription.trim() }
+                        : undefined}
+                    />
                     <span key={shimmerKey} className="shimmer-container">
                       <span className="text-base md:text-lg lg:text-xl font-semibold text-stone-400">Quest:</span>
                       <span className="text-sm md:text-base lg:text-lg text-copper-300 font-medium">
                       {gameState.puzzle.winConditions.map((wc) => {
+                        // Quest text override (2026-07-21): authored text
+                        // wins verbatim over every auto-phrased label.
+                        if (wc.customLabel?.trim()) return wc.customLabel.trim();
                         switch (wc.type) {
                           case 'defeat_all_enemies': {
                             // Mirror checkVictoryConditions: ENEMY-party combatants that
@@ -3124,8 +3133,10 @@ export const Game: React.FC<GameProps> = ({
                             // remaining kill targets by type — "Defeat the Bats (2) and
                             // Skeleton (1)" — using the asset's pluralName when several.
                             const excludedIds = wc.params?.excludedEnemyIds ?? [];
+                            // !despawned: escort-escaped enemies (alive-despawned)
+                            // are excused, not remaining kill targets.
                             const counted = gameState.puzzle.enemies.filter(e =>
-                              !e.dead && entityParty(e, gameState) === 'enemy' &&
+                              !e.dead && !e.despawned && entityParty(e, gameState) === 'enemy' &&
                               !e.excludeFromWinConditions && !excludedIds.includes(e.enemyId)
                             );
                             if (counted.length === 0) return 'Defeat all Enemies (0)';
@@ -3186,6 +3197,20 @@ export const Game: React.FC<GameProps> = ({
                           case 'noble_escapes': {
                             const names = nobleQuestNames(gameState);
                             return names ? `Guide ${names} out of the Dungeon` : 'Guide the Noble out of the Dungeon';
+                          }
+                          case 'entity_escapes': {
+                            // Escort: name the designated assets (hero or
+                            // enemy/ally lookup by id). customLabel above is
+                            // the pressure valve for fancier phrasing.
+                            const ids = wc.params?.escortEntityIds ?? [];
+                            const escortNames = ids
+                              .map(id => getCharacter(id)?.name ?? loadEnemy(id)?.name)
+                              .filter((n): n is string => !!n);
+                            if (escortNames.length === 0) return 'Guide them out of the Dungeon';
+                            const joined = escortNames.length === 1
+                              ? escortNames[0]
+                              : `${escortNames.slice(0, -1).join(', ')} and ${escortNames[escortNames.length - 1]}`;
+                            return `Guide ${joined} out of the Dungeon`;
                           }
                           case 'survive_turns':
                             return `Survive ${wc.params?.turns ?? 10} Turns`;

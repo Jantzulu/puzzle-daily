@@ -10,13 +10,17 @@ interface HelpOverlayProps {
   sectionId: HelpSectionId;
   isOpen: boolean;
   onClose: () => void;
+  // Per-puzzle quest description (2026-07-21): designer-authored plain text
+  // rendered in its own highlighted block ABOVE the generic section content.
+  // Plain text only — rendered via JSX, never through the rich-HTML path.
+  preamble?: { title: string; text: string };
 }
 
 /**
  * Mobile-friendly help overlay that displays help content for a section.
  * Shows as a centered modal on desktop and full-screen on mobile.
  */
-export const HelpOverlay: React.FC<HelpOverlayProps> = ({ sectionId, isOpen, onClose }) => {
+export const HelpOverlay: React.FC<HelpOverlayProps> = ({ sectionId, isOpen, onClose, preamble }) => {
   const helpContent = getHelpSection(sectionId);
   const navigate = useNavigate();
   const contentRef = useRef<HTMLDivElement>(null);
@@ -108,13 +112,21 @@ export const HelpOverlay: React.FC<HelpOverlayProps> = ({ sectionId, isOpen, onC
           </button>
         </div>
 
-        {/* Content */}
-        <div
-          ref={contentRef}
-          className="flex-1 overflow-y-auto p-3 md:p-4 text-parchment-300 help-content text-sm md:text-base"
-          onClick={handleContentClick}
-          dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(helpContent.content) }}
-        />
+        {/* Content — optional puzzle-specific preamble above the generic section */}
+        <div className="flex-1 overflow-y-auto">
+          {preamble && (
+            <div className="mx-3 md:mx-4 mt-3 md:mt-4 p-3 rounded border border-copper-700/60 bg-stone-900/60">
+              <h3 className="text-sm font-bold text-copper-300 mb-1">{preamble.title}</h3>
+              <p className="text-sm text-parchment-300 whitespace-pre-wrap">{preamble.text}</p>
+            </div>
+          )}
+          <div
+            ref={contentRef}
+            className="p-3 md:p-4 text-parchment-300 help-content text-sm md:text-base"
+            onClick={handleContentClick}
+            dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(helpContent.content) }}
+          />
+        </div>
 
         {/* Footer with close button for mobile */}
         <div className="p-3 md:p-4 border-t border-stone-700 md:hidden">
@@ -178,9 +190,10 @@ export const HelpOverlay: React.FC<HelpOverlayProps> = ({ sectionId, isOpen, onC
 interface HelpButtonProps {
   sectionId: HelpSectionId;
   className?: string;
+  preamble?: { title: string; text: string };
 }
 
-export const HelpButton: React.FC<HelpButtonProps> = ({ sectionId, className = '' }) => {
+export const HelpButton: React.FC<HelpButtonProps> = ({ sectionId, className = '', preamble }) => {
   const [isOpen, setIsOpen] = React.useState(false);
 
   return (
@@ -200,7 +213,7 @@ export const HelpButton: React.FC<HelpButtonProps> = ({ sectionId, className = '
           />
         </svg>
       </button>
-      <HelpOverlay sectionId={sectionId} isOpen={isOpen} onClose={() => setIsOpen(false)} />
+      <HelpOverlay sectionId={sectionId} isOpen={isOpen} onClose={() => setIsOpen(false)} preamble={preamble} />
     </>
   );
 };
