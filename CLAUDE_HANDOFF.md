@@ -192,7 +192,22 @@ The Reflect status effect bounces incoming projectiles back:
 
 ## Pending Tasks
 
-### Object spawn levers (scheduled decoration) — ✅ SHIPPED 2026-07-21
+### Object spawn levers (scheduled decoration) — ✅ SHIPPED 2026-07-21 (+ transitions same day)
+
+**Slice 3 `5de7521` — appear/disappear transitions (user-approved
+design):** default 300ms opacity fade both ways (no art needed;
+load-visible objects never fade — only mid-game flips); opt-in authored
+one-shots via the sprite's EXISTING spawnSpriteSheet/deathSpriteSheet
+slots (spawn plays once → idle; despawn plays once → gone, short visual
+grace past the logical flip). Board keeps per-placement state in
+`objectTransitionsRef` KEYED BY PLACEMENT REFERENCE (stable across
+turns, same assumption as the below/above memos), one flip sweep per
+frame; only |turn delta| === 1 animates — retry/replay scrubs snap;
+recurrence replays transitions each cycle. Date.now()-domain
+deliberately (sheet helpers sample Date.now() internally).
+StaticSpriteEditor gained opt-in `showTransitionStates` (ObjectEditor
+only — tiles/collectibles unchanged). AWAITING USER TEST with the rest
+of the feature.
 
 The 2026-07-21 session started a NEW working list (old flourish
 short-list SCRAPPED; see backlog "New batch (captured 2026-07-21)" for
