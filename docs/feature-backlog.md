@@ -587,6 +587,59 @@ the visual items: baked, event-driven, or transform/opacity only.
   may still be static if drawTile isn't time-aware — flag if noticed.
   AWAITING USER TEST.
 
+### New batch (captured 2026-07-21, haphazard order per user)
+
+Context: the old memory-side "flourish ideas" short-list (gate-rise
+reveal, void eyes, shadow entrance, HP glow, cracked gem) is SCRAPPED —
+void eyes redundant with eyes-in-the-dark, and the user plans to replace
+several of those elements with art. This batch is the new working list.
+Deliveries (see hallway dynamics batch) and eyes-in-the-dark (same
+section) are also active picks from this conversation.
+
+- [ ] **FEATURE — Entity editors: "sub attribute" to pair with sub
+  action steps.** INCOMPLETE CAPTURE — the user's message was cut off
+  mid-sentence ("one can add 'sub action step' but no 'sub
+  attribute'…"). Awaiting clarification before triage. *Captured
+  2026-07-21.*
+
+- [ ] **POLISH/AUDIT — Dev-page Settings tab cleanup.** The Settings
+  tab's organization is "a mess": tab layout is scattered, some
+  settings are vestigial after later changes, some may no longer work
+  at all. Wants a full audit (what does each setting still do?) plus a
+  visual/organization pass. *Captured 2026-07-21.*
+
+- [ ] **POLISH — Soul-return visual on resurrect.** Souls leave the
+  body on death; the inverse should play when an entity is revived by
+  a RESURRECT ability (explicitly NOT necromancy — that raises a
+  different thing). *Captured 2026-07-21.*
+
+- [ ] **FEATURE — Info panels preview scheduled/future entities.** The
+  board info panels only show entities currently on the board — an
+  enemy scheduled to walk in from a hallway on turn 3 is invisible in
+  the Enemies tab until it spawns. Players should be able to read the
+  full situation up front (this is a puzzle — information should be
+  available). Needs a design pass on how walk-ins/scheduled visitors/
+  vessels-to-hatch present before arrival. *Captured 2026-07-21.*
+
+- [ ] **FEATURE — Walk-out-through-hallway setting for entities.** A
+  setting so an entity that steps onto a hallway(-mouth) tile "leaves"
+  the game by walking through the opening on its NEXT turn, instead of
+  applying its wall behavior and turning away. Complements DEPART
+  (authored) with an emergent/positional exit. *Captured 2026-07-21.*
+
+- [ ] **IDEA — Slab "see it in action" entity showcases (information
+  levels).** Feedback from playtesters: the in-game Test buttons
+  undercut the puzzle challenge; mechanics learning belongs in the
+  Slab. Vision: per-entity looping demos (like LoL ability videos) —
+  either recorded clips or small live game boards. Live-board sketch
+  discussed: flag specific puzzles as "information levels" linked to
+  their entities; in the Slab the player can only START the sim, never
+  place; it runs max turns with no victory/defeat and resets cleanly.
+  Design discussion in progress (2026-07-21). **Test buttons
+  themselves: DO NOTHING for now — at most HIDE from the player app
+  later (never delete; they're optional props, trivial to re-enable).**
+  *Captured 2026-07-21.*
+
 ### Profile / cosmetic
 
 - [ ] **Developer badge in profile.** Special badge shown next to a
