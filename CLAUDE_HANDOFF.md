@@ -192,6 +192,26 @@ The Reflect status effect bounces incoming projectiles back:
 
 ## Pending Tasks
 
+### Showcase round 2 — ✅ SHIPPED 2026-07-21 (`a0057ad`, user feedback batch)
+
+(1) Showcases attach to ANY Slab asset type — ShowcaseSection on all
+seven tabs (status effects / tiles / items added); the editor's
+attached-to picker is grouped (entities & heroes / tiles from the grid /
+placed items / ALL non-builtin status effects — statuses hide inside
+spells so they can't be puzzle-derived). (2) HEROLESS showcases work
+with zero changes: the zero-active-hero endgame fallback lives inside
+`if (!testMode)` (simulation.ts ~2554) and showcases run testMode — a
+demo with no heroes plays its full loop. (3) `hideFromCompendium` flag
+on all six asset interfaces (vesselToEnemyAsset carries it; allies =
+CustomEnemy so it rides) + "Hide from the Slab" checkbox in all six
+editors + Compendium list filters — an asset can be published yet have
+no Slab page (showcase-only variants). (4) DISTRIBUTION ANSWER captured
+in backlog: the Slab reads DEVICE-local puzzles; team devices get
+showcases via cloud pull, real players get NOTHING until a
+fetch-published-showcases path ships (backlog: "Showcase distribution
+to players", incl. the player-visible "Select Dungeon" dropdown leak).
+Production dashboard idea also captured (design with user first).
+
 ### Slab showcase ("information levels") — ✅ SHIPPED 2026-07-21 (3 slices)
 
 **`7b09b78` authoring:** `Puzzle.showcase {entityIds, heroes,

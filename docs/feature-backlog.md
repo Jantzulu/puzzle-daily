@@ -774,6 +774,33 @@ section) are also active picks from this conversation.
   later (never delete; they're optional props, trivial to re-enable).**
   *Captured 2026-07-21.*
 
+- [ ] **FEATURE — Showcase distribution to players (captured
+  2026-07-21).** The Slab enumerates puzzles from the DEVICE (bundled +
+  localStorage saved_puzzles). Team devices get showcase puzzles via
+  the editor's cloud pull, so showcases work internally today — but a
+  real player's saved_puzzles is EMPTY (players only receive the daily
+  via daily_schedule→puzzles_live). Before launch, the player app needs
+  a fetch path for published showcase puzzles (e.g. query puzzles_live
+  for rows whose puzzle JSON has `showcase`, cache like the daily) —
+  publishing to puzzles_live WITHOUT scheduling as a daily is the
+  natural channel: approved/published status required, never appears in
+  rotation. Related leak noted same day: the "Select Dungeon" dropdown
+  in Game.tsx renders for players too (comment says dev-use; only the
+  bundled test puzzle shows since saved_puzzles is empty — but it
+  should be gated like the Test buttons before launch).
+
+- [ ] **FEATURE — Content production dashboard (captured 2026-07-21,
+  DESIGN WITH USER before building).** Team-internal at-a-glance
+  tracking of what's done per asset/puzzle: e.g. a hero row showing
+  "description written? published? Slab showcase attached? art final?";
+  a map row showing "description? quest text? approved? published?
+  scheduled?". Motivated by the growing asset count — publish state
+  lives in Supabase columns, showcase attachment lives in puzzle JSON,
+  descriptions live in assets, so a dashboard must join several
+  sources. Open design: which fields count as "complete" per asset
+  type; where it lives (Asset Manager tab? own page?); manual checklist
+  fields vs derived-only.
+
 ### Profile / cosmetic
 
 - [ ] **Developer badge in profile.** Special badge shown next to a
