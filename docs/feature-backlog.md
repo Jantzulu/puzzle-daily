@@ -637,7 +637,21 @@ section) are also active picks from this conversation.
   Presentation still to design (e.g. dimmed "arrives turn 3" rows;
   recurrence cadence for scheduled visitors). *Captured 2026-07-21.*
 
-- [ ] **FEATURE — Walk-out-through-hallway setting for entities.** A
+- [x] **FEATURE — Walk-out-through-hallway setting — SHIPPED 2026-07-21**
+  (`f29397e`) as `Enemy.exitsThroughOpenings` ("Exits Through Openings"
+  checkbox in EnemyEditor, enemies + allies). Implementation notes worth
+  keeping: FOUR gated sites in actions.ts (moveCharacter pre-check,
+  step loop [multi-tile movers exit mid-move, same turn], POST-MOVEMENT
+  LOOKAHEAD [the anticipatory turn was the arrow-dishonesty mechanism —
+  suppressed when landing on a mouth facing out, so facing = arrow stays
+  pointed at the exit], IF_WALL [mouth ahead = exit, not wall]); exit
+  validity = noble-escape rule verbatim (closed-door visual state not
+  consulted — doors have no logical open/closed today); departure =
+  DEPART semantics; walk-out render rides departedOnTurn for free.
+  8 pins in flee-through-openings.test.ts. AWAITING USER TEST.
+  Original spec follows for context:
+
+- [x] **(original entry)** A
   setting so an entity that steps onto a hallway(-mouth) tile "leaves"
   the game by walking through the opening on its NEXT turn, instead of
   applying its wall behavior and turning away. Complements DEPART

@@ -192,6 +192,26 @@ The Reflect status effect bounces incoming projectiles back:
 
 ## Pending Tasks
 
+### Flee-through-openings — ✅ SHIPPED 2026-07-21 (`f29397e`)
+
+`Enemy.exitsThroughOpenings` (EnemyEditor checkbox, enemies + allies):
+direction-of-travel exit — a movement step passing THROUGH a valid
+opening mouth departs (DEPART semantics; reads as defeated to
+defeat_all_enemies, curate via win checkboxes; walk-out render rides
+departedOnTurn free). Walking past never triggers; diagonals never;
+door visual open/closed not consulted (noble-escape validity verbatim).
+FOUR gated sites in actions.ts, parity by construction: moveCharacter
+pre-check (beats every wall behavior incl. stop), step loop (multi-tile
+movers exit mid-move SAME turn), **POST-MOVEMENT LOOKAHEAD (the
+anticipatory wall turn was the arrow-dishonesty mechanism the user
+predicted — suppressed when landing on a mouth facing out, so facing =
+the movement arrow stays pointed at the exit)**, and IF_WALL (mouth
+ahead = exit, not wall). 8 pins in flee-through-openings.test.ts.
+619 tests green. AWAITING USER TEST (flag an enemy, route it into a
+hallway mouth, watch the arrow stay pointed out + the walk-off).
+⚠️ Commit-message tooling note: PS here-string messages break on
+embedded double quotes — use `git commit -F <file>` (memory pinned).
+
 ### Object spawn levers (scheduled decoration) — ✅ SHIPPED 2026-07-21 (+ transitions same day)
 
 **Slice 3 `5de7521` — appear/disappear transitions (user-approved
