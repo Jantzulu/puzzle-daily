@@ -133,6 +133,7 @@ vi.mock('../../utils/assetStorage', () => ({
   vesselToEnemyAsset: testVesselToEnemy,
   loadAlly: (id: string) => allyRegistry.get(id) ?? null,
   allyToEnemyAsset: (ally: Enemy) => ally,
+  loadObject: () => null,
   isAssetHidden: () => false,
   getCustomCharacters: () => Array.from(characterRegistry.values()),
   getCustomEnemies: () => Array.from(enemyRegistry.values()),
