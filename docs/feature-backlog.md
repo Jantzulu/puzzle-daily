@@ -620,14 +620,30 @@ section) are also active picks from this conversation.
   enemy scheduled to walk in from a hallway on turn 3 is invisible in
   the Enemies tab until it spawns. Players should be able to read the
   full situation up front (this is a puzzle — information should be
-  available). Needs a design pass on how walk-ins/scheduled visitors/
-  vessels-to-hatch present before arrival. *Captured 2026-07-21.*
+  available). **Design locked (user, 2026-07-21): EVERYTHING is
+  previewed — full disclosure, no surprise flag; "at least in daily
+  mode one should be able to understand what might happen."**
+  Presentation still to design (e.g. dimmed "arrives turn 3" rows;
+  recurrence cadence for scheduled visitors). *Captured 2026-07-21.*
 
 - [ ] **FEATURE — Walk-out-through-hallway setting for entities.** A
   setting so an entity that steps onto a hallway(-mouth) tile "leaves"
   the game by walking through the opening on its NEXT turn, instead of
   applying its wall behavior and turning away. Complements DEPART
-  (authored) with an emergent/positional exit. *Captured 2026-07-21.*
+  (authored) with an emergent/positional exit. **Design locked (user,
+  2026-07-21): DIRECTION-OF-TRAVEL, not adjacency** — the entity exits
+  only when its blocked movement step would pass THROUGH a valid
+  opening's mouth ("if it hadn't been a wall tile"); walking past a
+  mouth never triggers. Stateless: hook sits immediately before the
+  wallBehavior choke point (mouth check via the shared isValidHallway/
+  isValidDoor geometry, noble-escape precedent), so "leaves next turn"
+  falls out naturally — entity walks onto the mouth tile as normal
+  floor, next turn's step into the wall is the exit. Departure =
+  DEPART semantics (dead+despawned, no drops; reads as defeated to
+  defeat_all_enemies — curate via win checkboxes) + existing walk-out
+  render, per-step for multi-tile moves. Open sub-decision: does a
+  CLOSED door count as an exit (lean: no — shut door is a wall until
+  it opens). *Captured 2026-07-21.*
 
 - [ ] **IDEA — Slab "see it in action" entity showcases (information
   levels).** Feedback from playtesters: the in-game Test buttons
