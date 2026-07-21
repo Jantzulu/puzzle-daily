@@ -1722,7 +1722,9 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
     if (hasChanges) {
       setCharacterDeathAnimations(newDeathAnimations);
     }
-  }, [gameState.placedCharacters]);
+    // gameStatus is in the deps for the soul-return gate; extra firings are
+    // no-ops (unchanged dead-state diffs do nothing).
+  }, [gameState.placedCharacters, gameState.gameStatus]);
 
   // Detect enemy deaths and trigger death animations
   useEffect(() => {
@@ -1763,7 +1765,8 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
     if (hasChanges) {
       setEnemyDeathAnimations(newDeathAnimations);
     }
-  }, [gameState.puzzle.enemies]);
+    // gameStatus: see the character twin above.
+  }, [gameState.puzzle.enemies, gameState.gameStatus]);
 
   // Exit walk-outs (2026-07-17): when an enemy leaves the board this turn —
   // escapedOnTurn (escapes-on-defeat, ghostly fade) or departedOnTurn
