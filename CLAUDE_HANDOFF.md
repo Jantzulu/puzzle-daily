@@ -10,7 +10,7 @@ Last Updated: July 21, 2026, second session (SHOWCASE DISTRIBUTION + SLAB REVEAL
 | **Approved feature roadmap** | `~/.claude/projects/.../memory/feature-roadmap.md` (user memory) | Formally approved features, shipped + outstanding. Categorized by priority. The curated list. |
 | **Captured-in-the-wild backlog** | `docs/feature-backlog.md` | Raw ideas + bug observations as they come up, triaged into tiers (launch-blocking → launch-adjacent → post-launch). New items land here; graduate to roadmap when scoped. |
 | **Deferred plan: offscreen sprite cache** | `docs/offscreen-sprite-cache-plan.md` | The biggest perf lever still on the table. Documented but blocked on validation infra (dual-render diff harness). Pick up when mobile perf becomes a bottleneck. |
-| **Completed plan: projectile refactor** | `docs/projectile-refactor-plan.md` | COMPLETE — all phases shipped or resolved (D-b rejected, see "Phase D-b lite" below). Two low-value residual divergences remain documented under its Phase E section. |
+| **Completed plan: projectile refactor** | `docs/projectile-refactor-plan.md` | COMPLETE — all phases shipped or resolved (D-b rejected, see "Phase D-b lite" below). Homing-reflect timing divergence CLOSED 2026-07-21 (`d109a0e`) — the known real/headless divergence ledger is EMPTY (only the documented-only bouncing-THROW_PLACE corner remains, not authorable). |
 | **Won't-do: native-resolution rendering** | `docs/native-resolution-rendering-plan.md` | Phase 2 reverted; reasoning preserved so it's not reattempted naively. |
 | **Determinism / audit summary** | `docs/audit-summary.md` | Living roadmap of determinism + audit work. |
 | **Player app vision/architecture** | `docs/PLAYER_APP_VISION.md`, `docs/PLAYER_APP_ARCHITECTURE.md` | Player site separation reference. |
@@ -209,6 +209,23 @@ The Reflect status effect bounces incoming projectiles back:
 - `replayFrozen` prop on AnimatedGameBoard freezes `updateProjectiles`
 
 ## Pending Tasks
+
+### Determinism: homing-reflect timing divergence — ✅ CLOSED 2026-07-21 second session (`d109a0e`)
+
+The last pinned real/headless divergence (pinned 2026-07-13) is gone.
+`resolveHomingReflectHeadless` makes the solver resolve a reflected
+homing bolt's return leg the SAME turn the reflect happens, exactly as
+the live game does — same trajectory computation, same shared walker,
+same event shape (replays, built from the headless timeline, previously
+showed a multi-turn fly-back the live game never plays; now fixed too).
+Headless corpus goldens 13/19/20 regenerated (earlier landing); real
+goldens byte-identical. reflect-homing-timing.test.ts pins the PER-TURN
+health timeline across modes (the Phase E gate only compared end
+state). **Known divergence ledger: EMPTY.** Ridealong same session
+(`d106ffd`): CI's "Type check" step was VACUOUS — plain `tsc --noEmit`
+checks zero files under the root project-references tsconfig; CI now
+runs `npm run typecheck` (= `tsc -b --noEmit`). Always use `-b`
+locally too.
 
 ### Showcase distribution + Slab reveal timing — ✅ SHIPPED 2026-07-21 second session (4 slices)
 

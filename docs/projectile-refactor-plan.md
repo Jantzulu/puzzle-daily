@@ -160,18 +160,22 @@ only opt-out spells were affected.
   (`plan.reachTiles`) in BOTH modes, a deliberate live-behavior change
   for `homingHitAlongPath` spells. 5 pins in audit-parity.test.ts,
   including the deliberate "along-path hits ignore stealth" behavior.
-- 📌 **Homing reflect timing** — **PINNED by the user 2026-07-13 for a
-  future session (do not lose this).** Real mode resolves the reflected
-  return leg in the SAME turn (immediate combined-path walk, a
-  visual-driven structure); headless re-targets the caster and flies
-  back over subsequent turns. Final outcomes converge in practice (gate
-  is green) but the TURN the return hit lands differs — kill timing,
-  turn-count/score, and solvability under tight turn limits can
-  diverge, and headless gives the caster extra turns to move/die/change
-  status mid-return. Right fix direction: make headless resolve
-  same-turn so logic matches live; entangled with the combined-path
-  bookkeeping, needs its own session. Revisit when a puzzle design
-  leans on reflect + homing.
+- ✅ **Homing reflect timing** — **FIXED 2026-07-21** (`d109a0e`), the
+  blessed direction verbatim: headless resolves same-turn so logic
+  matches live. New `resolveHomingReflectHeadless` mirrors the real
+  reach-branch exactly (same reflector→caster trajectory via the bolt's
+  own path style, same `walkReflectedPathOnTiles` walker in 'headless',
+  same reflect/hit/deactivate event shape incl. combinedPath +
+  reflectAtTileIndex — replays, built from this timeline, now show the
+  same-turn return the live game plays). Headless goldens 13/19/20
+  regenerated (hit lands a turn earlier, bolt removed same turn); real
+  goldens byte-identical. NEW pins: reflect-homing-timing.test.ts
+  compares the PER-TURN health timeline across modes for all three path
+  styles — a regression to lagged resolution fails even though the
+  Phase E end-state gate would stay green. With this, the known
+  real/headless divergence ledger is EMPTY (the bouncing-THROW_PLACE
+  corner below remains documented-only: bounce isn't authorable on
+  THROW_PLACE).
 - ✅ **THROW_PLACE landing tile** — **FIXED 2026-07-13** (`717be08`).
   Turned out worse than documented: headless skips the walker position
   update on hitWall turns, so a wall-stopped throw placed the item at
