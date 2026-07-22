@@ -2,7 +2,8 @@ import { supabase } from '../lib/supabase';
 import type { DbPuzzle, DbAsset } from '../lib/supabase';
 import { logActivity } from './activityLogService';
 import { localDateKey } from '../utils/localDate';
-import { stampPublishedAssetIds } from '../utils/publishDependencies';
+import { stampPublishedAssetIds, collectPuzzleAssetIds } from '../utils/publishDependencies';
+import type { LiveContent } from '../utils/liveContentCache';
 
 async function getCurrentUserId(): Promise<string | undefined> {
   const { data } = await supabase.auth.getUser();
@@ -486,6 +487,116 @@ export async function fetchTodaysPuzzle(): Promise<DailyPuzzleResult> {
     return puzzle
       ? { status: 'ok', puzzle, puzzleNumber: (data.puzzle_number as number | null) ?? null }
       : { status: 'none' };
+  } catch {
+    return { status: 'error' }; // network-level failure (offline)
+  }
+}
+
+// ── Live content for the player app (showcase distribution arc) ────────────
+// Players receive only the daily via fetchTodaysPuzzle; everything else the
+// Slab and Training Grounds need comes from this one call: published
+// showcase puzzles (demo boards), published training puzzles, and the
+// revealed-asset-id index. Reveal rule (design locked 2026-07-21): an asset
+// is revealed iff some RELEASED, NON-showcase puzzle's transitive asset
+// graph contains it — released = a daily whose date has arrived (archived
+// dailies stay revealed; the set only grows) or any published training
+// level. Showcase publishing primes assets but never reveals them.
+
+export type LiveContentResult =
+  | { status: 'ok'; content: LiveContent }
+  | { status: 'error' };
+
+export async function fetchLiveContent(): Promise<LiveContentResult> {
+  const today = localDateKey();
+  try {
+    const [showcaseRes, trainingRes, scheduleRes] = await Promise.all([
+      supabase.from('puzzles_live').select('id, data').not('data->showcase', 'is', null),
+      supabase.from('puzzles_live').select('id, data').eq('data->>isTraining', 'true'),
+      // Cheap reveal index: only the stamp sub-field of each released daily,
+      // not the whole puzzle JSON (the archive grows by one row per day).
+      supabase
+        .from('daily_schedule')
+        .select('puzzle_id, puzzles_live(id, publishedAssetIds:data->publishedAssetIds, showcase:data->showcase)')
+        .lte('scheduled_date', today),
+    ]);
+    if (showcaseRes.error || trainingRes.error) {
+      console.warn("Couldn't fetch live content:", showcaseRes.error?.message ?? trainingRes.error?.message);
+      return { status: 'error' };
+    }
+
+    const showcasePuzzles = (showcaseRes.data ?? [])
+      .map(r => r.data as unknown as Puzzle)
+      .filter(p => p?.id);
+    // A puzzle flagged both training and showcase is a demo, not a playable
+    // training level — the reveal rule already treats it as showcase.
+    const trainingPuzzles = (trainingRes.data ?? [])
+      .map(r => r.data as unknown as Puzzle)
+      .filter(p => p?.id && !p.showcase);
+
+    const revealed = new Set<string>();
+    const addIds = (ids: unknown) => {
+      if (!Array.isArray(ids)) return;
+      for (const id of ids) if (typeof id === 'string') revealed.add(id);
+    };
+    // Fallback for rows published before the stamp existed: pull their full
+    // JSON and walk locally. On team devices the walk is complete; on a
+    // player device it still yields every reachable id (unresolvable refs
+    // surface with their ids intact).
+    const walkFallback = (puzzle: Puzzle) => {
+      for (const id of collectPuzzleAssetIds(puzzle).keys()) revealed.add(id);
+    };
+
+    for (const p of trainingPuzzles) {
+      if (p.publishedAssetIds) addIds(p.publishedAssetIds);
+      else walkFallback(p);
+    }
+
+    interface RevealRow { id?: string; publishedAssetIds?: unknown; showcase?: unknown }
+    const unstampedDailyIds: string[] = [];
+    // The JSON-sub-field embedded select is newer PostgREST surface than the
+    // rest of this file uses — if it errors, degrade to full-data rows
+    // rather than serving players an empty Slab.
+    let scheduleRows = (scheduleRes.error ? null : scheduleRes.data) as Array<{ puzzles_live: unknown }> | null;
+    if (scheduleRows === null) {
+      const retry = await supabase
+        .from('daily_schedule')
+        .select('puzzle_id, puzzles_live(id, data)')
+        .lte('scheduled_date', today);
+      if (retry.error) {
+        console.warn("Couldn't fetch reveal index:", retry.error.message);
+        return { status: 'error' };
+      }
+      scheduleRows = (retry.data ?? []).map(row => {
+        const live = row.puzzles_live as unknown as DbPuzzle | null;
+        const p = live?.data as unknown as Puzzle | undefined;
+        return { puzzles_live: p ? { id: p.id, publishedAssetIds: p.publishedAssetIds, showcase: p.showcase } : null };
+      });
+    }
+    for (const row of scheduleRows) {
+      const live = row.puzzles_live as RevealRow | null;
+      if (!live?.id || live.showcase) continue; // showcase never reveals
+      if (Array.isArray(live.publishedAssetIds)) addIds(live.publishedAssetIds);
+      else unstampedDailyIds.push(live.id);
+    }
+    if (unstampedDailyIds.length > 0) {
+      const { data } = await supabase
+        .from('puzzles_live')
+        .select('id, data')
+        .in('id', unstampedDailyIds);
+      for (const r of data ?? []) {
+        const p = r.data as unknown as Puzzle;
+        if (p?.id) walkFallback(p);
+      }
+    }
+
+    return {
+      status: 'ok',
+      content: {
+        showcasePuzzles,
+        trainingPuzzles,
+        revealedAssetIds: Array.from(revealed).sort(),
+      },
+    };
   } catch {
     return { status: 'error' }; // network-level failure (offline)
   }
