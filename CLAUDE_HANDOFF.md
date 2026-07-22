@@ -31,6 +31,24 @@ Last Updated: July 21, 2026, second session (SHOWCASE DISTRIBUTION + SLAB REVEAL
 - **Hosting**: Netlify (editor at knightly-dev, player at separate site)
 - **Repository**: https://github.com/Jantzulu/puzzle-daily.git
 
+## Dev-Page Styling Reference (user-set standard, 2026-07-21)
+
+**ProductionDashboard.tsx is the look every dev/editor page should move
+toward when touched** (user: it "should definitely be an example for the
+theming of any updates to other dev pages. Many others are very clunky
+and use thicker borders, not efficient with space"). Dev pages are
+team-only tools — density over dressing; full dungeon theming stays
+player-facing. The recipe: no outer panel frame (`p-4 space-y-6
+max-w-6xl mx-auto`); tables in a single thin `border border-stone-700
+rounded` wrap with `text-sm`, uppercase `text-xs` headers on
+`bg-stone-800`, tight `px-2 py-1.5` cells, `border-stone-700/60` row
+dividers, `hover:bg-stone-800/50`; status chips `px-2 py-0.5 rounded
+border text-xs` with translucent tints (`bg-green-900/40 text-green-300
+border-green-700/50`); booleans as ✓/✗/— glyphs; compact stat cards
+(`bg-stone-800 border border-stone-700 rounded px-4 py-2`); small
+bordered filter chips (active = `border-arcane-500`). Apply
+opportunistically when touching a dev page — no mass restyle unprompted.
+
 ## Key Architecture
 
 ### File Structure
