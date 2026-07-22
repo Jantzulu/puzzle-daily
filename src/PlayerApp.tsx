@@ -22,6 +22,7 @@ import { LoginPage } from './components/auth/LoginPage';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
 import { UserMenu } from './components/auth/UserMenu';
 import { useAuth } from './contexts/AuthContext';
+import { pullLiveAssets, hasEverPulledLiveAssets } from './utils/livePull';
 
 const Compendium = lazy(() => import('./components/compendium/Compendium').then(m => ({ default: m.Compendium })));
 const TrainingGrounds = lazy(() => import('./components/training/TrainingGrounds').then(m => ({ default: m.TrainingGrounds })));
@@ -474,6 +475,25 @@ function NotFoundPage() {
 
 function PlayerApp() {
   const lastScrollY = useRef(0);
+  // First-ever visit: hold the routes until the live asset mirror lands (or
+  // 6s passes) so the daily's first render can resolve custom assets. Every
+  // later boot renders immediately — the pull refreshes in the background at
+  // most once per local day, and LIVE_ASSETS_UPDATED_EVENT lets mounted
+  // lists catch up.
+  const [assetsReady, setAssetsReady] = useState(() => hasEverPulledLiveAssets());
+
+  useEffect(() => {
+    let done = false;
+    const ready = () => {
+      if (!done) {
+        done = true;
+        setAssetsReady(true);
+      }
+    };
+    pullLiveAssets().then(ready).catch(ready);
+    const timer = window.setTimeout(ready, 6000); // offline must not brick boot
+    return () => window.clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     requestAnimationFrame(() => {
@@ -523,6 +543,11 @@ function PlayerApp() {
                 <div className="text-copper-400 font-medieval text-lg animate-pulse">Loading...</div>
               </div>
             }>
+              {!assetsReady ? (
+                <div className="flex items-center justify-center p-12">
+                  <div className="text-copper-400 font-medieval text-lg animate-pulse">Loading...</div>
+                </div>
+              ) : (
               <Routes>
                 <Route path="/" element={<Game enableDailyLock={true} hideTestButtons />} />
                 <Route path="/login" element={<LoginPage />} />
@@ -533,6 +558,7 @@ function PlayerApp() {
                 <Route path="/privacy" element={<PrivacyPolicy />} />
                 <Route path="*" element={<NotFoundPage />} />
               </Routes>
+              )}
             </Suspense>
             </RouteFade>
           </ErrorBoundary>
