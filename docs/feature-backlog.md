@@ -774,9 +774,26 @@ section) are also active picks from this conversation.
   later (never delete; they're optional props, trivial to re-enable).**
   *Captured 2026-07-21.*
 
-- [ ] **FEATURE — Showcase distribution + Slab REVEAL TIMING (captured
-  2026-07-21, design LOCKED with user same day).** Two coupled
-  pre-launch pieces:
+- [x] **FEATURE — Showcase distribution + Slab REVEAL TIMING — SHIPPED
+  2026-07-21 second session** (`c19c99d` publish stamp + refresh-all-
+  deps, `e43a27a` fetchLiveContent + cache, `b4895ee` player asset
+  pull-all, `9c67ce6` reveal predicate + surfaces). Implementation
+  notes: reveal computation = publishedAssetIds STAMPED into the live
+  puzzle JSON at publish (user-approved; editor-side walker, no SQL
+  migration; pre-stamp rows fall back to client walk). Discovered +
+  closed en route: (1) players had NO asset distribution at all
+  (fetchLiveAssets was dead code; the on-demand registry in
+  PLAYER_APP_ARCHITECTURE.md was never built) — user chose PULL-ALL:
+  the player app mirrors assets_live into local stores on boot, once
+  per local day (utils/livePull.ts); revisit on-demand at scale.
+  (2) editing an already-published asset never updated assets_live
+  (publish only pushed unpublished deps) — re-publishing a puzzle now
+  re-upserts ALL deps, so one gesture refreshes content + stamp
+  together. (3) "Select Dungeon" leak fixed (hideTestButtons gate).
+  Residual staleness edge (accepted): editing a live asset to ADD a
+  new dependency reveals the new dep only after re-publishing some
+  containing puzzle. AWAITING USER TEST — original design record kept
+  below:
   (a) DISTRIBUTION: the Slab enumerates puzzles from the DEVICE
   (bundled + localStorage saved_puzzles). Team devices get showcase
   puzzles via the editor's cloud pull; a real player's saved_puzzles is

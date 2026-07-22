@@ -1,6 +1,6 @@
 # Claude Handoff Document - Puzzle Daily
 
-Last Updated: July 14, 2026, third session (MAP EDITOR REDESIGN COMPLETE — Phase 1 decomposition, Phase 2 layout rework, Phase 3 interaction gestures + mobile, all user-approved along the way, dungeon-theming pass CANCELLED by the user; plus 2 new theme fonts. See "Recently completed (July 14, third session)". Earlier the same day: HIT-STAMP CONDITIONS closed out the trigger overhaul — that whole batch still AWAITS USER TESTING on deploy. NOTE: the July 1–12 work — engine audit sweeps 1–10, summon/necromancy/vessels, Phase E homing helpers, strafe actions, contact redesign — is chronicled in the user-memory `in-progress.md`, not here; this doc's session log resumes at June 30 below.)
+Last Updated: July 21, 2026, second session (SHOWCASE DISTRIBUTION + SLAB REVEAL TIMING SHIPPED — publish stamps, player asset pull-all, shared reveal predicate; see the top entry under Pending Tasks. Earlier notes below retained.) Previous: July 14, 2026, third session (MAP EDITOR REDESIGN COMPLETE — Phase 1 decomposition, Phase 2 layout rework, Phase 3 interaction gestures + mobile, all user-approved along the way, dungeon-theming pass CANCELLED by the user; plus 2 new theme fonts. See "Recently completed (July 14, third session)". Earlier the same day: HIT-STAMP CONDITIONS closed out the trigger overhaul — that whole batch still AWAITS USER TESTING on deploy. NOTE: the July 1–12 work — engine audit sweeps 1–10, summon/necromancy/vessels, Phase E homing helpers, strafe actions, contact redesign — is chronicled in the user-memory `in-progress.md`, not here; this doc's session log resumes at June 30 below.)
 
 ## Doc Map — Where to Find What
 
@@ -191,6 +191,50 @@ The Reflect status effect bounces incoming projectiles back:
 - `replayFrozen` prop on AnimatedGameBoard freezes `updateProjectiles`
 
 ## Pending Tasks
+
+### Showcase distribution + Slab reveal timing — ✅ SHIPPED 2026-07-21 second session (4 slices)
+
+The locked reveal design went live end-to-end. **`c19c99d` publish
+side:** publishPuzzle stamps `publishedAssetIds` (sorted transitive
+walker output, missing refs excluded) into the LIVE row's data JSON —
+user-approved over a SQL column / client-walk; drafts never carry it;
+pre-stamp rows fall back to a client walk. Both publish paths now
+re-upsert ALL non-missing deps (not just unpublished) — closes the
+discovered gap where editing an already-live asset NEVER reached
+assets_live; re-publish is the one gesture refreshing content + stamp
+together (modal copy: "Live — Will Be Refreshed"). Residual accepted
+edge: a live-asset edit that ADDS a new dependency reveals it only
+after re-publishing a containing puzzle. **`e43a27a` data layer:**
+fetchLiveContent = showcase puzzles (data->showcase not null) +
+training puzzles (data->>isTraining) + revealedAssetIds (stamp union
+over past/today daily_schedule + published training rows, showcase rows
+never contribute; stamp-only sub-select with full-data degrade);
+liveContentCache mirrors dailyPuzzleCache but stale entries stay
+loadable (offline Slab). **`b4895ee` player assets (the gap the backlog
+glossed over — players had NO asset distribution; fetchLiveAssets was
+dead code, the PLAYER_APP_ARCHITECTURE.md on-demand registry never
+built):** user chose PULL-ALL — utils/livePull.ts mirrors assets_live
+into the normal local stores on player boot (paged, upsert-only, once
+per local day, editor app never calls it); first-ever visit holds route
+render ≤6s so the daily can resolve custom assets; dispatches
+live-assets-updated. **`9c67ce6` surfaces:** utils/reveal.ts =
+ensureLiveContent (fresh cache → fetch → stale cache) + THE shared
+predicate: revealed(asset) = in-released-non-showcase-puzzle &&
+!hideFromCompendium; revealSet null (dev app) gates NOTHING; builtin
+escape is EXPLICIT flags only (isBuiltIn true / isCustom false —
+statuses only carry isBuiltIn; missing flag must read "custom" or
+unreleased assets leak); usePlayerReveal starts EMPTY (no leak during
+load). Compendium + TrainingGrounds take a `playerReveal` prop (only
+PlayerApp passes it); ShowcaseBoard's scan + the Training list merge
+cloud-published puzzles (local wins); Game's "Select Dungeon" dropdown
+leak gated behind hideTestButtons. 6 pins (reveal-predicate.test.ts +
+stamp pin in publish-dependencies.test.ts); 646 tests, tsc, lint 0
+errors, both prod builds green. **AWAITING USER TEST — suggested
+run:** re-publish a showcase puzzle + one real puzzle (stamps + dep
+refresh), open the PLAYER site in a fresh browser profile: boot pull
+populates, Slab shows ONLY assets from released non-showcase puzzles
+(with demos attached), Training lists published training levels,
+roster is gated, no Select Dungeon dropdown.
 
 ### Publish-dependency walker hardened — ✅ SHIPPED 2026-07-21 (`b5b610f`)
 
@@ -629,46 +673,15 @@ stay in the backlog, not requested yet.
    ungated. AWAITING USER FEEL-CHECK (is 2s right? knob is the
    constant).
 
-### Next session — start here (set 2026-07-21)
+### Next session — start here (updated 2026-07-21 second session)
 
-**The user asked for the next session to tackle the two open pre-launch
-items from the showcase arc.** Both are captured in
-docs/feature-backlog.md with design state noted; read those entries
-first. Settings audit is ON HOLD (user, 2026-07-21) — do not resume it
+~~**1. Showcase distribution + Slab reveal timing**~~ — **✅ SHIPPED
+this session**, see the new top entry under Pending Tasks. AWAITING
+USER TEST (fresh-profile player-site run described there). Settings
+audit remains ON HOLD (user, 2026-07-21) — do not resume it
 unprompted.
 
-**1. Showcase distribution + Slab reveal timing** (backlog: "Showcase
-distribution + Slab REVEAL TIMING" — design LOCKED with the user, do
-not relitigate):
-- Build the player-app fetch path for published showcase puzzles:
-  players today receive ONLY the daily (daily_schedule→puzzles_live via
-  supabaseService.fetchTodaysPuzzle); their saved_puzzles is empty, so
-  the Slab's device-local puzzle scan finds nothing. Publishing to
-  puzzles_live WITHOUT a daily schedule is the distribution channel.
-- Implement the reveal rule on top: showcase publishing PRIMES (assets
-  live, demo playable) but never REVEALS; an asset's Slab page appears
-  when the first RELEASED, NON-showcase puzzle whose transitive asset
-  graph contains it goes live (scheduled daily = its date arriving).
-  The graph walk is `collectPuzzleAssetIds` in
-  utils/publishDependencies.ts — exported for exactly this.
-  hideFromCompendium stays the manual override on top.
-- Locked additions (user follow-up, same day): released TRAINING
-  levels DO reveal (player-visible content; only showcases prime
-  without revealing); archived past dailies keep pages revealed; and
-  the reveal set is ONE SHARED PREDICATE for every player-facing asset
-  surface — the Slab list AND the Training Grounds sandbox roster
-  (currently getAllCharacters() unfiltered, TrainingGrounds.tsx:62)
-  both read revealed(asset) = in-a-released-non-showcase-puzzle &&
-  !hideFromCompendium. The sandbox inherits what the Slab shows,
-  never more.
-- Open implementation questions to settle while building: where the
-  reveal computation runs (client over fetched released-puzzle list vs
-  a derived column stamped at publish time), and caching (mirror
-  dailyPuzzleCache). Related small leak: the "Select Dungeon" dropdown
-  in Game.tsx renders for players (task chip offered 2026-07-21;
-  hideTestButtons precedent).
-
-**2. Content production dashboard** (backlog: "Content production
+**Remaining: Content production dashboard** (backlog: "Content production
 dashboard" — **DESIGN WITH THE USER FIRST**, explicitly): per-asset /
 per-puzzle completion at a glance (description written? published?
 showcase attached + primed? debut level scheduled?). Data joins three
