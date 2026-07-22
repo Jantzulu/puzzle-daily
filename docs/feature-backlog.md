@@ -826,17 +826,20 @@ section) are also active picks from this conversation.
   in Game.tsx renders for players too (dev-use comment; gate like the
   Test buttons before launch — task chip offered).
 
-- [ ] **FEATURE — Content production dashboard (captured 2026-07-21,
-  DESIGN WITH USER before building).** Team-internal at-a-glance
-  tracking of what's done per asset/puzzle: e.g. a hero row showing
-  "description written? published? Slab showcase attached? art final?";
-  a map row showing "description? quest text? approved? published?
-  scheduled?". Motivated by the growing asset count — publish state
-  lives in Supabase columns, showcase attachment lives in puzzle JSON,
-  descriptions live in assets, so a dashboard must join several
-  sources. Open design: which fields count as "complete" per asset
-  type; where it lives (Asset Manager tab? own page?); manual checklist
-  fields vs derived-only.
+- [x] **FEATURE — Content production dashboard — SHIPPED 2026-07-21
+  second session (`6058113`).** Designed with the user same session
+  (AskUserQuestion: location/manual-fields/scope): lives as a
+  "Production" tab in Puzzle Resources; DERIVED-first
+  (utils/productionStatus.ts pure + 7 pins) with exactly ONE manual
+  field — `artFinal` on the six Slab asset interfaces, toggled from
+  the dashboard row, stored on the asset. Assets table (7 Slab types,
+  sprite/desc/attrs/published/showcase none-attached-primed/slabState
+  hidden>revealed>awaiting_debut>unpublished, deep links to
+  /assets?tab&id) + Puzzles table (cloud draft library, kind
+  showcase>training>daily>unassigned, review status, quest/par/live,
+  schedule join, missing-ref count via the walker) + summary cards
+  incl. daily-runway. Reveal state reuses fetchLiveContent — "primed,
+  awaiting debut" is a first-class state. AWAITING USER LOOK.
 
 ### Profile / cosmetic
 

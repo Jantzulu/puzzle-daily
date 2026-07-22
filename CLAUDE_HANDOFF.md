@@ -675,13 +675,27 @@ stay in the backlog, not requested yet.
 
 ### Next session — start here (updated 2026-07-21 second session)
 
-~~**1. Showcase distribution + Slab reveal timing**~~ — **✅ SHIPPED
-this session**, see the new top entry under Pending Tasks. AWAITING
-USER TEST (fresh-profile player-site run described there). Settings
+**Both pre-launch showcase-arc items SHIPPED this session.** Settings
 audit remains ON HOLD (user, 2026-07-21) — do not resume it
-unprompted.
+unprompted. What's left: user testing of this session's two ships
+(fresh-profile player-site run for distribution/reveal; a look at the
+Production tab) plus the outstanding 2026-07-21 mega-batch. Feature
+queue after that: projectile linger, hero behavior slots leftovers —
+see backlog.
 
-**Remaining: Content production dashboard** (backlog: "Content production
+~~**1. Showcase distribution + Slab reveal timing**~~ — **✅ SHIPPED**,
+see the top entry under Pending Tasks.
+
+~~**2. Content production dashboard**~~ — **✅ SHIPPED (`6058113`)**,
+designed with the user via AskUserQuestion (Puzzle Resources
+"Production" tab / derived + single manual `artFinal` flag / assets +
+puzzles). utils/productionStatus.ts is the pure derivation module
+(7 pins); slabState precedence hidden > revealed > awaiting_debut >
+unpublished; puzzle kind showcase > training > daily > unassigned;
+summary cards incl. daily-runway; missing-ref alerts via the walker.
+AWAITING USER LOOK.
+
+**Original dashboard design notes (for reference): Content production dashboard** (backlog: "Content production
 dashboard" — **DESIGN WITH THE USER FIRST**, explicitly): per-asset /
 per-puzzle completion at a glance (description written? published?
 showcase attached + primed? debut level scheduled?). Data joins three
