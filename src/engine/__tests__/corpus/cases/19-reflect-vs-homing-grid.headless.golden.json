@@ -49,7 +49,7 @@
         "x": 0,
         "y": 0,
         "facing": "east",
-        "currentHealth": 10,
+        "currentHealth": 7,
         "dead": false,
         "active": true,
         "actionIndex": 1
@@ -77,37 +77,7 @@
       }
     ],
     "collectibles": [],
-    "projectiles": [
-      {
-        "id": "proj-0",
-        "startX": 3,
-        "startY": 1,
-        "targetX": 0,
-        "targetY": 0,
-        "direction": "west",
-        "speed": 4,
-        "active": true,
-        "spellAssetId": "grid-homing-bolt",
-        "sourceCharacterId": "hero-caster",
-        "isHoming": true,
-        "homingPathStyle": "grid",
-        "homingIgnoreWalls": true,
-        "homingHitAlongPath": false,
-        "targetEntityId": "hero-caster",
-        "targetIsEnemy": false,
-        "reflected": true,
-        "teamSwapped": true,
-        "spawnTurn": 1,
-        "logicalTileIndex": 0,
-        "hitEntityIds": [],
-        "hitEnemyIndices": [
-          0
-        ],
-        "bounceCount": 0,
-        "damage": 3,
-        "range": 8
-      }
-    ]
+    "projectiles": []
   },
   {
     "turn": 2,

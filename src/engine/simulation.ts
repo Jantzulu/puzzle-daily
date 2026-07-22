@@ -5029,6 +5029,108 @@ function resolveReflectedPathHeadless(
 }
 
 /**
+ * Headless same-turn resolution of a reflected HOMING bolt's return leg —
+ * the Phase E residual "homing reflect timing" divergence, closed 2026-07-21.
+ *
+ * Real mode resolves the ENTIRE return leg the moment the reflect happens
+ * (the homing 'reach' branch in resolveProjectiles builds a combined
+ * approach+reflect path and walks it immediately). Until this helper,
+ * headless instead left the bolt active and re-homed it at the caster over
+ * SUBSEQUENT turns — the final outcome converged, but the TURN the return
+ * hit landed differed: kill timing, turn counts, and solvability under
+ * tight turn limits could diverge, and the solver gave the caster phantom
+ * turns to move/die/change status mid-return.
+ *
+ * Mirrors the real-mode branch exactly: same trajectory computation
+ * (reflector → caster via the bolt's OWN homing path style), the same
+ * shared walker (walkReflectedPathOnTiles) in 'headless' mode, and the
+ * same event sequence — reflect (carrying combinedPath + reflectAtTileIndex
+ * so replays, which are built from THIS timeline, show the same-turn
+ * return the live game plays), then ONE hit event mirroring the final
+ * landing (pierce: later hits win, like real's hitResult overwrite), or a
+ * deactivate fizzle at path end. applyEntityHit already ran
+ * reflectProjectile, so proj.startX/Y is the reflector and proj.targetX/Y
+ * the caster. Homing bolts never linger (maybeSpawnLingerHazard skips
+ * isHoming), so no hazard bookkeeping belongs here.
+ */
+function resolveHomingReflectHeadless(
+  proj: Projectile,
+  preReflectX: number, preReflectY: number,
+  hitX: number, hitY: number,
+  gameState: GameState,
+): void {
+  const approachTiles = proj.homingPathStyle === 'pathfinding'
+    ? findPathBFS(preReflectX, preReflectY, hitX, hitY, gameState)
+    : getTilesAlongLine(preReflectX, preReflectY, hitX, hitY);
+
+  const reflectorX = proj.startX;
+  const reflectorY = proj.startY;
+  const casterX = proj.targetX;
+  const casterY = proj.targetY;
+  let reflectedInputTiles = proj.homingPathStyle === 'pathfinding'
+    ? findPathBFS(reflectorX, reflectorY, casterX, casterY, gameState)
+    : getTilesAlongLine(reflectorX, reflectorY, casterX, casterY);
+  // Drop the reflector tile — it is already the end of the approach leg.
+  if (reflectedInputTiles[0]?.x === reflectorX && reflectedInputTiles[0]?.y === reflectorY) {
+    reflectedInputTiles = reflectedInputTiles.slice(1);
+  }
+
+  const walk = walkReflectedPathOnTiles(
+    proj, reflectedInputTiles, gameState, !!proj.attackData.projectilePierces, 'headless');
+
+  const reflectedTiles: Array<{ x: number; y: number }> = [];
+  let finalHit: {
+    x: number; y: number; targetEntityId: string; targetIsEnemy: boolean; hitTileIndex: number;
+  } | null = null;
+  for (const step of walk.steps) {
+    if (step.type === 'travel' || step.type === 'wall') {
+      reflectedTiles.push({ x: step.x, y: step.y });
+    } else if (step.type === 'hit') {
+      finalHit = {
+        x: step.target.x, y: step.target.y,
+        targetEntityId: step.targetIsEnemy
+          ? (step.target as PlacedEnemy).enemyId
+          : (step.target as PlacedCharacter).characterId,
+        targetIsEnemy: step.targetIsEnemy,
+        hitTileIndex: approachTiles.length + reflectedTiles.length - 1,
+      };
+    }
+  }
+
+  const combinedPath = [...approachTiles, ...reflectedTiles];
+  proj.reflectAtTileIndex = approachTiles.length - 1;
+  recordProjectileEvent(gameState, {
+    type: 'reflect',
+    projId: proj.id,
+    x: hitX, y: hitY,
+    reflected: true,
+    reflectTintColor: proj.reflectTintColor,
+    reflectOverrideSprite: proj.reflectOverrideSprite,
+    reflectAtTileIndex: proj.reflectAtTileIndex,
+    combinedPath: [...combinedPath],
+  });
+
+  if (finalHit) {
+    recordProjectileEvent(gameState, {
+      type: 'hit',
+      projId: proj.id,
+      x: finalHit.x, y: finalHit.y,
+      targetEntityId: finalHit.targetEntityId,
+      targetIsEnemy: finalHit.targetIsEnemy,
+      damage: proj.attackData.damage,
+      hitTileIndex: finalHit.hitTileIndex,
+    });
+  } else {
+    recordProjectileEvent(gameState, {
+      type: 'deactivate',
+      projId: proj.id,
+      x: combinedPath[combinedPath.length - 1]?.x ?? hitX,
+      y: combinedPath[combinedPath.length - 1]?.y ?? hitY,
+    });
+  }
+}
+
+/**
  * Record a projectile's spawn event on first encounter (idempotent via
  * `proj._recorded`). Shared by resolveProjectiles and
  * updateProjectilesHeadless so the replay timeline gets identical spawn
@@ -6241,20 +6343,24 @@ function updateProjectilesHeadless(gameState: GameState): void {
 
           if (isHostileHit) {
             const targetIsEnemy = !!proj.targetIsEnemy;
+            // Pre-hit logical position — becomes the approach leg of the
+            // replay's combined path if this hit reflects (mirrors real
+            // mode's preReflectStartX capture; reflectProjectile overwrites
+            // the bolt's position fields).
+            const preReflectX = proj.logicalX;
+            const preReflectY = proj.logicalY;
             const hitResult = applyEntityHit(
               targetEntity as (PlacedCharacter | PlacedEnemy), targetIsEnemy,
               proj, gameState, 'headless');
             if (hitResult.reflected) {
-              recordProjectileEvent(gameState, {
-                type: 'reflect',
-                projId: proj.id,
-                x: targetEntity.x, y: targetEntity.y,
-                reflected: true,
-                reflectTintColor: proj.reflectTintColor,
-                reflectOverrideSprite: proj.reflectOverrideSprite,
-                reflectAtTileIndex: proj.reflectAtTileIndex,
-                combinedPath: proj.tilePath ? [...proj.tilePath] : undefined,
-              });
+              // Same-turn return-leg resolution — matches real mode's
+              // immediate combined-path walk (divergence fix 2026-07-21;
+              // previously the bolt stayed active and re-homed at the
+              // caster over subsequent turns).
+              resolveHomingReflectHeadless(
+                proj, preReflectX, preReflectY, plan.hitX, plan.hitY, gameState);
+              proj.active = false;
+              projectilesToRemove.push(proj.id);
               continue;
             }
             // Record hit event
