@@ -7,8 +7,9 @@
  * stored on the asset itself (reaches the cloud on the normal push, rides
  * the asset when published).
  */
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { toast } from '../shared/Toast';
 import type { Puzzle } from '../../types/game';
 import {
   getCustomCharacters,
@@ -175,11 +176,19 @@ export const ProductionDashboard: React.FC = () => {
   const [loadState, setLoadState] = useState<'loading' | 'ready' | 'error'>('loading');
   const [localVersion, setLocalVersion] = useState(0);
   const [typeFilter, setTypeFilter] = useState<'all' | SlabAssetType>('all');
+  const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
+  // Change detection for background reloads: a stable fingerprint of the
+  // cloud snapshot, so a silent refresh can tell "teammate published /
+  // edited something" apart from "nothing happened" and only then notify.
+  const fingerprintRef = useRef<string | null>(null);
+  const lastLoadStartedRef = useRef(0);
 
   // All setStates live in .then/.catch callbacks (never synchronously in the
   // effect body — react-hooks/set-state-in-effect); loadState boots as
   // 'loading', and the Refresh/Retry buttons re-set it from their handlers.
-  const load = useCallback(() => {
+  // notify=true is the background path: no loading UI, toast on change.
+  const load = useCallback((opts?: { notify?: boolean }) => {
+    lastLoadStartedRef.current = Date.now();
     Promise.all([
       fetchLiveAssetIds(),
       fetchLivePuzzleIds(),
@@ -188,9 +197,22 @@ export const ProductionDashboard: React.FC = () => {
       fetchFullScheduleWithNumbers(),
     ]).then(([liveAssetIds, livePuzzleIds, liveContent, drafts, schedule]) => {
       if (!liveAssetIds || !livePuzzleIds || liveContent.status !== 'ok') {
-        setLoadState('error');
+        // A failed BACKGROUND probe never tears down a working view.
+        if (!opts?.notify) setLoadState('error');
         return;
       }
+      const fingerprint = JSON.stringify({
+        a: [...liveAssetIds].sort(),
+        p: [...livePuzzleIds].sort(),
+        r: liveContent.content.revealedAssetIds,
+        d: drafts.map(d => [d.id, d.status, d.updated_at]).sort((x, y) => String(x[0]).localeCompare(String(y[0]))),
+        s: schedule.map(s => [s.puzzleId, s.date, s.puzzleNumber ?? null]),
+      });
+      const changed = fingerprintRef.current !== null && fingerprintRef.current !== fingerprint;
+      fingerprintRef.current = fingerprint;
+      setLastSyncedAt(Date.now());
+      setLoadState('ready');
+      if (opts?.notify && !changed) return; // background probe, nothing new — keep the current objects
       setCloud({
         liveAssetIds,
         livePuzzleIds,
@@ -203,13 +225,45 @@ export const ProductionDashboard: React.FC = () => {
         })),
         schedule: new Map(schedule.map(s => [s.puzzleId, { date: s.date, puzzleNumber: s.puzzleNumber ?? null }])),
       });
-      setLoadState('ready');
+      if (opts?.notify && changed) {
+        toast.info('The ledger changed elsewhere — refreshed.');
+      }
     }).catch(() => {
-      setLoadState('error');
+      if (!opts?.notify) setLoadState('error');
     });
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  // ── Auto-refresh ──────────────────────────────────────────────────────────
+  // (1) Cross-tab local edits: the storage event fires in OTHER tabs when
+  // any localStorage-backed store changes — recompute the local-derived
+  // columns instantly (cloud state is untouched by local edits).
+  useEffect(() => {
+    const onStorage = () => setLocalVersion(v => v + 1);
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
+
+  // (2) Cloud changes: silently re-probe when the tab regains focus (the
+  // "published in the other window, came back" flow) and every 60s while
+  // visible. The fingerprint gate above turns a real change into a toast.
+  useEffect(() => {
+    const STALE_MS = 15_000;
+    const probeIfStale = () => {
+      if (document.visibilityState !== 'visible') return;
+      if (Date.now() - lastLoadStartedRef.current < STALE_MS) return;
+      load({ notify: true });
+    };
+    const interval = window.setInterval(probeIfStale, 60_000);
+    document.addEventListener('visibilitychange', probeIfStale);
+    window.addEventListener('focus', probeIfStale);
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener('visibilitychange', probeIfStale);
+      window.removeEventListener('focus', probeIfStale);
+    };
+  }, [load]);
 
   const trackedAssets = useMemo(() => loadTrackedAssets(), [localVersion]); // eslint-disable-line react-hooks/exhaustive-deps -- localVersion is the deliberate "local stores changed" signal
 
@@ -291,13 +345,20 @@ export const ProductionDashboard: React.FC = () => {
           label={summary.runwayEnd ? `daily runway → ${summary.runwayEnd}` : 'daily runway'}
         />
         {summary.missingDeps > 0 && <StatCard value={`⚠ ${summary.missingDeps}`} label="puzzles w/ missing refs" />}
-        <button
-          onClick={() => { setLoadState('loading'); load(); }}
-          className="dungeon-btn text-xs px-3 py-1.5 ml-auto"
-          disabled={loadState === 'loading'}
-        >
-          {loadState === 'loading' ? 'Refreshing…' : '↻ Refresh'}
-        </button>
+        <div className="ml-auto flex items-center gap-2">
+          {lastSyncedAt !== null && (
+            <span className="text-xs text-stone-500" title="Auto-refreshes on focus and every minute while visible; local edits from other tabs land instantly">
+              Synced {new Date(lastSyncedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          )}
+          <button
+            onClick={() => { setLoadState('loading'); load(); }}
+            className="dungeon-btn text-xs px-3 py-1.5"
+            disabled={loadState === 'loading'}
+          >
+            {loadState === 'loading' ? 'Refreshing…' : '↻ Refresh'}
+          </button>
+        </div>
       </div>
 
       {/* Assets */}
