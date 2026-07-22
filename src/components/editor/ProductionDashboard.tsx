@@ -64,14 +64,14 @@ interface TrackedAsset extends ProductionAssetInput {
   raw: unknown;
 }
 
-const TYPE_META: Record<SlabAssetType, { label: string; managerTab: string }> = {
-  character: { label: 'Hero', managerTab: 'characters' },
-  ally: { label: 'Ally', managerTab: 'allies' },
-  enemy: { label: 'Enemy', managerTab: 'enemies' },
-  vessel: { label: 'Vessel', managerTab: 'vessels' },
-  status_effect: { label: 'Status', managerTab: 'status_effects' },
-  tile_type: { label: 'Tile', managerTab: 'tiles' },
-  collectible: { label: 'Item', managerTab: 'collectibles' },
+const TYPE_META: Record<SlabAssetType, { label: string; plural: string; managerTab: string }> = {
+  character: { label: 'Hero', plural: 'Heroes', managerTab: 'characters' },
+  ally: { label: 'Ally', plural: 'Allies', managerTab: 'allies' },
+  enemy: { label: 'Enemy', plural: 'Enemies', managerTab: 'enemies' },
+  vessel: { label: 'Vessel', plural: 'Vessels', managerTab: 'vessels' },
+  status_effect: { label: 'Status', plural: 'Statuses', managerTab: 'status_effects' },
+  tile_type: { label: 'Tile', plural: 'Tiles', managerTab: 'tiles' },
+  collectible: { label: 'Item', plural: 'Items', managerTab: 'collectibles' },
 };
 
 const TYPE_ORDER: SlabAssetType[] = ['character', 'ally', 'enemy', 'vessel', 'status_effect', 'tile_type', 'collectible'];
@@ -375,7 +375,7 @@ export const ProductionDashboard: React.FC = () => {
                   : 'text-stone-400 border-stone-700 hover:text-stone-200'
               }`}
             >
-              {t === 'all' ? 'All' : `${TYPE_META[t].label}s`}
+              {t === 'all' ? 'All' : TYPE_META[t].plural}
             </button>
           ))}
         </div>
