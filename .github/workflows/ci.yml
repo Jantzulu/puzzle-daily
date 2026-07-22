@@ -23,8 +23,12 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      # Build mode (-b) is REQUIRED: the root tsconfig is Vite's
+      # project-references shape (files: [] + references), so plain
+      # `tsc --noEmit` type-checks ZERO files and passes vacuously —
+      # which is exactly what this step silently did until 2026-07-21.
       - name: Type check
-        run: npx tsc --noEmit
+        run: npm run typecheck
 
       - name: Test
         run: npm test
