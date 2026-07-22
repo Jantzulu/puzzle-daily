@@ -1850,6 +1850,7 @@ export interface StatusEffectAsset {
   // Metadata
   createdAt: string;
   isBuiltIn?: boolean;            // Built-in vs custom
+  artFinal?: boolean;             // Production checklist (2026-07-21): manual "art is done" flag
   folderId?: string;              // Optional folder assignment
   hideFromCompendium?: boolean;   // Hide from the Slab even when published (showcase-only assets etc.)
 }

@@ -404,6 +404,7 @@ export interface CustomCharacter extends Character {
   customSprite?: CustomSprite;
   isCustom: boolean;
   hideFromCompendium?: boolean; // Hide from the Slab even when published (showcase-only assets etc.)
+  artFinal?: boolean; // Production checklist (2026-07-21): the art is done — manual judgment, toggled from the Production dashboard
   createdAt: string;
   folderId?: string; // Optional folder assignment
 }
@@ -412,6 +413,7 @@ export interface CustomEnemy extends Enemy {
   customSprite?: CustomSprite;
   isCustom: boolean;
   hideFromCompendium?: boolean; // Hide from the Slab even when published (showcase-only assets etc.)
+  artFinal?: boolean; // Production checklist (2026-07-21): manual "art is done" flag (allies ride this type)
   createdAt: string;
   folderId?: string; // Optional folder assignment
 }
@@ -432,6 +434,7 @@ export interface CustomTileType {
   preventPlacement?: boolean;        // Prevent characters from being placed here during setup (but allow walking)
   reflective?: boolean;              // Water/ice/polished floor: entities on it cast a faint mirrored reflection (visual only)
   hideFromCompendium?: boolean;      // Hide from the Slab even when published (showcase-only assets etc.)
+  artFinal?: boolean;                // Production checklist (2026-07-21): manual "art is done" flag
   isCustom: boolean;
   createdAt: string;
   folderId?: string; // Optional folder assignment
@@ -478,6 +481,7 @@ export interface CustomCollectible {
   // Metadata
   folderId?: string;
   hideFromCompendium?: boolean;  // Hide from the Slab even when published (showcase-only assets etc.)
+  artFinal?: boolean;            // Production checklist (2026-07-21): manual "art is done" flag
   isCustom: boolean;
   createdAt: string;
 }
@@ -687,6 +691,7 @@ export interface CustomVessel {
   droppedCollectibleId?: string; // Loot on break — fires via the normal death-drop path (a transforming vessel usually shouldn't also drop)
   sounds?: Enemy['sounds'];
   hideFromCompendium?: boolean; // Hide from the Slab even when published (showcase-only assets etc.)
+  artFinal?: boolean;           // Production checklist (2026-07-21): manual "art is done" flag (dashboard reads the RAW vessel — no adapter copy needed)
   isCustom: boolean;
   createdAt: string;
   folderId?: string;

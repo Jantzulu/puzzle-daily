@@ -1,14 +1,16 @@
 import React, { lazy, Suspense, useState } from 'react';
 
 const SchedulingDashboard = lazy(() => import('./SchedulingDashboard').then(m => ({ default: m.SchedulingDashboard })));
+const ProductionDashboard = lazy(() => import('./ProductionDashboard').then(m => ({ default: m.ProductionDashboard })));
 const StatsDashboard = lazy(() => import('./StatsDashboard').then(m => ({ default: m.StatsDashboard })));
 const BugReportViewer = lazy(() => import('./BugReportViewer').then(m => ({ default: m.BugReportViewer })));
 const NewsEditor = lazy(() => import('./NewsEditor').then(m => ({ default: m.NewsEditor })));
 
-type ResourceTab = 'schedule' | 'stats' | 'bugs' | 'news';
+type ResourceTab = 'schedule' | 'production' | 'stats' | 'bugs' | 'news';
 
 const TABS: { id: ResourceTab; label: string; icon: string }[] = [
   { id: 'schedule', label: 'Schedule', icon: '\uD83D\uDCC5' },
+  { id: 'production', label: 'Production', icon: '\uD83D\uDCCB' },
   { id: 'stats', label: 'Stats', icon: '\uD83D\uDCCA' },
   { id: 'bugs', label: 'Bug Reports', icon: '\uD83D\uDC1B' },
   { id: 'news', label: 'Town Crier', icon: '\uD83D\uDCE3' },
@@ -45,6 +47,7 @@ export const PuzzleResourcesPage: React.FC = () => {
           </div>
         }>
           {activeTab === 'schedule' && <SchedulingDashboard />}
+          {activeTab === 'production' && <ProductionDashboard />}
           {activeTab === 'stats' && <StatsDashboard />}
           {activeTab === 'bugs' && <BugReportViewer />}
           {activeTab === 'news' && <NewsEditor />}

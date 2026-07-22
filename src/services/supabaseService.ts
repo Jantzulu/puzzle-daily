@@ -631,6 +631,32 @@ export async function fetchLiveAssets(type: AssetType): Promise<AssetData[]> {
   return (data || []).map(a => a.data as unknown as AssetData);
 }
 
+// ── Production dashboard id-sets ────────────────────────────────────────────
+// Cheap "what's live" membership queries (id column only, paged past the
+// 1000-row PostgREST cap). null = fetch failed — the dashboard shows an
+// error state instead of pretending nothing is published.
+
+async function fetchIdSet(table: 'assets_live' | 'puzzles_live'): Promise<Set<string> | null> {
+  const PAGE = 1000;
+  const ids = new Set<string>();
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await supabase
+      .from(table)
+      .select('id')
+      .order('id', { ascending: true })
+      .range(from, from + PAGE - 1);
+    if (error) {
+      console.warn(`Couldn't fetch ${table} ids:`, error.message);
+      return null;
+    }
+    for (const row of data ?? []) ids.add(row.id);
+    if (!data || data.length < PAGE) return ids;
+  }
+}
+
+export const fetchLiveAssetIds = (): Promise<Set<string> | null> => fetchIdSet('assets_live');
+export const fetchLivePuzzleIds = (): Promise<Set<string> | null> => fetchIdSet('puzzles_live');
+
 // ============================================
 // SCHEDULING OPERATIONS
 // ============================================
