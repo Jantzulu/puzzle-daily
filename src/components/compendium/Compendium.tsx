@@ -28,6 +28,7 @@ import {
   ItemDetail,
 } from './EntryDetails';
 import { ShowcaseSection } from './ShowcaseBoard';
+import { usePlayerReveal, isAssetRevealed } from '../../utils/reveal';
 
 type TabId = 'characters' | 'allies' | 'enemies' | 'vessels' | 'status_effects' | 'special_tiles' | 'items';
 
@@ -60,7 +61,15 @@ const TAB_LABELS: Record<TabId, { plural: string; singular: string }> = {
 
 // ============ MAIN COMPENDIUM COMPONENT ============
 
-export const Compendium: React.FC = () => {
+interface CompendiumProps {
+  /**
+   * Player app only: gate every chapter list behind the shared reveal
+   * predicate (utils/reveal.ts). The dev app omits it and sees everything.
+   */
+  playerReveal?: boolean;
+}
+
+export const Compendium: React.FC<CompendiumProps> = ({ playerReveal }) => {
   const [activeTab, setActiveTab] = useState<TabId>('characters');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -77,22 +86,31 @@ export const Compendium: React.FC = () => {
     return unsubscribe;
   }, []);
 
+  // Player app: the reveal set gates every chapter list (empty until live
+  // content loads — never leak unreleased assets); assetsVersion recomputes
+  // the lists when the boot asset pull lands. Dev app: revealSet is null,
+  // everything passes.
+  const { revealSet, assetsVersion } = usePlayerReveal(!!playerReveal);
+
   // Load all assets. hideFromCompendium (2026-07-21) hides an asset from
-  // the Slab even when published — showcase-only variants etc.
-  const characters = useMemo(() => getCustomCharacters().filter(c => !c.hideFromCompendium), []);
-  const enemies = useMemo(() => getCustomEnemies().filter(e => !e.hideFromCompendium), []);
+  // the Slab even when published — showcase-only variants etc. (also part
+  // of the shared predicate, so it holds on the player app too).
+  /* eslint-disable react-hooks/exhaustive-deps -- assetsVersion is the deliberate "local stores changed" signal */
+  const characters = useMemo(() => getCustomCharacters().filter(c => isAssetRevealed(c, revealSet) && !c.hideFromCompendium), [revealSet, assetsVersion]);
+  const enemies = useMemo(() => getCustomEnemies().filter(e => isAssetRevealed(e, revealSet) && !e.hideFromCompendium), [revealSet, assetsVersion]);
   // Vessels render through the enemy adapter — same card/detail components
-  const vessels = useMemo(() => getCustomVessels().filter(v => !v.hideFromCompendium).map(vesselToEnemyAsset), []);
+  const vessels = useMemo(() => getCustomVessels().filter(v => isAssetRevealed(v, revealSet) && !v.hideFromCompendium).map(vesselToEnemyAsset), [revealSet, assetsVersion]);
   // Allies too — full enemy-shaped assets on the hero side
-  const allies = useMemo(() => getCustomAllies().filter(a => !a.hideFromCompendium).map(allyToEnemyAsset), []);
-  const statusEffects = useMemo(() => getStatusEffectAssets().filter(e => !e.isBuiltIn && !e.hideFromCompendium), []);
+  const allies = useMemo(() => getCustomAllies().filter(a => isAssetRevealed(a, revealSet) && !a.hideFromCompendium).map(allyToEnemyAsset), [revealSet, assetsVersion]);
+  const statusEffects = useMemo(() => getStatusEffectAssets().filter(e => !e.isBuiltIn && isAssetRevealed(e, revealSet) && !e.hideFromCompendium), [revealSet, assetsVersion]);
   const tiles = useMemo(() => getCustomTileTypes().filter(t =>
-    !t.hideFromCompendium && (
+    isAssetRevealed(t, revealSet) && !t.hideFromCompendium && (
       t.behaviors.length > 0 || t.preventPlacement || t.baseType === 'wall' ||
       (t.offStateBehaviors && t.offStateBehaviors.length > 0) || t.onStateBlocksMovement
     )
-  ), []);
-  const items = useMemo(() => getCustomCollectibles().filter(i => !i.hideFromCompendium), []);
+  ), [revealSet, assetsVersion]);
+  const items = useMemo(() => getCustomCollectibles().filter(i => isAssetRevealed(i, revealSet) && !i.hideFromCompendium), [revealSet, assetsVersion]);
+  /* eslint-enable react-hooks/exhaustive-deps */
 
   // Filter by search
   const filteredCharacters = useMemo(() =>

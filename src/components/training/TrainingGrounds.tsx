@@ -2,7 +2,8 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import type { GameState, PlacedCharacter, Puzzle } from '../../types/game';
 import { TURN_INTERVAL_MS } from '../../types/game';
 import { getAllPuzzles } from '../../data/puzzles';
-import { getAllCharacters, getCharacter } from '../../data/characters';
+import { getAllCharacters, getCharacter, isOfficialCharacter } from '../../data/characters';
+import { usePlayerReveal, isAssetRevealed, getLiveTrainingPuzzles } from '../../utils/reveal';
 import { initializeGameState, executeTurn } from '../../engine/simulation';
 import { ResponsiveGameBoard } from '../game/AnimatedGameBoard';
 import { CharacterSelector } from '../game/CharacterSelector';
@@ -39,14 +40,27 @@ type TrainingView = 'landing' | 'sandbox';
 // MAIN COMPONENT
 // ============================================================
 
-export const TrainingGrounds: React.FC = () => {
+interface TrainingGroundsProps {
+  /**
+   * Player app only: gate the sandbox roster behind the shared reveal
+   * predicate (the sandbox inherits what the Slab shows, never more) and
+   * merge cloud-published training puzzles into the list. Dev app omits it.
+   */
+  playerReveal?: boolean;
+}
+
+export const TrainingGrounds: React.FC<TrainingGroundsProps> = ({ playerReveal }) => {
   const [view, setView] = useState<TrainingView>('landing');
 
+  const { revealSet, assetsVersion } = usePlayerReveal(!!playerReveal);
+
   // -- Training puzzle list --
+  // Device-local first (bundled + saved: team devices), then cloud-published
+  // training levels (the only way real players receive them; empty on the
+  // dev app). Local wins on id collision.
+  /* eslint-disable react-hooks/exhaustive-deps -- revealSet arrival doubles as "live content loaded"; assetsVersion signals the boot asset pull */
   const trainingPuzzles = useMemo(() => {
-    const official = getAllPuzzles();
-    const saved = getSavedPuzzles();
-    const all: Puzzle[] = [...official, ...saved];
+    const all: Puzzle[] = [...getAllPuzzles(), ...getSavedPuzzles(), ...getLiveTrainingPuzzles()];
     const seen = new Set<string>();
     const deduped: Puzzle[] = [];
     for (const p of all) {
@@ -56,10 +70,17 @@ export const TrainingGrounds: React.FC = () => {
       }
     }
     return deduped.filter(p => p.isTraining);
-  }, []);
+  }, [revealSet, assetsVersion]);
 
-  // All published hero IDs
-  const allCharacterIds = useMemo(() => getAllCharacters().map(c => c.id), []);
+  // Sandbox roster — every hero on the dev app; on the player app only
+  // revealed heroes (officials ship with the client and always pass).
+  const allCharacterIds = useMemo(
+    () => getAllCharacters()
+      .filter(c => isOfficialCharacter(c.id) || isAssetRevealed(c, revealSet))
+      .map(c => c.id),
+    [revealSet, assetsVersion]
+  );
+  /* eslint-enable react-hooks/exhaustive-deps */
 
   // -- Active arena state --
   const [selectedPuzzle, setSelectedPuzzle] = useState<Puzzle | null>(null);

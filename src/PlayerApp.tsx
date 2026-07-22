@@ -551,8 +551,8 @@ function PlayerApp() {
               <Routes>
                 <Route path="/" element={<Game enableDailyLock={true} hideTestButtons />} />
                 <Route path="/login" element={<LoginPage />} />
-                <Route path="/compendium" element={<Compendium />} />
-                <Route path="/training" element={<TrainingGrounds />} />
+                <Route path="/compendium" element={<Compendium playerReveal />} />
+                <Route path="/training" element={<TrainingGrounds playerReveal />} />
                 <Route path="/town-crier" element={<TownCrierPage />} />
                 <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
                 <Route path="/privacy" element={<PrivacyPolicy />} />

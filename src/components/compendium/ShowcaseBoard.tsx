@@ -5,7 +5,7 @@
 // pattern in miniature: testMode (no victory/defeat), author-placed
 // heroes, runs loopTurns turns, holds a beat, resets, loops. The viewer
 // can only watch / stop — never place. Deterministic sim = the video.
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import type { GameState, PlacedCharacter, Puzzle } from '../../types/game';
 import { TURN_INTERVAL_MS } from '../../types/game';
 import { initializeGameState, executeTurn } from '../../engine/simulation';
@@ -13,6 +13,7 @@ import { getCharacter } from '../../data/characters';
 import { getAllPuzzles } from '../../data/puzzles';
 import { getSavedPuzzles } from '../../utils/puzzleStorage';
 import { loadStatusEffectAsset } from '../../utils/assetStorage';
+import { getLiveShowcasePuzzles } from '../../utils/reveal';
 import { ResponsiveGameBoard } from '../game/AnimatedGameBoard';
 import { MiniGridPreview } from '../game/MiniGridPreview';
 
@@ -120,10 +121,13 @@ const ShowcaseBoard: React.FC<{ puzzle: Puzzle; onClose: () => void }> = ({ puzz
   );
 };
 
-/** All showcase puzzles attached to this asset id (bundled + saved, deduped). */
+/** All showcase puzzles attached to this asset id, deduped — device-local
+ *  (bundled + saved: team devices, cloud-pulled) first, then cloud-published
+ *  ones (players: fetched by ensureLiveContent on the player app, empty on
+ *  the dev app). Local wins on id collision. */
 function showcasePuzzlesFor(assetId: string): Puzzle[] {
   const seen = new Set<string>();
-  return [...getAllPuzzles(), ...getSavedPuzzles()].filter(p => {
+  return [...getAllPuzzles(), ...getSavedPuzzles(), ...getLiveShowcasePuzzles()].filter(p => {
     if (!p.showcase?.entityIds?.includes(assetId)) return false;
     if (seen.has(p.id)) return false;
     seen.add(p.id);
@@ -132,7 +136,9 @@ function showcasePuzzlesFor(assetId: string): Puzzle[] {
 }
 
 export const ShowcaseSection: React.FC<{ assetId: string }> = ({ assetId }) => {
-  const puzzles = useMemo(() => showcasePuzzlesFor(assetId), [assetId]);
+  // No memo — the cloud showcase list can land after mount, and the scan is
+  // a few small arrays.
+  const puzzles = showcasePuzzlesFor(assetId);
   const [activeId, setActiveId] = useState<string | null>(null);
   if (puzzles.length === 0) return null;
   return (

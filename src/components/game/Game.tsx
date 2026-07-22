@@ -3377,9 +3377,12 @@ export const Game: React.FC<GameProps> = ({
           </div>
 
           {/* Puzzle Selector - at bottom for dev use. Hidden during replay:
-              the slab is the page's last content, its bottom off-scroll. */}
+              the slab is the page's last content, its bottom off-scroll.
+              Gated like the Test buttons — players must never see or swap
+              off the daily (the dropdown leaked on the player app until
+              2026-07-21). */}
           <div className="w-full max-w-2xl mx-auto">
-            {allPuzzles.length > 0 && !replayMode && !enteringReplay && (
+            {!hideTestButtons && allPuzzles.length > 0 && !replayMode && !enteringReplay && (
               <div className={`dungeon-panel p-2 lg:p-3 transition-opacity ${dimmedPanelClass}`}>
                 <label className="block text-sm lg:text-base font-bold mb-2 text-copper-400">
                   Select Dungeon {savedPuzzles.length > 0 && <span className="text-stone-400 font-normal">({savedPuzzles.length} saved)</span>}
