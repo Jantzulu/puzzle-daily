@@ -4,6 +4,7 @@ import { TURN_INTERVAL_MS } from '../../types/game';
 import { getAllPuzzles } from '../../data/puzzles';
 import { getAllCharacters, getCharacter, isOfficialCharacter } from '../../data/characters';
 import { usePlayerReveal, isAssetRevealed, getLiveTrainingPuzzles } from '../../utils/reveal';
+import { ensurePuzzleAssets } from '../../utils/livePull';
 import { initializeGameState, executeTurn } from '../../engine/simulation';
 import { ResponsiveGameBoard } from '../game/AnimatedGameBoard';
 import { CharacterSelector } from '../game/CharacterSelector';
@@ -102,7 +103,11 @@ export const TrainingGrounds: React.FC<TrainingGroundsProps> = ({ playerReveal }
   // ARENA SELECTION
   // ============================================================
 
-  const handleSelectArena = useCallback((puzzle: Puzzle) => {
+  const handleSelectArena = useCallback(async (puzzle: Puzzle) => {
+    // Closure prefetch: the sandbox sim resolves assets synchronously, so a
+    // cloud-published training level's closure must be local before
+    // initializeGameState (no-op on the dev app / already-ensured visits).
+    await ensurePuzzleAssets(puzzle);
     const puzzleCopy: Puzzle = JSON.parse(JSON.stringify(puzzle));
     setOriginalPuzzle(puzzleCopy);
     setSelectedPuzzle(puzzle);

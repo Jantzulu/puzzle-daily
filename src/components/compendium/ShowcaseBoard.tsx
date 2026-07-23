@@ -13,7 +13,9 @@ import { getCharacter } from '../../data/characters';
 import { getAllPuzzles } from '../../data/puzzles';
 import { getSavedPuzzles } from '../../utils/puzzleStorage';
 import { loadStatusEffectAsset } from '../../utils/assetStorage';
-import { getLiveShowcasePuzzles } from '../../utils/reveal';
+import { getLiveShowcaseIndex } from '../../utils/reveal';
+import { ensurePuzzleAssets } from '../../utils/livePull';
+import { fetchLivePuzzlesByIds } from '../../services/supabaseService';
 import { ResponsiveGameBoard } from '../game/AnimatedGameBoard';
 import { MiniGridPreview } from '../game/MiniGridPreview';
 
@@ -121,13 +123,15 @@ const ShowcaseBoard: React.FC<{ puzzle: Puzzle; onClose: () => void }> = ({ puzz
   );
 };
 
-/** All showcase puzzles attached to this asset id, deduped — device-local
- *  (bundled + saved: team devices, cloud-pulled) first, then cloud-published
- *  ones (players: fetched by ensureLiveContent on the player app, empty on
- *  the dev app). Local wins on id collision. */
-function showcasePuzzlesFor(assetId: string): Puzzle[] {
+/** Device-local showcase puzzles attached to this asset id (bundled +
+ *  saved: team devices via cloud pull), deduped. Cloud-published demos are
+ *  handled separately by ShowcaseSection: the live-content cache holds only
+ *  an id→attachments INDEX (snoop-hole fix — full demo JSON for un-debuted
+ *  assets must never sit on the device), and full rows are fetched lazily
+ *  per revealed asset page. */
+function localShowcasePuzzlesFor(assetId: string): Puzzle[] {
   const seen = new Set<string>();
-  return [...getAllPuzzles(), ...getSavedPuzzles(), ...getLiveShowcasePuzzles()].filter(p => {
+  return [...getAllPuzzles(), ...getSavedPuzzles()].filter(p => {
     if (!p.showcase?.entityIds?.includes(assetId)) return false;
     if (seen.has(p.id)) return false;
     seen.add(p.id);
@@ -136,10 +140,44 @@ function showcasePuzzlesFor(assetId: string): Puzzle[] {
 }
 
 export const ShowcaseSection: React.FC<{ assetId: string }> = ({ assetId }) => {
-  // No memo — the cloud showcase list can land after mount, and the scan is
-  // a few small arrays.
-  const puzzles = showcasePuzzlesFor(assetId);
+  // No memo on the local scan — it's a few small arrays and the cloud list
+  // can land after mount.
+  const localPuzzles = localShowcasePuzzlesFor(assetId);
+  const [cloudPuzzles, setCloudPuzzles] = useState<Puzzle[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
+  // Puzzle currently having its asset closure ensured (tap → brief beat on
+  // a player's first view; instant on the dev app / later views).
+  const [ensuringId, setEnsuringId] = useState<string | null>(null);
+
+  // Fetch full JSON for cloud demos attached to THIS asset only. This
+  // section renders on (revealed) detail pages, so only debuted content is
+  // ever requested — a player device never receives demos for assets whose
+  // pages they can't see.
+  useEffect(() => {
+    const localIds = new Set(localShowcasePuzzlesFor(assetId).map(p => p.id));
+    const wanted = getLiveShowcaseIndex()
+      .filter(e => e.entityIds.includes(assetId) && !localIds.has(e.id))
+      .map(e => e.id);
+    if (wanted.length === 0) return;
+    let cancelled = false;
+    fetchLivePuzzlesByIds(wanted).then(ps => {
+      if (!cancelled) setCloudPuzzles(ps);
+    });
+    return () => { cancelled = true; };
+  }, [assetId]);
+
+  const seen = new Set(localPuzzles.map(p => p.id));
+  const puzzles = [...localPuzzles, ...cloudPuzzles.filter(p => !seen.has(p.id))];
+
+  const openDemo = async (puzzle: Puzzle) => {
+    setEnsuringId(puzzle.id);
+    // The sim resolves assets synchronously — the demo's closure must be
+    // local before the board mounts (no-op when already ensured/local).
+    await ensurePuzzleAssets(puzzle);
+    setEnsuringId(null);
+    setActiveId(puzzle.id);
+  };
+
   if (puzzles.length === 0) return null;
   return (
     <div className="compendium-detail-section">
@@ -150,14 +188,21 @@ export const ShowcaseSection: React.FC<{ assetId: string }> = ({ assetId }) => {
         ) : (
           <button
             key={p.id}
-            onClick={() => setActiveId(p.id)}
+            onClick={() => openDemo(p)}
+            disabled={ensuringId !== null}
             className="block w-full group"
             title="Tap to watch"
           >
             <div className="relative">
               <MiniGridPreview puzzle={p} placements={buildShowcaseHeroes(p)} size={160} />
               <span className="absolute inset-0 flex items-center justify-center text-4xl opacity-70 group-hover:opacity-100 drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">
-                ▶
+                {ensuringId === p.id ? (
+                  <span className="text-sm font-medieval animate-pulse" style={{ color: 'var(--text-muted)' }}>
+                    Summoning…
+                  </span>
+                ) : (
+                  '▶'
+                )}
               </span>
             </div>
             {p.name && (

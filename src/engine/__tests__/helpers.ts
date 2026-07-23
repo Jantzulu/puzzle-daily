@@ -139,6 +139,28 @@ vi.mock('../../utils/assetStorage', () => ({
   getCustomEnemies: () => Array.from(enemyRegistry.values()),
   getCustomVessels: () => Array.from(vesselRegistry.values()),
   getCustomAllies: () => Array.from(allyRegistry.values()),
+  // Closure-prefetch surface (utils/livePull.ts): its importers save into
+  // stores and its local-presence check reads skins/sounds. Saves write the
+  // same registries the loaders read, so ensure→re-walk round-trips work.
+  getPuzzleSkins: () => [],
+  getSoundAssets: () => [],
+  /* eslint-disable @typescript-eslint/no-explicit-any */
+  saveCharacter: (c: any) => { characterRegistry.set(c.id, c); return true; },
+  saveEnemy: (e: any) => { enemyRegistry.set(e.id, e); return true; },
+  saveVessel: (v: any) => { vesselRegistry.set(v.id, v); return true; },
+  saveAlly: (a: any) => { allyRegistry.set(a.id, a); return true; },
+  saveSpellAsset: (s: any) => { spellRegistry.set(s.id, s); return true; },
+  saveStatusEffectAsset: (s: any) => { statusEffectRegistry.set(s.id, s); return true; },
+  saveTileType: (t: any) => { tileTypeRegistry.set(t.id, t); return true; },
+  saveCollectible: (c: any) => { collectibleRegistry.set(c.id, c); return true; },
+  saveCollectibleType: () => true,
+  saveObject: () => true,
+  savePuzzleSkin: () => true,
+  saveSoundAsset: () => true,
+  saveGlobalSoundConfig: () => true,
+  saveGlobalHapticConfig: () => true,
+  saveHelpSection: () => true,
+  /* eslint-enable @typescript-eslint/no-explicit-any */
 }));
 
 // ==========================================

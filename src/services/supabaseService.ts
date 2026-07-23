@@ -510,7 +510,10 @@ export async function fetchLiveContent(): Promise<LiveContentResult> {
   const today = localDateKey();
   try {
     const [showcaseRes, trainingRes, scheduleRes] = await Promise.all([
-      supabase.from('puzzles_live').select('id, data').not('data->showcase', 'is', null),
+      // INDEX ONLY (id + attachment list), never full demo JSON — cached
+      // full showcases were a snoop surface for un-debuted content. Full
+      // rows come from fetchLivePuzzlesByIds per revealed asset page.
+      supabase.from('puzzles_live').select('id, entityIds:data->showcase->entityIds').not('data->showcase', 'is', null),
       supabase.from('puzzles_live').select('id, data').eq('data->>isTraining', 'true'),
       // Cheap reveal index: only the stamp sub-field of each released daily,
       // not the whole puzzle JSON (the archive grows by one row per day).
@@ -519,14 +522,32 @@ export async function fetchLiveContent(): Promise<LiveContentResult> {
         .select('puzzle_id, puzzles_live(id, publishedAssetIds:data->publishedAssetIds, showcase:data->showcase)')
         .lte('scheduled_date', today),
     ]);
-    if (showcaseRes.error || trainingRes.error) {
-      console.warn("Couldn't fetch live content:", showcaseRes.error?.message ?? trainingRes.error?.message);
+    if (trainingRes.error) {
+      console.warn("Couldn't fetch live content:", trainingRes.error.message);
       return { status: 'error' };
     }
 
-    const showcasePuzzles = (showcaseRes.data ?? [])
-      .map(r => r.data as unknown as Puzzle)
-      .filter(p => p?.id);
+    // The nested arrow select is newer PostgREST surface — degrade to full
+    // rows and index them client-side (full JSON stays out of the cache
+    // either way; only this transient response sees it).
+    let showcaseRows = showcaseRes.error ? null : (showcaseRes.data ?? []);
+    if (showcaseRows === null) {
+      const retry = await supabase.from('puzzles_live').select('id, data').not('data->showcase', 'is', null);
+      if (retry.error) {
+        console.warn("Couldn't fetch showcase index:", retry.error.message);
+        return { status: 'error' };
+      }
+      showcaseRows = (retry.data ?? []).map(r => {
+        const p = r.data as unknown as Puzzle;
+        return { id: r.id, entityIds: p?.showcase?.entityIds ?? [] };
+      });
+    }
+    const showcaseIndex = showcaseRows
+      .map(r => ({
+        id: r.id as string,
+        entityIds: (Array.isArray(r.entityIds) ? r.entityIds : []).filter((e): e is string => typeof e === 'string'),
+      }))
+      .filter(e => e.id);
     // A puzzle flagged both training and showcase is a demo, not a playable
     // training level — the reveal rule already treats it as showcase.
     const trainingPuzzles = (trainingRes.data ?? [])
@@ -592,7 +613,7 @@ export async function fetchLiveContent(): Promise<LiveContentResult> {
     return {
       status: 'ok',
       content: {
-        showcasePuzzles,
+        showcaseIndex,
         trainingPuzzles,
         revealedAssetIds: Array.from(revealed).sort(),
       },
@@ -600,6 +621,24 @@ export async function fetchLiveContent(): Promise<LiveContentResult> {
   } catch {
     return { status: 'error' }; // network-level failure (offline)
   }
+}
+
+/**
+ * Full puzzle JSON for specific published puzzles — the lazy half of the
+ * showcase index: a Slab detail page fetches only the demos attached to
+ * the (revealed) asset being viewed.
+ */
+export async function fetchLivePuzzlesByIds(ids: string[]): Promise<Puzzle[]> {
+  if (ids.length === 0) return [];
+  const { data, error } = await supabase
+    .from('puzzles_live')
+    .select('*')
+    .in('id', ids);
+  if (error) {
+    console.warn("Couldn't fetch live puzzles:", error.message);
+    return [];
+  }
+  return (data ?? []).map(r => r.data as unknown as Puzzle).filter(p => p?.id);
 }
 
 export async function fetchArchivedPuzzles(): Promise<Puzzle[]> {

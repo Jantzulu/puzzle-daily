@@ -20,8 +20,8 @@
 import { useEffect, useState } from 'react';
 import type { Puzzle } from '../types/game';
 import { fetchLiveContent } from '../services/supabaseService';
-import { loadCachedLiveContent, saveCachedLiveContent, type LiveContent } from './liveContentCache';
-import { LIVE_ASSETS_UPDATED_EVENT } from './livePull';
+import { loadCachedLiveContent, saveCachedLiveContent, type LiveContent, type ShowcaseIndexEntry } from './liveContentCache';
+import { LIVE_ASSETS_UPDATED_EVENT, ensureAssetsLocal } from './livePull';
 
 let liveContent: LiveContent | null = null;
 let inflight: Promise<LiveContent | null> | null = null;
@@ -58,9 +58,14 @@ export async function ensureLiveContent(): Promise<LiveContent | null> {
   return inflight;
 }
 
-/** Cloud-published showcase puzzles (empty until ensureLiveContent ran). */
-export function getLiveShowcasePuzzles(): Puzzle[] {
-  return liveContent?.showcasePuzzles ?? [];
+/**
+ * Index of cloud-published showcase demos (id + attached asset ids; empty
+ * until ensureLiveContent ran). Full demo JSON is deliberately NOT here —
+ * ShowcaseSection fetches it per revealed asset page (snoop-hole fix,
+ * 2026-07-21 round 2).
+ */
+export function getLiveShowcaseIndex(): ShowcaseIndexEntry[] {
+  return liveContent?.showcaseIndex ?? [];
 }
 
 /** Cloud-published training puzzles (empty until ensureLiveContent ran). */
@@ -109,7 +114,13 @@ export function usePlayerReveal(enabled: boolean): {
   useEffect(() => {
     if (!enabled) return;
     let cancelled = false;
-    ensureLiveContent().then(content => {
+    ensureLiveContent().then(async content => {
+      if (cancelled) return;
+      // Closure prefetch: make the revealed assets local BEFORE exposing
+      // the reveal set, so lists/rosters and detail pages render complete
+      // on first paint. Revealed = debuted — nothing undebuted is fetched.
+      // (Offline: proceed with whatever is local; the set still gates.)
+      if (content) await ensureAssetsLocal(content.revealedAssetIds);
       if (!cancelled) setRevealSet(new Set(content?.revealedAssetIds ?? []));
     });
     const onAssets = () => setAssetsVersion(v => v + 1);

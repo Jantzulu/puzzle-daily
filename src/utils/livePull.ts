@@ -1,25 +1,31 @@
 /**
- * Player-app live asset pull (showcase-distribution arc, 2026-07-21).
+ * Player-app asset distribution — CLOSURE PREFETCH (2026-07-21, second
+ * design round with the user; replaces the same-day boot pull-all).
  *
- * A real player's device has no editor and no cloud-sync UI — until this
- * existed, players received ONLY the daily's puzzle JSON, which references
- * assets by id, so custom enemies/spells/items could never resolve. This
- * module mirrors assets_live into the same localStorage-backed stores the
- * whole app already reads (loaders, Slab, Training Grounds, showcase sims),
- * so no consumer needed to change.
+ * User goals this shape serves: no boot-time mirror of the whole library
+ * (fast first paint, no localStorage ceiling race), and NOTHING undebuted
+ * on a player device (no snooping — only revealed content and the current
+ * daily's closure are ever fetched).
  *
- * Deliberate semantics:
- * - Upsert-only mirror: absent-from-live assets are NOT deleted locally.
- *   Unpublished assets linger harmlessly — every player surface is gated by
- *   the reveal predicate, and a deletion pass keyed off "absent from a
- *   fetched page" would mass-delete on any partial fetch.
- * - Once per local day (mirrors dailyPuzzleCache's rollover), force-able.
- * - Editor app NEVER calls this — the editor's localStorage is the team's
- *   working copy; clobbering it from live would lose unpushed edits.
+ * The engine's loaders are synchronous and are called mid-simulation, so
+ * the invariant is: before any board runs, its full transitive asset
+ * closure must already be in the local stores. Each player-facing surface
+ * gets ONE async choke point:
+ *   - daily boot        → ensurePuzzleAssets(dailyPuzzle)
+ *   - Slab / Training   → ensureAssetsLocal(revealedIds)  (via usePlayerReveal)
+ *   - demo tap / arena  → ensurePuzzleAssets(thatPuzzle)
+ * Inside the boundary everything stays synchronous. A player accumulates
+ * only what they actually touch; per-id day-freshness re-fetches at most
+ * once per local day so live edits still propagate.
+ *
+ * The editor app never calls any of this — team localStorage is the
+ * working copy and must not be overwritten from live tables.
  */
 import { supabase } from '../lib/supabase';
 import type { DbAsset } from '../lib/supabase';
 import { localDateKey } from './localDate';
+import type { Puzzle } from '../types/game';
+import { collectPuzzleAssetIds } from './publishDependencies';
 import {
   saveTileType,
   saveObject,
@@ -36,6 +42,15 @@ import {
   saveGlobalSoundConfig,
   saveGlobalHapticConfig,
   saveHelpSection,
+  loadTileType,
+  loadCollectible,
+  loadObject,
+  loadSpellAsset,
+  loadStatusEffectAsset,
+  loadVessel,
+  loadAlly,
+  getPuzzleSkins,
+  getSoundAssets,
   type CustomTileType,
   type CustomObject,
   type CustomCharacter,
@@ -46,6 +61,8 @@ import {
   type CustomCollectible,
   type HelpContentStorage,
 } from './assetStorage';
+import { getCharacter } from '../data/characters';
+import { getEnemy } from '../data/enemies';
 import type {
   PuzzleSkin,
   SpellAsset,
@@ -55,38 +72,8 @@ import type {
   GlobalHapticConfig,
 } from '../types/game';
 
-const PULLED_KEY = 'puzzle-daily-live-assets-pulled';
-/** Fired on window after a successful pull so mounted lists can refresh. */
+/** Fired on window after any ensure call that imported rows. */
 export const LIVE_ASSETS_UPDATED_EVENT = 'live-assets-updated';
-
-export function hasEverPulledLiveAssets(): boolean {
-  try {
-    return localStorage.getItem(PULLED_KEY) !== null;
-  } catch {
-    return false;
-  }
-}
-
-// Supabase caps a select at 1000 rows — page so a growing asset library
-// never silently truncates the mirror.
-const PAGE_SIZE = 1000;
-
-async function fetchAllLiveAssetRows(): Promise<DbAsset[] | null> {
-  const rows: DbAsset[] = [];
-  for (let from = 0; ; from += PAGE_SIZE) {
-    const { data, error } = await supabase
-      .from('assets_live')
-      .select('*')
-      .order('id', { ascending: true })
-      .range(from, from + PAGE_SIZE - 1);
-    if (error) {
-      console.warn("Couldn't fetch live assets:", error.message);
-      return null;
-    }
-    rows.push(...(data ?? []));
-    if (!data || data.length < PAGE_SIZE) return rows;
-  }
-}
 
 // Per-type importers, mirroring pullFromCloud's casts. Returns false on
 // storage-full (the save fns' contract). Types with no player relevance
@@ -129,43 +116,158 @@ const IMPORTERS: Partial<Record<DbAsset['type'], (row: DbAsset) => boolean>> = {
   },
 };
 
-export interface LivePullResult {
-  status: 'ok' | 'skipped' | 'error';
-  imported: number;
-  failed: number;
+/**
+ * Is this id resolvable through the local stores (or shipped as a
+ * builtin)? Same cascade shape as the publish walker's resolver — every
+ * type the stamp/reveal vocabulary can produce, plus skins and sounds.
+ */
+function localAssetExists(id: string): boolean {
+  if (loadVessel(id) || loadAlly(id) || getEnemy(id) || getCharacter(id)) return true;
+  if (loadSpellAsset(id) || loadStatusEffectAsset(id) || loadTileType(id)) return true;
+  if (loadCollectible(id) || loadObject(id)) return true;
+  if (getPuzzleSkins().some(s => s.id === id)) return true;
+  if (getSoundAssets().some(s => s.id === id)) return true;
+  return false;
 }
 
-export async function pullLiveAssets(opts?: { force?: boolean }): Promise<LivePullResult> {
-  try {
-    if (!opts?.force && localStorage.getItem(PULLED_KEY) === localDateKey()) {
-      return { status: 'skipped', imported: 0, failed: 0 };
-    }
-  } catch {
-    // localStorage unavailable — still try the fetch; imports will no-op.
-  }
+// Per-id freshness ledger: id → localDateKey of the last fetch. An id both
+// present locally AND fetched today is skipped; present-but-stale ids are
+// re-fetched once per local day so live edits reach players.
+const FETCHED_KEY = 'puzzle-daily-live-asset-fetch-days';
 
-  const rows = await fetchAllLiveAssetRows();
-  if (rows === null) return { status: 'error', imported: 0, failed: 0 };
+function loadFetchLedger(): Record<string, string> {
+  try {
+    return JSON.parse(localStorage.getItem(FETCHED_KEY) ?? '{}') as Record<string, string>;
+  } catch {
+    return {};
+  }
+}
+
+function saveFetchLedger(ledger: Record<string, string>): void {
+  try {
+    localStorage.setItem(FETCHED_KEY, JSON.stringify(ledger));
+  } catch {
+    // best-effort — worst case we re-fetch tomorrow
+  }
+}
+
+/**
+ * Which of these ids need a cloud fetch right now (exported for tests):
+ *  - not resolvable locally → fetch;
+ *  - resolvable AND the ledger says WE fetched it from live on a previous
+ *    day → re-fetch (live edits propagate daily);
+ *  - resolvable with NO ledger entry → skip. This last rule is a safety
+ *    invariant, not an optimization: on the EDITOR app the local stores are
+ *    the team's working copy (never ledgered), and ensure calls that reach
+ *    it (demo tap, daily effect) must NEVER overwrite local edits with the
+ *    live copy.
+ */
+export function filterAssetIdsNeedingFetch(ids: readonly string[], ledger?: Record<string, string>): string[] {
+  const led = ledger ?? loadFetchLedger();
+  const today = localDateKey();
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const id of ids) {
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    if (localAssetExists(id) && (led[id] === undefined || led[id] === today)) continue;
+    out.push(id);
+  }
+  return out;
+}
+
+/** Batched `.in()` row fetch — injectable for tests. */
+export type FetchAssetRows = (ids: string[]) => Promise<DbAsset[] | null>;
+
+const fetchAssetRowsFromLive: FetchAssetRows = async (ids) => {
+  const BATCH = 200;
+  const rows: DbAsset[] = [];
+  for (let i = 0; i < ids.length; i += BATCH) {
+    const { data, error } = await supabase
+      .from('assets_live')
+      .select('*')
+      .in('id', ids.slice(i, i + BATCH));
+    if (error) {
+      console.warn("Couldn't fetch live assets:", error.message);
+      return null;
+    }
+    rows.push(...(data ?? []));
+  }
+  return rows;
+};
+
+export interface EnsureResult {
+  status: 'ok' | 'error';
+  imported: number;
+}
+
+/**
+ * Make these asset ids resolvable through the local stores, fetching any
+ * missing/stale ones from assets_live. Ids absent from assets_live (never
+ * published, or builtin) are simply skipped — the ledger still stamps them
+ * so they aren't re-queried all day. Returns 'error' only on fetch failure
+ * (offline): callers keep working with whatever is already local.
+ */
+export async function ensureAssetsLocal(
+  ids: readonly string[],
+  fetchRows: FetchAssetRows = fetchAssetRowsFromLive,
+): Promise<EnsureResult> {
+  const needed = filterAssetIdsNeedingFetch(ids);
+  if (needed.length === 0) return { status: 'ok', imported: 0 };
+
+  const rows = await fetchRows(needed);
+  if (rows === null) return { status: 'error', imported: 0 };
 
   let imported = 0;
-  let failed = 0;
   for (const row of rows) {
     const importer = IMPORTERS[row.type];
     if (!importer) continue;
     try {
       if (importer(row)) imported++;
-      else failed++; // storage full
     } catch {
-      failed++;
+      // storage full / malformed row — best-effort
     }
   }
 
-  try {
-    localStorage.setItem(PULLED_KEY, localDateKey());
-  } catch {
-    // best-effort — worst case we re-pull next boot
+  const ledger = loadFetchLedger();
+  const today = localDateKey();
+  for (const id of needed) ledger[id] = today;
+  saveFetchLedger(ledger);
+
+  if (imported > 0 && typeof window !== 'undefined') {
+    window.dispatchEvent(new Event(LIVE_ASSETS_UPDATED_EVENT));
   }
-  if (failed > 0) console.warn(`Live asset pull: ${failed} asset(s) failed to import (storage full?)`);
-  window.dispatchEvent(new Event(LIVE_ASSETS_UPDATED_EVENT));
-  return { status: 'ok', imported, failed };
+  return { status: 'ok', imported };
+}
+
+/**
+ * Ensure a puzzle's FULL transitive closure is local before its board runs.
+ * Stamped puzzles (publishedAssetIds, written at publish) are one ensure
+ * call. Unstamped legacy rows fall back to a client-side FIXPOINT: walk the
+ * puzzle with whatever is local (unresolvable refs still surface their
+ * ids), fetch those, and re-walk — each round can only discover deeper
+ * transitive refs, so it terminates; ROUND_CAP is a safety net.
+ */
+export async function ensurePuzzleAssets(
+  puzzle: Puzzle,
+  fetchRows: FetchAssetRows = fetchAssetRowsFromLive,
+): Promise<EnsureResult> {
+  if (puzzle.publishedAssetIds && puzzle.publishedAssetIds.length > 0) {
+    return ensureAssetsLocal(puzzle.publishedAssetIds, fetchRows);
+  }
+
+  const ROUND_CAP = 6;
+  let importedTotal = 0;
+  let known = new Set<string>();
+  for (let round = 0; round < ROUND_CAP; round++) {
+    const ids = Array.from(collectPuzzleAssetIds(puzzle).keys());
+    const fresh = ids.filter(id => !known.has(id));
+    known = new Set(ids);
+    if (round > 0 && fresh.length === 0) break; // fixpoint reached
+    const result = await ensureAssetsLocal(ids, fetchRows);
+    if (result.status === 'error') return { status: 'error', imported: importedTotal };
+    importedTotal += result.imported;
+    if (result.imported === 0 && round > 0) break; // nothing new arrived
+  }
+  return { status: 'ok', imported: importedTotal };
 }

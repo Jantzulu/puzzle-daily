@@ -27,6 +27,7 @@ import { preloadImagesEager, isImageFailed, retryImage } from '../../utils/image
 import { vibrate } from '../../utils/haptics';
 import { getDailyState, lockDailyOutcome, updateDailyLives, type DailyStatus } from '../../utils/dailyState';
 import { diffTurn } from '../../engine/combatLog';
+import { ensurePuzzleAssets } from '../../utils/livePull';
 import { fetchTodaysPuzzle as fetchCloudTodaysPuzzle } from '../../services/supabaseService';
 import { loadCachedDailyPuzzle, saveCachedDailyPuzzle } from '../../utils/dailyPuzzleCache';
 import { saveSetupState, loadSetupState, clearSetupState } from '../../utils/setupRecovery';
@@ -482,7 +483,7 @@ export const Game: React.FC<GameProps> = ({
   // scheduled) and quietly keeps the local default.
   useEffect(() => {
     let cancelled = false;
-    fetchCloudTodaysPuzzle().then((result) => {
+    fetchCloudTodaysPuzzle().then(async (result) => {
       if (cancelled) return;
       if (result.status !== 'ok') {
         // Cloud unreachable with no same-day cache: the player is on the
@@ -493,6 +494,15 @@ export const Game: React.FC<GameProps> = ({
         return;
       }
       const cloudPuzzle = result.puzzle;
+      // Closure prefetch (2026-07-21): make the daily's full transitive
+      // asset closure local BEFORE swapping it in — the engine's loaders
+      // are synchronous, so a custom enemy must already be in the stores
+      // when initializeGameState runs. Cheap after the first visit of the
+      // day (per-id freshness ledger). On fetch failure we still swap:
+      // partially-resolvable is no worse than the pre-prefetch behavior,
+      // and the cached-daily path needs the same-day cache written.
+      await ensurePuzzleAssets(cloudPuzzle);
+      if (cancelled) return;
       setPuzzleNumber(result.puzzleNumber);
       saveCachedDailyPuzzle(cloudPuzzle, result.puzzleNumber);
       setCurrentPuzzle(prev => {
