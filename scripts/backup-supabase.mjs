@@ -54,10 +54,20 @@ function headers(key) {
   return { apikey: key, Authorization: `Bearer ${key}` };
 }
 
+// Bare fetch has no timeout — a single stalled connection would hang the
+// whole backup. Abort after 60s and surface the path in the error.
+function fetchT(url, init = {}) {
+  return fetch(url, { ...init, signal: AbortSignal.timeout(60_000) });
+}
+
+function encodePath(path) {
+  return path.split('/').map(encodeURIComponent).join('/');
+}
+
 async function dumpTable(url, key, table) {
   const rows = [];
   for (let offset = 0; ; offset += PAGE_SIZE) {
-    const res = await fetch(`${url}/rest/v1/${table}?select=*`, {
+    const res = await fetchT(`${url}/rest/v1/${table}?select=*`, {
       headers: { ...headers(key), Range: `${offset}-${offset + PAGE_SIZE - 1}` },
     });
     if (!res.ok) throw new Error(`${table}: HTTP ${res.status} ${await res.text()}`);
@@ -71,7 +81,7 @@ async function dumpTable(url, key, table) {
 async function listBucket(url, key, prefix = '') {
   const files = [];
   for (let offset = 0; ; offset += PAGE_SIZE) {
-    const res = await fetch(`${url}/storage/v1/object/list/${BUCKET}`, {
+    const res = await fetchT(`${url}/storage/v1/object/list/${BUCKET}`, {
       method: 'POST',
       headers: { ...headers(key), 'Content-Type': 'application/json' },
       body: JSON.stringify({ prefix, limit: PAGE_SIZE, offset, sortBy: { column: 'name', order: 'asc' } }),
@@ -91,11 +101,17 @@ async function listBucket(url, key, prefix = '') {
 async function downloadObject(url, key, path) {
   // Authenticated endpoint first (works with service key even if the
   // bucket is ever made private), public endpoint as fallback.
+  let lastErr = 'not found';
   for (const endpoint of [`object/${BUCKET}`, `object/public/${BUCKET}`]) {
-    const res = await fetch(`${url}/storage/v1/${endpoint}/${path}`, { headers: headers(key) });
-    if (res.ok) return Buffer.from(await res.arrayBuffer());
+    try {
+      const res = await fetchT(`${url}/storage/v1/${endpoint}/${encodePath(path)}`, { headers: headers(key) });
+      if (res.ok) return Buffer.from(await res.arrayBuffer());
+      lastErr = `HTTP ${res.status}`;
+    } catch (e) {
+      lastErr = e.message;
+    }
   }
-  throw new Error(`download failed: ${path}`);
+  throw new Error(`download failed (${lastErr}): ${path}`);
 }
 
 const env = await loadEnv();
@@ -133,14 +149,21 @@ for (const table of TABLES) {
 try {
   const files = await listBucket(url, key);
   let bytes = 0;
+  let ok = 0;
   for (const path of files) {
-    const data = await downloadObject(url, key, path);
-    bytes += data.length;
-    const dest = join(outDir, 'storage', BUCKET, ...path.split('/').map(s => s.replace(/[<>:"|?*]/g, '_')));
-    await mkdir(dirname(dest), { recursive: true });
-    await writeFile(dest, data);
+    try {
+      const data = await downloadObject(url, key, path);
+      bytes += data.length;
+      const dest = join(outDir, 'storage', BUCKET, ...path.split('/').map(s => s.replace(/[<>:"|?*]/g, '_')));
+      await mkdir(dirname(dest), { recursive: true });
+      await writeFile(dest, data);
+      ok++;
+    } catch (e) {
+      failures++;
+      console.warn(`✗ ${e.message}`);
+    }
   }
-  console.log(`✓ storage/${BUCKET}: ${files.length} files (${(bytes / 1024 / 1024).toFixed(1)} MB)`);
+  console.log(`✓ storage/${BUCKET}: ${ok}/${files.length} files (${(bytes / 1024 / 1024).toFixed(1)} MB)`);
 } catch (e) {
   failures++;
   console.warn(`✗ storage/${BUCKET}: ${e.message}`);
