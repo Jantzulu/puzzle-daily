@@ -28,6 +28,7 @@ import { vibrate } from '../../utils/haptics';
 import { getDailyState, lockDailyOutcome, updateDailyLives, type DailyStatus } from '../../utils/dailyState';
 import { diffTurn } from '../../engine/combatLog';
 import { ensurePuzzleAssets } from '../../utils/livePull';
+import { LoadingRune } from '../shared/LoadingRune';
 import { fetchTodaysPuzzle as fetchCloudTodaysPuzzle } from '../../services/supabaseService';
 import { loadCachedDailyPuzzle, saveCachedDailyPuzzle } from '../../utils/dailyPuzzleCache';
 import { saveSetupState, loadSetupState, clearSetupState } from '../../utils/setupRecovery';
@@ -2577,7 +2578,7 @@ export const Game: React.FC<GameProps> = ({
                 // No fill: the page background shows through while loading —
                 // the board itself sits at opacity 0 underneath.
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="text-stone-400 text-sm animate-pulse">Loading sprites...</div>
+                  <LoadingRune label="Loading sprites..." textClassName="text-stone-400 text-sm animate-pulse" />
                 </div>
               )}
 

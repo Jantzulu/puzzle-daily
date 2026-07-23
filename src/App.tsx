@@ -6,6 +6,7 @@ import { SoundSettings } from './components/shared/SoundSettings';
 import { NavCalendar } from './components/shared/NavCalendar';
 import { ConsentBanner } from './components/shared/ConsentBanner';
 import { RouteFade } from './components/shared/RouteFade';
+import { LoadingRune } from './components/shared/LoadingRune';
 import { ErrorBoundary } from './components/shared/ErrorBoundary';
 import { applyThemeAssets, subscribeToThemeAssets, loadThemeAssets, fetchThemeAssetsFromCloud, type ThemeAssets } from './utils/themeAssets';
 import { applyNavTorchLight } from './components/shared/navTorchLight';
@@ -622,7 +623,7 @@ function App() {
             <RouteFade>
             <Suspense fallback={
               <div className="flex items-center justify-center p-12">
-                <div className="text-copper-400 font-medieval text-lg animate-pulse">Loading...</div>
+                <LoadingRune label="Loading..." />
               </div>
             }>
               <Routes>

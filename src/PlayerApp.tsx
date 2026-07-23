@@ -22,6 +22,7 @@ import { LoginPage } from './components/auth/LoginPage';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
 import { UserMenu } from './components/auth/UserMenu';
 import { useAuth } from './contexts/AuthContext';
+import { LoadingRune } from './components/shared/LoadingRune';
 
 const Compendium = lazy(() => import('./components/compendium/Compendium').then(m => ({ default: m.Compendium })));
 const TrainingGrounds = lazy(() => import('./components/training/TrainingGrounds').then(m => ({ default: m.TrainingGrounds })));
@@ -525,7 +526,7 @@ function PlayerApp() {
             <RouteFade>
             <Suspense fallback={
               <div className="flex items-center justify-center p-12">
-                <div className="text-copper-400 font-medieval text-lg animate-pulse">Loading...</div>
+                <LoadingRune label="Loading..." />
               </div>
             }>
               <Routes>

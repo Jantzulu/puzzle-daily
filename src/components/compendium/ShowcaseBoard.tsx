@@ -18,6 +18,7 @@ import { ensurePuzzleAssets } from '../../utils/livePull';
 import { fetchLivePuzzlesByIds } from '../../services/supabaseService';
 import { ResponsiveGameBoard } from '../game/AnimatedGameBoard';
 import { MiniGridPreview } from '../game/MiniGridPreview';
+import { LoadingRune } from '../shared/LoadingRune';
 
 const SHOWCASE_DEFAULT_LOOP_TURNS = 10;
 const LOOP_PAUSE_MS = 900;
@@ -197,9 +198,12 @@ export const ShowcaseSection: React.FC<{ assetId: string }> = ({ assetId }) => {
               <MiniGridPreview puzzle={p} placements={buildShowcaseHeroes(p)} size={160} />
               <span className="absolute inset-0 flex items-center justify-center text-4xl opacity-70 group-hover:opacity-100 drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">
                 {ensuringId === p.id ? (
-                  <span className="text-sm font-medieval animate-pulse" style={{ color: 'var(--text-muted)' }}>
-                    Summoning…
-                  </span>
+                  <LoadingRune
+                    label="Summoning…"
+                    size={32}
+                    textClassName="text-sm font-medieval animate-pulse"
+                    className="text-[color:var(--text-muted)]"
+                  />
                 ) : (
                   '▶'
                 )}

@@ -5,6 +5,7 @@ import { getAllPuzzles } from '../../data/puzzles';
 import { getAllCharacters, getCharacter, isOfficialCharacter } from '../../data/characters';
 import { usePlayerReveal, isAssetRevealed, getLiveTrainingPuzzles } from '../../utils/reveal';
 import { ensurePuzzleAssets } from '../../utils/livePull';
+import { LoadingRune } from '../shared/LoadingRune';
 import { initializeGameState, executeTurn } from '../../engine/simulation';
 import { ResponsiveGameBoard } from '../game/AnimatedGameBoard';
 import { CharacterSelector } from '../game/CharacterSelector';
@@ -84,6 +85,9 @@ export const TrainingGrounds: React.FC<TrainingGroundsProps> = ({ playerReveal }
   /* eslint-enable react-hooks/exhaustive-deps */
 
   // -- Active arena state --
+  // First view of a cloud-published arena fetches its asset closure — brief
+  // beat; instant on the dev app / later visits.
+  const [arenaLoading, setArenaLoading] = useState(false);
   const [selectedPuzzle, setSelectedPuzzle] = useState<Puzzle | null>(null);
   const [originalPuzzle, setOriginalPuzzle] = useState<Puzzle | null>(null);
   const [gameState, setGameState] = useState<GameState | null>(null);
@@ -107,7 +111,12 @@ export const TrainingGrounds: React.FC<TrainingGroundsProps> = ({ playerReveal }
     // Closure prefetch: the sandbox sim resolves assets synchronously, so a
     // cloud-published training level's closure must be local before
     // initializeGameState (no-op on the dev app / already-ensured visits).
-    await ensurePuzzleAssets(puzzle);
+    setArenaLoading(true);
+    try {
+      await ensurePuzzleAssets(puzzle);
+    } finally {
+      setArenaLoading(false);
+    }
     const puzzleCopy: Puzzle = JSON.parse(JSON.stringify(puzzle));
     setOriginalPuzzle(puzzleCopy);
     setSelectedPuzzle(puzzle);
@@ -527,6 +536,11 @@ export const TrainingGrounds: React.FC<TrainingGroundsProps> = ({ playerReveal }
 
         {/* Game board */}
         <div className="relative" ref={undefined}>
+          {arenaLoading && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center bg-stone-900/60">
+              <LoadingRune label="Preparing arena..." textClassName="text-stone-300 text-sm font-medieval animate-pulse" />
+            </div>
+          )}
           <ResponsiveGameBoard
             gameState={gameState}
             onTileClick={isSetup && !replayMode ? handleTileClick : undefined}
