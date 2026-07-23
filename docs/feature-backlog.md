@@ -783,9 +783,13 @@ section) are also active picks from this conversation.
   migration; pre-stamp rows fall back to client walk). Discovered +
   closed en route: (1) players had NO asset distribution at all
   (fetchLiveAssets was dead code; the on-demand registry in
-  PLAYER_APP_ARCHITECTURE.md was never built) — user chose PULL-ALL:
-  the player app mirrors assets_live into local stores on boot, once
-  per local day (utils/livePull.ts); revisit on-demand at scale.
+  PLAYER_APP_ARCHITECTURE.md was never built) — shipped as PULL-ALL,
+  then SUPERSEDED same session by CLOSURE PREFETCH (`be21e08`, second
+  design round: no ceiling race / fast boot / nothing undebuted
+  on-device): ensureAssetsLocal + ensurePuzzleAssets in
+  utils/livePull.ts, one async choke point per surface, revealed-only,
+  day-freshness ledger protecting editor working copies; showcase demo
+  JSON cached only as an id index (snoop-hole closed).
   (2) editing an already-published asset never updated assets_live
   (publish only pushed unpublished deps) — re-publishing a puzzle now
   re-upserts ALL deps, so one gesture refreshes content + stamp
