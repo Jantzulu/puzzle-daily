@@ -126,26 +126,25 @@ export const BugReportViewer: React.FC = () => {
   // ── REPLAY VIEW ──
   if (selectedReport && replayPuzzle) {
     return (
-      <div className="min-h-screen text-parchment-200 px-4 pb-4 md:px-8 md:pb-8">
-        <div className="max-w-5xl mx-auto space-y-4 pt-4">
-          <button onClick={handleExitReplay} className="dungeon-btn px-3 py-1.5 text-sm font-bold flex items-center gap-1">
-            <span>&larr;</span> Back to Reports
-          </button>
+      <div className="p-4 space-y-4 max-w-5xl mx-auto text-parchment-200">
+        <button onClick={handleExitReplay} className="dungeon-btn px-3 py-1.5 text-sm font-bold flex items-center gap-1">
+          <span>&larr;</span> Back to Reports
+        </button>
 
-          <div className="grid md:grid-cols-[1fr_300px] gap-4">
-            {/* Replay board */}
-            <div>
-              <BugReportReplay
-                puzzle={replayPuzzle}
-                placements={selectedReport.placements}
-                onExit={handleExitReplay}
-              />
-            </div>
+        <div className="grid md:grid-cols-[1fr_300px] gap-4">
+          {/* Replay board */}
+          <div>
+            <BugReportReplay
+              puzzle={replayPuzzle}
+              placements={selectedReport.placements}
+              onExit={handleExitReplay}
+            />
+          </div>
 
-            {/* Report details */}
-            <div className="dungeon-panel p-4 space-y-3 h-fit">
-              <h3 className="font-medieval text-copper-400">Report Details</h3>
-
+          {/* Report details */}
+          <div className="border border-stone-700 rounded overflow-hidden h-fit">
+            <div className="bg-stone-800 px-2 py-1.5 text-xs uppercase text-stone-400">Report Details</div>
+            <div className="p-3 space-y-3">
               <div className="space-y-2 text-sm">
                 <div>
                   <span className="text-stone-500">Puzzle:</span>{' '}
@@ -203,114 +202,113 @@ export const BugReportViewer: React.FC = () => {
   // ── LOADING REPLAY ──
   if (selectedReport && loadingReplay) {
     return (
-      <div className="min-h-screen text-parchment-200 flex items-center justify-center">
-        <div className="text-stone-400">Loading puzzle for replay...</div>
-      </div>
+      <div className="text-center py-16 text-stone-500 text-sm">Loading puzzle for replay...</div>
     );
   }
 
   // ── LIST VIEW ──
   return (
-    <div className="min-h-screen text-parchment-200 px-4 pb-4 md:px-8 md:pb-8">
-      <div className="max-w-5xl mx-auto space-y-4 pt-4">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="font-medieval text-copper-400 text-xl md:text-2xl">Bug Reports</h1>
-            {newCount > 0 && (
-              <p className="text-sm text-red-400 mt-0.5">{newCount} new report{newCount !== 1 ? 's' : ''}</p>
-            )}
-          </div>
-          <button onClick={loadReports} className="dungeon-btn px-3 py-1.5 text-sm font-bold">
-            Refresh
+    <div className="p-4 space-y-4 max-w-6xl mx-auto">
+      {/* Filters + refresh */}
+      <div className="flex items-center gap-2 flex-wrap">
+        {(['all', 'new', 'reviewed', 'resolved'] as StatusFilter[]).map(status => (
+          <button
+            key={status}
+            onClick={() => setStatusFilter(status)}
+            className={`px-2 py-0.5 rounded text-xs border ${
+              statusFilter === status
+                ? 'bg-stone-700 text-parchment-100 border-arcane-500'
+                : 'text-stone-400 border-stone-700 hover:text-stone-200'
+            }`}
+          >
+            {status === 'all' ? 'All' : status.charAt(0).toUpperCase() + status.slice(1)}
+          </button>
+        ))}
+        <div className="ml-auto flex items-center gap-2">
+          {newCount > 0 && (
+            <span className="text-xs text-red-400">⚠ {newCount} new report{newCount !== 1 ? 's' : ''}</span>
+          )}
+          <button onClick={loadReports} className="dungeon-btn text-xs px-3 py-1.5">
+            ↻ Refresh
           </button>
         </div>
+      </div>
 
-        {/* Filters */}
-        <div className="flex gap-2">
-          {(['all', 'new', 'reviewed', 'resolved'] as StatusFilter[]).map(status => (
-            <button
-              key={status}
-              onClick={() => setStatusFilter(status)}
-              className={`px-3 py-1.5 text-xs font-bold rounded-pixel border ${
-                statusFilter === status
-                  ? 'bg-copper-600/30 border-copper-500 text-copper-300'
-                  : 'bg-stone-800/50 border-stone-600/50 text-stone-400 hover:border-stone-500'
-              }`}
-            >
-              {status === 'all' ? 'All' : status.charAt(0).toUpperCase() + status.slice(1)}
-            </button>
-          ))}
-        </div>
-
-        {/* Reports list */}
-        {loading ? (
-          <div className="text-center text-stone-500 py-8">Loading...</div>
-        ) : reports.length === 0 ? (
-          <div className="dungeon-panel p-8 text-center">
-            <p className="text-stone-400">No bug reports found.</p>
-            <p className="text-xs text-stone-600 mt-1">
-              {statusFilter !== 'all' ? 'Try changing the filter.' : 'Players can submit reports from the game screen.'}
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {reports.map(report => (
-              <div key={report.id} className="dungeon-panel p-3 flex flex-col md:flex-row md:items-center gap-2 md:gap-4">
-                {/* Info */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-bold text-parchment-200 text-sm truncate">
-                      {report.puzzle_name || report.puzzle_id}
-                    </span>
-                    <span className={`text-xs px-2 py-0.5 rounded border ${STATUS_COLORS[report.status]}`}>
-                      {report.status}
-                    </span>
-                    {report.asset_type && (
-                      <span className="text-xs text-stone-500">
-                        {report.asset_type}: {report.asset_name || report.asset_id}
-                      </span>
+      {/* Reports table */}
+      <div className="overflow-x-auto border border-stone-700 rounded">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="bg-stone-800 text-stone-400 text-xs uppercase">
+              <th className="text-left px-3 py-2">Puzzle</th>
+              <th className="text-left px-2 py-2">Status</th>
+              <th className="text-left px-2 py-2">Asset</th>
+              <th className="text-left px-2 py-2">Description</th>
+              <th className="text-left px-2 py-2">Date</th>
+              <th className="px-2 py-2"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr><td colSpan={6} className="px-3 py-4 text-center text-stone-500">Loading...</td></tr>
+            ) : reports.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="px-3 py-4 text-center text-stone-500">
+                  No bug reports found. {statusFilter !== 'all' ? 'Try changing the filter.' : 'Players can submit reports from the game screen.'}
+                </td>
+              </tr>
+            ) : reports.map(report => (
+              <tr key={report.id} className="border-t border-stone-700/60 hover:bg-stone-800/50">
+                <td className="px-3 py-1.5 text-parchment-100 max-w-[200px] truncate">
+                  {report.puzzle_name || report.puzzle_id}
+                </td>
+                <td className="px-2 py-1.5">
+                  <span className={`inline-block text-xs px-2 py-0.5 rounded border whitespace-nowrap ${STATUS_COLORS[report.status]}`}>
+                    {report.status}
+                  </span>
+                </td>
+                <td className="px-2 py-1.5 text-xs text-stone-400 whitespace-nowrap">
+                  {report.asset_type ? `${report.asset_type}: ${report.asset_name || report.asset_id}` : <span className="text-stone-600">—</span>}
+                </td>
+                <td className="px-2 py-1.5 text-xs text-stone-400 max-w-[280px] truncate" title={report.description}>
+                  {report.description}
+                </td>
+                <td className="px-2 py-1.5 text-xs text-stone-500 whitespace-nowrap">{formatDate(report.created_at)}</td>
+                <td className="px-2 py-1.5">
+                  <div className="flex gap-1.5 justify-end whitespace-nowrap">
+                    <button
+                      onClick={() => handleReplay(report)}
+                      className="dungeon-btn px-2 py-0.5 text-xs"
+                    >
+                      Replay
+                    </button>
+                    {report.status === 'new' && (
+                      <button
+                        onClick={() => handleStatusChange(report, 'reviewed')}
+                        className="px-2 py-0.5 text-xs rounded border border-yellow-700/50 bg-yellow-900/30 text-yellow-300 hover:bg-yellow-900/50"
+                      >
+                        Reviewed
+                      </button>
                     )}
+                    {(report.status === 'new' || report.status === 'reviewed') && (
+                      <button
+                        onClick={() => handleStatusChange(report, 'resolved')}
+                        className="px-2 py-0.5 text-xs rounded border border-green-700/50 bg-green-900/30 text-green-300 hover:bg-green-900/50"
+                      >
+                        Resolve
+                      </button>
+                    )}
+                    <button
+                      onClick={() => handleDelete(report)}
+                      className="px-2 py-0.5 text-xs rounded border border-red-700/50 bg-red-900/30 text-red-300 hover:bg-red-900/50"
+                    >
+                      Delete
+                    </button>
                   </div>
-                  <p className="text-xs text-stone-400 mt-0.5 line-clamp-1">{report.description}</p>
-                  <p className="text-[10px] text-stone-600 mt-0.5">{formatDate(report.created_at)}</p>
-                </div>
-
-                {/* Actions */}
-                <div className="flex gap-2 shrink-0">
-                  <button
-                    onClick={() => handleReplay(report)}
-                    className="dungeon-btn px-3 py-1 text-xs font-bold"
-                  >
-                    Replay
-                  </button>
-                  {report.status === 'new' && (
-                    <button
-                      onClick={() => handleStatusChange(report, 'reviewed')}
-                      className="px-3 py-1 text-xs font-bold rounded-pixel border border-yellow-700/50 bg-yellow-900/30 text-yellow-300 hover:bg-yellow-900/50"
-                    >
-                      Reviewed
-                    </button>
-                  )}
-                  {(report.status === 'new' || report.status === 'reviewed') && (
-                    <button
-                      onClick={() => handleStatusChange(report, 'resolved')}
-                      className="px-3 py-1 text-xs font-bold rounded-pixel border border-green-700/50 bg-green-900/30 text-green-300 hover:bg-green-900/50"
-                    >
-                      Resolve
-                    </button>
-                  )}
-                  <button
-                    onClick={() => handleDelete(report)}
-                    className="px-3 py-1 text-xs font-bold rounded-pixel border border-red-700/50 bg-red-900/30 text-red-300 hover:bg-red-900/50"
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
+                </td>
+              </tr>
             ))}
-          </div>
-        )}
+          </tbody>
+        </table>
       </div>
     </div>
   );
