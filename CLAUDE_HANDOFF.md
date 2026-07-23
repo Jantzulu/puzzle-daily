@@ -1,6 +1,6 @@
 # Claude Handoff Document - Puzzle Daily
 
-Last Updated: July 21, 2026, second session — FIVE arcs closed: (1) SHOWCASE DISTRIBUTION + SLAB REVEAL TIMING (publish stamps, shared reveal predicate, and player asset CLOSURE PREFETCH — a brief boot pull-all was superseded same-session by `be21e08` after a second design round with the user; top entry under Pending Tasks); (2) CONTENT PRODUCTION DASHBOARD (Puzzle Resources "Production" tab + auto-refresh; now the user-set styling reference for all dev pages — see "Dev-Page Styling Reference" section); (3) HOMING-REFLECT TIMING DIVERGENCE closed — known real/headless divergence ledger EMPTY; (4) CI's vacuous Type check fixed (`tsc -b` required — plain `tsc --noEmit` checks ZERO files here); (5) re-publish now refreshes ALL deps (edited live assets finally reach assets_live). Everything AWAITING USER TEST. Next session: no queued build work — feedback rounds on this + the 2026-07-21 mega-batch, then the feature queue (projectile linger etc.); optional: dev-page restyle pass (Schedule/Stats/Bugs) to the Production standard. Previous: July 14, 2026, third session (MAP EDITOR REDESIGN COMPLETE — Phase 1 decomposition, Phase 2 layout rework, Phase 3 interaction gestures + mobile, all user-approved along the way, dungeon-theming pass CANCELLED by the user; plus 2 new theme fonts. See "Recently completed (July 14, third session)". Earlier the same day: HIT-STAMP CONDITIONS closed out the trigger overhaul — that whole batch still AWAITS USER TESTING on deploy. NOTE: the July 1–12 work — engine audit sweeps 1–10, summon/necromancy/vessels, Phase E homing helpers, strafe actions, contact redesign — is chronicled in the user-memory `in-progress.md`, not here; this doc's session log resumes at June 30 below.)
+Last Updated: July 21, 2026, second session — FIVE arcs closed: (1) SHOWCASE DISTRIBUTION + SLAB REVEAL TIMING (publish stamps, shared reveal predicate, and player asset CLOSURE PREFETCH — a brief boot pull-all was superseded same-session by `be21e08` after a second design round with the user; top entry under Pending Tasks); (2) CONTENT PRODUCTION DASHBOARD (Puzzle Resources "Production" tab + auto-refresh; now the user-set styling reference for all dev pages — see "Dev-Page Styling Reference" section); (3) HOMING-REFLECT TIMING DIVERGENCE closed — known real/headless divergence ledger EMPTY; (4) CI's vacuous Type check fixed (`tsc -b` required — plain `tsc --noEmit` checks ZERO files here); (5) re-publish now refreshes ALL deps (edited live assets finally reach assets_live). Everything AWAITING USER TEST. Session tail: player asset pull-all SUPERSEDED by closure prefetch (`be21e08`) + LoadingRune plumbing (`32ac1cb`, art pending). **NEXT SESSION (user-directed): dev-page restyle pass to the Production standard — see "Next session — start here".** Previous: July 14, 2026, third session (MAP EDITOR REDESIGN COMPLETE — Phase 1 decomposition, Phase 2 layout rework, Phase 3 interaction gestures + mobile, all user-approved along the way, dungeon-theming pass CANCELLED by the user; plus 2 new theme fonts. See "Recently completed (July 14, third session)". Earlier the same day: HIT-STAMP CONDITIONS closed out the trigger overhaul — that whole batch still AWAITS USER TESTING on deploy. NOTE: the July 1–12 work — engine audit sweeps 1–10, summon/necromancy/vessels, Phase E homing helpers, strafe actions, contact redesign — is chronicled in the user-memory `in-progress.md`, not here; this doc's session log resumes at June 30 below.)
 
 ## Doc Map — Where to Find What
 
@@ -720,15 +720,30 @@ stay in the backlog, not requested yet.
    ungated. AWAITING USER FEEL-CHECK (is 2s right? knob is the
    constant).
 
-### Next session — start here (updated 2026-07-21 second session)
+### Next session — start here (user-directed 2026-07-21 end of second session)
 
-**Both pre-launch showcase-arc items SHIPPED this session.** Settings
-audit remains ON HOLD (user, 2026-07-21) — do not resume it
-unprompted. What's left: user testing of this session's two ships
-(fresh-profile player-site run for distribution/reveal; a look at the
-Production tab) plus the outstanding 2026-07-21 mega-batch. Feature
-queue after that: projectile linger, hero behavior slots leftovers —
-see backlog.
+**DEV-PAGE RESTYLE PASS: bring the other dev pages in line with the
+Production tab's look** — the user set this explicitly ("I'd like the
+next session to begin with making some of the other dev pages more
+consistent with the direction of the Production page"). The recipe is
+codified in the "Dev-Page Styling Reference" section near the top of
+this doc (thin single borders, dense tables, tinted chips, glyph
+booleans, compact stat cards, no outer panel frames — density over
+dungeon dressing; full theming stays player-facing). Workflow per the
+user's standing preferences: real code in SMALL ISOLATED COMMITS, one
+surface per commit, screenshots between slices for their review.
+Natural candidates in rough priority order (same screen as Production,
+so the contrast is loudest): **SchedulingDashboard**, **StatsDashboard**,
+**BugReportViewer** (Puzzle Resources tabs), then the **Asset Manager**
+shell/tab chrome; NewsEditor and SettingsPage as stretch. Behavior must
+not change — restyle only; anything that smells like a functional
+improvement gets surfaced, not slipped in.
+
+**Also outstanding:** everything below is AWAITING USER TEST — expect
+feedback rounds to interleave. Settings audit remains ON HOLD (user,
+2026-07-21) — do not resume it unprompted. Feature queue after the
+restyle: projectile linger, hero behavior slots leftovers — see
+backlog.
 
 ~~**1. Showcase distribution + Slab reveal timing**~~ — **✅ SHIPPED**,
 see the top entry under Pending Tasks.
