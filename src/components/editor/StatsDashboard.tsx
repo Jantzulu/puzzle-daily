@@ -23,10 +23,10 @@ function getDateRange(range: '7d' | '30d' | '90d' | 'all'): { start?: string; en
 
 function StatCard({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
   return (
-    <div className="dungeon-panel p-4 text-center">
-      <div className="text-2xl font-bold text-copper-300 font-medieval">{value}</div>
-      <div className="text-xs text-stone-400 mt-1">{label}</div>
-      {sub && <div className="text-[10px] text-stone-600 mt-0.5">{sub}</div>}
+    <div className="bg-stone-800 border border-stone-700 rounded px-4 py-2 text-center">
+      <div className="text-lg font-bold text-parchment-100">{value}</div>
+      <div className="text-xs text-stone-400 whitespace-nowrap">{label}</div>
+      {sub && <div className="text-[10px] text-stone-600 whitespace-nowrap">{sub}</div>}
     </div>
   );
 }
@@ -62,23 +62,8 @@ const OverviewView: React.FC<{
 
   return (
     <>
-      {/* Time Range Filter */}
-      <div className="flex gap-2 mt-4 flex-wrap">
-        {ranges.map(r => (
-          <button
-            key={r}
-            onClick={() => onTimeRangeChange(r)}
-            className={`px-3 py-1.5 text-xs font-bold rounded-pixel transition-colors ${
-              r === timeRange ? 'dungeon-btn-primary' : 'dungeon-btn'
-            }`}
-          >
-            {rangeLabels[r]}
-          </button>
-        ))}
-      </div>
-
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6">
+      {/* Summary + time range filter */}
+      <div className="flex flex-wrap items-center gap-2">
         <StatCard label="Total Plays" value={stats.totalPlays.toLocaleString()} />
         <StatCard label="Unique Players" value={stats.uniquePlayers.toLocaleString()} />
         <StatCard
@@ -86,62 +71,75 @@ const OverviewView: React.FC<{
           value={`${Math.round(stats.overallCompletionRate * 100)}%`}
           sub={`${stats.puzzlePlays.reduce((s, p) => s + Math.round(p.completionRate * p.plays), 0)} victories`}
         />
+        <div className="ml-auto flex items-center gap-2">
+          {ranges.map(r => (
+            <button
+              key={r}
+              onClick={() => onTimeRangeChange(r)}
+              className={`px-2 py-0.5 rounded text-xs border ${
+                r === timeRange
+                  ? 'bg-stone-700 text-parchment-100 border-arcane-500'
+                  : 'text-stone-400 border-stone-700 hover:text-stone-200'
+              }`}
+            >
+              {rangeLabels[r]}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Per-Puzzle Table */}
-      <div className="dungeon-panel p-4 mt-6">
-        <h2 className="font-medieval text-copper-300 text-lg mb-3">Per-Puzzle Breakdown</h2>
-
-        {stats.puzzlePlays.length === 0 ? (
-          <p className="text-stone-500 text-sm">No play data yet.</p>
-        ) : (
-          <div className="overflow-x-auto dungeon-scrollbar">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-stone-700 text-stone-400 text-xs">
-                  <th className="text-left py-2 px-2">Puzzle</th>
-                  <th className="text-left py-2 px-2">Date</th>
-                  <th className="text-right py-2 px-2">Plays</th>
-                  <th className="text-right py-2 px-2">Completion</th>
-                  <th className="text-right py-2 px-2"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {stats.puzzlePlays.map(p => (
-                  <tr key={p.puzzleId} className="border-b border-stone-800 hover:bg-stone-800/50">
-                    <td className="py-2 px-2 text-copper-200 truncate max-w-[200px]">
-                      {puzzleNames[p.puzzleId] || p.puzzleId.slice(0, 8)}
-                    </td>
-                    <td className="py-2 px-2 text-stone-500">{p.puzzleDate || '-'}</td>
-                    <td className="py-2 px-2 text-right font-mono text-stone-300">{p.plays}</td>
-                    <td className="py-2 px-2 text-right">
-                      <div className="flex items-center gap-2 justify-end">
-                        <div className="w-16 h-2 bg-stone-800 rounded-pixel overflow-hidden">
-                          <div
-                            className={`h-full rounded-pixel ${
-                              p.completionRate >= 0.5 ? 'bg-moss-500' : p.completionRate >= 0.2 ? 'bg-yellow-600' : 'bg-blood-500'
-                            }`}
-                            style={{ width: `${Math.round(p.completionRate * 100)}%` }}
-                          />
-                        </div>
-                        <span className="text-xs font-mono text-stone-400 w-8">{Math.round(p.completionRate * 100)}%</span>
+      <section>
+        <h2 className="text-lg font-medieval text-copper-400 mb-2">Per-Puzzle Breakdown</h2>
+        <div className="overflow-x-auto border border-stone-700 rounded">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-stone-800 text-stone-400 text-xs uppercase">
+                <th className="text-left px-3 py-2">Puzzle</th>
+                <th className="text-left px-2 py-2">Date</th>
+                <th className="text-right px-2 py-2">Plays</th>
+                <th className="text-right px-2 py-2">Completion</th>
+                <th className="px-2 py-2"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {stats.puzzlePlays.map(p => (
+                <tr key={p.puzzleId} className="border-t border-stone-700/60 hover:bg-stone-800/50">
+                  <td className="px-3 py-1.5 text-parchment-100 truncate max-w-[200px]">
+                    {puzzleNames[p.puzzleId] || p.puzzleId.slice(0, 8)}
+                  </td>
+                  <td className="px-2 py-1.5 text-stone-500 text-xs whitespace-nowrap">{p.puzzleDate || '—'}</td>
+                  <td className="px-2 py-1.5 text-right font-mono text-stone-300">{p.plays}</td>
+                  <td className="px-2 py-1.5 text-right">
+                    <div className="flex items-center gap-2 justify-end">
+                      <div className="w-16 h-2 bg-stone-800 rounded-pixel overflow-hidden">
+                        <div
+                          className={`h-full rounded-pixel ${
+                            p.completionRate >= 0.5 ? 'bg-moss-500' : p.completionRate >= 0.2 ? 'bg-yellow-600' : 'bg-blood-500'
+                          }`}
+                          style={{ width: `${Math.round(p.completionRate * 100)}%` }}
+                        />
                       </div>
-                    </td>
-                    <td className="py-2 px-2 text-right">
-                      <button
-                        onClick={() => onSelectPuzzle(p.puzzleId)}
-                        className="text-xs text-copper-400 hover:text-copper-300 underline"
-                      >
-                        Details
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+                      <span className="text-xs font-mono text-stone-400 w-8">{Math.round(p.completionRate * 100)}%</span>
+                    </div>
+                  </td>
+                  <td className="px-2 py-1.5 text-right">
+                    <button
+                      onClick={() => onSelectPuzzle(p.puzzleId)}
+                      className="text-xs text-copper-400 hover:text-copper-300 hover:underline"
+                    >
+                      Details
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {stats.puzzlePlays.length === 0 && (
+                <tr><td colSpan={5} className="px-3 py-4 text-center text-stone-500">No play data yet.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
     </>
   );
 };
@@ -189,25 +187,25 @@ const PuzzleDetailView: React.FC<{
                 onClear(puzzleId);
               }
             }}
-            className="text-xs px-3 py-1.5 bg-blood-900/50 text-blood-300 border border-blood-700 rounded hover:bg-blood-800/60 transition-colors"
+            className="text-xs px-2 py-1 rounded border bg-red-900/40 text-red-300 border-red-700/50 hover:bg-red-900/60"
           >
             Clear Analytics
           </button>
         )}
       </div>
 
-      <h2 className="font-medieval text-copper-400 text-xl mt-2">{puzzleName}</h2>
+      <h2 className="text-lg font-medieval text-copper-400">{puzzleName}</h2>
 
       {stats.totalAttempts === 0 ? (
-        <p className="text-stone-500 text-sm mt-4">No play data for this puzzle yet.</p>
+        <p className="text-stone-500 text-sm">No play data for this puzzle yet.</p>
       ) : (
         <>
           {/* Stats Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Performance Overview */}
-            <div className="dungeon-panel p-4">
-              <h3 className="font-medieval text-copper-300 text-base mb-3">Performance Overview</h3>
-              <div className="space-y-2 text-sm">
+            <div className="border border-stone-700 rounded overflow-hidden">
+              <div className="bg-stone-800 px-2 py-1.5 text-xs uppercase text-stone-400">Performance Overview</div>
+              <div className="p-3 space-y-2 text-sm">
                 <div className="flex justify-between text-stone-300">
                   <span>Total Attempts</span>
                   <span className="font-mono">{stats.totalAttempts}</span>
@@ -241,12 +239,12 @@ const PuzzleDetailView: React.FC<{
             </div>
 
             {/* Rank Distribution */}
-            <div className="dungeon-panel p-4">
-              <h3 className="font-medieval text-copper-300 text-base mb-3">Rank Distribution</h3>
+            <div className="border border-stone-700 rounded overflow-hidden">
+              <div className="bg-stone-800 px-2 py-1.5 text-xs uppercase text-stone-400">Rank Distribution</div>
               {totalRanks === 0 ? (
-                <p className="text-stone-500 text-sm">No victories yet.</p>
+                <p className="text-stone-500 text-sm p-3">No victories yet.</p>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-2 p-3">
                   {(['gold', 'silver', 'bronze'] as const).map(rank => {
                     const count = stats.rankDistribution[rank];
                     const pct = totalRanks > 0 ? Math.round((count / totalRanks) * 100) : 0;
@@ -268,14 +266,14 @@ const PuzzleDetailView: React.FC<{
           </div>
 
           {/* Second Row */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Hero Usage */}
-            <div className="dungeon-panel p-4">
-              <h3 className="font-medieval text-copper-300 text-base mb-3">Most Popular Heroes</h3>
+            <div className="border border-stone-700 rounded overflow-hidden">
+              <div className="bg-stone-800 px-2 py-1.5 text-xs uppercase text-stone-400">Most Popular Heroes</div>
               {stats.heroPickRates.length === 0 ? (
-                <p className="text-stone-500 text-sm">No hero data.</p>
+                <p className="text-stone-500 text-sm p-3">No hero data.</p>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-2 p-3">
                   {stats.heroPickRates.slice(0, 8).map(hero => {
                     const char = getCharacter(hero.characterId);
                     const name = char?.name || hero.characterId.slice(0, 12);
@@ -295,12 +293,12 @@ const PuzzleDetailView: React.FC<{
             </div>
 
             {/* Defeat Analysis */}
-            <div className="dungeon-panel p-4">
-              <h3 className="font-medieval text-copper-300 text-base mb-3">Defeat Analysis</h3>
+            <div className="border border-stone-700 rounded overflow-hidden">
+              <div className="bg-stone-800 px-2 py-1.5 text-xs uppercase text-stone-400">Defeat Analysis</div>
               {stats.totalDefeats === 0 ? (
-                <p className="text-moss-300 text-sm">No defeats recorded!</p>
+                <p className="text-moss-300 text-sm p-3">No defeats recorded!</p>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-3 p-3">
                   <div className="space-y-2">
                     {stats.commonDefeatReasons.map(dr => (
                       <HorizontalBar
@@ -395,14 +393,7 @@ export const StatsDashboard: React.FC = () => {
   };
 
   return (
-    <div className="p-4 md:p-6 max-w-6xl mx-auto pb-24">
-      <h1 className="text-2xl font-medieval text-copper-400 text-shadow-dungeon">
-        Puzzle Analytics
-      </h1>
-      <p className="text-stone-500 text-sm mt-1">
-        Track completion rates, player behavior, and puzzle difficulty
-      </p>
-
+    <div className="p-4 space-y-4 max-w-6xl mx-auto">
       {loading ? (
         <div className="flex items-center justify-center py-12">
           <div className="text-stone-500 animate-pulse">Loading analytics...</div>
@@ -424,7 +415,7 @@ export const StatsDashboard: React.FC = () => {
           onClear={handleClearAnalytics}
         />
       ) : (
-        <div className="text-stone-500 text-sm mt-8">
+        <div className="text-stone-500 text-sm">
           No analytics data available yet. Play some puzzles to generate data!
         </div>
       )}
