@@ -47,6 +47,13 @@ function getMonthLabel(year: number, month: number): string {
   return new Date(year, month).toLocaleString('default', { month: 'long', year: 'numeric' });
 }
 
+const StatCard: React.FC<{ value: string; label: string; valueCls?: string }> = ({ value, label, valueCls }) => (
+  <div className="bg-stone-800 border border-stone-700 rounded px-4 py-2 text-center">
+    <div className={`text-lg font-bold ${valueCls ?? 'text-parchment-100'}`}>{value}</div>
+    <div className="text-xs text-stone-400 whitespace-nowrap">{label}</div>
+  </div>
+);
+
 export const SchedulingDashboard: React.FC = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps -- today is used only in useState initializers, not in useMemo deps
   const today = new Date();
@@ -175,39 +182,45 @@ export const SchedulingDashboard: React.FC = () => {
     setSelectedDate(null);
   };
 
-  return (
-    <div className="min-h-screen theme-root">
-      <div className="max-w-7xl mx-auto p-4 md:p-6">
-        <h1 className="text-3xl font-bold font-medieval text-copper-400 text-shadow-dungeon mb-1">
-          Daily Schedule
-        </h1>
-        <p className="text-stone-400 text-sm mb-6">
-          Drag published puzzles onto calendar days to schedule them.
-          {gapCount > 0 && (
-            <span className="text-amber-400 ml-2">
-              ⚠ {gapCount} gap{gapCount !== 1 ? 's' : ''} remaining this month
-            </span>
-          )}
-        </p>
+  const latestPuzzleNumber = fullSchedule.length > 0
+    ? Math.max(...fullSchedule.map(e => e.puzzleNumber ?? 0))
+    : 0;
 
-        <div className="flex flex-col lg:flex-row gap-6">
+  return (
+    <div className="p-4 space-y-4 max-w-6xl mx-auto">
+      {/* Summary */}
+      <div className="flex flex-wrap items-center gap-2">
+        <StatCard value={`${fullSchedule.length}`} label="total scheduled" />
+        <StatCard value={`${schedule.length}`} label="this month" />
+        <StatCard
+          value={gapCount > 0 ? `⚠ ${gapCount}` : '0'}
+          label="gaps this month"
+          valueCls={gapCount > 0 ? 'text-amber-300' : 'text-green-400'}
+        />
+        {latestPuzzleNumber > 0 && <StatCard value={`#${latestPuzzleNumber}`} label="latest puzzle" />}
+        <span className="ml-auto text-xs text-stone-500">
+          Drag published puzzles onto calendar days to schedule them.
+        </span>
+      </div>
+
+      <div className="flex flex-col lg:flex-row gap-4">
           {/* Calendar */}
           <div className="flex-1">
             {/* Month navigation */}
-            <div className="flex items-center justify-between mb-4">
-              <button onClick={goToPrevMonth} className="p-2 bg-stone-800 rounded hover:bg-stone-700">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="flex items-center justify-between mb-2">
+              <button onClick={goToPrevMonth} className="px-2 py-1 border border-stone-700 rounded text-stone-400 hover:text-stone-200 hover:bg-stone-800">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                 </svg>
               </button>
-              <div className="flex items-center gap-3">
-                <h2 className="text-xl font-bold">{getMonthLabel(viewYear, viewMonth)}</h2>
-                <button onClick={goToToday} className="text-xs px-2 py-1 bg-stone-700 rounded hover:bg-stone-600">
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg font-medieval text-copper-400">{getMonthLabel(viewYear, viewMonth)}</h2>
+                <button onClick={goToToday} className="px-2 py-0.5 rounded text-xs border border-stone-700 text-stone-400 hover:text-stone-200">
                   Today
                 </button>
               </div>
-              <button onClick={goToNextMonth} className="p-2 bg-stone-800 rounded hover:bg-stone-700">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <button onClick={goToNextMonth} className="px-2 py-1 border border-stone-700 rounded text-stone-400 hover:text-stone-200 hover:bg-stone-800">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
               </button>
@@ -216,7 +229,7 @@ export const SchedulingDashboard: React.FC = () => {
             {/* Day headers */}
             <div className="grid grid-cols-7 gap-1 mb-1">
               {DAYS_OF_WEEK.map(day => (
-                <div key={day} className="text-center text-xs font-medium text-stone-500 py-1">
+                <div key={day} className="text-center text-xs uppercase text-stone-500 py-1">
                   {day}
                 </div>
               ))}
@@ -224,7 +237,7 @@ export const SchedulingDashboard: React.FC = () => {
 
             {/* Calendar grid */}
             {loading ? (
-              <div className="text-center py-16 text-stone-400">Loading schedule...</div>
+              <div className="text-center py-16 text-stone-500 text-sm">Loading schedule...</div>
             ) : (
               <div className="grid grid-cols-7 gap-1">
                 {calendarDays.map(({ date, isCurrentMonth }, idx) => {
@@ -239,7 +252,7 @@ export const SchedulingDashboard: React.FC = () => {
                       key={idx}
                       className={`min-h-[80px] p-1 rounded border text-xs transition-colors cursor-pointer ${
                         !isCurrentMonth ? 'bg-stone-900/50 border-stone-800 text-stone-600' :
-                        isToday ? 'bg-blue-900/30 border-blue-600' :
+                        isToday ? 'bg-arcane-900/30 border-arcane-500/70' :
                         entry ? 'bg-green-900/20 border-green-700/50' :
                         isPast ? 'bg-stone-900/30 border-stone-800' :
                         'bg-stone-800 border-stone-700 hover:border-stone-500'
@@ -250,7 +263,7 @@ export const SchedulingDashboard: React.FC = () => {
                       onDrop={(e) => { e.preventDefault(); e.currentTarget.classList.remove('ring-2', 'ring-copper-400'); handleDrop(dateKey); }}
                     >
                       <div className="flex items-center justify-between">
-                        <span className={`font-medium ${isToday ? 'text-blue-400' : ''}`}>
+                        <span className={`font-medium ${isToday ? 'text-arcane-300' : ''}`}>
                           {date.getDate()}
                         </span>
                         {puzzleNum && (
@@ -260,7 +273,7 @@ export const SchedulingDashboard: React.FC = () => {
                         )}
                       </div>
                       {entry && (
-                        <div className="mt-1 px-1 py-0.5 bg-green-800/40 rounded text-green-300 truncate text-[10px]">
+                        <div className="mt-1 px-1 py-0.5 bg-green-900/40 border border-green-700/50 rounded text-green-300 truncate text-[10px]">
                           {entry.puzzleName}
                         </div>
                       )}
@@ -275,40 +288,44 @@ export const SchedulingDashboard: React.FC = () => {
           </div>
 
           {/* Sidebar */}
-          <div className="lg:w-72">
+          <div className="lg:w-64">
             {/* Selected date details */}
             {selectedDate && scheduleMap.has(selectedDate) && (
-              <div className="bg-stone-800 rounded p-4 mb-4 border border-stone-700">
-                <h3 className="font-bold text-sm mb-2">{selectedDate}</h3>
-                <div className="text-sm text-green-400 mb-2">
-                  {puzzleNumberMap.get(selectedDate) && (
-                    <span className="text-copper-400 mr-2">#{puzzleNumberMap.get(selectedDate)}</span>
-                  )}
-                  {scheduleMap.get(selectedDate)!.puzzleName}
+              <div className="border border-stone-700 rounded overflow-hidden mb-4">
+                <div className="bg-stone-800 px-2 py-1.5 text-xs uppercase text-stone-400">{selectedDate}</div>
+                <div className="p-2 space-y-2">
+                  <div className="text-sm text-parchment-100">
+                    {puzzleNumberMap.get(selectedDate) && (
+                      <span className="text-copper-400 mr-1.5">#{puzzleNumberMap.get(selectedDate)}</span>
+                    )}
+                    {scheduleMap.get(selectedDate)!.puzzleName}
+                  </div>
+                  <button
+                    onClick={() => handleUnschedule(selectedDate)}
+                    className="w-full px-2 py-1 text-xs rounded border bg-red-900/40 text-red-300 border-red-700/50 hover:bg-red-900/60"
+                  >
+                    Unschedule
+                  </button>
                 </div>
-                <button
-                  onClick={() => handleUnschedule(selectedDate)}
-                  className="w-full px-3 py-1.5 text-xs bg-red-600/30 hover:bg-red-600/50 text-red-400 rounded border border-red-600/30"
-                >
-                  Unschedule
-                </button>
               </div>
             )}
 
             {/* Published puzzles list */}
-            <div className="bg-stone-800 rounded p-4 border border-stone-700">
-              <h3 className="font-bold text-sm mb-3">Published Puzzles ({publishedPuzzles.length})</h3>
+            <div className="border border-stone-700 rounded overflow-hidden">
+              <div className="bg-stone-800 px-2 py-1.5 text-xs uppercase text-stone-400">
+                Published Puzzles ({publishedPuzzles.length})
+              </div>
               {publishedPuzzles.length === 0 ? (
-                <p className="text-xs text-stone-500">No published puzzles yet. Publish puzzles from the Map Editor first.</p>
+                <p className="px-2 py-3 text-xs text-stone-500">No published puzzles yet. Publish puzzles from the Map Editor first.</p>
               ) : (
-                <div className="space-y-1 max-h-[60vh] overflow-y-auto dungeon-scrollbar">
+                <div className="max-h-[60vh] overflow-y-auto dungeon-scrollbar">
                   {publishedPuzzles.map(puzzle => (
                     <div
                       key={puzzle.id}
                       draggable
                       onDragStart={() => handleDragStart(puzzle)}
                       onDragEnd={() => setDragPuzzle(null)}
-                      className="px-3 py-2 bg-stone-700/50 rounded border border-stone-600 cursor-grab active:cursor-grabbing hover:border-stone-500 text-sm transition-colors"
+                      className="px-2 py-1.5 border-t border-stone-700/60 first:border-t-0 text-sm text-parchment-100 cursor-grab active:cursor-grabbing hover:bg-stone-800/50 transition-colors"
                     >
                       <span className="truncate block">{puzzle.name}</span>
                     </div>
@@ -316,36 +333,7 @@ export const SchedulingDashboard: React.FC = () => {
                 </div>
               )}
             </div>
-
-            {/* Schedule stats */}
-            <div className="bg-stone-800 rounded p-4 mt-4 border border-stone-700">
-              <h3 className="font-bold text-sm mb-2">Stats</h3>
-              <div className="text-xs space-y-1 text-stone-400">
-                <div className="flex justify-between">
-                  <span>Total scheduled</span>
-                  <span className="text-parchment-200">{fullSchedule.length}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>This month</span>
-                  <span className="text-parchment-200">{schedule.length}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Gaps this month</span>
-                  <span className={gapCount > 0 ? 'text-amber-400' : 'text-green-400'}>{gapCount}</span>
-                </div>
-                {fullSchedule.length > 0 && (() => {
-                  const maxNum = Math.max(...fullSchedule.map(e => e.puzzleNumber ?? 0));
-                  return maxNum > 0 ? (
-                    <div className="flex justify-between">
-                      <span>Latest puzzle #</span>
-                      <span className="text-copper-400">#{maxNum}</span>
-                    </div>
-                  ) : null;
-                })()}
-              </div>
-            </div>
           </div>
-        </div>
       </div>
     </div>
   );
