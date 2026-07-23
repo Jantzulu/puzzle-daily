@@ -3,6 +3,9 @@
 .env.local
 .env.*.local
 
+# Local Supabase backups (npm run backup)
+backups/
+
 # Logs
 logs
 *.log
