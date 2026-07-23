@@ -1,6 +1,6 @@
 # Claude Handoff Document - Puzzle Daily
 
-Last Updated: July 21, 2026, second session (SHOWCASE DISTRIBUTION + SLAB REVEAL TIMING SHIPPED — publish stamps, player asset pull-all, shared reveal predicate; see the top entry under Pending Tasks. Earlier notes below retained.) Previous: July 14, 2026, third session (MAP EDITOR REDESIGN COMPLETE — Phase 1 decomposition, Phase 2 layout rework, Phase 3 interaction gestures + mobile, all user-approved along the way, dungeon-theming pass CANCELLED by the user; plus 2 new theme fonts. See "Recently completed (July 14, third session)". Earlier the same day: HIT-STAMP CONDITIONS closed out the trigger overhaul — that whole batch still AWAITS USER TESTING on deploy. NOTE: the July 1–12 work — engine audit sweeps 1–10, summon/necromancy/vessels, Phase E homing helpers, strafe actions, contact redesign — is chronicled in the user-memory `in-progress.md`, not here; this doc's session log resumes at June 30 below.)
+Last Updated: July 21, 2026, second session — FIVE arcs closed: (1) SHOWCASE DISTRIBUTION + SLAB REVEAL TIMING (publish stamps, player asset pull-all, shared reveal predicate — top entry under Pending Tasks); (2) CONTENT PRODUCTION DASHBOARD (Puzzle Resources "Production" tab + auto-refresh; now the user-set styling reference for all dev pages — see "Dev-Page Styling Reference" section); (3) HOMING-REFLECT TIMING DIVERGENCE closed — known real/headless divergence ledger EMPTY; (4) CI's vacuous Type check fixed (`tsc -b` required — plain `tsc --noEmit` checks ZERO files here); (5) re-publish now refreshes ALL deps (edited live assets finally reach assets_live). Everything AWAITING USER TEST. Next session: no queued build work — feedback rounds on this + the 2026-07-21 mega-batch, then the feature queue (projectile linger etc.); optional: dev-page restyle pass (Schedule/Stats/Bugs) to the Production standard. Previous: July 14, 2026, third session (MAP EDITOR REDESIGN COMPLETE — Phase 1 decomposition, Phase 2 layout rework, Phase 3 interaction gestures + mobile, all user-approved along the way, dungeon-theming pass CANCELLED by the user; plus 2 new theme fonts. See "Recently completed (July 14, third session)". Earlier the same day: HIT-STAMP CONDITIONS closed out the trigger overhaul — that whole batch still AWAITS USER TESTING on deploy. NOTE: the July 1–12 work — engine audit sweeps 1–10, summon/necromancy/vessels, Phase E homing helpers, strafe actions, contact redesign — is chronicled in the user-memory `in-progress.md`, not here; this doc's session log resumes at June 30 below.)
 
 ## Doc Map — Where to Find What
 
@@ -13,7 +13,7 @@ Last Updated: July 21, 2026, second session (SHOWCASE DISTRIBUTION + SLAB REVEAL
 | **Completed plan: projectile refactor** | `docs/projectile-refactor-plan.md` | COMPLETE — all phases shipped or resolved (D-b rejected, see "Phase D-b lite" below). Homing-reflect timing divergence CLOSED 2026-07-21 (`d109a0e`) — the known real/headless divergence ledger is EMPTY (only the documented-only bouncing-THROW_PLACE corner remains, not authorable). |
 | **Won't-do: native-resolution rendering** | `docs/native-resolution-rendering-plan.md` | Phase 2 reverted; reasoning preserved so it's not reattempted naively. |
 | **Determinism / audit summary** | `docs/audit-summary.md` | Living roadmap of determinism + audit work. |
-| **Player app vision/architecture** | `docs/PLAYER_APP_VISION.md`, `docs/PLAYER_APP_ARCHITECTURE.md` | Player site separation reference. |
+| **Player app vision/architecture** | `docs/PLAYER_APP_VISION.md`, `docs/PLAYER_APP_ARCHITECTURE.md` | Player site separation reference. ⚠️ ARCHITECTURE's on-demand asset registry was NEVER built and 2026-07-21 the user chose PULL-ALL instead (utils/livePull.ts mirrors assets_live into local stores on player boot); the on-demand design stays on file as the at-scale upgrade path only. |
 | **Per-topic memory files** | `~/.claude/projects/.../memory/*.md` | Point-in-time observations and decisions (per-feature notes, user preferences, security practices). MEMORY.md is the index. |
 
 **How items flow:** `feature-backlog.md` items get triaged → graduated to `feature-roadmap.md` (or just done & crossed off) → notable session work logged at the bottom of this handoff under "Recently completed".
@@ -728,7 +728,15 @@ puzzles). utils/productionStatus.ts is the pure derivation module
 (7 pins); slabState precedence hidden > revealed > awaiting_debut >
 unpublished; puzzle kind showcase > training > daily > unassigned;
 summary cards incl. daily-runway; missing-ref alerts via the walker.
-AWAITING USER LOOK.
+Follow-ups same session: **auto-refresh (`68fe80e`, user request)** —
+cross-tab storage listener + focus/60s-visible silent probes behind a
+cloud fingerprint gate (toast "The ledger changed elsewhere" only on
+real change; background probe failures never tear down a working
+view; Supabase Realtime deliberately skipped — needs replication
+config, marginal at this team size); plural chip labels (`637b828`).
+**The user LIKED THE LOOK ("looks great") and made it the styling
+reference for all dev pages** — see the "Dev-Page Styling Reference"
+section near the top of this doc. AWAITING further use feedback.
 
 **Original dashboard design notes (for reference): Content production dashboard** (backlog: "Content production
 dashboard" — **DESIGN WITH THE USER FIRST**, explicitly): per-asset /
