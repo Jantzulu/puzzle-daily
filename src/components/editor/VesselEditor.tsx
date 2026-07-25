@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { toast } from '../shared/Toast';
 import { findAssetUsages, formatUsageWarning } from '../../utils/assetDependencies';
 import { scaledNameClass } from '../../utils/textScale';
@@ -11,6 +11,7 @@ import { SpriteEditor } from './SpriteEditor';
 import { SpriteThumbnail } from './SpriteThumbnail';
 import { RichTextEditor } from './RichTextEditor';
 import { AssetEditorLayout } from './AssetEditorLayout';
+import { AssetBrowseTable, useBrowseSort, type BrowseColumn } from './AssetBrowseTable';
 import { CollapsiblePanel } from './CollapsiblePanel';
 import { useIsMobile } from '../../hooks/useMediaQuery';
 
@@ -135,8 +136,180 @@ export const VesselEditor: React.FC<{ initialSelectedId?: string }> = ({ initial
     setEditing(null);
   };
 
+  // Name lookups are memoized so a table of N vessels doesn't rescan the whole
+  // enemy/collectible library once per row.
+  const enemyNames = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const e of getAllEnemies()) map.set(e.id, e.name);
+    return map;
+  }, [vessels]); // eslint-disable-line react-hooks/exhaustive-deps -- enemies change alongside asset edits
+
+  const collectibleNames = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const c of getAllCollectibles()) map.set(c.id, c.name);
+    return map;
+  }, [vessels]); // eslint-disable-line react-hooks/exhaustive-deps -- collectibles change alongside asset edits
+
   const transformTargetName = (id?: string) =>
-    id ? (getAllEnemies().find(e => e.id === id)?.name ?? id) : undefined;
+    id ? (enemyNames.get(id) ?? id) : undefined;
+
+  // Computed once per load, not per render and not per sort comparison —
+  // findAssetUsages scans every other asset, so calling it inside a
+  // comparator would rescan the library O(n log n) times.
+  const usagesByVessel = useMemo(() => {
+    const map = new Map<string, ReturnType<typeof findAssetUsages>>();
+    for (const v of vessels) map.set(v.id, findAssetUsages('vessel', v.id));
+    return map;
+  }, [vessels]);
+
+  /** Which of the four hatch triggers this vessel actually has configured. */
+  const hatchTriggers = (vessel: CustomVessel): string[] => {
+    if (!vessel.transformEnemyId) return [];
+    const list: string[] = [];
+    if (vessel.transformOnBreak !== false) list.push('break');
+    if ((vessel.transformAfterTurns ?? 0) > 0) list.push(`${vessel.transformAfterTurns}t timer`);
+    if ((vessel.transformProximityRange ?? 0) > 0) {
+      list.push(`prox ${vessel.transformProximityRange} (${vessel.transformProximityParty ?? 'hero'})`);
+    }
+    if (vessel.transformOnHitKinds?.length) list.push(`hit: ${vessel.transformOnHitKinds.join('/')}`);
+    return list;
+  };
+
+  const vesselThumb = (vessel: CustomVessel) => (
+    <div className="w-7 h-7 bg-stone-600 rounded flex items-center justify-center overflow-hidden flex-shrink-0">
+      <SpriteThumbnail sprite={vessel.customSprite} size={28} previewType="entity" fillBox />
+    </div>
+  );
+
+  const rowActionButtons = (vessel: CustomVessel) => (
+    <>
+      <button
+        onClick={(e) => handleDuplicate(vessel, e)}
+        className="px-1 py-0.5 text-xs leading-none rounded border border-stone-700 text-stone-400 hover:text-stone-200 hover:bg-stone-800"
+        title="Duplicate"
+      >
+        ⎘
+      </button>
+      <button
+        onClick={(e) => { e.stopPropagation(); handleDelete(vessel.id); }}
+        className="px-1 py-0.5 text-xs leading-none rounded border bg-red-900/40 text-red-300 border-red-700/50 hover:bg-red-900/60"
+        title="Delete"
+      >
+        ✕
+      </button>
+    </>
+  );
+
+  const browseColumns: BrowseColumn<CustomVessel>[] = [
+    {
+      key: 'sprite',
+      label: '',
+      sortable: false,
+      className: 'w-10',
+      render: (v) => vesselThumb(v),
+    },
+    {
+      key: 'name',
+      label: 'Name',
+      value: (v) => v.name || 'Unnamed',
+      render: (v) => <span className="text-parchment-100">{v.name || 'Unnamed'}</span>,
+    },
+    { key: 'health', label: 'HP', align: 'right', value: (v) => v.health },
+    {
+      key: 'holds',
+      label: 'Holds',
+      value: (v) => (v.transformEnemyId ? transformTargetName(v.transformEnemyId) ?? null : null),
+      render: (v) => {
+        const name = v.transformEnemyId ? transformTargetName(v.transformEnemyId) : undefined;
+        return name
+          ? <span className="px-1.5 py-0 rounded border text-[10px] whitespace-nowrap bg-red-900/40 text-red-300 border-red-700/50">💀 {name}</span>
+          : <span className="text-stone-600">—</span>;
+      },
+    },
+    {
+      key: 'hatch',
+      label: 'Hatches on',
+      value: (v) => hatchTriggers(v).join(', ') || null,
+      render: (v) => {
+        const triggers = hatchTriggers(v);
+        if (triggers.length === 0) return <span className="text-stone-600">—</span>;
+        return (
+          <div className="flex flex-wrap gap-1">
+            {triggers.map((t, i) => (
+              <span
+                key={i}
+                className="px-1.5 py-0 rounded border text-[10px] whitespace-nowrap bg-stone-800 text-stone-300 border-stone-600"
+              >
+                {t}
+              </span>
+            ))}
+          </div>
+        );
+      },
+    },
+    {
+      key: 'drops',
+      label: 'Drops',
+      value: (v) => (v.droppedCollectibleId ? collectibleNames.get(v.droppedCollectibleId) ?? v.droppedCollectibleId : null),
+      render: (v) => {
+        const name = v.droppedCollectibleId
+          ? collectibleNames.get(v.droppedCollectibleId) ?? v.droppedCollectibleId
+          : undefined;
+        return name
+          ? <span className="text-xs text-stone-400">{name}</span>
+          : <span className="text-stone-600">—</span>;
+      },
+    },
+    {
+      key: 'usedBy',
+      label: 'Used by',
+      value: (v) => usagesByVessel.get(v.id)?.length || null,
+      render: (v) => {
+        const usages = usagesByVessel.get(v.id) ?? [];
+        if (usages.length === 0) return <span className="text-stone-600">—</span>;
+        return (
+          <div className="flex flex-wrap gap-1">
+            {usages.map((u, i) => (
+              <span
+                key={i}
+                className="text-[10px] px-1.5 py-0 rounded border whitespace-nowrap bg-arcane-900/40 text-arcane-300 border-arcane-700/50"
+              >
+                {u.name}
+              </span>
+            ))}
+          </div>
+        );
+      },
+    },
+  ];
+
+  // One ordering feeds the table, the sidebar list, and prev/next.
+  const sort = useBrowseSort(filteredVessels, browseColumns, 'name');
+
+  const searchInput = (
+    <input
+      type="text"
+      placeholder="Search..."
+      value={searchTerm}
+      onChange={(e) => setSearchTerm(e.target.value)}
+      className="flex-1 min-w-0 bg-stone-800 border border-stone-700 rounded px-2 py-1 text-xs text-parchment-100 placeholder-stone-500 focus:outline-none focus:border-arcane-500"
+    />
+  );
+
+  const newButton = (
+    <button
+      onClick={handleNew}
+      className="px-2 py-0.5 rounded border text-xs bg-green-900/40 text-green-300 border-green-700/50 hover:bg-green-900/60 flex-shrink-0"
+    >
+      + New
+    </button>
+  );
+
+  const countLabel = (
+    <span className="ml-1.5 text-xs font-sans text-stone-500">
+      {filteredVessels.length}{filteredVessels.length !== vessels.length && ` / ${vessels.length}`}
+    </span>
+  );
 
   return (
     <AssetEditorLayout
@@ -145,74 +318,119 @@ export const VesselEditor: React.FC<{ initialSelectedId?: string }> = ({ initial
       listTitle="Vessels"
       listPanel={
         <>
-          <div className="flex justify-between items-center">
-            <h2 className="text-xl font-bold font-medieval text-copper-400">Vessels</h2>
-            <button onClick={handleNew} className="dungeon-btn-success text-sm">
-              + New
-            </button>
+          <div className="flex justify-between items-center gap-2">
+            <h2 className="text-lg font-medieval text-copper-400">
+              Vessels
+              {countLabel}
+            </h2>
+            {newButton}
           </div>
 
-          <input
-            type="text"
-            placeholder="Search..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="dungeon-input text-sm"
-          />
+          <div className="flex items-center gap-1.5">
+            {searchInput}
+          </div>
 
-          <div className="space-y-2 max-h-[calc(100vh-300px)] overflow-y-auto overflow-x-hidden">
+          <div className="border border-stone-700 rounded max-h-[calc(100vh-250px)] overflow-y-auto overflow-x-hidden dense-scrollbar">
             {filteredVessels.length === 0 ? (
-              <div className="dungeon-panel p-4 rounded text-center text-stone-400 text-sm">
-                {searchTerm ? 'No vessels match your search.' : 'No vessels yet.'}
-                <br />{!searchTerm && 'Click "+ New" to create one.'}
+              <div className="px-2 py-4 text-center text-stone-500 text-sm">
+                {searchTerm ? 'No vessels match your search.' : 'No vessels yet — click "+ New" to create one.'}
               </div>
             ) : (
-              filteredVessels.map(vessel => (
-                <div
-                  key={vessel.id}
-                  className={`p-3 rounded cursor-pointer transition-colors ${
-                    selectedId === vessel.id ? 'bg-arcane-700' : 'dungeon-panel hover:bg-stone-700'
-                  }`}
-                  onClick={() => handleSelect(vessel.id)}
-                >
-                  <div className="flex justify-between items-start">
-                    <div className="flex items-start gap-2 min-w-0">
-                      <div
-                        className="bg-stone-600 rounded flex items-center justify-center overflow-hidden flex-shrink-0 transition-all duration-150"
-                        style={{ width: selectedId === vessel.id ? 56 : 40, height: selectedId === vessel.id ? 56 : 40 }}
-                      >
-                        <SpriteThumbnail sprite={vessel.customSprite} size={selectedId === vessel.id ? 56 : 40} previewType="entity" fillBox />
+              sort.sorted.map(vessel => {
+                const isSelected = selectedId === vessel.id;
+                const triggers = hatchTriggers(vessel);
+                return (
+                  <div
+                    key={vessel.id}
+                    className={`group px-2 py-1.5 cursor-pointer transition-colors border-t border-stone-700/60 first:border-t-0 ${
+                      isSelected ? 'bg-copper-900/50' : 'hover:bg-stone-800/50'
+                    }`}
+                    onClick={() => handleSelect(vessel.id)}
+                  >
+                    <div className="flex items-center gap-2">
+                      {vesselThumb(vessel)}
+                      {/* Deliberately a div, not an h3: `.theme-root h3` sizes
+                          every heading at 1.25x the theme heading size in the
+                          theme face, and an element selector outranks
+                          Tailwind's text-* utility — an h3 here renders ~25px
+                          and truncates after a few characters. */}
+                      <div className={`flex-1 min-w-0 truncate text-parchment-100 ${scaledNameClass(vessel.name)}`}>
+                        {vessel.name}
                       </div>
-                      <div className="min-w-0">
-                        <h3 className={`font-bold ${scaledNameClass(vessel.name)}`}>{vessel.name}</h3>
-                        <p className="text-xs text-stone-400">
-                          HP: {vessel.health}
-                          {vessel.transformEnemyId && ` • holds ${transformTargetName(vessel.transformEnemyId)}`}
-                        </p>
+                      <div className={`flex items-center gap-1 flex-shrink-0 transition-opacity ${
+                        isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 focus-within:opacity-100'
+                      }`}>
+                        <button
+                          onClick={(e) => handleDuplicate(vessel, e)}
+                          className="px-1 py-0.5 text-xs leading-none rounded border border-stone-700 text-stone-400 hover:text-stone-200 hover:bg-stone-800"
+                          title="Duplicate"
+                        >
+                          ⎘
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleDelete(vessel.id); }}
+                          className="px-1 py-0.5 text-xs leading-none rounded border bg-red-900/40 text-red-300 border-red-700/50 hover:bg-red-900/60"
+                          title="Delete"
+                        >
+                          ✕
+                        </button>
                       </div>
                     </div>
-                    <div className="flex flex-col gap-0.5 flex-shrink-0">
-                      <button
-                        onClick={(e) => handleDuplicate(vessel, e)}
-                        className="p-1 text-xs leading-none bg-stone-600 rounded hover:bg-stone-500"
-                        title="Duplicate"
-                      >
-                        ⎘
-                      </button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleDelete(vessel.id); }}
-                        className="p-1 text-xs leading-none bg-blood-700 rounded hover:bg-blood-600"
-                      >
-                        ✕
-                      </button>
+
+                    {/* Meta line: the numbers and links that differ between
+                        vessels. Indented to sit under the name. */}
+                    <div className="flex flex-wrap items-center gap-1 mt-1 pl-[2.25rem]">
+                      <span className="text-[10px] text-stone-500 whitespace-nowrap">
+                        HP {vessel.health}
+                      </span>
+                      {vessel.transformEnemyId && (
+                        <span className="px-1.5 py-0 rounded border text-[10px] whitespace-nowrap bg-red-900/40 text-red-300 border-red-700/50">
+                          💀 {transformTargetName(vessel.transformEnemyId)}
+                        </span>
+                      )}
+                      {triggers.map((t, i) => (
+                        <span
+                          key={i}
+                          className="px-1.5 py-0 rounded border text-[10px] whitespace-nowrap bg-stone-800 text-stone-300 border-stone-600"
+                        >
+                          {t}
+                        </span>
+                      ))}
                     </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </>
       }
+      browseControls={
+        <div className="flex items-center gap-2 flex-wrap">
+          <h2 className="text-lg font-medieval text-copper-400 mr-1">
+            Vessels
+            {countLabel}
+          </h2>
+          <div className="w-48">{searchInput}</div>
+          {newButton}
+        </div>
+      }
+      browsePanel={
+        <AssetBrowseTable
+          items={sort.sorted}
+          columns={browseColumns}
+          sortKey={sort.sortKey}
+          sortDir={sort.sortDir}
+          onToggleSort={sort.toggleSort}
+          onOpen={(v) => handleSelect(v.id)}
+          rowActions={rowActionButtons}
+          emptyMessage={searchTerm ? 'No vessels match your search.' : 'No vessels yet — click "+ New" to create one.'}
+        />
+      }
+      navigation={{
+        items: sort.sorted.map(v => ({ id: v.id, name: v.name || 'Unnamed' })),
+        currentId: selectedId,
+        onSelect: handleSelect,
+      }}
       detailPanel={
         editing ? (
           <>
@@ -468,13 +686,13 @@ export const VesselEditor: React.FC<{ initialSelectedId?: string }> = ({ initial
         ) : null
       }
       emptyState={
-        <div className="dungeon-panel p-8 rounded text-center">
-          <h2 className="text-2xl font-bold font-medieval text-copper-400 mb-4">Vessel Editor</h2>
-          <p className="text-stone-400 mb-6">
+        <div className="border border-stone-700 rounded p-6 text-center">
+          <h2 className="text-lg font-medieval text-copper-400 mb-2">Vessel Editor</h2>
+          <p className="text-sm text-stone-400 mb-4">
             Breakable things with something inside — barrels, urns, mimic chests, hatching eggs.
             Variable toughness, optional transformation into an enemy on break or on a timer.
           </p>
-          <button onClick={handleNew} className="dungeon-btn-success text-lg">
+          <button onClick={handleNew} className="dungeon-btn-success text-sm px-3 py-1.5">
             + Create New Vessel
           </button>
         </div>
