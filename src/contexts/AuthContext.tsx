@@ -56,9 +56,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setSession(s);
       setUser(s?.user ?? null);
       if (s?.user) {
-        fetchProfile(s.user.id).then(setProfile);
+        // Stay "loading" until the profile lands. Flipping it early left a
+        // window where user was set but profile was still null, and
+        // ProtectedRoute reads that as "not a creator" and redirects — so a
+        // direct visit or refresh of /assets, /puzzle-resources, /editors or
+        // /settings bounced signed-in creators to the play page.
+        fetchProfile(s.user.id)
+          .then(setProfile)
+          .catch(() => setProfile(null))
+          .finally(() => setLoading(false));
+      } else {
+        setLoading(false);
       }
-      setLoading(false);
     });
 
     // Listen for auth changes
