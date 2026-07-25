@@ -40,7 +40,7 @@ export const SettingsPage: React.FC = () => {
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`px-4 py-2 text-sm font-medium rounded-t transition-colors border-b-2 ${
+            className={`px-3 py-1.5 text-sm rounded-t transition-colors border-b-2 ${
               activeTab === tab.id
                 ? 'bg-stone-700 text-parchment-100 border-arcane-500'
                 : 'text-stone-400 hover:text-stone-200 border-transparent hover:bg-stone-750'
@@ -56,17 +56,17 @@ export const SettingsPage: React.FC = () => {
       <div className="flex-1 min-h-0 overflow-auto">
         {activeTab === 'theme' && <ThemeAssetsEditor />}
         {activeTab === 'help' && (
-          <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 md:py-6 h-full">
+          <div className="max-w-7xl mx-auto p-4 h-full">
             <HelpContentEditor />
           </div>
         )}
         {activeTab === 'activity' && (
-          <div className="max-w-2xl mx-auto px-4 md:px-8 py-4 md:py-6">
+          <div className="max-w-3xl mx-auto p-4">
             <ActivityFeed />
           </div>
         )}
         {activeTab === 'fx' && (
-          <div className="max-w-2xl mx-auto px-4 md:px-8 py-4 md:py-6">
+          <div className="max-w-3xl mx-auto p-4">
             <FxSettingsPanel />
           </div>
         )}

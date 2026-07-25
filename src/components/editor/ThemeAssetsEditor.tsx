@@ -112,6 +112,40 @@ const BUTTON_SHAPE_OPTIONS = [
   { value: 'pill', label: 'Pill' },
 ];
 
+// ── Shared chrome (2026-07-25 dev-page restyle) ─────────────────────────────
+// Thin borders + uppercase header strips, matching ProductionDashboard and
+// CollapsiblePanel. Presentation only — the dungeon-panel/dungeon-btn plates
+// carried border-2 plus bevel shadows and fought the dense dev-page look.
+const BTN =
+  'px-2 py-1 text-xs rounded border border-stone-700 text-stone-400 hover:text-stone-200 hover:bg-stone-800 transition-colors disabled:opacity-50';
+const BTN_DANGER =
+  'px-2 py-1 text-xs rounded border bg-red-900/40 text-red-300 border-red-700/50 hover:bg-red-900/60 transition-colors';
+const BTN_CONFIRM =
+  'px-2 py-1 text-xs rounded border bg-green-900/40 text-green-300 border-green-700/50 hover:bg-green-900/60 transition-colors';
+const INPUT =
+  'bg-stone-800 border border-stone-700 rounded px-2 py-1 text-sm text-parchment-100 placeholder-stone-500 focus:outline-none focus:border-arcane-500';
+const CHIP_ACTIVE = 'bg-stone-700 text-parchment-100 border-arcane-500';
+const CHIP_IDLE = 'text-stone-400 border-stone-700 hover:text-stone-200';
+
+/** One setting: bordered box, uppercase header strip, tight body. */
+const ControlCard: React.FC<{
+  title: string;
+  description?: string;
+  badge?: React.ReactNode;
+  children: React.ReactNode;
+}> = ({ title, description, badge, children }) => (
+  <div className="border border-stone-700 rounded overflow-hidden">
+    <div className="flex items-center justify-between gap-2 bg-stone-800 px-2 py-1.5 text-xs uppercase text-stone-400">
+      <span>{title}</span>
+      {badge}
+    </div>
+    <div className="p-3 space-y-2">
+      {description && <p className="text-xs text-stone-500">{description}</p>}
+      {children}
+    </div>
+  </div>
+);
+
 interface LogoVariantsEditorProps {
   variants: LogoVariant[];
   onChange: (variants: LogoVariant[]) => void;
@@ -177,21 +211,25 @@ const LogoVariantsEditor: React.FC<LogoVariantsEditorProps> = ({ variants, onCha
   };
 
   return (
-    <div className="dungeon-panel-dark p-3">
-      <label className="block text-sm font-medium text-copper-400 mb-1">Logo Variants</label>
-      <p className="text-xs text-stone-500 mb-3">
-        Add additional logo sprite sheets for random selection. When "Randomize Logo" is enabled,
-        a random logo will be chosen from the main logo and these variants on each visit.
-      </p>
-
+    <ControlCard
+      title="Logo Variants"
+      description={'Add additional logo sprite sheets for random selection. When "Randomize Logo" is enabled, a random logo will be chosen from the main logo and these variants on each visit.'}
+      badge={
+        variants.length > 0 ? (
+          <span className="px-2 py-0.5 rounded border text-xs bg-sky-900/40 text-sky-300 border-sky-700/50 normal-case">
+            {variants.length}
+          </span>
+        ) : undefined
+      }
+    >
       {/* Existing variants */}
       {variants.length > 0 && (
-        <div className="space-y-3 mb-3">
+        <div className="space-y-2">
           {variants.map((variant, index) => (
-            <div key={index} className="bg-stone-800/50 rounded p-2 border border-stone-700">
+            <div key={index} className="border border-stone-700 rounded p-2">
               <div className="flex items-start gap-3">
                 {/* Preview */}
-                <div className="flex-shrink-0 w-16 h-12 rounded border border-stone-600 overflow-hidden sprite-preview-bg flex items-center justify-center">
+                <div className="flex-shrink-0 w-16 h-12 rounded border border-stone-700 overflow-hidden sprite-preview-bg flex items-center justify-center">
                   {variant.image ? (
                     <img
                       src={variant.image}
@@ -205,28 +243,28 @@ const LogoVariantsEditor: React.FC<LogoVariantsEditorProps> = ({ variants, onCha
                 </div>
 
                 {/* Settings */}
-                <div className="flex-1 space-y-2">
+                <div className="flex-1 min-w-0">
                   <div className="flex gap-2">
-                    <div className="flex-1">
-                      <label className="text-xs text-stone-400">Frame Count</label>
+                    <div className="flex-1 min-w-0">
+                      <label className="block text-xs text-stone-400 mb-0.5">Frame Count</label>
                       <input
                         type="number"
                         min="1"
                         value={variant.frameCount || 1}
                         onChange={(e) => handleUpdateVariant(index, { frameCount: parseInt(e.target.value) || 1 })}
-                        className="dungeon-input w-full text-sm"
+                        className={`${INPUT} w-full`}
                         placeholder="1"
                       />
                     </div>
-                    <div className="flex-1">
-                      <label className="text-xs text-stone-400">Frame Rate</label>
+                    <div className="flex-1 min-w-0">
+                      <label className="block text-xs text-stone-400 mb-0.5">Frame Rate</label>
                       <input
                         type="number"
                         min="1"
                         max="60"
                         value={variant.frameRate || 10}
                         onChange={(e) => handleUpdateVariant(index, { frameRate: parseInt(e.target.value) || 10 })}
-                        className="dungeon-input w-full text-sm"
+                        className={`${INPUT} w-full`}
                         placeholder="10"
                       />
                     </div>
@@ -236,7 +274,7 @@ const LogoVariantsEditor: React.FC<LogoVariantsEditorProps> = ({ variants, onCha
                 {/* Remove button */}
                 <button
                   onClick={() => handleRemoveVariant(index)}
-                  className="dungeon-btn-danger text-xs px-2 py-1 flex-shrink-0"
+                  className={`${BTN_DANGER} flex-shrink-0`}
                   title="Remove variant"
                 >
                   ✕
@@ -251,7 +289,7 @@ const LogoVariantsEditor: React.FC<LogoVariantsEditorProps> = ({ variants, onCha
       <button
         onClick={() => inputRef.current?.click()}
         disabled={isUploading}
-        className="dungeon-btn text-sm w-full"
+        className={`${BTN} w-full`}
       >
         {isUploading ? 'Uploading...' : '+ Add Logo Variant'}
       </button>
@@ -265,11 +303,11 @@ const LogoVariantsEditor: React.FC<LogoVariantsEditorProps> = ({ variants, onCha
       />
 
       {variants.length === 0 && (
-        <p className="text-xs text-stone-500 mt-2 text-center">
+        <p className="text-xs text-stone-500 text-center">
           No variants yet. Add sprite sheets to enable random logo selection.
         </p>
       )}
-    </div>
+    </ControlCard>
   );
 };
 
@@ -285,26 +323,36 @@ const ToggleSwitch: React.FC<ToggleSwitchProps> = ({ assetKey, value, onChange }
   const isEnabled = value === true || value === 'true';
 
   return (
-    <div className="dungeon-panel-dark p-3">
-      <div className="flex items-center justify-between">
-        <div>
-          <label className="block text-sm font-medium text-copper-400">{config.label}</label>
-          <p className="text-xs text-stone-500">{config.description}</p>
-        </div>
+    <ControlCard
+      title={config.label}
+      badge={
+        <span
+          className={`px-2 py-0.5 rounded border text-xs normal-case ${
+            isEnabled
+              ? 'bg-green-900/40 text-green-300 border-green-700/50'
+              : 'bg-stone-700/60 text-stone-300 border-stone-600'
+          }`}
+        >
+          {isEnabled ? 'On' : 'Off'}
+        </span>
+      }
+    >
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-xs text-stone-500">{config.description}</p>
         <button
           onClick={() => onChange(isEnabled ? undefined : 'true')}
-          className={`relative w-12 h-6 rounded-full transition-colors ${
-            isEnabled ? 'bg-copper-600' : 'bg-stone-700'
+          className={`relative flex-shrink-0 w-9 h-5 rounded-full border transition-colors ${
+            isEnabled ? 'bg-copper-700 border-copper-500' : 'bg-stone-800 border-stone-700'
           }`}
         >
           <span
-            className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-parchment-200 transition-transform ${
-              isEnabled ? 'translate-x-6' : 'translate-x-0'
+            className={`absolute top-0.5 left-0.5 w-3.5 h-3.5 rounded-full bg-parchment-200 transition-transform ${
+              isEnabled ? 'translate-x-4' : 'translate-x-0'
             }`}
           />
         </button>
       </div>
-    </div>
+    </ControlCard>
   );
 };
 
@@ -400,25 +448,20 @@ const AssetUpload: React.FC<AssetUploadProps> = ({ assetKey, value, onChange, on
   // For text fields like logoAlt
   if (config.inputType === 'text') {
     return (
-      <div className="dungeon-panel-dark p-3">
-        <label className="block text-sm font-medium text-copper-400 mb-1">{config.label}</label>
-        <p className="text-xs text-stone-500 mb-2">{config.description}</p>
+      <ControlCard title={config.label} description={config.description}>
         <input
           type="text"
           value={value || ''}
           onChange={(e) => onChange(e.target.value || undefined)}
-          className="dungeon-input w-full"
+          className={`${INPUT} w-full`}
           placeholder="Enter text..."
         />
-      </div>
+      </ControlCard>
     );
   }
 
   return (
-    <div className="dungeon-panel-dark p-3">
-      <label className="block text-sm font-medium text-copper-400 mb-1">{config.label}</label>
-      <p className="text-xs text-stone-500 mb-2">{config.description}</p>
-
+    <ControlCard title={config.label} description={config.description}>
       {isLoading ? (
         <div className="flex items-center justify-center py-4 text-stone-400">
           <span className="animate-pulse">Uploading to cloud...</span>
@@ -427,7 +470,7 @@ const AssetUpload: React.FC<AssetUploadProps> = ({ assetKey, value, onChange, on
         <div className="space-y-2">
           {/* Preview */}
           <div
-            className="relative rounded-pixel p-2 border border-stone-600 flex items-center justify-center min-h-[60px] sprite-preview-bg"
+            className="relative rounded p-2 border border-stone-700 flex items-center justify-center min-h-[60px] sprite-preview-bg"
           >
             <img
               src={value}
@@ -437,12 +480,12 @@ const AssetUpload: React.FC<AssetUploadProps> = ({ assetKey, value, onChange, on
             />
             {/* Cloud/Local/External indicator */}
             <span
-              className={`absolute top-1 right-1 text-xs px-1.5 py-0.5 rounded ${
+              className={`absolute top-1 right-1 text-xs px-2 py-0.5 rounded border ${
                 isSupabaseStorageUrl(value)
-                  ? 'bg-arcane-900/80 text-arcane-300'
+                  ? 'bg-arcane-900/40 text-arcane-300 border-arcane-700/50'
                   : isExternalUrl(value)
-                  ? 'bg-moss-900/80 text-moss-300'
-                  : 'bg-stone-700/80 text-stone-400'
+                  ? 'bg-green-900/40 text-green-300 border-green-700/50'
+                  : 'bg-stone-700/60 text-stone-300 border-stone-600'
               }`}
               title={
                 isSupabaseStorageUrl(value)
@@ -459,13 +502,13 @@ const AssetUpload: React.FC<AssetUploadProps> = ({ assetKey, value, onChange, on
           <div className="flex gap-2">
             <button
               onClick={() => inputRef.current?.click()}
-              className="dungeon-btn text-xs flex-1"
+              className={`${BTN} flex-1`}
             >
               Replace
             </button>
             <button
               onClick={handleRemove}
-              className="dungeon-btn-danger text-xs"
+              className={BTN_DANGER}
             >
               Remove
             </button>
@@ -479,7 +522,7 @@ const AssetUpload: React.FC<AssetUploadProps> = ({ assetKey, value, onChange, on
               value={urlValue}
               onChange={(e) => setUrlValue(e.target.value)}
               placeholder="https://example.com/image.png"
-              className="dungeon-input flex-1 text-sm"
+              className={`${INPUT} flex-1 min-w-0`}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') handleUrlSubmit();
                 if (e.key === 'Escape') {
@@ -491,7 +534,7 @@ const AssetUpload: React.FC<AssetUploadProps> = ({ assetKey, value, onChange, on
             />
             <button
               onClick={handleUrlSubmit}
-              className="dungeon-btn-primary text-xs px-3"
+              className={`${BTN_CONFIRM} flex-shrink-0`}
             >
               Use
             </button>
@@ -510,13 +553,13 @@ const AssetUpload: React.FC<AssetUploadProps> = ({ assetKey, value, onChange, on
         <div className="flex gap-2">
           <button
             onClick={() => inputRef.current?.click()}
-            className="dungeon-btn flex-1 text-sm"
+            className={`${BTN} flex-1`}
           >
             Upload Image
           </button>
           <button
             onClick={() => setShowUrlInput(true)}
-            className="dungeon-btn text-sm px-3"
+            className={BTN}
             title="Use a public URL"
           >
             🔗 URL
@@ -531,7 +574,7 @@ const AssetUpload: React.FC<AssetUploadProps> = ({ assetKey, value, onChange, on
         onChange={handleFileChange}
         className="hidden"
       />
-    </div>
+    </ControlCard>
   );
 };
 
@@ -552,13 +595,17 @@ const ColorPicker: React.FC<ColorPickerProps> = ({ assetKey, value, onChange }) 
   };
 
   return (
-    <div className="dungeon-panel-dark p-3">
-      <label className="block text-sm font-medium text-copper-400 mb-1">
-        {config.label}
-        {isCustom && <span className="ml-2 text-xs text-copper-600">(custom)</span>}
-      </label>
-      <p className="text-xs text-stone-500 mb-2">{config.description}</p>
-
+    <ControlCard
+      title={config.label}
+      description={config.description}
+      badge={
+        isCustom ? (
+          <span className="px-2 py-0.5 rounded border text-xs normal-case bg-amber-900/40 text-amber-300 border-amber-700/50">
+            custom
+          </span>
+        ) : undefined
+      }
+    >
       <div className="flex items-center gap-2 flex-wrap">
         {/* Color picker */}
         <div className="relative flex-shrink-0">
@@ -566,7 +613,7 @@ const ColorPicker: React.FC<ColorPickerProps> = ({ assetKey, value, onChange }) 
             type="color"
             value={value || defaultColor}
             onChange={(e) => onChange(e.target.value)}
-            className="w-12 h-10 rounded-pixel border-2 border-stone-600 cursor-pointer bg-transparent"
+            className="w-10 h-8 rounded border border-stone-700 cursor-pointer bg-transparent"
           />
         </div>
 
@@ -581,16 +628,16 @@ const ColorPicker: React.FC<ColorPickerProps> = ({ assetKey, value, onChange }) 
             }
           }}
           placeholder={defaultColor}
-          className="dungeon-input flex-1 min-w-[80px] text-sm font-mono"
+          className={`${INPUT} flex-1 min-w-[80px] font-mono`}
         />
 
         {/* Reset button - always visible */}
         <button
           onClick={handleReset}
-          className={`text-xs px-2 py-1 rounded transition-colors flex-shrink-0 ${
+          className={`px-2 py-1 text-xs rounded border flex-shrink-0 transition-colors ${
             isCustom
-              ? 'bg-copper-700 hover:bg-copper-600 text-parchment-100'
-              : 'bg-stone-700 text-stone-500 cursor-default'
+              ? 'border-stone-700 text-stone-400 hover:text-stone-200 hover:bg-stone-800'
+              : 'border-stone-800 text-stone-600 cursor-default'
           }`}
           title={isCustom ? 'Reset to default' : 'Using default'}
           disabled={!isCustom}
@@ -600,14 +647,14 @@ const ColorPicker: React.FC<ColorPickerProps> = ({ assetKey, value, onChange }) 
       </div>
 
       {/* Preview swatch with label */}
-      <div className="mt-2 flex items-center gap-2">
+      <div className="flex items-center gap-2">
         <div
-          className="flex-1 h-6 rounded-pixel border border-stone-600"
+          className="flex-1 h-6 rounded border border-stone-700"
           style={{ backgroundColor: value || defaultColor }}
         />
         <span className="text-xs text-stone-500 font-mono">{value || defaultColor}</span>
       </div>
-    </div>
+    </ControlCard>
   );
 };
 
@@ -661,19 +708,14 @@ const StyleSelector: React.FC<StyleSelectorProps> = ({ assetKey, value, onChange
   }
 
   return (
-    <div className="dungeon-panel-dark p-3">
-      <label className="block text-sm font-medium text-copper-400 mb-1">{config.label}</label>
-      <p className="text-xs text-stone-500 mb-2">{config.description}</p>
-
-      <div className="flex flex-wrap gap-2">
+    <ControlCard title={config.label} description={config.description}>
+      <div className="flex flex-wrap gap-1.5">
         {options.map((option) => (
           <button
             key={option.value}
             onClick={() => onChange(option.value === defaultValue ? undefined : option.value)}
-            className={`px-3 py-2 rounded-pixel text-sm transition-all border-2 ${
-              (value || defaultValue) === option.value
-                ? 'bg-copper-700 border-copper-500 text-parchment-100'
-                : 'bg-stone-800 border-stone-600 text-stone-400 hover:bg-stone-700 hover:text-parchment-200'
+            className={`px-2 py-0.5 rounded text-xs border transition-colors ${
+              (value || defaultValue) === option.value ? CHIP_ACTIVE : CHIP_IDLE
             }`}
           >
             {option.label}
@@ -683,9 +725,9 @@ const StyleSelector: React.FC<StyleSelectorProps> = ({ assetKey, value, onChange
 
       {/* Preview for border radius */}
       {assetKey === 'borderRadius' && (
-        <div className="mt-3">
+        <div>
           <div
-            className="w-full h-12 bg-copper-700 border-2 border-copper-500"
+            className="w-full h-12 bg-copper-700 border border-copper-500"
             style={{ borderRadius: value || defaultValue }}
           />
         </div>
@@ -693,7 +735,7 @@ const StyleSelector: React.FC<StyleSelectorProps> = ({ assetKey, value, onChange
 
       {/* Preview for border width */}
       {assetKey === 'borderWidth' && (
-        <div className="mt-3">
+        <div>
           <div
             className="w-full h-12 bg-stone-800 border-copper-500"
             style={{ borderWidth: value || defaultValue, borderStyle: 'solid' }}
@@ -703,10 +745,10 @@ const StyleSelector: React.FC<StyleSelectorProps> = ({ assetKey, value, onChange
 
       {/* Preview for font family */}
       {(assetKey === 'fontFamily' || assetKey === 'fontFamilyHeading' || assetKey === 'fontFamilyMenu') && (
-        <div className="mt-3 space-y-2">
-          <p className="text-xs text-stone-500">Preview:</p>
+        <div className="space-y-1">
+          <p className="text-xs uppercase text-stone-500">Preview</p>
           <div
-            className="p-3 bg-stone-800 rounded-pixel border border-stone-600"
+            className="p-3 bg-stone-800 rounded border border-stone-700"
             style={{
               fontFamily: (() => {
                 const fontMap: Record<string, string> = {
@@ -744,10 +786,10 @@ const StyleSelector: React.FC<StyleSelectorProps> = ({ assetKey, value, onChange
 
       {/* Preview for font size */}
       {(assetKey === 'fontSizeBody' || assetKey === 'fontSizeHeading') && (
-        <div className="mt-3 space-y-2">
-          <p className="text-xs text-stone-500">Preview:</p>
+        <div className="space-y-1">
+          <p className="text-xs uppercase text-stone-500">Preview</p>
           <div
-            className="p-3 bg-stone-800 rounded-pixel border border-stone-600"
+            className="p-3 bg-stone-800 rounded border border-stone-700"
             style={{
               fontSize: (() => {
                 const sizeMap: Record<string, string> = {
@@ -765,7 +807,7 @@ const StyleSelector: React.FC<StyleSelectorProps> = ({ assetKey, value, onChange
           </div>
         </div>
       )}
-    </div>
+    </ControlCard>
   );
 };
 
@@ -953,45 +995,43 @@ export const ThemeAssetsEditor: React.FC = () => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 md:py-6">
+    <div className="p-4 space-y-4 max-w-7xl mx-auto">
       {/* Error message */}
       {error && (
-        <div className="mb-4 p-3 bg-blood-900/50 border border-blood-600 rounded-pixel text-blood-200 text-sm">
+        <div className="px-2 py-1.5 rounded border bg-red-900/40 text-red-300 border-red-700/50 text-xs">
           {error}
         </div>
       )}
 
       {/* Category tabs + actions */}
-      <div className="flex flex-wrap items-center gap-1 mb-4 pb-2 border-b border-stone-700">
+      <div className="flex flex-wrap items-center gap-1.5 pb-2 border-b border-stone-700">
         {ASSET_CATEGORIES.map((category) => (
           <button
             key={category}
             onClick={() => setActiveCategory(category)}
-            className={`px-3 py-1.5 text-xs font-medium rounded transition-colors border-b-2 ${
-              activeCategory === category
-                ? 'bg-stone-700 text-parchment-100 border-arcane-500'
-                : 'text-stone-400 hover:text-stone-200 border-transparent hover:bg-stone-750'
+            className={`px-2 py-0.5 rounded text-xs border transition-colors ${
+              activeCategory === category ? CHIP_ACTIVE : CHIP_IDLE
             }`}
           >
             <span className="mr-1">{categoryIcons[category]}</span>
             {categoryLabels[category]}
           </button>
         ))}
-        <div className="flex gap-1 ml-auto flex-shrink-0">
+        <div className="flex gap-1.5 ml-auto flex-shrink-0">
           {activeCategory === 'colors' && (
-            <button onClick={handleResetAllColors} className="dungeon-btn-danger text-xs px-2 py-1">
+            <button onClick={handleResetAllColors} className={BTN_DANGER}>
               Reset Colors
             </button>
           )}
           {activeCategory === 'styles' && (
-            <button onClick={handleResetAllStyles} className="dungeon-btn-danger text-xs px-2 py-1">
+            <button onClick={handleResetAllStyles} className={BTN_DANGER}>
               Reset Styles
             </button>
           )}
-          <button onClick={handleExport} className="dungeon-btn text-xs px-2 py-1">
+          <button onClick={handleExport} className={BTN}>
             Export
           </button>
-          <button onClick={() => importInputRef.current?.click()} className="dungeon-btn text-xs px-2 py-1">
+          <button onClick={() => importInputRef.current?.click()} className={BTN}>
             Import
           </button>
           <input
@@ -1004,8 +1044,16 @@ export const ThemeAssetsEditor: React.FC = () => {
         </div>
       </div>
 
+      {/* Active category */}
+      <div className="flex items-baseline gap-2">
+        <h2 className="text-lg font-medieval text-copper-400">{categoryLabels[activeCategory]}</h2>
+        <span className="text-xs text-stone-500">
+          {categoryAssets.length} setting{categoryAssets.length === 1 ? '' : 's'}
+        </span>
+      </div>
+
       {/* Asset grid */}
-      <div className={`grid gap-4 ${
+      <div className={`grid gap-3 ${
         activeCategory === 'colors' || activeCategory === 'styles'
           ? 'grid-cols-1 sm:grid-cols-2'
           : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
@@ -1015,9 +1063,11 @@ export const ThemeAssetsEditor: React.FC = () => {
 
       {/* Usage hints based on category */}
       {activeCategory !== 'colors' && activeCategory !== 'styles' && (
-        <div className="mt-8 parchment-panel p-4">
-          <h3 className="font-medium text-parchment-800 mb-2">How to use custom assets</h3>
-          <ul className="text-sm text-parchment-700 space-y-1 list-disc list-inside">
+        <div className="border border-stone-700 rounded overflow-hidden">
+          <div className="bg-stone-800 px-2 py-1.5 text-xs uppercase text-stone-400">
+            How to use custom assets
+          </div>
+          <ul className="p-3 text-sm text-stone-400 space-y-1 list-disc list-inside">
             <li>Upload images or paste a public URL (click 🔗 URL button)</li>
             <li>Upload images in PNG format with transparency for best results</li>
             <li>Background images work best as tileable textures or large images</li>
@@ -1030,9 +1080,11 @@ export const ThemeAssetsEditor: React.FC = () => {
       )}
 
       {activeCategory === 'colors' && (
-        <div className="mt-8 parchment-panel p-4">
-          <h3 className="font-medium text-parchment-800 mb-2">Color Customization</h3>
-          <ul className="text-sm text-parchment-700 space-y-1 list-disc list-inside">
+        <div className="border border-stone-700 rounded overflow-hidden">
+          <div className="bg-stone-800 px-2 py-1.5 text-xs uppercase text-stone-400">
+            Color customization
+          </div>
+          <ul className="p-3 text-sm text-stone-400 space-y-1 list-disc list-inside">
             <li>Click the color swatch to open a color picker</li>
             <li>Enter hex codes directly (e.g., #ff0000 for red)</li>
             <li>Use the Reset button to restore individual colors to default</li>
@@ -1042,9 +1094,11 @@ export const ThemeAssetsEditor: React.FC = () => {
       )}
 
       {activeCategory === 'styles' && (
-        <div className="mt-8 parchment-panel p-4">
-          <h3 className="font-medium text-parchment-800 mb-2">Style Settings</h3>
-          <ul className="text-sm text-parchment-700 space-y-1 list-disc list-inside">
+        <div className="border border-stone-700 rounded overflow-hidden">
+          <div className="bg-stone-800 px-2 py-1.5 text-xs uppercase text-stone-400">
+            Style settings
+          </div>
+          <ul className="p-3 text-sm text-stone-400 space-y-1 list-disc list-inside">
             <li>Border radius controls the roundness of corners</li>
             <li>Border width affects the thickness of element borders</li>
             <li>Shadow intensity controls the depth effect of panels</li>

@@ -102,35 +102,36 @@ export const ActivityFeed: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12 text-stone-400">
-        Loading activity...
-      </div>
+      <div className="text-center py-12 text-stone-500 text-sm">Loading activity...</div>
     );
   }
 
   if (activity.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 text-stone-500">
-        <div className="text-3xl mb-2">📜</div>
-        <div>No activity recorded yet.</div>
-        <div className="text-xs mt-1">Save, delete, or sync assets to see activity here.</div>
+      <div className="border border-stone-700 rounded p-6 text-center">
+        <div className="text-2xl mb-1">📜</div>
+        <div className="text-sm text-stone-400">No activity recorded yet.</div>
+        <div className="text-xs text-stone-500 mt-1">Save, delete, or sync assets to see activity here.</div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-1">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-medium text-stone-300">Recent Activity</h3>
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        {/* A div, not an h3: `.theme-root h1-h4` size headings off the theme
+            scale and outrank the utility class. */}
+        <div className="text-lg font-medieval text-copper-400">Recent Activity</div>
+        <span className="text-xs text-stone-500">{activity.length}</span>
         <button
           onClick={() => { setLoading(true); loadActivity(); }}
-          className="text-xs text-stone-500 hover:text-stone-300 transition-colors"
+          className="ml-auto px-2 py-0.5 rounded border text-xs border-stone-700 text-stone-400 hover:text-stone-200 hover:bg-stone-800"
         >
-          Refresh
+          ↻ Refresh
         </button>
       </div>
 
-      <div className="space-y-0.5 max-h-[calc(100vh-220px)] overflow-y-auto dungeon-scrollbar">
+      <div className="border border-stone-700 rounded max-h-[calc(100vh-220px)] overflow-y-auto dense-scrollbar">
         {activity.map((record) => {
           const color = ACTION_COLORS[record.action] || 'text-stone-400';
           const icon = ACTION_ICONS[record.action] || '?';
@@ -141,7 +142,7 @@ export const ActivityFeed: React.FC = () => {
           return (
             <div
               key={record.id}
-              className="flex items-start gap-2 px-2 py-1.5 rounded hover:bg-stone-800/50 transition-colors"
+              className="flex items-start gap-2 px-2 py-1.5 border-t border-stone-700/60 first:border-t-0 hover:bg-stone-800/50 transition-colors"
             >
               {/* Avatar */}
               <div className={`w-6 h-6 rounded-full ${bgColor} flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0 mt-0.5`}>

@@ -73,29 +73,36 @@ export const FxSettingsPanel: React.FC = () => {
     setStates(prev => ({ ...prev, [toggle.key]: next }));
   };
 
+  const onCount = TOGGLES.filter(t => states[t.key]).length;
+
   return (
-    <div className="max-w-2xl">
-      <h2 className="text-lg font-bold mb-1">Rendering effects</h2>
-      <p className="text-sm text-stone-400 mb-4">
+    <div className="space-y-2">
+      <div className="flex items-center gap-2 flex-wrap">
+        {/* A div, not an h2: `.theme-root h1-h4` size headings off the theme
+            scale and outrank the utility class. */}
+        <div className="text-lg font-medieval text-copper-400">Rendering effects</div>
+        <span className="text-xs text-stone-500">{onCount} of {TOGGLES.length} on</span>
+      </div>
+      <p className="text-xs text-stone-500">
         Live toggles for the board&apos;s per-frame effects — flip one while a level is
         running to isolate its frame cost on this device. Stored per device
         (localStorage); they affect visuals only, never gameplay.
       </p>
-      <div className="space-y-3">
+      <div className="border border-stone-700 rounded overflow-hidden">
         {TOGGLES.map(toggle => (
           <label
             key={toggle.key}
-            className="flex items-start gap-3 p-3 bg-stone-800 rounded cursor-pointer hover:bg-stone-750"
+            className="flex items-start gap-2 px-2 py-1.5 border-t border-stone-700/60 first:border-t-0 cursor-pointer hover:bg-stone-800/50 transition-colors"
           >
             <input
               type="checkbox"
               checked={states[toggle.key]}
               onChange={() => flip(toggle)}
-              className="w-4 h-4 mt-0.5 accent-copper-500"
+              className="w-4 h-4 mt-0.5 accent-copper-500 flex-shrink-0"
             />
             <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium">{toggle.label}</div>
-              <div className="text-xs text-stone-400 mt-0.5">{toggle.description}</div>
+              <div className="text-sm text-parchment-100">{toggle.label}</div>
+              <div className="text-xs text-stone-500">{toggle.description}</div>
             </div>
           </label>
         ))}
