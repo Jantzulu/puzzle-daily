@@ -31,6 +31,29 @@ Last Updated: July 25, 2026 — **DEV-PAGE RESTYLE PASS COMPLETE AND PUSHED** (1
 - **Hosting**: Netlify (editor at knightly-dev, player at separate site)
 - **Repository**: https://github.com/Jantzulu/puzzle-daily.git
 
+## Testing Philosophy (user-stated, 2026-07-25) — READ BEFORE PLANNING WORK
+
+**The "AWAITING USER TEST" markers throughout this doc are a record of what
+has not yet been exercised. They are NOT a risk backlog and NOT a queue to
+clear.** The user's position, stated directly: the app is in development mode
+— no players, no finished published maps, art and assets incomplete. Work has
+been deliberate and surgical with checks along the way. Their path forward is
+to shift away from pair-working toward drawing and building many levels across
+different systems, and failures will surface naturally through that use.
+
+So: do not propose "test the batch first" as a work item, and do not ask
+whether something has been tested yet. Reporting what a change touched and how
+it was verified is still expected — that is different.
+
+The user does still value systems auditing. Point it at what natural play will
+NOT reveal: real/headless divergence, replay divergence, determinism drift,
+silent data loss or persistence corruption, publish/reveal-timing logic whose
+consequences only appear later on a player device, and rare feature×feature
+combinations. UI, layout, flow and common-path crashes surface on their own.
+
+**This calculus changes when the user announces go-live.** Until then, treat
+pre-launch risk tolerance as high (see "Pre-production state" in memory).
+
 ## Dev-Page Styling Reference (user-set standard, 2026-07-21)
 
 **ProductionDashboard.tsx is the look every dev/editor page should move
