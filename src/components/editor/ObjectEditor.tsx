@@ -15,6 +15,7 @@ import { RichTextEditor } from './RichTextEditor';
 import { VersionHistoryModal } from './VersionHistoryModal';
 import { createVersionSnapshot } from '../../services/versionService';
 import { AssetEditorLayout } from './AssetEditorLayout';
+import { AssetBrowseTable, useBrowseSort, type BrowseColumn } from './AssetBrowseTable';
 import { CollapsiblePanel } from './CollapsiblePanel';
 import { useIsMobile } from '../../hooks/useMediaQuery';
 
@@ -324,6 +325,230 @@ export const ObjectEditor: React.FC<{ initialSelectedId?: string }> = ({ initial
     setIsCreating(false);
   };
 
+  const folderNames = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const f of getFolders('objects')) map.set(f.id, f.name);
+    return map;
+  }, [objects]); // eslint-disable-line react-hooks/exhaustive-deps -- folders change alongside asset edits
+
+  // Computed once per load, not per render and not per sort comparison —
+  // findAssetUsages scans every puzzle, so calling it inside a comparator
+  // would rescan the library O(n log n) times.
+  const usagesByObject = useMemo(() => {
+    const map = new Map<string, ReturnType<typeof findAssetUsages>>();
+    for (const o of objects) map.set(o.id, findAssetUsages('object', o.id));
+    return map;
+  }, [objects]);
+
+  const COLLISION_LABELS: Record<string, string> = {
+    none: 'None',
+    wall: 'Wall',
+    stop_movement: 'Stops movement',
+  };
+
+  const effectChips = (effects: ObjectEffectConfig[]) => effects.map((ef, i) => (
+    <span
+      key={i}
+      className="px-1.5 py-0 rounded border text-[10px] whitespace-nowrap bg-stone-800 text-stone-300 border-stone-600 capitalize"
+    >
+      {getEffectIcon(ef.type)} {ef.type.replace('_', ' ')}
+    </span>
+  ));
+
+  const usageChips = (usages: ReturnType<typeof findAssetUsages>) => usages.map((u, i) => (
+    <span
+      key={i}
+      className={`text-[10px] px-1.5 py-0 rounded border whitespace-nowrap ${
+        u.type === 'puzzle'
+          ? 'bg-copper-900/40 text-copper-300 border-copper-700/50'
+          : u.type === 'enemy'
+            ? 'bg-red-900/40 text-red-300 border-red-700/50'
+            : 'bg-arcane-900/40 text-arcane-300 border-arcane-700/50'
+      }`}
+    >
+      {u.type === 'puzzle' ? '🧩' : u.type === 'enemy' ? '💀' : '🛡'} {u.name}
+    </span>
+  ));
+
+  const rowActionButtons = (obj: CustomObject) => (
+    <>
+      <InlineFolderPicker
+        category="objects"
+        currentFolderId={obj.folderId}
+        onFolderChange={(folderId) => handleFolderChange(obj.id, folderId)}
+      />
+      <button
+        onClick={(e) => handleDuplicate(obj, e)}
+        className="px-1 py-0.5 text-xs leading-none rounded border border-stone-700 text-stone-400 hover:text-stone-200 hover:bg-stone-800"
+        title="Duplicate"
+      >
+        ⎘
+      </button>
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          handleDelete(obj.id);
+        }}
+        className="px-1 py-0.5 text-xs leading-none rounded border bg-red-900/40 text-red-300 border-red-700/50 hover:bg-red-900/60"
+        title="Delete"
+      >
+        ✕
+      </button>
+    </>
+  );
+
+  const browseColumns: BrowseColumn<CustomObject>[] = [
+    {
+      key: 'sprite',
+      label: '',
+      sortable: false,
+      className: 'w-10',
+      render: (o) => (
+        <div className="w-7 h-7 bg-stone-800 border border-stone-700 rounded flex items-center justify-center overflow-hidden">
+          <SpriteThumbnail sprite={o.customSprite} size={28} />
+        </div>
+      ),
+    },
+    {
+      key: 'name',
+      label: 'Name',
+      value: (o) => o.name || 'Unnamed',
+      render: (o) => <span className="text-parchment-100">{o.name || 'Unnamed'}</span>,
+    },
+    {
+      key: 'collision',
+      label: 'Collision',
+      value: (o) => o.collisionType,
+      render: (o) => (
+        <span
+          className={`px-1.5 py-0 rounded border text-[10px] whitespace-nowrap ${
+            o.collisionType === 'none'
+              ? 'bg-stone-800 text-stone-400 border-stone-600'
+              : 'bg-copper-900/40 text-copper-300 border-copper-700/50'
+          }`}
+        >
+          {COLLISION_LABELS[o.collisionType] ?? o.collisionType}
+        </span>
+      ),
+    },
+    {
+      key: 'effects',
+      label: 'Effects',
+      value: (o) => o.effects.length || null,
+      render: (o) => (
+        o.effects.length === 0
+          ? <span className="text-stone-600">Decorative</span>
+          : <div className="flex flex-wrap gap-1">{effectChips(o.effects)}</div>
+      ),
+    },
+    {
+      key: 'layer',
+      label: 'Layer',
+      value: (o) => o.renderLayer || 'below_entities',
+      render: (o) => (
+        <span className="text-xs text-stone-400">
+          {(o.renderLayer || 'below_entities') === 'above_entities' ? 'Above' : 'Below'}
+        </span>
+      ),
+    },
+    {
+      key: 'shadow',
+      label: 'Shadow',
+      align: 'center',
+      value: (o) => (o.castsShadow ? 1 : 0),
+      render: (o) => (
+        o.castsShadow
+          ? <span className="text-xs text-stone-300">✓</span>
+          : <span className="text-stone-600">—</span>
+      ),
+    },
+    {
+      key: 'folder',
+      label: 'Folder',
+      value: (o) => (o.folderId ? folderNames.get(o.folderId) ?? null : null),
+      render: (o) => {
+        const name = o.folderId ? folderNames.get(o.folderId) : undefined;
+        return name
+          ? <span className="text-xs text-stone-400">{name}</span>
+          : <span className="text-stone-600">—</span>;
+      },
+    },
+    {
+      key: 'usedBy',
+      label: 'Used by',
+      value: (o) => usagesByObject.get(o.id)?.length || null,
+      render: (o) => {
+        const usages = usagesByObject.get(o.id) ?? [];
+        if (usages.length === 0) return <span className="text-stone-600">—</span>;
+        return <div className="flex flex-wrap gap-1">{usageChips(usages)}</div>;
+      },
+    },
+  ];
+
+  // One ordering feeds the table, the sidebar list, and prev/next.
+  const sort = useBrowseSort(filteredObjects, browseColumns, 'name');
+
+  const searchInput = (
+    <input
+      type="text"
+      placeholder="Search..."
+      value={searchTerm}
+      onChange={(e) => setSearchTerm(e.target.value)}
+      className="flex-1 min-w-0 bg-stone-800 border border-stone-700 rounded px-2 py-1 text-xs text-parchment-100 placeholder-stone-500 focus:outline-none focus:border-arcane-500"
+    />
+  );
+
+  const folderFilter = (
+    <FolderDropdown
+      category="objects"
+      selectedFolderId={selectedFolderId}
+      onFolderSelect={setSelectedFolderId}
+    />
+  );
+
+  const newButton = (
+    <button
+      onClick={handleNew}
+      className="px-2 py-0.5 rounded border text-xs bg-green-900/40 text-green-300 border-green-700/50 hover:bg-green-900/60 flex-shrink-0"
+    >
+      + New
+    </button>
+  );
+
+  const countLabel = (
+    <span className="ml-1.5 text-xs font-sans text-stone-500">
+      {filteredObjects.length}{filteredObjects.length !== objects.length && ` / ${objects.length}`}
+    </span>
+  );
+
+  const bulkBar = (
+    <BulkActionBar
+      count={bulk.count}
+      totalCount={filteredObjects.length}
+      onSelectAll={() => bulk.selectAll(filteredObjects.map(o => o.id))}
+      onClear={bulk.clear}
+      onDelete={() => {
+        const nameMap = new Map(objects.map(o => [o.id, o.name]));
+        const deleted = bulkDelete([...bulk.selectedIds], 'object', deleteObject, nameMap);
+        if (deleted.length) { refreshObjects(); bulk.clear(); if (selectedId && deleted.includes(selectedId)) { setSelectedId(null); setEditing(null); } }
+      }}
+      onMoveToFolder={() => {
+        bulkMoveToFolder([...bulk.selectedIds], 'objects', (id: string) => objects.find(o => o.id === id), saveObject);
+        refreshObjects(); bulk.clear();
+      }}
+      onExport={() => {
+        const items = objects.filter(o => bulk.selectedIds.has(o.id));
+        bulkExport(items, 'objects-export.json', 'object');
+      }}
+      onImport={() => bulkImport({
+        assetType: 'object',
+        saveFn: saveObject,
+        existingIds: new Set(objects.map(o => o.id)),
+        onComplete: () => { refreshObjects(); bulk.clear(); },
+      })}
+    />
+  );
+
   return (
     <AssetEditorLayout
       isEditing={!!editing}
@@ -331,135 +556,148 @@ export const ObjectEditor: React.FC<{ initialSelectedId?: string }> = ({ initial
       listTitle="Objects"
       listPanel={
         <>
-          <div className="flex justify-between items-center">
-            <h2 className="text-xl font-bold font-medieval text-copper-400">Objects</h2>
-            <button
-              onClick={handleNew}
-              className="dungeon-btn-success text-sm"
-            >
-              + New
-            </button>
+          <div className="flex justify-between items-center gap-2">
+            <h2 className="text-lg font-medieval text-copper-400">
+              Objects
+              {countLabel}
+            </h2>
+            {newButton}
           </div>
 
-          {/* Search */}
-          <input
-            type="text"
-            placeholder="Search..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="dungeon-input w-full"
-          />
+          {/* Search + folder filter share one row so the list starts higher */}
+          <div className="flex items-center gap-1.5">
+            {searchInput}
+            <div className="w-32 flex-shrink-0">{folderFilter}</div>
+          </div>
 
-          {/* Folder Filter */}
-          <FolderDropdown
-            category="objects"
-            selectedFolderId={selectedFolderId}
-            onFolderSelect={setSelectedFolderId}
-          />
+          {bulkBar}
 
-          <BulkActionBar
-            count={bulk.count}
-            totalCount={filteredObjects.length}
-            onSelectAll={() => bulk.selectAll(filteredObjects.map(o => o.id))}
-            onClear={bulk.clear}
-            onDelete={() => {
-              const nameMap = new Map(objects.map(o => [o.id, o.name]));
-              const deleted = bulkDelete([...bulk.selectedIds], 'object', deleteObject, nameMap);
-              if (deleted.length) { refreshObjects(); bulk.clear(); if (selectedId && deleted.includes(selectedId)) { setSelectedId(null); setEditing(null); } }
-            }}
-            onMoveToFolder={() => {
-              bulkMoveToFolder([...bulk.selectedIds], 'objects', (id: string) => objects.find(o => o.id === id), saveObject);
-              refreshObjects(); bulk.clear();
-            }}
-            onExport={() => {
-              const items = objects.filter(o => bulk.selectedIds.has(o.id));
-              bulkExport(items, 'objects-export.json', 'object');
-            }}
-            onImport={() => bulkImport({
-              assetType: 'object',
-              saveFn: saveObject,
-              existingIds: new Set(objects.map(o => o.id)),
-              onComplete: () => { refreshObjects(); bulk.clear(); },
-            })}
-          />
-
-          <div className="space-y-2 max-h-[calc(100vh-350px)] overflow-y-auto overflow-x-hidden">
+          <div className="border border-stone-700 rounded max-h-[calc(100vh-250px)] overflow-y-auto overflow-x-hidden dense-scrollbar">
             {filteredObjects.length === 0 ? (
-              <div className="dungeon-panel p-4 rounded text-center text-stone-400 text-sm">
-                {searchTerm ? 'No objects match your search.' : 'No objects yet.'}
-                <br />
-                {!searchTerm && 'Click "+ New" to create one.'}
+              <div className="px-2 py-4 text-center text-stone-500 text-sm">
+                {searchTerm ? 'No matches' : 'No objects yet — click "+ New" to create one.'}
               </div>
             ) : (
-              filteredObjects.map(obj => (
-                <div
-                  key={obj.id}
-                  className={`p-3 rounded cursor-pointer transition-colors ${
-                    bulk.isSelected(obj.id) ? 'bg-blue-900/40 border border-blue-500' :
-                    selectedId === obj.id
-                      ? 'bg-arcane-700'
-                      : 'dungeon-panel hover:bg-stone-700'
-                  }`}
-                  onClick={() => handleSelect(obj.id)}
-                >
-                  <div className="flex justify-between items-start">
-                    <div className="flex items-start gap-2 min-w-0">
+              sort.sorted.map(obj => {
+                const isSelected = selectedId === obj.id;
+                const usages = usagesByObject.get(obj.id) ?? [];
+                return (
+                  <div
+                    key={obj.id}
+                    className={`group px-2 py-1.5 cursor-pointer transition-colors border-t border-stone-700/60 first:border-t-0 ${
+                      bulk.isSelected(obj.id) ? 'bg-sky-900/40' :
+                      isSelected
+                        ? 'bg-copper-900/50'
+                        : 'hover:bg-stone-800/50'
+                    }`}
+                    onClick={() => handleSelect(obj.id)}
+                  >
+                    <div className="flex items-center gap-2">
                       <input
                         type="checkbox"
                         checked={bulk.isSelected(obj.id)}
                         onChange={() => bulk.toggle(obj.id)}
                         onClick={(e) => e.stopPropagation()}
-                        className="accent-blue-500 flex-shrink-0"
+                        className="accent-sky-500 flex-shrink-0"
                       />
-                      {/* Preview thumbnail */}
-                      <div
-                        className="bg-stone-600 rounded flex items-center justify-center overflow-hidden flex-shrink-0 transition-all duration-150"
-                        style={{ width: selectedId === obj.id ? 56 : 40, height: selectedId === obj.id ? 56 : 40 }}
-                      >
-                        <SpriteThumbnail sprite={obj.customSprite} size={selectedId === obj.id ? 56 : 40} />
+                      <div className="w-7 h-7 bg-stone-800 border border-stone-700 rounded flex items-center justify-center overflow-hidden flex-shrink-0">
+                        <SpriteThumbnail sprite={obj.customSprite} size={28} />
                       </div>
-                      <div className="min-w-0">
-                        <h3 className={`font-bold ${scaledNameClass(obj.name)}`}>{obj.name}</h3>
-                        <p className="text-xs text-stone-400 capitalize">
-                          {obj.effects.length > 0 ? `${obj.effects.length} effect${obj.effects.length !== 1 ? 's' : ''}` : 'Decorative'}
-                        </p>
+                      {/* Deliberately a div, not an h3: `.theme-root h3` sizes
+                          every heading at 1.25x the theme heading size, and an
+                          element selector outranks Tailwind's text-* utility —
+                          an h3 here renders ~25px and truncates early. */}
+                      <div className={`flex-1 min-w-0 truncate text-parchment-100 ${scaledNameClass(obj.name || 'Unnamed')}`}>
+                        {obj.name || 'Unnamed'}
+                      </div>
+                      <div className={`flex items-center gap-1 flex-shrink-0 transition-opacity ${
+                        isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 focus-within:opacity-100'
+                      }`}>
+                        <InlineFolderPicker
+                          category="objects"
+                          currentFolderId={obj.folderId}
+                          onFolderChange={(folderId) => handleFolderChange(obj.id, folderId)}
+                        />
+                        <button
+                          onClick={(e) => handleDuplicate(obj, e)}
+                          className="px-1 py-0.5 text-xs leading-none rounded border border-stone-700 text-stone-400 hover:text-stone-200 hover:bg-stone-800"
+                          title="Duplicate"
+                        >
+                          ⎘
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(obj.id);
+                          }}
+                          className="px-1 py-0.5 text-xs leading-none rounded border bg-red-900/40 text-red-300 border-red-700/50 hover:bg-red-900/60"
+                          title="Delete"
+                        >
+                          ✕
+                        </button>
                       </div>
                     </div>
-                    <div className="flex flex-col gap-0.5 flex-shrink-0">
-                      <InlineFolderPicker
-                        category="objects"
-                        currentFolderId={obj.folderId}
-                        onFolderChange={(folderId) => handleFolderChange(obj.id, folderId)}
-                      />
-                      <button
-                        onClick={(e) => handleDuplicate(obj, e)}
-                        className="p-1 text-xs leading-none bg-stone-600 rounded hover:bg-stone-500"
-                        title="Duplicate"
+
+                    {/* Meta line: collision as a chip, then what makes this
+                        object differ. Indented to sit under the name. */}
+                    <div className="flex flex-wrap items-center gap-1 mt-1 pl-[3.25rem]">
+                      <span
+                        className={`px-1.5 py-0 rounded border text-[10px] whitespace-nowrap ${
+                          obj.collisionType === 'none'
+                            ? 'bg-stone-800 text-stone-400 border-stone-600'
+                            : 'bg-copper-900/40 text-copper-300 border-copper-700/50'
+                        }`}
                       >
-                        ⎘
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDelete(obj.id);
-                        }}
-                        className="p-1 text-xs leading-none bg-blood-700 rounded hover:bg-blood-600"
-                      >
-                        ✕
-                      </button>
+                        {COLLISION_LABELS[obj.collisionType] ?? obj.collisionType}
+                      </span>
+                      {obj.effects.length === 0 ? (
+                        <span className="text-[10px] text-stone-500 whitespace-nowrap">Decorative</span>
+                      ) : effectChips(obj.effects)}
+                      {usageChips(usages)}
                     </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </>
       }
+      browseControls={
+        <div className="flex items-center gap-2 flex-wrap">
+          <h2 className="text-lg font-medieval text-copper-400 mr-1">
+            Objects
+            {countLabel}
+          </h2>
+          <div className="w-48">{searchInput}</div>
+          <div className="w-40">{folderFilter}</div>
+          {newButton}
+          <div className="ml-auto">{bulkBar}</div>
+        </div>
+      }
+      browsePanel={
+        <AssetBrowseTable
+          items={sort.sorted}
+          columns={browseColumns}
+          sortKey={sort.sortKey}
+          sortDir={sort.sortDir}
+          onToggleSort={sort.toggleSort}
+          onOpen={(obj) => handleSelect(obj.id)}
+          selection={{ isSelected: bulk.isSelected, toggle: bulk.toggle }}
+          rowActions={rowActionButtons}
+          emptyMessage={searchTerm ? 'No matches' : 'No objects yet — click "+ New" to create one.'}
+        />
+      }
+      navigation={{
+        items: sort.sorted.map(o => ({ id: o.id, name: o.name || 'Unnamed' })),
+        currentId: selectedId,
+        onSelect: (id) => handleSelect(id),
+      }}
       detailPanel={editing ? (
         <>
           {/* Persistent Header */}
-          <div className="dungeon-panel p-3 md:p-4 rounded">
-            <div className="flex justify-between items-center gap-2">
+          <div className="border border-stone-700 rounded overflow-hidden">
+            <div className="bg-stone-800 px-2 py-1.5 text-xs uppercase text-stone-400">Object</div>
+            <div className="p-3 flex justify-between items-center gap-2">
               <div className="flex items-center gap-2 md:gap-4 min-w-0">
                 <div className="flex w-10 h-10 md:w-16 md:h-16 bg-stone-700 rounded-pixel items-center justify-center overflow-hidden flex-shrink-0">
                   <SpriteThumbnail sprite={editing.customSprite} size={isMobile ? 40 : 64} />
@@ -522,7 +760,9 @@ export const ObjectEditor: React.FC<{ initialSelectedId?: string }> = ({ initial
                 <SpriteThumbnail sprite={editing.customSprite} size={64} />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-parchment-200">{editing.name || 'Unnamed Object'}</h3>
+                {/* div, not h3 — `.theme-root h3` would size this at 1.25x the
+                    theme heading size and beat the text-lg utility. */}
+                <div className="text-lg font-bold text-parchment-200">{editing.name || 'Unnamed Object'}</div>
                 <p className="text-xs text-stone-400">{editing.effects.length > 0 ? `${editing.effects.length} effect${editing.effects.length !== 1 ? 's' : ''}` : 'Decorative'}</p>
               </div>
             </div>
@@ -749,15 +989,15 @@ export const ObjectEditor: React.FC<{ initialSelectedId?: string }> = ({ initial
         </>
       ) : null}
       emptyState={
-        <div className="dungeon-panel p-8 rounded text-center">
-          <h2 className="text-2xl font-bold mb-4">Object Editor</h2>
-          <p className="text-stone-400 mb-6">
+        <div className="border border-stone-700 rounded p-6 text-center">
+          <h2 className="text-lg font-medieval text-copper-400 mb-2">Object Editor</h2>
+          <p className="text-sm text-stone-400 mb-4">
             Create decorative objects with custom sprites that can be placed on tiles.
             For collision, use tiles with wall behavior instead.
           </p>
           <button
             onClick={handleNew}
-            className="px-6 py-3 bg-moss-700 rounded text-lg hover:bg-moss-600"
+            className="dungeon-btn-success text-sm px-3 py-1.5"
           >
             + Create New Object
           </button>

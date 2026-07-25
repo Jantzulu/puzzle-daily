@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { toast } from '../shared/Toast';
 import { findAssetUsages, formatUsageWarning } from '../../utils/assetDependencies';
 import { scaledNameClass } from '../../utils/textScale';
@@ -12,6 +12,7 @@ import { FolderDropdown, useFilteredAssets, InlineFolderPicker } from './FolderD
 import { useBulkSelect, BulkActionBar, bulkDelete, bulkMoveToFolder, bulkExport, bulkImport } from './BulkActions';
 import { RichTextEditor } from './RichTextEditor';
 import { AssetEditorLayout } from './AssetEditorLayout';
+import { AssetBrowseTable, useBrowseSort, type BrowseColumn } from './AssetBrowseTable';
 import { CollapsiblePanel } from './CollapsiblePanel';
 import { useIsMobile } from '../../hooks/useMediaQuery';
 
@@ -170,19 +171,22 @@ export const CollectibleEditor: React.FC<{ initialSelectedId?: string }> = ({ in
     setIsCreating(true);
   };
 
+  // Short label for a single effect, e.g. "+10 pts"
+  const effectLabel = (e: CollectibleEffectConfig): string => {
+    switch (e.type) {
+      case 'score': return `+${e.scoreValue || 0} pts`;
+      case 'status_effect': return 'Buff';
+      case 'win_key': return 'Key';
+      case 'heal': return `+${e.amount || 0} HP`;
+      case 'damage': return `-${e.amount || 0} HP`;
+      default: return e.type;
+    }
+  };
+
   // Get effect summary for display
   const getEffectSummary = (effects: CollectibleEffectConfig[]): string => {
     if (effects.length === 0) return 'No effects';
-    return effects.map(e => {
-      switch (e.type) {
-        case 'score': return `+${e.scoreValue || 0} pts`;
-        case 'status_effect': return 'Buff';
-        case 'win_key': return 'Key';
-        case 'heal': return `+${e.amount || 0} HP`;
-        case 'damage': return `-${e.amount || 0} HP`;
-        default: return e.type;
-      }
-    }).join(', ');
+    return effects.map(effectLabel).join(', ');
   };
 
   const handleBack = () => {
@@ -191,6 +195,217 @@ export const CollectibleEditor: React.FC<{ initialSelectedId?: string }> = ({ in
     setIsCreating(false);
   };
 
+  const folderNames = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const f of getFolders('collectibles')) map.set(f.id, f.name);
+    return map;
+  }, [collectibles]); // eslint-disable-line react-hooks/exhaustive-deps -- folders change alongside asset edits
+
+  // Computed once per load, not per render and not per sort comparison —
+  // findAssetUsages scans every puzzle and entity, so calling it inside a
+  // comparator would rescan the library O(n log n) times.
+  const usagesByCollectible = useMemo(() => {
+    const map = new Map<string, ReturnType<typeof findAssetUsages>>();
+    for (const c of collectibles) map.set(c.id, findAssetUsages('collectible', c.id));
+    return map;
+  }, [collectibles]);
+
+  const pickupLabel = (c: CustomCollectible): string => {
+    const heroes = c.pickupPermissions?.characters;
+    const enemies = c.pickupPermissions?.enemies;
+    if (heroes && enemies) return 'Anyone';
+    if (heroes) return 'Heroes';
+    if (enemies) return 'Enemies';
+    return 'Nobody';
+  };
+
+  const effectChips = (effects: CollectibleEffectConfig[]) => effects.map((e, i) => (
+    <span
+      key={i}
+      className="px-1.5 py-0 rounded border text-[10px] whitespace-nowrap bg-stone-800 text-stone-300 border-stone-600"
+    >
+      {getEffectIcon(e.type)} {effectLabel(e)}
+    </span>
+  ));
+
+  const usageChips = (usages: ReturnType<typeof findAssetUsages>) => usages.map((u, i) => (
+    <span
+      key={i}
+      className={`text-[10px] px-1.5 py-0 rounded border whitespace-nowrap ${
+        u.type === 'puzzle'
+          ? 'bg-copper-900/40 text-copper-300 border-copper-700/50'
+          : u.type === 'character'
+            ? 'bg-arcane-900/40 text-arcane-300 border-arcane-700/50'
+            : 'bg-red-900/40 text-red-300 border-red-700/50'
+      }`}
+    >
+      {u.type === 'puzzle' ? '🧩' : u.type === 'character' ? '🛡' : u.type === 'vessel' ? '🏺' : '💀'} {u.name}
+    </span>
+  ));
+
+  const rowActionButtons = (collectible: CustomCollectible) => (
+    <>
+      <InlineFolderPicker
+        category="collectibles"
+        currentFolderId={collectible.folderId}
+        onFolderChange={(folderId) => handleFolderChange(collectible.id, folderId)}
+      />
+      <button
+        onClick={(e) => handleDuplicate(collectible, e)}
+        className="px-1 py-0.5 text-xs leading-none rounded border border-stone-700 text-stone-400 hover:text-stone-200 hover:bg-stone-800"
+        title="Duplicate"
+      >
+        ⎘
+      </button>
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          handleDelete(collectible.id);
+        }}
+        className="px-1 py-0.5 text-xs leading-none rounded border bg-red-900/40 text-red-300 border-red-700/50 hover:bg-red-900/60"
+        title="Delete"
+      >
+        ✕
+      </button>
+    </>
+  );
+
+  const browseColumns: BrowseColumn<CustomCollectible>[] = [
+    {
+      key: 'sprite',
+      label: '',
+      sortable: false,
+      className: 'w-10',
+      render: (c) => (
+        <div className="w-7 h-7 bg-stone-800 border border-stone-700 rounded flex items-center justify-center overflow-hidden">
+          <SpriteThumbnail sprite={c.customSprite} size={28} />
+        </div>
+      ),
+    },
+    {
+      key: 'name',
+      label: 'Name',
+      value: (c) => c.name || 'Unnamed',
+      render: (c) => <span className="text-parchment-100">{c.name || 'Unnamed'}</span>,
+    },
+    {
+      key: 'effects',
+      label: 'Effects',
+      value: (c) => getEffectSummary(c.effects),
+      render: (c) => (
+        c.effects.length === 0
+          ? <span className="text-stone-600">None</span>
+          : <div className="flex flex-wrap gap-1">{effectChips(c.effects)}</div>
+      ),
+    },
+    {
+      key: 'lifetime',
+      label: 'Lifetime',
+      align: 'right',
+      value: (c) => c.duration || null,
+      render: (c) => (
+        c.duration
+          ? <span className="text-xs text-stone-300">{c.duration} turns</span>
+          : <span className="text-stone-500" title="Permanent">∞</span>
+      ),
+    },
+    {
+      key: 'pickup',
+      label: 'Pickup',
+      value: (c) => pickupLabel(c),
+      render: (c) => (
+        <span className="px-1.5 py-0 rounded border text-[10px] whitespace-nowrap bg-stone-800 text-stone-300 border-stone-600">
+          {pickupLabel(c)}
+        </span>
+      ),
+    },
+    {
+      key: 'folder',
+      label: 'Folder',
+      value: (c) => (c.folderId ? folderNames.get(c.folderId) ?? null : null),
+      render: (c) => {
+        const name = c.folderId ? folderNames.get(c.folderId) : undefined;
+        return name
+          ? <span className="text-xs text-stone-400">{name}</span>
+          : <span className="text-stone-600">—</span>;
+      },
+    },
+    {
+      key: 'usedBy',
+      label: 'Used by',
+      value: (c) => usagesByCollectible.get(c.id)?.length || null,
+      render: (c) => {
+        const usages = usagesByCollectible.get(c.id) ?? [];
+        if (usages.length === 0) return <span className="text-stone-600">—</span>;
+        return <div className="flex flex-wrap gap-1">{usageChips(usages)}</div>;
+      },
+    },
+  ];
+
+  // One ordering feeds the table, the sidebar list, and prev/next.
+  const sort = useBrowseSort(filteredCollectibles, browseColumns, 'name');
+
+  const searchInput = (
+    <input
+      type="text"
+      placeholder="Search..."
+      value={searchTerm}
+      onChange={(e) => setSearchTerm(e.target.value)}
+      className="flex-1 min-w-0 bg-stone-800 border border-stone-700 rounded px-2 py-1 text-xs text-parchment-100 placeholder-stone-500 focus:outline-none focus:border-arcane-500"
+    />
+  );
+
+  const folderFilter = (
+    <FolderDropdown
+      category="collectibles"
+      selectedFolderId={selectedFolderId}
+      onFolderSelect={setSelectedFolderId}
+    />
+  );
+
+  const newButton = (
+    <button
+      onClick={handleNew}
+      className="px-2 py-0.5 rounded border text-xs bg-green-900/40 text-green-300 border-green-700/50 hover:bg-green-900/60 flex-shrink-0"
+    >
+      + New
+    </button>
+  );
+
+  const countLabel = (
+    <span className="ml-1.5 text-xs font-sans text-stone-500">
+      {filteredCollectibles.length}{filteredCollectibles.length !== collectibles.length && ` / ${collectibles.length}`}
+    </span>
+  );
+
+  const bulkBar = (
+    <BulkActionBar
+      count={bulk.count}
+      totalCount={filteredCollectibles.length}
+      onSelectAll={() => bulk.selectAll(filteredCollectibles.map(c => c.id))}
+      onClear={bulk.clear}
+      onDelete={() => {
+        const nameMap = new Map(collectibles.map(c => [c.id, c.name]));
+        const deleted = bulkDelete([...bulk.selectedIds], 'collectible', deleteCollectible, nameMap);
+        if (deleted.length) { refreshCollectibles(); bulk.clear(); if (selectedId && deleted.includes(selectedId)) { setSelectedId(null); setEditing(null); } }
+      }}
+      onMoveToFolder={() => {
+        bulkMoveToFolder([...bulk.selectedIds], 'collectibles', (id: string) => collectibles.find(c => c.id === id), saveCollectible);
+        refreshCollectibles(); bulk.clear();
+      }}
+      onExport={() => {
+        const items = collectibles.filter(c => bulk.selectedIds.has(c.id));
+        bulkExport(items, 'collectibles-export.json', 'collectible');
+      }}
+      onImport={() => bulkImport({
+        assetType: 'collectible',
+        saveFn: saveCollectible,
+        existingIds: new Set(collectibles.map(c => c.id)),
+        onComplete: () => { refreshCollectibles(); bulk.clear(); },
+      })}
+    />
+  );
+
   return (
     <AssetEditorLayout
       isEditing={!!editing}
@@ -198,135 +413,144 @@ export const CollectibleEditor: React.FC<{ initialSelectedId?: string }> = ({ in
       listTitle="Items"
       listPanel={
         <>
-          <div className="flex justify-between items-center">
-            <h2 className="text-xl font-bold font-medieval text-copper-400">Items</h2>
-            <button
-              onClick={handleNew}
-              className="dungeon-btn-success text-sm"
-            >
-              + New
-            </button>
+          <div className="flex justify-between items-center gap-2">
+            <h2 className="text-lg font-medieval text-copper-400">
+              Items
+              {countLabel}
+            </h2>
+            {newButton}
           </div>
 
-          {/* Search */}
-          <input
-            type="text"
-            placeholder="Search..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="dungeon-input w-full"
-          />
+          {/* Search + folder filter share one row so the list starts higher */}
+          <div className="flex items-center gap-1.5">
+            {searchInput}
+            <div className="w-32 flex-shrink-0">{folderFilter}</div>
+          </div>
 
-          {/* Folder Filter */}
-          <FolderDropdown
-            category="collectibles"
-            selectedFolderId={selectedFolderId}
-            onFolderSelect={setSelectedFolderId}
-          />
+          {bulkBar}
 
-          <BulkActionBar
-            count={bulk.count}
-            totalCount={filteredCollectibles.length}
-            onSelectAll={() => bulk.selectAll(filteredCollectibles.map(c => c.id))}
-            onClear={bulk.clear}
-            onDelete={() => {
-              const nameMap = new Map(collectibles.map(c => [c.id, c.name]));
-              const deleted = bulkDelete([...bulk.selectedIds], 'collectible', deleteCollectible, nameMap);
-              if (deleted.length) { refreshCollectibles(); bulk.clear(); if (selectedId && deleted.includes(selectedId)) { setSelectedId(null); setEditing(null); } }
-            }}
-            onMoveToFolder={() => {
-              bulkMoveToFolder([...bulk.selectedIds], 'collectibles', (id: string) => collectibles.find(c => c.id === id), saveCollectible);
-              refreshCollectibles(); bulk.clear();
-            }}
-            onExport={() => {
-              const items = collectibles.filter(c => bulk.selectedIds.has(c.id));
-              bulkExport(items, 'collectibles-export.json', 'collectible');
-            }}
-            onImport={() => bulkImport({
-              assetType: 'collectible',
-              saveFn: saveCollectible,
-              existingIds: new Set(collectibles.map(c => c.id)),
-              onComplete: () => { refreshCollectibles(); bulk.clear(); },
-            })}
-          />
-
-          <div className="space-y-2 max-h-[calc(100vh-350px)] overflow-y-auto overflow-x-hidden">
+          <div className="border border-stone-700 rounded max-h-[calc(100vh-250px)] overflow-y-auto overflow-x-hidden dense-scrollbar">
             {filteredCollectibles.length === 0 ? (
-              <div className="dungeon-panel p-4 rounded text-center text-stone-400 text-sm">
-                {searchTerm ? 'No items match your search.' : 'No items yet.'}
-                <br />
-                {!searchTerm && 'Click "+ New" to create one.'}
+              <div className="px-2 py-4 text-center text-stone-500 text-sm">
+                {searchTerm ? 'No matches' : 'No items yet — click "+ New" to create one.'}
               </div>
             ) : (
-              filteredCollectibles.map(collectible => (
-                <div
-                  key={collectible.id}
-                  className={`p-3 rounded cursor-pointer transition-colors ${
-                    bulk.isSelected(collectible.id) ? 'bg-blue-900/40 border border-blue-500' :
-                    selectedId === collectible.id
-                      ? 'bg-arcane-700'
-                      : 'dungeon-panel hover:bg-stone-700'
-                  }`}
-                  onClick={() => handleSelect(collectible.id)}
-                >
-                  <div className="flex justify-between items-start">
-                    <div className="flex items-start gap-2 min-w-0">
+              sort.sorted.map(collectible => {
+                const isSelected = selectedId === collectible.id;
+                const usages = usagesByCollectible.get(collectible.id) ?? [];
+                return (
+                  <div
+                    key={collectible.id}
+                    className={`group px-2 py-1.5 cursor-pointer transition-colors border-t border-stone-700/60 first:border-t-0 ${
+                      bulk.isSelected(collectible.id) ? 'bg-sky-900/40' :
+                      isSelected
+                        ? 'bg-copper-900/50'
+                        : 'hover:bg-stone-800/50'
+                    }`}
+                    onClick={() => handleSelect(collectible.id)}
+                  >
+                    <div className="flex items-center gap-2">
                       <input
                         type="checkbox"
                         checked={bulk.isSelected(collectible.id)}
                         onChange={() => bulk.toggle(collectible.id)}
                         onClick={(e) => e.stopPropagation()}
-                        className="accent-blue-500 flex-shrink-0"
+                        className="accent-sky-500 flex-shrink-0"
                       />
-                      {/* Preview thumbnail */}
-                      <div
-                        className="bg-stone-600 rounded flex items-center justify-center overflow-hidden flex-shrink-0 transition-all duration-150"
-                        style={{ width: selectedId === collectible.id ? 56 : 40, height: selectedId === collectible.id ? 56 : 40 }}
-                      >
-                        <SpriteThumbnail sprite={collectible.customSprite} size={selectedId === collectible.id ? 56 : 40} />
+                      <div className="w-7 h-7 bg-stone-800 border border-stone-700 rounded flex items-center justify-center overflow-hidden flex-shrink-0">
+                        <SpriteThumbnail sprite={collectible.customSprite} size={28} />
                       </div>
-                      <div className="min-w-0">
-                        <h3 className={`font-bold ${scaledNameClass(collectible.name)}`}>{collectible.name}</h3>
-                        <p className="text-xs text-stone-400">
-                          {getEffectSummary(collectible.effects)}
-                        </p>
+                      {/* Deliberately a div, not an h3: `.theme-root h3` sizes
+                          every heading at 1.25x the theme heading size, and an
+                          element selector outranks Tailwind's text-* utility —
+                          an h3 here renders ~25px and truncates early. */}
+                      <div className={`flex-1 min-w-0 truncate text-parchment-100 ${scaledNameClass(collectible.name || 'Unnamed')}`}>
+                        {collectible.name || 'Unnamed'}
+                      </div>
+                      <div className={`flex items-center gap-1 flex-shrink-0 transition-opacity ${
+                        isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 focus-within:opacity-100'
+                      }`}>
+                        <InlineFolderPicker
+                          category="collectibles"
+                          currentFolderId={collectible.folderId}
+                          onFolderChange={(folderId) => handleFolderChange(collectible.id, folderId)}
+                        />
+                        <button
+                          onClick={(e) => handleDuplicate(collectible, e)}
+                          className="px-1 py-0.5 text-xs leading-none rounded border border-stone-700 text-stone-400 hover:text-stone-200 hover:bg-stone-800"
+                          title="Duplicate"
+                        >
+                          ⎘
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(collectible.id);
+                          }}
+                          className="px-1 py-0.5 text-xs leading-none rounded border bg-red-900/40 text-red-300 border-red-700/50 hover:bg-red-900/60"
+                          title="Delete"
+                        >
+                          ✕
+                        </button>
                       </div>
                     </div>
-                    <div className="flex flex-col gap-0.5 flex-shrink-0">
-                      <InlineFolderPicker
-                        category="collectibles"
-                        currentFolderId={collectible.folderId}
-                        onFolderChange={(folderId) => handleFolderChange(collectible.id, folderId)}
-                      />
-                      <button
-                        onClick={(e) => handleDuplicate(collectible, e)}
-                        className="p-1 text-xs leading-none bg-stone-600 rounded hover:bg-stone-500"
-                        title="Duplicate"
-                      >
-                        ⎘
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDelete(collectible.id);
-                        }}
-                        className="p-1 text-xs leading-none bg-blood-700 rounded hover:bg-blood-600"
-                      >
-                        ✕
-                      </button>
+
+                    {/* Meta line: what the item grants, how long it lasts and
+                        who may take it. Indented to sit under the name. */}
+                    <div className="flex flex-wrap items-center gap-1 mt-1 pl-[3.25rem]">
+                      {collectible.effects.length === 0 ? (
+                        <span className="text-[10px] text-stone-500 whitespace-nowrap">No effects</span>
+                      ) : effectChips(collectible.effects)}
+                      <span className="text-[10px] text-stone-500 whitespace-nowrap">
+                        {collectible.duration ? `${collectible.duration} turns` : 'Permanent'}
+                        <span className="text-stone-600"> · </span>
+                        {pickupLabel(collectible)}
+                      </span>
+                      {usageChips(usages)}
                     </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </>
       }
+      browseControls={
+        <div className="flex items-center gap-2 flex-wrap">
+          <h2 className="text-lg font-medieval text-copper-400 mr-1">
+            Items
+            {countLabel}
+          </h2>
+          <div className="w-48">{searchInput}</div>
+          <div className="w-40">{folderFilter}</div>
+          {newButton}
+          <div className="ml-auto">{bulkBar}</div>
+        </div>
+      }
+      browsePanel={
+        <AssetBrowseTable
+          items={sort.sorted}
+          columns={browseColumns}
+          sortKey={sort.sortKey}
+          sortDir={sort.sortDir}
+          onToggleSort={sort.toggleSort}
+          onOpen={(c) => handleSelect(c.id)}
+          selection={{ isSelected: bulk.isSelected, toggle: bulk.toggle }}
+          rowActions={rowActionButtons}
+          emptyMessage={searchTerm ? 'No matches' : 'No items yet — click "+ New" to create one.'}
+        />
+      }
+      navigation={{
+        items: sort.sorted.map(c => ({ id: c.id, name: c.name || 'Unnamed' })),
+        currentId: selectedId,
+        onSelect: (id) => handleSelect(id),
+      }}
       detailPanel={editing ? (
         <>
           {/* Persistent Header */}
-          <div className="dungeon-panel p-3 md:p-4 rounded">
-            <div className="flex justify-between items-center gap-2">
+          <div className="border border-stone-700 rounded overflow-hidden">
+            <div className="bg-stone-800 px-2 py-1.5 text-xs uppercase text-stone-400">Item</div>
+            <div className="p-3 flex justify-between items-center gap-2">
               <div className="flex items-center gap-2 md:gap-4 min-w-0">
                 <div className="flex w-10 h-10 md:w-16 md:h-16 bg-stone-700 rounded-pixel items-center justify-center overflow-hidden flex-shrink-0">
                   <SpriteThumbnail sprite={editing.customSprite} size={isMobile ? 40 : 64} />
@@ -357,7 +581,9 @@ export const CollectibleEditor: React.FC<{ initialSelectedId?: string }> = ({ in
                     <SpriteThumbnail sprite={editing.customSprite} size={64} />
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold text-parchment-200">{editing.name || 'Unnamed Item'}</h3>
+                    {/* div, not h3 — `.theme-root h3` would size this at 1.25x
+                        the theme heading size and beat the text-lg utility. */}
+                    <div className="text-lg font-bold text-parchment-200">{editing.name || 'Unnamed Item'}</div>
                     <p className="text-xs text-stone-400">{editing.effects.length > 0 ? `${editing.effects.length} effect${editing.effects.length !== 1 ? 's' : ''}` : 'No effects'}</p>
                   </div>
                 </div>
@@ -553,16 +779,16 @@ export const CollectibleEditor: React.FC<{ initialSelectedId?: string }> = ({ in
         </>
       ) : null}
       emptyState={
-        <div className="dungeon-panel p-8 rounded text-center">
-          <h2 className="text-2xl font-bold font-medieval text-copper-400 mb-4">Item Editor</h2>
-          <p className="text-stone-400 mb-6">
+        <div className="border border-stone-700 rounded p-6 text-center">
+          <h2 className="text-lg font-medieval text-copper-400 mb-2">Item Editor</h2>
+          <p className="text-sm text-stone-400 mb-4">
             Create collectible items with custom sprites and effects.
             <br />
             Select an item from the list or create a new one.
           </p>
           <button
             onClick={handleNew}
-            className="dungeon-btn-success text-lg"
+            className="dungeon-btn-success text-sm px-3 py-1.5"
           >
             + Create New Item
           </button>
