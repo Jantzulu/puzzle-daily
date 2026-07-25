@@ -17,6 +17,9 @@ import { CollapsiblePanel } from './CollapsiblePanel';
 import { useIsMobile } from '../../hooks/useMediaQuery';
 
 // Effect type options with icons
+/** Used for new items and as the fallback when an imported item omits the field. */
+const DEFAULT_PICKUP_PERMISSIONS = { characters: true, enemies: false };
+
 const EFFECT_TYPES: { value: CollectibleEffectType; label: string; icon: string }[] = [
   { value: 'score', label: 'Score Points', icon: '🏆' },
   { value: 'status_effect', label: 'Status Effect', icon: '✨' },
@@ -85,7 +88,7 @@ export const CollectibleEditor: React.FC<{ initialSelectedId?: string }> = ({ in
       anchorPoint: 'center',
       effects: [{ type: 'score', scoreValue: 10 }],
       pickupMethod: 'step_on',
-      pickupPermissions: { characters: true, enemies: false },
+      pickupPermissions: { ...DEFAULT_PICKUP_PERMISSIONS },
       isCustom: true,
       createdAt: new Date().toISOString(),
     };
@@ -683,13 +686,17 @@ export const CollectibleEditor: React.FC<{ initialSelectedId?: string }> = ({ in
                 </div>
                 <div className="space-y-2">
                   <label className="block text-sm">Who Can Collect</label>
+                  {/* pickupPermissions is typed as required, but bulkImport
+                      only validates id and name — an imported item can arrive
+                      without it, and reading .characters off undefined threw
+                      as soon as the item was selected. */}
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
                       type="checkbox"
-                      checked={editing.pickupPermissions.characters}
+                      checked={editing.pickupPermissions?.characters ?? DEFAULT_PICKUP_PERMISSIONS.characters}
                       onChange={e => setEditing({
                         ...editing,
-                        pickupPermissions: { ...editing.pickupPermissions, characters: e.target.checked }
+                        pickupPermissions: { ...DEFAULT_PICKUP_PERMISSIONS, ...editing.pickupPermissions, characters: e.target.checked }
                       })}
                       className="rounded"
                     />
@@ -698,10 +705,10 @@ export const CollectibleEditor: React.FC<{ initialSelectedId?: string }> = ({ in
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
                       type="checkbox"
-                      checked={editing.pickupPermissions.enemies}
+                      checked={editing.pickupPermissions?.enemies ?? DEFAULT_PICKUP_PERMISSIONS.enemies}
                       onChange={e => setEditing({
                         ...editing,
-                        pickupPermissions: { ...editing.pickupPermissions, enemies: e.target.checked }
+                        pickupPermissions: { ...DEFAULT_PICKUP_PERMISSIONS, ...editing.pickupPermissions, enemies: e.target.checked }
                       })}
                       className="rounded"
                     />

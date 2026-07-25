@@ -175,7 +175,16 @@ export const SoundEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
       return;
     }
 
-    // Read file as base64
+    // Read file as base64.
+    // These callbacks land after an await, by which time the user may have
+    // selected a different sound. Capture the id and apply the write
+    // functionally, so the audio can only ever attach to the sound it was
+    // uploaded for — previously the stale `editing` object was written back
+    // wholesale, clobbering the newly selected sound with the old one.
+    const targetId = editing.id;
+    const derivedName = (prev: SoundAsset) =>
+      prev.name === 'New Sound' ? file.name.replace(/\.[^/.]+$/, '') : prev.name;
+
     const reader = new FileReader();
     reader.onload = (event) => {
       const base64 = event.target?.result as string;
@@ -183,20 +192,20 @@ export const SoundEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
       // Get duration using Audio element
       const audio = new Audio(base64);
       audio.onloadedmetadata = () => {
-        setEditing({
-          ...editing,
+        setEditing(prev => prev && prev.id === targetId ? {
+          ...prev,
           audioData: base64,
           duration: audio.duration,
-          name: editing.name === 'New Sound' ? file.name.replace(/\.[^/.]+$/, '') : editing.name,
-        });
+          name: derivedName(prev),
+        } : prev);
       };
       audio.onerror = () => {
         // Still set the data even if we can't get duration
-        setEditing({
-          ...editing,
+        setEditing(prev => prev && prev.id === targetId ? {
+          ...prev,
           audioData: base64,
-          name: editing.name === 'New Sound' ? file.name.replace(/\.[^/.]+$/, '') : editing.name,
-        });
+          name: derivedName(prev),
+        } : prev);
       };
     };
     reader.readAsDataURL(file);

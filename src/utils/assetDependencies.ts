@@ -87,6 +87,11 @@ export function findAssetUsages(assetType: AssetType, assetId: string): AssetUsa
       for (const p of puzzles) {
         if (p.availableCharacters?.includes(assetId)) {
           usages.push({ type: 'puzzle', id: p.id, name: p.name || p.id, detail: 'in available characters' });
+        } else if (p.showcase?.heroes?.some(h => h.characterId === assetId)) {
+          // Showcase demos place heroes directly rather than through
+          // availableCharacters, so a hero used only by a Slab demo used to
+          // look unreferenced — and deleting it took the demo down silently.
+          usages.push({ type: 'puzzle', id: p.id, name: p.name || p.id, detail: 'placed in showcase demo' });
         }
       }
       break;

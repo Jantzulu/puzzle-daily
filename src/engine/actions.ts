@@ -3494,8 +3494,13 @@ export function processCollectiblePickup(
         gameState.currentTurn < collectible.placerImmuneUntilTurn) return;
   }
 
-  // Check pickup permissions (override takes priority over base)
-  const permissions = collectible.overridePermissions || collectibleData.pickupPermissions;
+  // Check pickup permissions (override takes priority over base).
+  // pickupPermissions is typed as required, but bulkImport only validates id
+  // and name, so an imported item can reach the board without it — reading
+  // .enemies off undefined threw mid-turn. The fallback is the same default
+  // new items are created with, so behaviour for valid data is unchanged.
+  const permissions = collectible.overridePermissions || collectibleData.pickupPermissions
+    || { characters: true, enemies: false };
   if (isEnemy && !permissions.enemies) return;
   if (!isEnemy && !permissions.characters) return;
 
