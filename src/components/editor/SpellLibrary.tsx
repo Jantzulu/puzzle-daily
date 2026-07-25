@@ -214,9 +214,14 @@ export const SpellLibrary: React.FC<{ initialSelectedId?: string }> = ({ initial
                       )}
                       {/* Name owns the full remaining width; actions only take
                           space once the row is hovered, focused, or selected. */}
-                      <h3 className={`flex-1 min-w-0 truncate text-parchment-100 ${scaledNameClass(spell.name || 'Unnamed')}`}>
+                      {/* Deliberately a div, not an h3: `.theme-root h3` sizes
+                          every heading at 1.25x the theme heading size in the
+                          theme face, and an element selector outranks
+                          Tailwind's text-* utility — an h3 here renders ~25px
+                          and truncates after a few characters. */}
+                      <div className={`flex-1 min-w-0 truncate text-parchment-100 ${scaledNameClass(spell.name || 'Unnamed')}`}>
                         {spell.name || 'Unnamed'}
-                      </h3>
+                      </div>
                       <div className={`flex items-center gap-1 flex-shrink-0 transition-opacity ${
                         isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 focus-within:opacity-100'
                       }`}>
