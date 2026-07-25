@@ -27,7 +27,7 @@ export const PuzzleResourcesPage: React.FC = () => {
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`px-4 py-2 text-sm font-medium rounded-t transition-colors border-b-2 ${
+            className={`px-3 py-1.5 text-sm rounded-t transition-colors border-b-2 ${
               activeTab === tab.id
                 ? 'bg-stone-700 text-parchment-100 border-arcane-500'
                 : 'text-stone-400 hover:text-stone-200 border-transparent hover:bg-stone-750'
