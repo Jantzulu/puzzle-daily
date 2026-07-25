@@ -274,6 +274,22 @@ export const StatusEffectLibrary: React.FC<{ initialSelectedId?: string }> = ({ 
     </button>
   );
 
+  const handleImport = () => bulkImport({
+    assetType: 'status_effect',
+    saveFn: saveStatusEffectAsset,
+    existingIds: new Set(effects.map(e => e.id)),
+    onComplete: () => { loadEffects(); bulk.clear(); },
+  });
+
+  const importButton = (
+    <button
+      onClick={handleImport}
+      className="px-2 py-0.5 rounded border text-xs border-stone-700 text-stone-400 hover:text-stone-200 hover:bg-stone-800 flex-shrink-0"
+    >
+      Import
+    </button>
+  );
+
   const countLabel = (
     <span className="ml-1.5 text-xs font-sans text-stone-500">
       {filteredEffects.length}{filteredEffects.length !== effects.length && ` / ${effects.length}`}
@@ -299,12 +315,7 @@ export const StatusEffectLibrary: React.FC<{ initialSelectedId?: string }> = ({ 
         const items = effects.filter(e => bulk.selectedIds.has(e.id));
         bulkExport(items, 'status-effects-export.json', 'status_effect');
       }}
-      onImport={() => bulkImport({
-        assetType: 'status_effect',
-        saveFn: saveStatusEffectAsset,
-        existingIds: new Set(effects.map(e => e.id)),
-        onComplete: () => { loadEffects(); bulk.clear(); },
-      })}
+      onImport={handleImport}
     />
   );
 
@@ -320,7 +331,7 @@ export const StatusEffectLibrary: React.FC<{ initialSelectedId?: string }> = ({ 
               Status Effects
               {countLabel}
             </h2>
-            {newButton}
+            <div className="flex items-center gap-1.5 flex-shrink-0">{importButton}{newButton}</div>
           </div>
 
           {/* Search + folder filter share one row so the list starts higher */}
@@ -424,6 +435,7 @@ export const StatusEffectLibrary: React.FC<{ initialSelectedId?: string }> = ({ 
           </h2>
           <div className="w-48">{searchInput}</div>
           <div className="w-40">{folderFilter}</div>
+          {importButton}
           {newButton}
           <div className="ml-auto">{bulkBar}</div>
         </div>

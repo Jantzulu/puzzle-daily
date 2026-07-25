@@ -49,18 +49,12 @@ interface BulkActionBarProps {
 }
 
 export function BulkActionBar({ count, totalCount, onSelectAll, onClear, onDelete, onMoveToFolder, onExport, onImport }: BulkActionBarProps) {
-  // When nothing selected, show only the Import button if available
+  // When nothing is selected the bar renders nothing — Import lives in each
+  // editor's header row (next to "+ New") so it never claims a row of its own.
   // Shared chip idiom for the bar's buttons (Production dev-page standard).
   const chip = 'px-2 py-0.5 rounded border text-xs border-stone-700 text-stone-400 hover:text-stone-200 hover:bg-stone-800';
 
-  if (count === 0) {
-    if (!onImport) return null;
-    return (
-      <div className="flex justify-end">
-        <button onClick={onImport} className={chip}>Import</button>
-      </div>
-    );
-  }
+  if (count === 0) return null;
 
   return (
     <div className="border border-sky-700/50 bg-sky-900/40 rounded px-2 py-1 flex flex-wrap items-center gap-1.5 text-xs">

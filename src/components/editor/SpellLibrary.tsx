@@ -226,6 +226,22 @@ export const SpellLibrary: React.FC<{ initialSelectedId?: string }> = ({ initial
     </button>
   );
 
+  const handleImport = () => bulkImport({
+    assetType: 'spell',
+    saveFn: saveSpellAsset,
+    existingIds: new Set(spells.map(s => s.id)),
+    onComplete: () => { loadSpells(); bulk.clear(); },
+  });
+
+  const importButton = (
+    <button
+      onClick={handleImport}
+      className="px-2 py-0.5 rounded border text-xs border-stone-700 text-stone-400 hover:text-stone-200 hover:bg-stone-800 flex-shrink-0"
+    >
+      Import
+    </button>
+  );
+
   const countLabel = (
     <span className="ml-1.5 text-xs font-sans text-stone-500">
       {filteredSpells.length}{filteredSpells.length !== spells.length && ` / ${spells.length}`}
@@ -251,12 +267,7 @@ export const SpellLibrary: React.FC<{ initialSelectedId?: string }> = ({ initial
         const items = spells.filter(s => bulk.selectedIds.has(s.id));
         bulkExport(items, 'spells-export.json', 'spell');
       }}
-      onImport={() => bulkImport({
-        assetType: 'spell',
-        saveFn: saveSpellAsset,
-        existingIds: new Set(spells.map(s => s.id)),
-        onComplete: () => { loadSpells(); bulk.clear(); },
-      })}
+      onImport={handleImport}
     />
   );
 
@@ -272,7 +283,7 @@ export const SpellLibrary: React.FC<{ initialSelectedId?: string }> = ({ initial
               Spells
               {countLabel}
             </h2>
-            {newButton}
+            <div className="flex items-center gap-1.5 flex-shrink-0">{importButton}{newButton}</div>
           </div>
 
           {/* Search + folder filter share one row so the list starts higher */}
@@ -386,6 +397,7 @@ export const SpellLibrary: React.FC<{ initialSelectedId?: string }> = ({ initial
           </h2>
           <div className="w-48">{searchInput}</div>
           <div className="w-40">{folderFilter}</div>
+          {importButton}
           {newButton}
           <div className="ml-auto">{bulkBar}</div>
         </div>

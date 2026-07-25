@@ -498,6 +498,22 @@ export const ObjectEditor: React.FC<{ initialSelectedId?: string }> = ({ initial
     </button>
   );
 
+  const handleImport = () => bulkImport({
+    assetType: 'object',
+    saveFn: saveObject,
+    existingIds: new Set(objects.map(o => o.id)),
+    onComplete: () => { refreshObjects(); bulk.clear(); },
+  });
+
+  const importButton = (
+    <button
+      onClick={handleImport}
+      className="px-2 py-0.5 rounded border text-xs border-stone-700 text-stone-400 hover:text-stone-200 hover:bg-stone-800 flex-shrink-0"
+    >
+      Import
+    </button>
+  );
+
   const countLabel = (
     <span className="ml-1.5 text-xs font-sans text-stone-500">
       {filteredObjects.length}{filteredObjects.length !== objects.length && ` / ${objects.length}`}
@@ -523,12 +539,7 @@ export const ObjectEditor: React.FC<{ initialSelectedId?: string }> = ({ initial
         const items = objects.filter(o => bulk.selectedIds.has(o.id));
         bulkExport(items, 'objects-export.json', 'object');
       }}
-      onImport={() => bulkImport({
-        assetType: 'object',
-        saveFn: saveObject,
-        existingIds: new Set(objects.map(o => o.id)),
-        onComplete: () => { refreshObjects(); bulk.clear(); },
-      })}
+      onImport={handleImport}
     />
   );
 
@@ -544,7 +555,7 @@ export const ObjectEditor: React.FC<{ initialSelectedId?: string }> = ({ initial
               Objects
               {countLabel}
             </h2>
-            {newButton}
+            <div className="flex items-center gap-1.5 flex-shrink-0">{importButton}{newButton}</div>
           </div>
 
           {/* Search + folder filter share one row so the list starts higher */}
@@ -653,6 +664,7 @@ export const ObjectEditor: React.FC<{ initialSelectedId?: string }> = ({ initial
           </h2>
           <div className="w-48">{searchInput}</div>
           <div className="w-40">{folderFilter}</div>
+          {importButton}
           {newButton}
           <div className="ml-auto">{bulkBar}</div>
         </div>

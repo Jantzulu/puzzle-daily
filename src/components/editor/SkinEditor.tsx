@@ -896,6 +896,22 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
     </button>
   );
 
+  const handleImport = () => bulkImport({
+    assetType: 'skin',
+    saveFn: savePuzzleSkin,
+    existingIds: new Set(skins.map(s => s.id)),
+    onComplete: () => { refreshSkins(); bulk.clear(); },
+  });
+
+  const importButton = (
+    <button
+      onClick={handleImport}
+      className="px-2 py-0.5 rounded border text-xs border-stone-700 text-stone-400 hover:text-stone-200 hover:bg-stone-800 flex-shrink-0"
+    >
+      Import
+    </button>
+  );
+
   const countLabel = (
     <span className="ml-1.5 text-xs font-sans text-stone-500">
       {filteredSkins.length}{filteredSkins.length !== skins.length && ` / ${skins.length}`}
@@ -921,12 +937,7 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
         const items = skins.filter(s => bulk.selectedIds.has(s.id));
         bulkExport(items, 'skins-export.json', 'skin');
       }}
-      onImport={() => bulkImport({
-        assetType: 'skin',
-        saveFn: savePuzzleSkin,
-        existingIds: new Set(skins.map(s => s.id)),
-        onComplete: () => { refreshSkins(); bulk.clear(); },
-      })}
+      onImport={handleImport}
     />
   );
 
@@ -942,7 +953,7 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
               Puzzle Skins
               {countLabel}
             </h2>
-            {newButton}
+            <div className="flex items-center gap-1.5 flex-shrink-0">{importButton}{newButton}</div>
           </div>
 
           {/* Search + folder filter share one row so the list starts higher */}
@@ -1030,6 +1041,7 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
           </h2>
           <div className="w-48">{searchInput}</div>
           <div className="w-40">{folderFilter}</div>
+          {importButton}
           {newButton}
           <div className="ml-auto">{bulkBar}</div>
         </div>

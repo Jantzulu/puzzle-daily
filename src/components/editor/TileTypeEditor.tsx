@@ -897,6 +897,22 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
     </button>
   );
 
+  const handleImport = () => bulkImport({
+    assetType: 'tile',
+    saveFn: saveTileType,
+    existingIds: new Set(tileTypes.map(t => t.id)),
+    onComplete: () => { refreshTileTypes(); bulk.clear(); },
+  });
+
+  const importButton = (
+    <button
+      onClick={handleImport}
+      className="px-2 py-0.5 rounded border text-xs border-stone-700 text-stone-400 hover:text-stone-200 hover:bg-stone-800 flex-shrink-0"
+    >
+      Import
+    </button>
+  );
+
   const countLabel = (
     <span className="ml-1.5 text-xs font-sans text-stone-500">
       {filteredTileTypes.length}{filteredTileTypes.length !== tileTypes.length && ` / ${tileTypes.length}`}
@@ -922,12 +938,7 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
         const items = tileTypes.filter(t => bulk.selectedIds.has(t.id));
         bulkExport(items, 'tiles-export.json', 'tile');
       }}
-      onImport={() => bulkImport({
-        assetType: 'tile',
-        saveFn: saveTileType,
-        existingIds: new Set(tileTypes.map(t => t.id)),
-        onComplete: () => { refreshTileTypes(); bulk.clear(); },
-      })}
+      onImport={handleImport}
     />
   );
 
@@ -942,7 +953,7 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
                 Tile Types
                 {countLabel}
               </h2>
-              {newButton}
+              <div className="flex items-center gap-1.5 flex-shrink-0">{importButton}{newButton}</div>
             </div>
 
             {/* Search + folder filter share one row so the list starts higher */}
@@ -1057,6 +1068,7 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
           </h2>
           <div className="w-48">{searchInput}</div>
           <div className="w-40">{folderFilter}</div>
+          {importButton}
           {newButton}
           <div className="ml-auto">{bulkBar}</div>
         </div>

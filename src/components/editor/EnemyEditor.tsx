@@ -349,6 +349,22 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string; assetKind?: 'en
     </button>
   );
 
+  const handleImport = () => bulkImport({
+    assetType: KIND.lower,
+    saveFn: KIND.save,
+    existingIds: new Set(enemies.map(e => e.id)),
+    onComplete: () => { setEnemies(refreshEnemies()); bulk.clear(); },
+  });
+
+  const importButton = (
+    <button
+      onClick={handleImport}
+      className="px-2 py-0.5 rounded border text-xs border-stone-700 text-stone-400 hover:text-stone-200 hover:bg-stone-800 flex-shrink-0"
+    >
+      Import
+    </button>
+  );
+
   const countLabel = (
     <span className="ml-1.5 text-xs font-sans text-stone-500">
       {filteredEnemies.length}{filteredEnemies.length !== enemies.length && ` / ${enemies.length}`}
@@ -374,12 +390,7 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string; assetKind?: 'en
         const items = enemies.filter(e => bulk.selectedIds.has(e.id));
         bulkExport(items, KIND.exportFile, KIND.lower);
       }}
-      onImport={() => bulkImport({
-        assetType: KIND.lower,
-        saveFn: KIND.save,
-        existingIds: new Set(enemies.map(e => e.id)),
-        onComplete: () => { setEnemies(refreshEnemies()); bulk.clear(); },
-      })}
+      onImport={handleImport}
     />
   );
 
@@ -396,7 +407,7 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string; assetKind?: 'en
                 {KIND.plural}
                 {countLabel}
               </h2>
-              {newButton}
+              <div className="flex items-center gap-1.5 flex-shrink-0">{importButton}{newButton}</div>
             </div>
 
             {/* Search + folder filter share one row so the list starts higher */}
@@ -503,6 +514,7 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string; assetKind?: 'en
             </h2>
             <div className="w-48">{searchInput}</div>
             <div className="w-40">{folderFilter}</div>
+            {importButton}
             {newButton}
             <div className="ml-auto">{bulkBar}</div>
           </div>
