@@ -7,6 +7,7 @@ import { getStatusEffectAssets, deleteStatusEffectAsset, saveStatusEffectAsset, 
 import { StatusEffectEditor } from './StatusEffectEditor';
 import { AssetEditorLayout } from './AssetEditorLayout';
 import { AssetBrowseTable, useBrowseSort, type BrowseColumn } from './AssetBrowseTable';
+import { UsageChips, usageSortValue } from './UsageChips';
 import { FolderDropdown, useFilteredAssets, InlineFolderPicker } from './FolderDropdown';
 import { SpriteThumbnail } from './SpriteThumbnail';
 import { useBulkSelect, BulkActionBar, bulkDelete, bulkMoveToFolder, bulkExport, bulkImport } from './BulkActions';
@@ -238,27 +239,8 @@ export const StatusEffectLibrary: React.FC<{ initialSelectedId?: string }> = ({ 
     {
       key: 'usedBy',
       label: 'Used by',
-      value: (e) => usagesByEffect.get(e.id)?.length || null,
-      render: (e) => {
-        const usages = usagesByEffect.get(e.id) ?? [];
-        if (usages.length === 0) return <span className="text-stone-600">—</span>;
-        return (
-          <div className="flex flex-wrap gap-1">
-            {usages.map((u, i) => (
-              <span
-                key={i}
-                className={`text-[10px] px-1.5 py-0 rounded border whitespace-nowrap ${
-                  u.type === 'character'
-                    ? 'bg-arcane-900/40 text-arcane-300 border-arcane-700/50'
-                    : 'bg-red-900/40 text-red-300 border-red-700/50'
-                }`}
-              >
-                {u.name}
-              </span>
-            ))}
-          </div>
-        );
-      },
+      value: (e) => usageSortValue(usagesByEffect.get(e.id)),
+      render: (e) => <UsageChips usages={usagesByEffect.get(e.id) ?? []} />,
     },
   ];
 
@@ -425,18 +407,7 @@ export const StatusEffectLibrary: React.FC<{ initialSelectedId?: string }> = ({ 
                         <span className="text-stone-600"> · </span>
                         <span className="capitalize">{stackingLabel(effect)}</span>
                       </span>
-                      {usages.map((u, i) => (
-                        <span
-                          key={i}
-                          className={`text-[10px] px-1.5 py-0 rounded border whitespace-nowrap ${
-                            u.type === 'character'
-                              ? 'bg-arcane-900/40 text-arcane-300 border-arcane-700/50'
-                              : 'bg-red-900/40 text-red-300 border-red-700/50'
-                          }`}
-                        >
-                          {u.name}
-                        </span>
-                      ))}
+                      <UsageChips usages={usages} hideWhenEmpty />
                     </div>
                   </div>
                 );

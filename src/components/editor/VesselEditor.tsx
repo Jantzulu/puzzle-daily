@@ -12,6 +12,7 @@ import { SpriteThumbnail } from './SpriteThumbnail';
 import { RichTextEditor } from './RichTextEditor';
 import { AssetEditorLayout } from './AssetEditorLayout';
 import { AssetBrowseTable, useBrowseSort, type BrowseColumn } from './AssetBrowseTable';
+import { UsageChips, usageSortValue } from './UsageChips';
 import { FolderDropdown, useFilteredAssets, InlineFolderPicker } from './FolderDropdown';
 import { CollapsiblePanel } from './CollapsiblePanel';
 import { useIsMobile } from '../../hooks/useMediaQuery';
@@ -299,23 +300,8 @@ export const VesselEditor: React.FC<{ initialSelectedId?: string }> = ({ initial
     {
       key: 'usedBy',
       label: 'Used by',
-      value: (v) => usagesByVessel.get(v.id)?.length || null,
-      render: (v) => {
-        const usages = usagesByVessel.get(v.id) ?? [];
-        if (usages.length === 0) return <span className="text-stone-600">—</span>;
-        return (
-          <div className="flex flex-wrap gap-1">
-            {usages.map((u, i) => (
-              <span
-                key={i}
-                className="text-[10px] px-1.5 py-0 rounded border whitespace-nowrap bg-arcane-900/40 text-arcane-300 border-arcane-700/50"
-              >
-                {u.name}
-              </span>
-            ))}
-          </div>
-        );
-      },
+      value: (v) => usageSortValue(usagesByVessel.get(v.id)),
+      render: (v) => <UsageChips usages={usagesByVessel.get(v.id) ?? []} />,
     },
   ];
 

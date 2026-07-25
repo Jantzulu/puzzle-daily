@@ -16,6 +16,7 @@ import { VersionHistoryModal } from './VersionHistoryModal';
 import { createVersionSnapshot } from '../../services/versionService';
 import { AssetEditorLayout } from './AssetEditorLayout';
 import { AssetBrowseTable, useBrowseSort, type BrowseColumn } from './AssetBrowseTable';
+import { UsageChips, usageSortValue } from './UsageChips';
 import { CollapsiblePanel } from './CollapsiblePanel';
 import { useIsMobile } from '../../hooks/useMediaQuery';
 import { newAssetId, newSpriteId } from '../../utils/assetIds';
@@ -356,21 +357,6 @@ export const ObjectEditor: React.FC<{ initialSelectedId?: string }> = ({ initial
     </span>
   ));
 
-  const usageChips = (usages: ReturnType<typeof findAssetUsages>) => usages.map((u, i) => (
-    <span
-      key={i}
-      className={`text-[10px] px-1.5 py-0 rounded border whitespace-nowrap ${
-        u.type === 'puzzle'
-          ? 'bg-copper-900/40 text-copper-300 border-copper-700/50'
-          : u.type === 'enemy'
-            ? 'bg-red-900/40 text-red-300 border-red-700/50'
-            : 'bg-arcane-900/40 text-arcane-300 border-arcane-700/50'
-      }`}
-    >
-      {u.type === 'puzzle' ? '🧩' : u.type === 'enemy' ? '💀' : '🛡'} {u.name}
-    </span>
-  ));
-
   const rowActionButtons = (obj: CustomObject) => (
     <>
       <InlineFolderPicker
@@ -477,12 +463,8 @@ export const ObjectEditor: React.FC<{ initialSelectedId?: string }> = ({ initial
     {
       key: 'usedBy',
       label: 'Used by',
-      value: (o) => usagesByObject.get(o.id)?.length || null,
-      render: (o) => {
-        const usages = usagesByObject.get(o.id) ?? [];
-        if (usages.length === 0) return <span className="text-stone-600">—</span>;
-        return <div className="flex flex-wrap gap-1">{usageChips(usages)}</div>;
-      },
+      value: (o) => usageSortValue(usagesByObject.get(o.id)),
+      render: (o) => <UsageChips usages={usagesByObject.get(o.id) ?? []} />,
     },
   ];
 
@@ -654,7 +636,7 @@ export const ObjectEditor: React.FC<{ initialSelectedId?: string }> = ({ initial
                       {obj.effects.length === 0 ? (
                         <span className="text-[10px] text-stone-500 whitespace-nowrap">Decorative</span>
                       ) : effectChips(obj.effects)}
-                      {usageChips(usages)}
+                      <UsageChips usages={usages} hideWhenEmpty />
                     </div>
                   </div>
                 );

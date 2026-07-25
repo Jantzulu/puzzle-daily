@@ -15,6 +15,7 @@ import { VersionHistoryModal } from './VersionHistoryModal';
 import { createVersionSnapshot } from '../../services/versionService';
 import { AssetEditorLayout } from './AssetEditorLayout';
 import { AssetBrowseTable, useBrowseSort, type BrowseColumn } from './AssetBrowseTable';
+import { UsageChips, usageSortValue } from './UsageChips';
 import { useIsMobile } from '../../hooks/useMediaQuery';
 import { newAssetId } from '../../utils/assetIds';
 
@@ -860,23 +861,8 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
     {
       key: 'usedBy',
       label: 'Used by',
-      value: (s) => usagesBySkin.get(s.id)?.length || null,
-      render: (s) => {
-        const usages = usagesBySkin.get(s.id) ?? [];
-        if (usages.length === 0) return <span className="text-stone-600">—</span>;
-        return (
-          <div className="flex flex-wrap gap-1">
-            {usages.map((u, i) => (
-              <span
-                key={i}
-                className="text-[10px] px-1.5 py-0 rounded border whitespace-nowrap bg-arcane-900/40 text-arcane-300 border-arcane-700/50"
-              >
-                🧩 {u.name}
-              </span>
-            ))}
-          </div>
-        );
-      },
+      value: (s) => usageSortValue(usagesBySkin.get(s.id)),
+      render: (s) => <UsageChips usages={usagesBySkin.get(s.id) ?? []} />,
     },
   ];
 
@@ -1027,14 +1013,7 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
                         <span className="text-stone-600"> · </span>Tiles {tileN}/{TILE_SPRITE_SLOTS.length}
                         {customN > 0 ? <><span className="text-stone-600"> · </span>Custom {customN}</> : null}
                       </span>
-                      {usages.map((u, i) => (
-                        <span
-                          key={i}
-                          className="text-[10px] px-1.5 py-0 rounded border whitespace-nowrap bg-arcane-900/40 text-arcane-300 border-arcane-700/50"
-                        >
-                          🧩 {u.name}
-                        </span>
-                      ))}
+                      <UsageChips usages={usages} hideWhenEmpty />
                     </div>
                   </div>
                 );

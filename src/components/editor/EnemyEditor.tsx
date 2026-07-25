@@ -20,6 +20,7 @@ import { VersionHistoryModal } from './VersionHistoryModal';
 import { createVersionSnapshot } from '../../services/versionService';
 import { AssetEditorLayout } from './AssetEditorLayout';
 import { AssetBrowseTable, useBrowseSort, type BrowseColumn } from './AssetBrowseTable';
+import { UsageChips, usageSortValue } from './UsageChips';
 import { CollapsiblePanel } from './CollapsiblePanel';
 import { useIsMobile } from '../../hooks/useMediaQuery';
 import { newAssetId, newSpriteId } from '../../utils/assetIds';
@@ -39,12 +40,6 @@ const countBehaviorSpells = (actions?: CharacterAction[]): number => {
   };
   walk(actions);
   return ids.size;
-};
-
-/** Icon per usage kind returned by findAssetUsages for enemy/ally assets. */
-const USAGE_ICON: Record<string, string> = {
-  puzzle: '🧩', vessel: '🏺', spell: '✨', character: '🛡', enemy: '💀',
-  ally: '🤝', collectible: '💎', skin: '🎨',
 };
 
 /**
@@ -244,19 +239,6 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string; assetKind?: 'en
     return null;
   };
 
-  const usageChips = (enemyId: string) => (usagesByEnemy.get(enemyId) ?? []).map((u, i) => (
-    <span
-      key={i}
-      className={`text-[10px] px-1.5 py-0 rounded border whitespace-nowrap ${
-        u.type === 'puzzle'
-          ? 'bg-arcane-900/40 text-arcane-300 border-arcane-700/50'
-          : 'bg-stone-800 text-stone-300 border-stone-600'
-      }`}
-    >
-      {USAGE_ICON[u.type] ?? '•'} {u.name}
-    </span>
-  ));
-
   const rowActionButtons = (enemy: CustomEnemy) => (
     <>
       <InlineFolderPicker
@@ -332,12 +314,8 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string; assetKind?: 'en
     {
       key: 'usedBy',
       label: 'Used by',
-      value: (e) => usagesByEnemy.get(e.id)?.length || null,
-      render: (e) => {
-        const chips = usageChips(e.id);
-        if (chips.length === 0) return <span className="text-stone-600">—</span>;
-        return <div className="flex flex-wrap gap-1">{chips}</div>;
-      },
+      value: (e) => usageSortValue(usagesByEnemy.get(e.id)),
+      render: (e) => <UsageChips usages={usagesByEnemy.get(e.id) ?? []} />,
     },
   ];
 
@@ -508,7 +486,7 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string; assetKind?: 'en
                             ? <><span className="text-stone-600"> · </span>{enemy.initialStatusEffects.length} effects</>
                             : null}
                         </span>
-                        {usageChips(enemy.id)}
+                        <UsageChips usages={usagesByEnemy.get(enemy.id) ?? []} hideWhenEmpty />
                       </div>
                     </div>
                   );

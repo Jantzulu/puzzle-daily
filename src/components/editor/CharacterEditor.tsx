@@ -20,6 +20,7 @@ import { VersionHistoryModal } from './VersionHistoryModal';
 import { createVersionSnapshot } from '../../services/versionService';
 import { AssetEditorLayout } from './AssetEditorLayout';
 import { AssetBrowseTable, useBrowseSort, type BrowseColumn } from './AssetBrowseTable';
+import { UsageChips, usageSortValue } from './UsageChips';
 import { CollapsiblePanel } from './CollapsiblePanel';
 import { useIsMobile } from '../../hooks/useMediaQuery';
 import { newAssetId, newSpriteId } from '../../utils/assetIds';
@@ -232,15 +233,6 @@ export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ init
     </span>
   ) : null);
 
-  const usageChips = (charId: string) => (usagesByCharacter.get(charId) ?? []).map((u, i) => (
-    <span
-      key={i}
-      className="text-[10px] px-1.5 py-0 rounded border whitespace-nowrap bg-arcane-900/40 text-arcane-300 border-arcane-700/50"
-    >
-      🧩 {u.name}
-    </span>
-  ));
-
   const rowActionButtons = (char: CustomCharacter) => (
     <>
       <InlineFolderPicker
@@ -316,12 +308,8 @@ export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ init
     {
       key: 'usedBy',
       label: 'Used by',
-      value: (c) => usagesByCharacter.get(c.id)?.length || null,
-      render: (c) => {
-        const chips = usageChips(c.id);
-        if (chips.length === 0) return <span className="text-stone-600">—</span>;
-        return <div className="flex flex-wrap gap-1">{chips}</div>;
-      },
+      value: (c) => usageSortValue(usagesByCharacter.get(c.id)),
+      render: (c) => <UsageChips usages={usagesByCharacter.get(c.id) ?? []} />,
     },
   ];
 
@@ -490,7 +478,7 @@ export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ init
                             ? <><span className="text-stone-600"> · </span>{char.initialStatusEffects.length} effects</>
                             : null}
                         </span>
-                        {usageChips(char.id)}
+                        <UsageChips usages={usagesByCharacter.get(char.id) ?? []} hideWhenEmpty />
                       </div>
                     </div>
                   );

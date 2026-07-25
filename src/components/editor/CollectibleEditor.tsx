@@ -13,6 +13,7 @@ import { useBulkSelect, BulkActionBar, bulkDelete, bulkMoveToFolder, bulkExport,
 import { RichTextEditor } from './RichTextEditor';
 import { AssetEditorLayout } from './AssetEditorLayout';
 import { AssetBrowseTable, useBrowseSort, type BrowseColumn } from './AssetBrowseTable';
+import { UsageChips, usageSortValue } from './UsageChips';
 import { CollapsiblePanel } from './CollapsiblePanel';
 import { useIsMobile } from '../../hooks/useMediaQuery';
 import { newAssetId, newSpriteId } from '../../utils/assetIds';
@@ -232,21 +233,6 @@ export const CollectibleEditor: React.FC<{ initialSelectedId?: string }> = ({ in
     </span>
   ));
 
-  const usageChips = (usages: ReturnType<typeof findAssetUsages>) => usages.map((u, i) => (
-    <span
-      key={i}
-      className={`text-[10px] px-1.5 py-0 rounded border whitespace-nowrap ${
-        u.type === 'puzzle'
-          ? 'bg-copper-900/40 text-copper-300 border-copper-700/50'
-          : u.type === 'character'
-            ? 'bg-arcane-900/40 text-arcane-300 border-arcane-700/50'
-            : 'bg-red-900/40 text-red-300 border-red-700/50'
-      }`}
-    >
-      {u.type === 'puzzle' ? '🧩' : u.type === 'character' ? '🛡' : u.type === 'vessel' ? '🏺' : '💀'} {u.name}
-    </span>
-  ));
-
   const rowActionButtons = (collectible: CustomCollectible) => (
     <>
       <InlineFolderPicker
@@ -337,12 +323,8 @@ export const CollectibleEditor: React.FC<{ initialSelectedId?: string }> = ({ in
     {
       key: 'usedBy',
       label: 'Used by',
-      value: (c) => usagesByCollectible.get(c.id)?.length || null,
-      render: (c) => {
-        const usages = usagesByCollectible.get(c.id) ?? [];
-        if (usages.length === 0) return <span className="text-stone-600">—</span>;
-        return <div className="flex flex-wrap gap-1">{usageChips(usages)}</div>;
-      },
+      value: (c) => usageSortValue(usagesByCollectible.get(c.id)),
+      render: (c) => <UsageChips usages={usagesByCollectible.get(c.id) ?? []} />,
     },
   ];
 
@@ -510,7 +492,7 @@ export const CollectibleEditor: React.FC<{ initialSelectedId?: string }> = ({ in
                         <span className="text-stone-600"> · </span>
                         {pickupLabel(collectible)}
                       </span>
-                      {usageChips(usages)}
+                      <UsageChips usages={usages} hideWhenEmpty />
                     </div>
                   </div>
                 );

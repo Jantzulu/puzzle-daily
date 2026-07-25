@@ -14,6 +14,7 @@ import { VersionHistoryModal } from './VersionHistoryModal';
 import { createVersionSnapshot } from '../../services/versionService';
 import { AssetEditorLayout } from './AssetEditorLayout';
 import { AssetBrowseTable, useBrowseSort, type BrowseColumn } from './AssetBrowseTable';
+import { UsageChips, usageSortValue } from './UsageChips';
 import { CollapsiblePanel } from './CollapsiblePanel';
 import { SpriteThumbnail } from './SpriteThumbnail';
 import { useIsMobile } from '../../hooks/useMediaQuery';
@@ -324,10 +325,10 @@ const BehaviorEditor: React.FC<BehaviorEditorProps> = ({ behavior, onChange, onR
                 onChange={e => onChange({ ...behavior, directionChangeAngle: parseInt(e.target.value) as 45 | 90 | 135 | 180 })}
                 className="w-full bg-stone-600 rounded px-2 py-1 text-sm mt-1"
               >
-                <option value={45}>45Â° (one step)</option>
-                <option value={90}>90Â° (quarter turn)</option>
-                <option value={135}>135Â° (three steps)</option>
-                <option value={180}>180Â° (reverse)</option>
+                <option value={45}>45° (one step)</option>
+                <option value={90}>90° (quarter turn)</option>
+                <option value={135}>135° (three steps)</option>
+                <option value={180}>180° (reverse)</option>
               </select>
             </div>
           )}
@@ -359,7 +360,7 @@ const BehaviorEditor: React.FC<BehaviorEditorProps> = ({ behavior, onChange, onR
                   }}
                   className="text-red-400 hover:text-red-300 text-xs"
                 >
-                  Ã—
+                  ×
                 </button>
               </div>
               {(effect.type === 'toggle_wall' || effect.type === 'trigger_teleport') && (
@@ -469,11 +470,11 @@ const BehaviorEditor: React.FC<BehaviorEditorProps> = ({ behavior, onChange, onR
 // Get behavior icon
 const getBehaviorIcon = (type: TileBehaviorType): string => {
   switch (type) {
-    case 'damage': return 'ðŸ”¥';
-    case 'teleport': return 'ðŸŒ€';
-    case 'direction_change': return 'âž¡ï¸';
-    case 'ice': return 'â„ï¸';
-    case 'pressure_plate': return 'â¬‡ï¸';
+    case 'damage': return '🔥';
+    case 'teleport': return '🌀';
+    case 'direction_change': return '➡️';
+    case 'ice': return '❄️';
+    case 'pressure_plate': return '⬇️';
     default: return '?';
   }
 };
@@ -725,7 +726,7 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
     return map;
   }, [tileTypes]); // eslint-disable-line react-hooks/exhaustive-deps -- folders change alongside asset edits
 
-  // Computed once per load, not per render and not per sort comparison â€”
+  // Computed once per load, not per render and not per sort comparison —
   // findAssetUsages scans every other asset, so calling it inside a
   // comparator would rescan the library O(n log n) times.
   const usagesByTile = useMemo(() => {
@@ -745,7 +746,7 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
       />
     ) : (
       <div className="w-7 h-7 bg-stone-800 border border-stone-700 rounded flex items-center justify-center text-sm flex-shrink-0">
-        {tileType.behaviors[0] ? getBehaviorIcon(tileType.behaviors[0].type) : 'â¬œ'}
+        {tileType.behaviors[0] ? getBehaviorIcon(tileType.behaviors[0].type) : '⬜'}
       </div>
     );
   };
@@ -772,7 +773,7 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
         className="px-1 py-0.5 text-xs leading-none rounded border border-stone-700 text-stone-400 hover:text-stone-200 hover:bg-stone-800"
         title="Duplicate"
       >
-        âŽ˜
+        ⎘
       </button>
       <button
         onClick={(e) => {
@@ -782,7 +783,7 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
         className="px-1 py-0.5 text-xs leading-none rounded border bg-red-900/40 text-red-300 border-red-700/50 hover:bg-red-900/60"
         title="Delete"
       >
-        âœ•
+        ✕
       </button>
     </>
   );
@@ -820,7 +821,7 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
       label: 'Behaviors',
       value: (t) => t.behaviors.length,
       render: (t) => {
-        if (t.behaviors.length === 0) return <span className="text-stone-600">â€”</span>;
+        if (t.behaviors.length === 0) return <span className="text-stone-600">—</span>;
         return (
           <div className="flex flex-wrap gap-1">
             {t.behaviors.map((b, i) => (
@@ -844,7 +845,7 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
         const label = toggleLabel(t);
         return label
           ? <span className="px-1.5 py-0 rounded border text-[10px] whitespace-nowrap bg-arcane-900/40 text-arcane-300 border-arcane-700/50 capitalize">{label}</span>
-          : <span className="text-stone-600">â€”</span>;
+          : <span className="text-stone-600">—</span>;
       },
     },
     {
@@ -855,33 +856,14 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
         const name = t.folderId ? folderNames.get(t.folderId) : undefined;
         return name
           ? <span className="text-xs text-stone-400">{name}</span>
-          : <span className="text-stone-600">â€”</span>;
+          : <span className="text-stone-600">—</span>;
       },
     },
     {
       key: 'usedBy',
       label: 'Used by',
-      value: (t) => usagesByTile.get(t.id)?.length || null,
-      render: (t) => {
-        const usages = usagesByTile.get(t.id) ?? [];
-        if (usages.length === 0) return <span className="text-stone-600">â€”</span>;
-        return (
-          <div className="flex flex-wrap gap-1">
-            {usages.map((u, i) => (
-              <span
-                key={i}
-                className={`text-[10px] px-1.5 py-0 rounded border whitespace-nowrap ${
-                  u.type === 'skin'
-                    ? 'bg-arcane-900/40 text-arcane-300 border-arcane-700/50'
-                    : 'bg-copper-900/40 text-copper-300 border-copper-700/50'
-                }`}
-              >
-                {u.type === 'skin' ? 'ðŸŽ¨' : 'ðŸ§©'} {u.name}
-              </span>
-            ))}
-          </div>
-        );
-      },
+      value: (t) => usageSortValue(usagesByTile.get(t.id)),
+      render: (t) => <UsageChips usages={usagesByTile.get(t.id) ?? []} />,
     },
   ];
 
@@ -974,7 +956,7 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
             <div className="border border-stone-700 rounded max-h-[calc(100vh-250px)] overflow-y-auto overflow-x-hidden dense-scrollbar">
               {filteredTileTypes.length === 0 ? (
                 <div className="px-2 py-4 text-center text-stone-500 text-sm">
-                  {searchTerm ? 'No matches' : 'No custom tile types yet â€” click "+ New" to create one.'}
+                  {searchTerm ? 'No matches' : 'No custom tile types yet — click "+ New" to create one.'}
                 </div>
               ) : (
                 sort.sorted.map(tileType => {
@@ -1004,7 +986,7 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
                             space once the row is hovered, focused, or selected. */}
                         {/* Deliberately a div, not an h3: `.theme-root h3` sizes
                             every heading at 1.25x the theme heading size, and an
-                            element selector outranks Tailwind's text-* utility â€”
+                            element selector outranks Tailwind's text-* utility —
                             an h3 here renders ~25px and truncates early. */}
                         <div className={`flex-1 min-w-0 truncate text-parchment-100 ${scaledNameClass(tileType.name)}`}>
                           {tileType.name}
@@ -1022,7 +1004,7 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
                             className="px-1 py-0.5 text-xs leading-none rounded border border-stone-700 text-stone-400 hover:text-stone-200 hover:bg-stone-800"
                             title="Duplicate"
                           >
-                            âŽ˜
+                            ⎘
                           </button>
                           <button
                             onClick={(e) => {
@@ -1032,7 +1014,7 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
                             className="px-1 py-0.5 text-xs leading-none rounded border bg-red-900/40 text-red-300 border-red-700/50 hover:bg-red-900/60"
                             title="Delete"
                           >
-                            âœ•
+                            ✕
                           </button>
                         </div>
                       </div>
@@ -1089,7 +1071,7 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
           onOpen={(t) => handleSelect(t.id)}
           selection={{ isSelected: bulk.isSelected, toggle: bulk.toggle }}
           rowActions={rowActionButtons}
-          emptyMessage={searchTerm ? 'No matches' : 'No custom tile types yet â€” click "+ New" to create one.'}
+          emptyMessage={searchTerm ? 'No matches' : 'No custom tile types yet — click "+ New" to create one.'}
         />
       }
       navigation={{
@@ -1109,7 +1091,7 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
                         <h2 className="text-lg font-medieval text-copper-400 truncate">
                           {editing.name || 'Unnamed Tile'}
                         </h2>
-                        <p className="text-xs text-stone-400">{editing.baseType} â€¢ {editing.behaviors.length} behavior{editing.behaviors.length !== 1 ? 's' : ''}</p>
+                        <p className="text-xs text-stone-400">{editing.baseType} • {editing.behaviors.length} behavior{editing.behaviors.length !== 1 ? 's' : ''}</p>
                       </div>
                     </div>
                     <div className="flex gap-1.5 md:gap-2 flex-shrink-0">
@@ -1124,20 +1106,20 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
                             className="p-2 md:px-3 md:py-1.5 text-sm bg-copper-600/20 hover:bg-copper-600/30 text-copper-300 rounded border border-copper-500/30"
                             title="Save version snapshot"
                           >
-                            ðŸ“¸
+                            📸
                           </button>
                           <button
                             onClick={() => setShowVersionHistory(true)}
                             className="p-2 md:px-3 md:py-1.5 text-sm bg-stone-700 hover:bg-stone-600 rounded"
                             title="Version history"
                           >
-                            <span className="md:hidden">ðŸ“œ</span>
+                            <span className="md:hidden">📜</span>
                             <span className="hidden md:inline">History</span>
                           </button>
                         </>
                       )}
                       <button onClick={handleSave} className="dungeon-btn-success text-sm">
-                        <span className="md:hidden">ðŸ’¾</span>
+                        <span className="md:hidden">💾</span>
                         <span className="hidden md:inline">Save Tile Type</span>
                       </button>
                     </div>
@@ -1232,7 +1214,7 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
                       Hide from the Slab
                     </label>
                     <p className="text-xs text-stone-500 mt-1">
-                      No compendium page even when published â€” for showcase-only variants and the like.
+                      No compendium page even when published — for showcase-only variants and the like.
                     </p>
                   </div>
 
@@ -1560,13 +1542,13 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
                           onClick={handleSpriteRemove}
                           className="absolute top-0 right-0 px-2 py-1 bg-blood-700 rounded text-xs hover:bg-blood-600"
                         >
-                          âœ•
+                          ✕
                         </button>
                       </div>
                       <p className="text-xs text-stone-400">
                         {editing.customSprite.idleImageUrl && !editing.customSprite.idleImageData
-                          ? 'âœ“ Using URL'
-                          : 'âœ“ Image uploaded'}
+                          ? '✓ Using URL'
+                          : '✓ Image uploaded'}
                       </p>
                     </div>
                   ) : (
@@ -1591,7 +1573,7 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
                       <div className="flex items-center gap-2">
                         <MediaBrowseButton
                           onSelect={(url) => setSpriteUrl(url)}
-                          label="â˜ï¸ Browse Media"
+                          label="☁️ Browse Media"
                           className="px-2 py-1 text-xs"
                         />
                         <button
@@ -1599,7 +1581,7 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
                           onClick={() => setShowSpriteUrl(!showSpriteUrl)}
                           className="text-xs text-arcane-400 hover:text-arcane-300"
                         >
-                          {showSpriteUrl ? 'â–¼ Hide URL input' : 'â–¶ Or paste URL...'}
+                          {showSpriteUrl ? '▼ Hide URL input' : '▶ Or paste URL...'}
                         </button>
                       </div>
 
@@ -1673,13 +1655,13 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
                             onClick={handleOffStateSpriteRemove}
                             className="absolute top-0 right-0 px-2 py-1 bg-blood-700 rounded text-xs hover:bg-blood-600"
                           >
-                            âœ•
+                            ✕
                           </button>
                         </div>
                         <p className="text-xs text-stone-400">
                           {editing.offStateSprite.idleImageUrl && !editing.offStateSprite.idleImageData
-                            ? 'âœ“ Using URL'
-                            : 'âœ“ Image uploaded'}
+                            ? '✓ Using URL'
+                            : '✓ Image uploaded'}
                         </p>
                       </div>
                     ) : (
@@ -1704,7 +1686,7 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
                         <div className="flex items-center gap-2">
                           <MediaBrowseButton
                             onSelect={(url) => setOffSpriteUrl(url)}
-                            label="â˜ï¸ Browse Media"
+                            label="☁️ Browse Media"
                             className="px-2 py-1 text-xs"
                           />
                           <button
@@ -1712,7 +1694,7 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
                             onClick={() => setShowOffSpriteUrl(!showOffSpriteUrl)}
                             className="text-xs text-arcane-400 hover:text-arcane-300"
                           >
-                            {showOffSpriteUrl ? 'â–¼ Hide URL input' : 'â–¶ Or paste URL...'}
+                            {showOffSpriteUrl ? '▼ Hide URL input' : '▶ Or paste URL...'}
                           </button>
                         </div>
 

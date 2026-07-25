@@ -6,6 +6,7 @@ import { getSpellAssets, deleteSpellAsset, saveSpellAsset, getFolders } from '..
 import { SpellAssetBuilder } from './SpellAssetBuilder';
 import { AssetEditorLayout } from './AssetEditorLayout';
 import { AssetBrowseTable, useBrowseSort, type BrowseColumn } from './AssetBrowseTable';
+import { UsageChips, usageSortValue } from './UsageChips';
 import { FolderDropdown, useFilteredAssets, InlineFolderPicker } from './FolderDropdown';
 import { useBulkSelect, BulkActionBar, bulkDelete, bulkMoveToFolder, bulkExport, bulkImport } from './BulkActions';
 import { newAssetId } from '../../utils/assetIds';
@@ -190,27 +191,8 @@ export const SpellLibrary: React.FC<{ initialSelectedId?: string }> = ({ initial
     {
       key: 'usedBy',
       label: 'Used by',
-      value: (s) => usagesBySpell.get(s.id)?.length || null,
-      render: (s) => {
-        const usages = usagesBySpell.get(s.id) ?? [];
-        if (usages.length === 0) return <span className="text-stone-600">—</span>;
-        return (
-          <div className="flex flex-wrap gap-1">
-            {usages.map((u, i) => (
-              <span
-                key={i}
-                className={`text-[10px] px-1.5 py-0 rounded border whitespace-nowrap ${
-                  u.type === 'character'
-                    ? 'bg-arcane-900/40 text-arcane-300 border-arcane-700/50'
-                    : 'bg-red-900/40 text-red-300 border-red-700/50'
-                }`}
-              >
-                {u.type === 'character' ? '🛡' : '💀'} {u.name}
-              </span>
-            ))}
-          </div>
-        );
-      },
+      value: (s) => usageSortValue(usagesBySpell.get(s.id)),
+      render: (s) => <UsageChips usages={usagesBySpell.get(s.id) ?? []} />,
     },
   ];
 
@@ -387,18 +369,7 @@ export const SpellLibrary: React.FC<{ initialSelectedId?: string }> = ({ initial
                         {spell.range ? <><span className="text-stone-600"> · </span>Rng {spell.range}</> : null}
                         {spell.radius ? <><span className="text-stone-600"> · </span>Rad {spell.radius}</> : null}
                       </span>
-                      {usages.map((u, i) => (
-                        <span
-                          key={i}
-                          className={`text-[10px] px-1.5 py-0 rounded border whitespace-nowrap ${
-                            u.type === 'character'
-                              ? 'bg-arcane-900/40 text-arcane-300 border-arcane-700/50'
-                              : 'bg-red-900/40 text-red-300 border-red-700/50'
-                          }`}
-                        >
-                          {u.type === 'character' ? '🛡' : '💀'} {u.name}
-                        </span>
-                      ))}
+                      <UsageChips usages={usages} hideWhenEmpty />
                     </div>
                   </div>
                 );

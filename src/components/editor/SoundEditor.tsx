@@ -180,7 +180,7 @@ export const SoundEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
     // These callbacks land after an await, by which time the user may have
     // selected a different sound. Capture the id and apply the write
     // functionally, so the audio can only ever attach to the sound it was
-    // uploaded for â€” previously the stale `editing` object was written back
+    // uploaded for — previously the stale `editing` object was written back
     // wholesale, clobbering the newly selected sound with the old one.
     const targetId = editing.id;
     const derivedName = (prev: SoundAsset) =>
@@ -304,6 +304,24 @@ export const SoundEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
     return map;
   }, [sounds]); // eslint-disable-line react-hooks/exhaustive-deps -- folders change alongside asset edits
 
+  // Decorative waveform bars, derived deterministically from the sound's id so
+  // the shape is stable across re-renders (and distinct per sound).
+  const waveformBars = useMemo(() => {
+    let seed = 0;
+    for (const ch of editing?.id ?? '') seed = (seed * 31 + ch.charCodeAt(0)) >>> 0;
+    const next = () => {
+      // xorshift32 — cheap, deterministic, no dependency.
+      seed ^= seed << 13; seed >>>= 0;
+      seed ^= seed >> 17;
+      seed ^= seed << 5; seed >>>= 0;
+      return seed / 0xffffffff;
+    };
+    return Array.from({ length: 40 }, (_, i) => ({
+      height: Math.max(8, Math.sin(i * 0.5) * 20 + next() * 20 + 10),
+      opacity: 0.5 + next() * 0.5,
+    }));
+  }, [editing?.id]);
+
   // "Used by" is derived from the global-sound config the component already
   // holds: which triggers currently point at each sound. Built once per config
   // change so the sort comparator never rewalks the trigger table.
@@ -361,7 +379,7 @@ export const SoundEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
             </span>
           );
         }
-        return <span className="text-stone-600">â€”</span>;
+        return <span className="text-stone-600">—</span>;
       },
     },
     {
@@ -372,7 +390,7 @@ export const SoundEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
         const name = s.folderId ? folderNames.get(s.folderId) : undefined;
         return name
           ? <span className="text-xs text-stone-400">{name}</span>
-          : <span className="text-stone-600">â€”</span>;
+          : <span className="text-stone-600">—</span>;
       },
     },
     {
@@ -381,7 +399,22 @@ export const SoundEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
       value: (s) => triggersBySound.get(s.id)?.length || null,
       render: (s) => {
         const labels = triggersBySound.get(s.id) ?? [];
-        if (labels.length === 0) return <span className="text-stone-600">â€”</span>;
+        if (labels.length === 0) return <span className="text-stone-600">—</span>;
+        // These are trigger labels, not asset references, so UsageChips doesn't
+        // apply — but the same scaling rule does: a sound wired to every hit
+        // sound in the game shouldn't spill a chip per trigger.
+        if (labels.length > 2) {
+          return (
+            <div className="flex flex-wrap gap-1">
+              <span
+                title={`${labels.length} triggers:\n${labels.join('\n')}`}
+                className="text-[10px] px-1.5 py-0 rounded border whitespace-nowrap cursor-help bg-copper-900/40 text-copper-300 border-copper-700/50"
+              >
+                🔊 {labels.length} triggers
+              </span>
+            </div>
+          );
+        }
         return (
           <div className="flex flex-wrap gap-1">
             {labels.map((label, i) => (
@@ -389,7 +422,7 @@ export const SoundEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
                 key={i}
                 className="text-[10px] px-1.5 py-0 rounded border whitespace-nowrap bg-copper-900/40 text-copper-300 border-copper-700/50"
               >
-                ðŸ”Š {label}
+                🔊 {label}
               </span>
             ))}
           </div>
@@ -403,7 +436,7 @@ export const SoundEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
       render: (s) => (
         s.description
           ? <div className="text-xs text-stone-400 max-w-[22rem] truncate">{s.description}</div>
-          : <span className="text-stone-600">â€”</span>
+          : <span className="text-stone-600">—</span>
       ),
     },
   ];
@@ -429,7 +462,7 @@ export const SoundEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
     </div>
   );
 
-  // â”€â”€ Global sound + haptic config: their own full-width pages â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Global sound + haptic config: their own full-width pages ──────────────
   if (activeTab === 'global') {
     return (
       <div className="p-4">
@@ -525,7 +558,7 @@ export const SoundEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
     );
   }
 
-  // â”€â”€ Library tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Library tab ───────────────────────────────────────────────────────────
   const searchInput = (
     <input
       type="text"
@@ -599,7 +632,7 @@ export const SoundEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
         className="px-1 py-0.5 text-xs leading-none rounded border bg-red-900/40 text-red-300 border-red-700/50 hover:bg-red-900/60"
         title="Delete"
       >
-        âœ•
+        ✕
       </button>
     </>
   );
@@ -659,7 +692,7 @@ export const SoundEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
                       <SoundIcon />
                       {/* Name owns the remaining width; the delete button only
                           takes space once the row is hovered, focused, or
-                          selected. Deliberately a <p>, never an h3 â€”
+                          selected. Deliberately a <p>, never an h3 —
                           `.theme-root h3` sizes headings at 1.25x the theme
                           heading size and beats Tailwind's text-* utility. */}
                       <div className="flex-1 min-w-0">
@@ -677,7 +710,7 @@ export const SoundEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
                           className="px-1 py-0.5 text-xs leading-none rounded border bg-red-900/40 text-red-300 border-red-700/50 hover:bg-red-900/60"
                           title="Delete"
                         >
-                          âœ•
+                          ✕
                         </button>
                       </div>
                     </div>
@@ -834,7 +867,7 @@ export const SoundEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
                         : 'bg-purple-900/40 text-purple-300 border-purple-700/50 hover:bg-purple-900/60'
                     }`}
                   >
-                    {isPlaying ? 'Playing...' : 'â–¶ Preview Sound'}
+                    {isPlaying ? 'Playing...' : '▶ Preview Sound'}
                   </button>
                   {editing.audioUrl && !editing.audioData && (
                     <span className="text-stone-400 text-xs">
@@ -861,15 +894,16 @@ export const SoundEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
             {editing.audioData && (
               <div className="mt-4 p-4 bg-stone-700 rounded">
                 <div className="flex items-center justify-center gap-1 h-12">
-                  {/* Simple waveform visualization */}
-                  {Array.from({ length: 40 }).map((_, i) => (
+                  {/* Decorative waveform — not derived from the audio. It used
+                      to call Math.random() per bar during render, so every bar
+                      re-scrambled on any re-render (typing in the name field
+                      made it jitter). Now seeded from the sound's own id, so a
+                      given sound always draws the same shape. */}
+                  {waveformBars.map((bar, i) => (
                     <div
                       key={i}
                       className="w-1 bg-blue-500 rounded-full"
-                      style={{
-                        height: `${Math.max(8, Math.sin(i * 0.5) * 20 + Math.random() * 20 + 10)}px`,
-                        opacity: 0.5 + Math.random() * 0.5,
-                      }}
+                      style={{ height: `${bar.height}px`, opacity: bar.opacity }}
                     />
                   ))}
                 </div>
