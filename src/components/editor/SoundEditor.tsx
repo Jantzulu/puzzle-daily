@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { toast } from '../shared/Toast';
 import { findAssetUsages, formatUsageWarning } from '../../utils/assetDependencies';
 import { scaledNameClass } from '../../utils/textScale';
@@ -10,9 +10,12 @@ import {
   saveGlobalSoundConfig,
   getGlobalSoundConfig,
   saveGlobalHapticConfig,
+  getFolders,
 } from '../../utils/assetStorage';
 import { HAPTIC_PATTERN_OPTIONS, vibratePreview, getEffectiveHapticConfig } from '../../utils/haptics';
 import { soundManager } from '../../utils/soundManager';
+import { AssetEditorLayout } from './AssetEditorLayout';
+import { AssetBrowseTable, useBrowseSort, type BrowseColumn } from './AssetBrowseTable';
 import { FolderDropdown, useFilteredAssets, InlineFolderPicker } from './FolderDropdown';
 import { useBulkSelect, BulkActionBar, bulkDelete, bulkMoveToFolder, bulkExport, bulkImport } from './BulkActions';
 
@@ -62,6 +65,21 @@ const GLOBAL_HAPTIC_TRIGGERS = [
     { key: 'tilePaint' as keyof GlobalHapticConfig, label: 'Tile Paint', description: 'Painting tiles in map editor' },
   ]},
 ];
+
+const TABS = [
+  { key: 'library' as const, label: 'Sound Library' },
+  { key: 'global' as const, label: 'Sounds' },
+  { key: 'haptics' as const, label: 'Haptics' },
+];
+
+/** The speaker glyph, reused at a fixed 28px box everywhere a sound is listed. */
+const SoundIcon: React.FC = () => (
+  <div className="w-7 h-7 bg-stone-800 border border-stone-700 rounded flex items-center justify-center flex-shrink-0">
+    <svg className="w-4 h-4 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072M12 6.253v11.494m0 0A5.001 5.001 0 0012 12m0 5.747V6.253m0 0A5.001 5.001 0 0012 12m0-5.747L8 9H5a1 1 0 00-1 1v4a1 1 0 001 1h3l4 2.747" />
+    </svg>
+  </div>
+);
 
 export const SoundEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSelectedId }) => {
   const [sounds, setSounds] = useState<SoundAsset[]>(() => getSoundAssets());
@@ -264,282 +282,455 @@ export const SoundEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  return (
-    <div className="p-4 md:p-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex flex-col md:flex-row gap-4 md:gap-8">
-          {/* Left Panel - Sound Library */}
-      <div className="w-full md:w-72 space-y-4 overflow-hidden">
-        {/* Tabs */}
-        <div className="flex gap-2 mb-4">
-          <button
-            onClick={() => setActiveTab('library')}
-            className={`flex-1 px-3 py-2 rounded text-sm font-medium ${
-              activeTab === 'library'
-                ? 'bg-arcane-700 text-parchment-100'
-                : 'bg-stone-700 text-stone-300 hover:bg-stone-600'
-            }`}
-          >
-            Sound Library
-          </button>
-          <button
-            onClick={() => setActiveTab('global')}
-            className={`flex-1 px-3 py-2 rounded text-sm font-medium ${
-              activeTab === 'global'
-                ? 'bg-arcane-700 text-parchment-100'
-                : 'bg-stone-700 text-stone-300 hover:bg-stone-600'
-            }`}
-          >
-            Sounds
-          </button>
-          <button
-            onClick={() => setActiveTab('haptics')}
-            className={`flex-1 px-3 py-2 rounded text-sm font-medium ${
-              activeTab === 'haptics'
-                ? 'bg-arcane-700 text-parchment-100'
-                : 'bg-stone-700 text-stone-300 hover:bg-stone-600'
-            }`}
-          >
-            Haptics
-          </button>
-        </div>
+  const handleCancel = () => {
+    setEditing(null);
+    setSelectedId(null);
+    setIsCreating(false);
+  };
 
-        {activeTab === 'library' && (
-          <>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold font-medieval text-copper-400">Sounds</h2>
-              <button
-                onClick={handleNew}
-                className="dungeon-btn-success text-sm"
+  const folderNames = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const f of getFolders('objects')) map.set(f.id, f.name);
+    return map;
+  }, [sounds]); // eslint-disable-line react-hooks/exhaustive-deps -- folders change alongside asset edits
+
+  // "Used by" is derived from the global-sound config the component already
+  // holds: which triggers currently point at each sound. Built once per config
+  // change so the sort comparator never rewalks the trigger table.
+  const triggersBySound = useMemo(() => {
+    const map = new Map<string, string[]>();
+    for (const group of GLOBAL_SOUND_TRIGGERS) {
+      for (const item of group.items) {
+        const soundId = globalConfig[item.key as keyof GlobalSoundConfig];
+        if (!soundId) continue;
+        const list = map.get(soundId);
+        if (list) list.push(item.label);
+        else map.set(soundId, [item.label]);
+      }
+    }
+    return map;
+  }, [globalConfig]);
+
+  const browseColumns: BrowseColumn<SoundAsset>[] = [
+    {
+      key: 'icon',
+      label: '',
+      sortable: false,
+      className: 'w-10',
+      render: () => <SoundIcon />,
+    },
+    {
+      key: 'name',
+      label: 'Name',
+      value: (s) => s.name || 'Unnamed',
+      render: (s) => <span className="text-parchment-100">{s.name || 'Unnamed'}</span>,
+    },
+    {
+      key: 'duration',
+      label: 'Duration',
+      align: 'right',
+      value: (s) => s.duration ?? null,
+      render: (s) => <span className="text-xs text-stone-400 tabular-nums">{formatDuration(s.duration)}</span>,
+    },
+    {
+      key: 'source',
+      label: 'Source',
+      value: (s) => (s.audioData ? 'File' : s.audioUrl ? 'URL' : null),
+      render: (s) => {
+        if (s.audioData) {
+          return (
+            <span className="px-1.5 py-0 rounded border text-[10px] whitespace-nowrap bg-moss-900/40 text-moss-300 border-moss-700/50">
+              File
+            </span>
+          );
+        }
+        if (s.audioUrl) {
+          return (
+            <span className="px-1.5 py-0 rounded border text-[10px] whitespace-nowrap bg-arcane-900/40 text-arcane-300 border-arcane-700/50">
+              URL
+            </span>
+          );
+        }
+        return <span className="text-stone-600">—</span>;
+      },
+    },
+    {
+      key: 'folder',
+      label: 'Folder',
+      value: (s) => (s.folderId ? folderNames.get(s.folderId) ?? null : null),
+      render: (s) => {
+        const name = s.folderId ? folderNames.get(s.folderId) : undefined;
+        return name
+          ? <span className="text-xs text-stone-400">{name}</span>
+          : <span className="text-stone-600">—</span>;
+      },
+    },
+    {
+      key: 'usedBy',
+      label: 'Used by',
+      value: (s) => triggersBySound.get(s.id)?.length || null,
+      render: (s) => {
+        const labels = triggersBySound.get(s.id) ?? [];
+        if (labels.length === 0) return <span className="text-stone-600">—</span>;
+        return (
+          <div className="flex flex-wrap gap-1">
+            {labels.map((label, i) => (
+              <span
+                key={i}
+                className="text-[10px] px-1.5 py-0 rounded border whitespace-nowrap bg-copper-900/40 text-copper-300 border-copper-700/50"
               >
-                + New
-              </button>
+                🔊 {label}
+              </span>
+            ))}
+          </div>
+        );
+      },
+    },
+    {
+      key: 'description',
+      label: 'Description',
+      value: (s) => s.description || null,
+      render: (s) => (
+        s.description
+          ? <div className="text-xs text-stone-400 max-w-[22rem] truncate">{s.description}</div>
+          : <span className="text-stone-600">—</span>
+      ),
+    },
+  ];
+
+  // One ordering feeds the table, the sidebar list, and prev/next.
+  const sort = useBrowseSort(filteredSounds, browseColumns, 'name');
+
+  const tabBar = (
+    <div className="flex items-center gap-1.5">
+      {TABS.map(t => (
+        <button
+          key={t.key}
+          onClick={() => setActiveTab(t.key)}
+          className={`px-2 py-0.5 rounded border text-xs ${
+            activeTab === t.key
+              ? 'bg-stone-700 text-parchment-100 border-arcane-500'
+              : 'text-stone-400 border-stone-700 hover:text-stone-200'
+          }`}
+        >
+          {t.label}
+        </button>
+      ))}
+    </div>
+  );
+
+  // ── Global sound + haptic config: their own full-width pages ──────────────
+  if (activeTab === 'global') {
+    return (
+      <div className="p-4">
+        <div className="max-w-7xl mx-auto space-y-2">
+          {tabBar}
+          <div>
+            <div className="text-lg font-medieval text-copper-400">Global Sound Configuration</div>
+            <p className="text-stone-400 text-xs">
+              Assign sounds to game events. These are the default sounds used when no entity-specific sound is configured.
+            </p>
+          </div>
+
+          {GLOBAL_SOUND_TRIGGERS.map((group) => (
+            <div key={group.group} className="border border-stone-700 rounded overflow-hidden">
+              <div className="bg-stone-800 px-2 py-1.5 text-xs uppercase text-stone-400">
+                {group.group}
+              </div>
+              <div className="p-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-1.5">
+                  {group.items.map((item) => (
+                    <div key={item.key} className="flex items-center justify-between gap-2">
+                      <span className="text-stone-400 text-sm truncate">{item.label}</span>
+                      <select
+                        value={globalConfig[item.key as keyof GlobalSoundConfig] || ''}
+                        onChange={(e) => handleGlobalConfigChange(item.key, e.target.value || undefined)}
+                        className="flex-1 max-w-[140px] px-2 py-1 bg-stone-800 border border-stone-700 rounded text-parchment-100 text-xs"
+                      >
+                        <option value="">None</option>
+                        {sounds.map((sound) => (
+                          <option key={sound.id} value={sound.id}>
+                            {sound.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
-            {/* Folder Filter */}
-            <div className="mb-3">
-              <FolderDropdown
-                category="objects"
-                selectedFolderId={selectedFolderId}
-                onFolderSelect={setSelectedFolderId}
-              />
+  if (activeTab === 'haptics') {
+    return (
+      <div className="p-4">
+        <div className="max-w-7xl mx-auto space-y-2">
+          {tabBar}
+          <div>
+            <div className="text-lg font-medieval text-copper-400">Haptic Feedback</div>
+            <p className="text-stone-400 text-xs">
+              Configure vibration patterns for game events. These apply to all users on mobile devices.
+              Set "None" to disable haptics for a specific event.
+            </p>
+          </div>
+
+          {GLOBAL_HAPTIC_TRIGGERS.map((group) => (
+            <div key={group.group} className="border border-stone-700 rounded overflow-hidden">
+              <div className="bg-stone-800 px-2 py-1.5 text-xs uppercase text-stone-400">
+                {group.group}
+              </div>
+              <div className="p-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-1.5">
+                  {group.items.map((item) => (
+                    <div key={item.key} className="flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <span className="text-stone-300 text-sm">{item.label}</span>
+                        <p className="text-stone-500 text-[10px] leading-tight">{item.description}</p>
+                      </div>
+                      <select
+                        value={hapticConfig[item.key] ?? ''}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          handleHapticConfigChange(item.key, val ? val as HapticPattern : null);
+                        }}
+                        className="w-24 flex-shrink-0 px-2 py-1 bg-stone-800 border border-stone-700 rounded text-parchment-100 text-xs"
+                      >
+                        <option value="">None</option>
+                        {HAPTIC_PATTERN_OPTIONS.map((p) => (
+                          <option key={p} value={p}>{p}</option>
+                        ))}
+                      </select>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
-            {/* Search */}
-            <input
-              type="text"
-              placeholder="Search sounds..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="dungeon-input w-full mb-3"
-            />
+  // ── Library tab ───────────────────────────────────────────────────────────
+  const searchInput = (
+    <input
+      type="text"
+      placeholder="Search sounds..."
+      value={searchTerm}
+      onChange={(e) => setSearchTerm(e.target.value)}
+      className="flex-1 min-w-0 bg-stone-800 border border-stone-700 rounded px-2 py-1 text-xs text-parchment-100 placeholder-stone-500 focus:outline-none focus:border-arcane-500"
+    />
+  );
 
-            <BulkActionBar
-              count={bulk.count}
-              totalCount={filteredSounds.length}
-              onSelectAll={() => bulk.selectAll(filteredSounds.map(s => s.id))}
-              onClear={bulk.clear}
-              onDelete={() => {
-                const nameMap = new Map(sounds.map(s => [s.id, s.name]));
-                const deleted = bulkDelete([...bulk.selectedIds], 'sound', deleteSoundAsset, nameMap);
-                if (deleted.length) { refreshSounds(); bulk.clear(); if (selectedId && deleted.includes(selectedId)) { setSelectedId(null); setEditing(null); } }
-              }}
-              onMoveToFolder={() => {
-                bulkMoveToFolder([...bulk.selectedIds], 'objects', (id: string) => sounds.find(s => s.id === id), saveSoundAsset);
-                refreshSounds(); bulk.clear();
-              }}
-              onExport={() => {
-                const items = sounds.filter(s => bulk.selectedIds.has(s.id));
-                bulkExport(items, 'sounds-export.json', 'sound');
-              }}
-              onImport={() => bulkImport({
-                assetType: 'sound',
-                saveFn: saveSoundAsset,
-                existingIds: new Set(sounds.map(s => s.id)),
-                onComplete: () => { refreshSounds(); bulk.clear(); },
-              })}
-            />
+  const folderFilter = (
+    <FolderDropdown
+      category="objects"
+      selectedFolderId={selectedFolderId}
+      onFolderSelect={setSelectedFolderId}
+    />
+  );
 
-            {/* Sound List */}
-            <div className="space-y-2 max-h-96 overflow-y-auto">
-              {filteredSounds.length === 0 ? (
-                <p className="text-stone-400 text-sm text-center py-4">
-                  No sounds yet. Click "+ New" to add one!
-                </p>
-              ) : (
-                filteredSounds.map((sound) => (
+  const newButton = (
+    <button
+      onClick={handleNew}
+      className="px-2 py-0.5 rounded border text-xs bg-green-900/40 text-green-300 border-green-700/50 hover:bg-green-900/60 flex-shrink-0"
+    >
+      + New
+    </button>
+  );
+
+  const countLabel = (
+    <span className="ml-1.5 text-xs font-sans text-stone-500">
+      {filteredSounds.length}{filteredSounds.length !== sounds.length && ` / ${sounds.length}`}
+    </span>
+  );
+
+  const bulkBar = (
+    <BulkActionBar
+      count={bulk.count}
+      totalCount={filteredSounds.length}
+      onSelectAll={() => bulk.selectAll(filteredSounds.map(s => s.id))}
+      onClear={bulk.clear}
+      onDelete={() => {
+        const nameMap = new Map(sounds.map(s => [s.id, s.name]));
+        const deleted = bulkDelete([...bulk.selectedIds], 'sound', deleteSoundAsset, nameMap);
+        if (deleted.length) { refreshSounds(); bulk.clear(); if (selectedId && deleted.includes(selectedId)) { setSelectedId(null); setEditing(null); } }
+      }}
+      onMoveToFolder={() => {
+        bulkMoveToFolder([...bulk.selectedIds], 'objects', (id: string) => sounds.find(s => s.id === id), saveSoundAsset);
+        refreshSounds(); bulk.clear();
+      }}
+      onExport={() => {
+        const items = sounds.filter(s => bulk.selectedIds.has(s.id));
+        bulkExport(items, 'sounds-export.json', 'sound');
+      }}
+      onImport={() => bulkImport({
+        assetType: 'sound',
+        saveFn: saveSoundAsset,
+        existingIds: new Set(sounds.map(s => s.id)),
+        onComplete: () => { refreshSounds(); bulk.clear(); },
+      })}
+    />
+  );
+
+  const rowActionButtons = (sound: SoundAsset) => (
+    <>
+      <InlineFolderPicker
+        category="objects"
+        currentFolderId={sound.folderId}
+        onFolderChange={(folderId) => handleFolderChange(sound.id, folderId)}
+      />
+      <button
+        onClick={() => handleDelete(sound.id)}
+        className="px-1 py-0.5 text-xs leading-none rounded border bg-red-900/40 text-red-300 border-red-700/50 hover:bg-red-900/60"
+        title="Delete"
+      >
+        ✕
+      </button>
+    </>
+  );
+
+  return (
+    <AssetEditorLayout
+      isEditing={!!editing}
+      onBack={handleCancel}
+      listTitle="Sounds"
+      listPanel={
+        <>
+          {tabBar}
+
+          <div className="flex justify-between items-center gap-2">
+            <h2 className="text-lg font-medieval text-copper-400">
+              Sounds
+              {countLabel}
+            </h2>
+            {newButton}
+          </div>
+
+          {/* Search + folder filter share one row so the list starts higher */}
+          <div className="flex items-center gap-1.5">
+            {searchInput}
+            <div className="w-32 flex-shrink-0">{folderFilter}</div>
+          </div>
+
+          {bulkBar}
+
+          <div className="border border-stone-700 rounded max-h-[calc(100vh-250px)] overflow-y-auto overflow-x-hidden dense-scrollbar">
+            {sort.sorted.length === 0 ? (
+              <div className="px-2 py-4 text-center text-stone-500 text-sm">
+                {searchTerm ? 'No matches' : 'No sounds yet. Click "+ New" to add one!'}
+              </div>
+            ) : (
+              sort.sorted.map((sound) => {
+                const isSelected = selectedId === sound.id;
+                return (
                   <div
                     key={sound.id}
                     onClick={() => handleSelect(sound.id)}
-                    className={`p-3 rounded cursor-pointer flex items-center justify-between ${
-                      bulk.isSelected(sound.id) ? 'bg-blue-900/40 border border-blue-500' :
-                      selectedId === sound.id
-                        ? 'bg-arcane-700'
-                        : 'bg-stone-700 hover:bg-stone-600'
+                    className={`group px-2 py-1.5 cursor-pointer transition-colors border-t border-stone-700/60 first:border-t-0 ${
+                      bulk.isSelected(sound.id) ? 'bg-sky-900/40' :
+                      isSelected
+                        ? 'bg-copper-900/50'
+                        : 'hover:bg-stone-800/50'
                     }`}
                   >
-                    <div className="flex items-start gap-3 min-w-0">
+                    <div className="flex items-center gap-2">
                       <input
                         type="checkbox"
                         checked={bulk.isSelected(sound.id)}
                         onChange={() => bulk.toggle(sound.id)}
                         onClick={(e) => e.stopPropagation()}
-                        className="accent-blue-500 flex-shrink-0"
+                        className="accent-sky-500 flex-shrink-0"
                       />
-                      <div
-                        className="bg-stone-600 rounded flex items-center justify-center flex-shrink-0 transition-all duration-150"
-                        style={{ width: selectedId === sound.id ? 48 : 32, height: selectedId === sound.id ? 48 : 32 }}
-                      >
-                        <svg
-                          className="text-stone-300 transition-all duration-150"
-                          style={{ width: selectedId === sound.id ? 24 : 16, height: selectedId === sound.id ? 24 : 16 }}
-                          fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                      <SoundIcon />
+                      {/* Name owns the remaining width; the delete button only
+                          takes space once the row is hovered, focused, or
+                          selected. Deliberately a <p>, never an h3 —
+                          `.theme-root h3` sizes headings at 1.25x the theme
+                          heading size and beats Tailwind's text-* utility. */}
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-parchment-100 truncate ${scaledNameClass(sound.name)}`}>{sound.name}</p>
+                        <p className="text-stone-500 text-[10px] leading-tight">{formatDuration(sound.duration)}</p>
+                      </div>
+                      <div className={`flex items-center gap-1 flex-shrink-0 transition-opacity ${
+                        isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 focus-within:opacity-100'
+                      }`}>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(sound.id);
+                          }}
+                          className="px-1 py-0.5 text-xs leading-none rounded border bg-red-900/40 text-red-300 border-red-700/50 hover:bg-red-900/60"
+                          title="Delete"
                         >
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072M12 6.253v11.494m0 0A5.001 5.001 0 0012 12m0 5.747V6.253m0 0A5.001 5.001 0 0012 12m0-5.747L8 9H5a1 1 0 00-1 1v4a1 1 0 001 1h3l4 2.747" />
-                        </svg>
-                      </div>
-                      <div className="min-w-0">
-                        <p className={`text-parchment-100 font-medium ${scaledNameClass(sound.name)}`}>{sound.name}</p>
-                        <p className="text-stone-400 text-xs">{formatDuration(sound.duration)}</p>
+                          ✕
+                        </button>
                       </div>
                     </div>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDelete(sound.id);
-                      }}
-                      className="text-red-400 hover:text-red-300 p-1"
-                      title="Delete"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                    </button>
                   </div>
-                ))
-              )}
-            </div>
-          </>
-        )}
-
-        {activeTab === 'global' && (
-          <div className="space-y-4 max-h-[500px] overflow-y-auto">
-            <h3 className="text-parchment-100 font-medium">Global Sound Configuration</h3>
-            <p className="text-stone-400 text-xs">
-              Assign sounds to game events. These are the default sounds used when no entity-specific sound is configured.
-            </p>
-
-            {GLOBAL_SOUND_TRIGGERS.map((group) => (
-              <div key={group.group} className="space-y-2">
-                <h4 className="text-stone-300 text-sm font-medium border-b border-stone-700 pb-1">
-                  {group.group}
-                </h4>
-                {group.items.map((item) => (
-                  <div key={item.key} className="flex items-center justify-between gap-2">
-                    <span className="text-stone-400 text-sm">{item.label}</span>
-                    <select
-                      value={globalConfig[item.key as keyof GlobalSoundConfig] || ''}
-                      onChange={(e) => handleGlobalConfigChange(item.key, e.target.value || undefined)}
-                      className="flex-1 max-w-[140px] px-2 py-1 bg-stone-700 rounded text-parchment-100 text-xs"
-                    >
-                      <option value="">None</option>
-                      {sounds.map((sound) => (
-                        <option key={sound.id} value={sound.id}>
-                          {sound.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                ))}
-              </div>
-            ))}
+                );
+              })
+            )}
           </div>
-        )}
-
-        {activeTab === 'haptics' && (
-          <div className="space-y-4 max-h-[500px] overflow-y-auto">
-            <h3 className="text-parchment-100 font-medium">Haptic Feedback</h3>
-            <p className="text-stone-400 text-xs">
-              Configure vibration patterns for game events. These apply to all users on mobile devices.
-              Set "None" to disable haptics for a specific event.
-            </p>
-
-            {GLOBAL_HAPTIC_TRIGGERS.map((group) => (
-              <div key={group.group} className="space-y-2">
-                <h4 className="text-stone-300 text-sm font-medium border-b border-stone-700 pb-1">
-                  {group.group}
-                </h4>
-                {group.items.map((item) => (
-                  <div key={item.key} className="flex items-center justify-between gap-2">
-                    <div className="min-w-0">
-                      <span className="text-stone-300 text-sm">{item.label}</span>
-                      <p className="text-stone-500 text-[10px] leading-tight">{item.description}</p>
-                    </div>
-                    <select
-                      value={hapticConfig[item.key] ?? ''}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        handleHapticConfigChange(item.key, val ? val as HapticPattern : null);
-                      }}
-                      className="w-24 px-2 py-1 bg-stone-700 rounded text-parchment-100 text-xs"
-                    >
-                      <option value="">None</option>
-                      {HAPTIC_PATTERN_OPTIONS.map((p) => (
-                        <option key={p} value={p}>{p}</option>
-                      ))}
-                    </select>
-                  </div>
-                ))}
-              </div>
-            ))}
+        </>
+      }
+      browseControls={
+        <div className="space-y-2">
+          {tabBar}
+          <div className="flex items-center gap-2 flex-wrap">
+            <h2 className="text-lg font-medieval text-copper-400 mr-1">
+              Sounds
+              {countLabel}
+            </h2>
+            <div className="w-48">{searchInput}</div>
+            <div className="w-40">{folderFilter}</div>
+            {newButton}
+            <div className="ml-auto">{bulkBar}</div>
           </div>
-        )}
-      </div>
-
-      {/* Right Panel - Sound Editor */}
-      <div className="flex-1">
-        {!editing ? (
-              <div className="dungeon-panel p-8 rounded text-center">
-                <h2 className="text-2xl font-bold font-medieval text-copper-400 mb-4">Sound Editor</h2>
-                <p className="text-stone-400 mb-6">
-                  Create and manage sound effects and music for your puzzles.
-                  <br />
-                  Select a sound from the list or create a new one.
-                </p>
-                <button
-                  onClick={handleNew}
-                  className="dungeon-btn-success text-lg"
-                >
-                  + Create New Sound
-                </button>
-              </div>
-        ) : (
-          <div className="space-y-6">
-            <div className="flex justify-between items-center">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-stone-700 rounded flex items-center justify-center flex-shrink-0">
-                  <svg className="w-6 h-6 text-stone-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072M12 6.253v11.494m0 0A5.001 5.001 0 0012 12m0 5.747V6.253m0 0A5.001 5.001 0 0012 12m0-5.747L8 9H5a1 1 0 00-1 1v4a1 1 0 001 1h3l4 2.747" />
-                  </svg>
-                </div>
-                <h2 className="text-2xl font-bold">
+        </div>
+      }
+      browsePanel={
+        <AssetBrowseTable
+          items={sort.sorted}
+          columns={browseColumns}
+          sortKey={sort.sortKey}
+          sortDir={sort.sortDir}
+          onToggleSort={sort.toggleSort}
+          onOpen={(s) => handleSelect(s.id)}
+          selection={{ isSelected: bulk.isSelected, toggle: bulk.toggle }}
+          rowActions={rowActionButtons}
+          emptyMessage={searchTerm ? 'No matches' : 'No sounds yet. Click "+ New" to add one!'}
+        />
+      }
+      navigation={{
+        items: sort.sorted.map(s => ({ id: s.id, name: s.name || 'Unnamed' })),
+        currentId: selectedId,
+        onSelect: (id) => handleSelect(id),
+      }}
+      detailPanel={
+        editing ? (
+          <div className="space-y-4">
+            <div className="flex justify-between items-center gap-2">
+              <div className="flex items-center gap-2">
+                <SoundIcon />
+                <div className="text-lg font-medieval text-copper-400">
                   {isCreating ? 'Create Sound' : 'Edit Sound'}
-                </h2>
+                </div>
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-1.5">
                 <button
-                  onClick={() => {
-                    setEditing(null);
-                    setSelectedId(null);
-                    setIsCreating(false);
-                  }}
-                  className="px-4 py-2 bg-stone-600 hover:bg-stone-500 rounded"
+                  onClick={handleCancel}
+                  className="px-2 py-0.5 rounded border text-xs border-stone-700 text-stone-400 hover:text-stone-200 hover:bg-stone-800"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleSave}
-                  className="px-4 py-2 bg-moss-700 rounded hover:bg-moss-600"
+                  className="px-2 py-0.5 rounded border text-xs bg-moss-900/40 text-moss-300 border-moss-700/50 hover:bg-moss-900/60"
                 >
                   Save Sound
                 </button>
@@ -553,7 +744,7 @@ export const SoundEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
                 type="text"
                 value={editing.name}
                 onChange={(e) => setEditing({ ...editing, name: e.target.value })}
-                className="w-full px-3 py-2 bg-stone-700 rounded text-parchment-100"
+                className="w-full bg-stone-800 border border-stone-700 rounded px-2 py-1 text-sm text-parchment-100"
               />
             </div>
 
@@ -563,7 +754,7 @@ export const SoundEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
               <textarea
                 value={editing.description || ''}
                 onChange={(e) => setEditing({ ...editing, description: e.target.value })}
-                className="w-full px-3 py-2 bg-stone-700 rounded text-parchment-100 text-sm"
+                className="w-full bg-stone-800 border border-stone-700 rounded px-2 py-1 text-sm text-parchment-100"
                 rows={2}
               />
             </div>
@@ -574,7 +765,7 @@ export const SoundEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
 
               {/* Upload File Option */}
               <div className="mb-3">
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -584,12 +775,12 @@ export const SoundEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
                   />
                   <button
                     onClick={() => fileInputRef.current?.click()}
-                    className="px-4 py-2 bg-arcane-700 hover:bg-arcane-600 rounded text-sm"
+                    className="px-2 py-0.5 rounded border text-xs bg-arcane-900/40 text-arcane-300 border-arcane-700/50 hover:bg-arcane-900/60"
                   >
                     {editing.audioData ? 'Replace Audio File' : 'Upload Audio File'}
                   </button>
                   {editing.audioData && (
-                    <span className="text-green-400 text-sm">
+                    <span className="text-green-400 text-xs">
                       File loaded ({formatDuration(editing.duration)})
                     </span>
                   )}
@@ -601,9 +792,9 @@ export const SoundEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
 
               {/* Divider */}
               <div className="flex items-center gap-3 my-3">
-                <div className="flex-1 h-px bg-stone-600"></div>
+                <div className="flex-1 h-px bg-stone-700"></div>
                 <span className="text-stone-500 text-xs">OR</span>
-                <div className="flex-1 h-px bg-stone-600"></div>
+                <div className="flex-1 h-px bg-stone-700"></div>
               </div>
 
               {/* URL Option */}
@@ -614,7 +805,7 @@ export const SoundEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
                   value={editing.audioUrl || ''}
                   onChange={(e) => setEditing({ ...editing, audioUrl: e.target.value || undefined })}
                   placeholder="https://your-storage.com/audio/file.mp3"
-                  className="w-full px-3 py-2 bg-stone-700 rounded text-parchment-100 text-sm"
+                  className="w-full bg-stone-800 border border-stone-700 rounded px-2 py-1 text-sm text-parchment-100"
                 />
                 <p className="text-stone-500 text-xs mt-1">
                   Link to external audio file. No file size limit. Fetched when played.
@@ -623,20 +814,20 @@ export const SoundEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
 
               {/* Preview Button */}
               {(editing.audioData || editing.audioUrl) && (
-                <div className="mt-3">
+                <div className="mt-3 flex items-center gap-2">
                   <button
                     onClick={handlePlaySound}
                     disabled={isPlaying}
-                    className={`px-4 py-2 rounded text-sm ${
+                    className={`px-2 py-0.5 rounded border text-xs ${
                       isPlaying
-                        ? 'bg-stone-600 text-stone-400 cursor-not-allowed'
-                        : 'bg-purple-600 hover:bg-purple-700'
+                        ? 'bg-stone-800 text-stone-500 border-stone-700 cursor-not-allowed'
+                        : 'bg-purple-900/40 text-purple-300 border-purple-700/50 hover:bg-purple-900/60'
                     }`}
                   >
                     {isPlaying ? 'Playing...' : '▶ Preview Sound'}
                   </button>
                   {editing.audioUrl && !editing.audioData && (
-                    <span className="ml-3 text-stone-400 text-xs">
+                    <span className="text-stone-400 text-xs">
                       (Will fetch from URL)
                     </span>
                   )}
@@ -645,7 +836,7 @@ export const SoundEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
             </div>
 
             {/* Folder */}
-            {!isCreating && editing && (
+            {!isCreating && (
               <div>
                 <label className="block text-stone-300 text-sm mb-1">Folder</label>
                 <InlineFolderPicker
@@ -678,11 +869,25 @@ export const SoundEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
               </div>
             )}
           </div>
-        )}
-      </div>
+        ) : null
+      }
+      emptyState={
+        <div className="border border-stone-700 rounded p-6 text-center">
+          <div className="text-lg font-medieval text-copper-400 mb-2">Sound Editor</div>
+          <p className="text-sm text-stone-400 mb-4">
+            Create and manage sound effects and music for your puzzles.
+            <br />
+            Select a sound from the list or create a new one.
+          </p>
+          <button
+            onClick={handleNew}
+            className="px-2 py-0.5 rounded border text-xs bg-green-900/40 text-green-300 border-green-700/50 hover:bg-green-900/60"
+          >
+            + Create New Sound
+          </button>
         </div>
-      </div>
-    </div>
+      }
+    />
   );
 };
 
