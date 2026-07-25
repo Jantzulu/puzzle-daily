@@ -2,7 +2,12 @@ import React, { useState } from 'react';
 
 interface CollapsiblePanelProps {
   title: string;
-  /** Extra classes on the outer container (appended to "dungeon-panel p-4 rounded") */
+  /**
+   * Extra classes on the CONTENT body. Every call site passes spacing
+   * utilities (space-y-3 / space-y-2) intended for the fields inside; they
+   * used to land on the outer container, where they did nothing, so those
+   * forms rendered flush.
+   */
   className?: string;
   /** Start collapsed instead of expanded */
   defaultCollapsed?: boolean;
@@ -10,8 +15,10 @@ interface CollapsiblePanelProps {
 }
 
 /**
- * A dungeon-panel with a clickable heading that toggles content visibility.
- * Used across asset editors for collapsible sections.
+ * A collapsible section for the asset editors, wearing the Production
+ * dashboard's chrome: one thin border, an uppercase header strip that doubles
+ * as the toggle, and a tight body. Replaced the dungeon-panel look (border-2
+ * plus bevel shadows) during the 2026-07-25 dev-page restyle.
  */
 export const CollapsiblePanel: React.FC<CollapsiblePanelProps> = ({
   title,
@@ -22,16 +29,16 @@ export const CollapsiblePanel: React.FC<CollapsiblePanelProps> = ({
   const [collapsed, setCollapsed] = useState(defaultCollapsed);
 
   return (
-    <div className={`dungeon-panel p-4 rounded ${className}`}>
+    <div className="border border-stone-700 rounded overflow-hidden">
       <button
         onClick={() => setCollapsed(c => !c)}
-        className="w-full flex items-center justify-between text-lg font-bold"
+        className="w-full flex items-center justify-between bg-stone-800 px-2 py-1.5 text-xs uppercase text-stone-400 hover:text-stone-200 transition-colors"
       >
         <span>{title}</span>
-        <span className="text-lg text-stone-400">{collapsed ? '▸' : '▾'}</span>
+        <span>{collapsed ? '▸' : '▾'}</span>
       </button>
       {!collapsed && (
-        <div className="mt-3">
+        <div className={`p-3 ${className}`}>
           {children}
         </div>
       )}
