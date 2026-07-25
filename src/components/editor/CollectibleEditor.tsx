@@ -15,6 +15,7 @@ import { AssetEditorLayout } from './AssetEditorLayout';
 import { AssetBrowseTable, useBrowseSort, type BrowseColumn } from './AssetBrowseTable';
 import { CollapsiblePanel } from './CollapsiblePanel';
 import { useIsMobile } from '../../hooks/useMediaQuery';
+import { newAssetId, newSpriteId } from '../../utils/assetIds';
 
 // Effect type options with icons
 /** Used for new items and as the fallback when an imported item omits the field. */
@@ -72,11 +73,11 @@ export const CollectibleEditor: React.FC<{ initialSelectedId?: string }> = ({ in
 
   const handleNew = () => {
     const newCollectible: CustomCollectible = {
-      id: 'collectible_' + Date.now(),
+      id: newAssetId('collectible'),
       name: 'New Collectible',
       description: '',
       customSprite: {
-        id: 'sprite_' + Date.now(),
+        id: newSpriteId(),
         name: 'Collectible Sprite',
         type: 'simple',
         shape: 'star',
@@ -163,10 +164,10 @@ export const CollectibleEditor: React.FC<{ initialSelectedId?: string }> = ({ in
     e.stopPropagation();
     const duplicated: CustomCollectible = {
       ...collectible,
-      id: 'collectible_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+      id: newAssetId('collectible'),
       name: collectible.name + ' (Copy)',
       effects: [...collectible.effects],
-      customSprite: collectible.customSprite ? { ...collectible.customSprite, id: 'sprite_' + Date.now() } : undefined,
+      customSprite: collectible.customSprite ? { ...collectible.customSprite, id: newSpriteId() } : undefined,
       createdAt: new Date().toISOString(),
     };
     setEditing(duplicated);
@@ -769,7 +770,7 @@ export const CollectibleEditor: React.FC<{ initialSelectedId?: string }> = ({ in
               <CollapsiblePanel title="Sprite">
                 <StaticSpriteEditor
                   sprite={editing.customSprite || {
-                    id: 'sprite_' + Date.now(),
+                    id: newSpriteId(),
                     name: 'Collectible Sprite',
                     type: 'simple',
                     shape: 'star',

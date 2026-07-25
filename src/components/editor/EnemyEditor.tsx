@@ -22,6 +22,7 @@ import { AssetEditorLayout } from './AssetEditorLayout';
 import { AssetBrowseTable, useBrowseSort, type BrowseColumn } from './AssetBrowseTable';
 import { CollapsiblePanel } from './CollapsiblePanel';
 import { useIsMobile } from '../../hooks/useMediaQuery';
+import { newAssetId, newSpriteId } from '../../utils/assetIds';
 
 /**
  * Distinct spells referenced anywhere in a behavior pattern, branches
@@ -112,13 +113,13 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string; assetKind?: 'en
 
   const handleNew = () => {
     const newEnemy: CustomEnemy = {
-      id: KIND.idPrefix + Date.now(),
+      id: newAssetId(KIND.idPrefix.slice(0, -1)),
       name: `New ${KIND.label}`,
-      spriteId: 'custom_sprite_' + Date.now(),
+      spriteId: newAssetId('custom_sprite'),
       health: 1,
       behavior: { type: 'static', defaultFacing: Direction.SOUTH, pattern: [] },
       customSprite: {
-        id: 'sprite_' + Date.now(),
+        id: newSpriteId(),
         name: 'Custom Sprite',
         type: 'simple',
         shape: 'circle',
@@ -172,10 +173,10 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string; assetKind?: 'en
     e.stopPropagation();
     const duplicated: CustomEnemy = {
       ...enemy,
-      id: KIND.idPrefix + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+      id: newAssetId(KIND.idPrefix.slice(0, -1)),
       name: enemy.name + ' (Copy)',
       behavior: enemy.behavior ? { ...enemy.behavior, pattern: [...(enemy.behavior.pattern || [])] } : undefined,
-      customSprite: enemy.customSprite ? { ...enemy.customSprite, id: 'sprite_' + Date.now() } : undefined,
+      customSprite: enemy.customSprite ? { ...enemy.customSprite, id: newSpriteId() } : undefined,
       createdAt: new Date().toISOString(),
     };
     setEditing(duplicated);

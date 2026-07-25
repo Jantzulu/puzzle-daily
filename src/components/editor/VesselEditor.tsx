@@ -15,6 +15,7 @@ import { AssetBrowseTable, useBrowseSort, type BrowseColumn } from './AssetBrows
 import { FolderDropdown, useFilteredAssets, InlineFolderPicker } from './FolderDropdown';
 import { CollapsiblePanel } from './CollapsiblePanel';
 import { useIsMobile } from '../../hooks/useMediaQuery';
+import { newAssetId, newSpriteId } from '../../utils/assetIds';
 
 const FACING_OPTIONS: { value: Direction; label: string }[] = [
   { value: Direction.NORTH, label: '↑ North' },
@@ -70,11 +71,11 @@ export const VesselEditor: React.FC<{ initialSelectedId?: string }> = ({ initial
 
   const handleNew = () => {
     const newVessel: CustomVessel = {
-      id: 'vessel_' + Date.now(),
+      id: newAssetId('vessel'),
       name: 'New Vessel',
       health: 1,
       customSprite: {
-        id: 'sprite_' + Date.now(),
+        id: newSpriteId(),
         name: 'Custom Sprite',
         type: 'simple',
         shape: 'square',
@@ -115,9 +116,9 @@ export const VesselEditor: React.FC<{ initialSelectedId?: string }> = ({ initial
     e.stopPropagation();
     const duplicated: CustomVessel = {
       ...vessel,
-      id: 'vessel_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+      id: newAssetId('vessel'),
       name: vessel.name + ' (Copy)',
-      customSprite: vessel.customSprite ? { ...vessel.customSprite, id: 'sprite_' + Date.now() } : undefined,
+      customSprite: vessel.customSprite ? { ...vessel.customSprite, id: newSpriteId() } : undefined,
       createdAt: new Date().toISOString(),
     };
     setEditing(duplicated);

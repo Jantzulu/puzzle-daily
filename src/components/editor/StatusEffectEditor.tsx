@@ -8,6 +8,7 @@ import { SimpleIconEditor } from './SimpleIconEditor';
 import { SpellPicker } from './SpellPicker';
 import { RichTextEditor } from './RichTextEditor';
 import { useIsMobile } from '../../hooks/useMediaQuery';
+import { newAssetId } from '../../utils/assetIds';
 
 interface StatusEffectEditorProps {
   effect?: StatusEffectAsset;
@@ -100,7 +101,7 @@ function makeDefaultIcon(color: string): SpriteReference {
   return {
     type: 'inline',
     spriteData: {
-      id: `icon_${Date.now()}`,
+      id: newAssetId('icon'),
       name: 'Status Icon',
       type: 'simple',
       shape: 'circle',
@@ -177,7 +178,7 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
     }
 
     const effectData: StatusEffectAsset = {
-      id: effect?.id || 'status_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+      id: effect?.id || newAssetId('status'),
       name: name.trim(),
       description: description.trim(),
       type,
@@ -1198,7 +1199,7 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
               sprite={polymorphSprite || {
                 type: 'inline',
                 spriteData: {
-                  id: `polymorph_sprite_${Date.now()}`,
+                  id: newAssetId('polymorph_sprite'),
                   name: 'Polymorph Sprite',
                   type: 'simple',
                   shape: 'circle',
@@ -1233,7 +1234,7 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
               sprite={reflectOverrideSprite || {
                 type: 'inline',
                 spriteData: {
-                  id: `reflect_sprite_${Date.now()}`,
+                  id: newAssetId('reflect_sprite'),
                   name: 'Reflect Sprite',
                   type: 'simple',
                   shape: 'circle',
@@ -1268,7 +1269,7 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
               sprite={reflectImpactSprite || {
                 type: 'inline',
                 spriteData: {
-                  id: `reflect_impact_${Date.now()}`,
+                  id: newAssetId('reflect_impact'),
                   name: 'Reflect Impact',
                   type: 'simple',
                   shape: 'circle',
@@ -1303,7 +1304,7 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
               sprite={overlaySprite || {
                 type: 'inline',
                 spriteData: {
-                  id: `overlay_${Date.now()}`,
+                  id: newAssetId('overlay'),
                   name: 'Overlay',
                   type: 'simple',
                   shape: 'circle',

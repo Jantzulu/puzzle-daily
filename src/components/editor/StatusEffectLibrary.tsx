@@ -10,6 +10,7 @@ import { AssetBrowseTable, useBrowseSort, type BrowseColumn } from './AssetBrows
 import { FolderDropdown, useFilteredAssets, InlineFolderPicker } from './FolderDropdown';
 import { SpriteThumbnail } from './SpriteThumbnail';
 import { useBulkSelect, BulkActionBar, bulkDelete, bulkMoveToFolder, bulkExport, bulkImport } from './BulkActions';
+import { newAssetId } from '../../utils/assetIds';
 
 // Get display color for status effect type
 function getEffectTypeColor(type: StatusEffectType): string {
@@ -95,7 +96,7 @@ export const StatusEffectLibrary: React.FC<{ initialSelectedId?: string }> = ({ 
     e.stopPropagation();
     const duplicated: StatusEffectAsset = {
       ...effect,
-      id: 'status_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+      id: newAssetId('status'),
       name: effect.name + ' (Copy)',
       createdAt: new Date().toISOString(),
     };

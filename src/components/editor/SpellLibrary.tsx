@@ -8,6 +8,7 @@ import { AssetEditorLayout } from './AssetEditorLayout';
 import { AssetBrowseTable, useBrowseSort, type BrowseColumn } from './AssetBrowseTable';
 import { FolderDropdown, useFilteredAssets, InlineFolderPicker } from './FolderDropdown';
 import { useBulkSelect, BulkActionBar, bulkDelete, bulkMoveToFolder, bulkExport, bulkImport } from './BulkActions';
+import { newAssetId } from '../../utils/assetIds';
 
 export const SpellLibrary: React.FC<{ initialSelectedId?: string }> = ({ initialSelectedId }) => {
   const [spells, setSpells] = useState<SpellAsset[]>([]);
@@ -75,7 +76,7 @@ export const SpellLibrary: React.FC<{ initialSelectedId?: string }> = ({ initial
     e.stopPropagation();
     const duplicated: SpellAsset = {
       ...spell,
-      id: 'spell_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+      id: newAssetId('spell'),
       name: spell.name + ' (Copy)',
       createdAt: new Date().toISOString(),
     };

@@ -16,6 +16,7 @@ import { createVersionSnapshot } from '../../services/versionService';
 import { AssetEditorLayout } from './AssetEditorLayout';
 import { AssetBrowseTable, useBrowseSort, type BrowseColumn } from './AssetBrowseTable';
 import { useIsMobile } from '../../hooks/useMediaQuery';
+import { newAssetId } from '../../utils/assetIds';
 
 // Helper to convert file to base64
 function fileToBase64(file: File): Promise<string> {
@@ -469,7 +470,7 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
 
   const handleNewSkin = () => {
     const newSkin: PuzzleSkin = {
-      id: 'skin_' + Date.now(),
+      id: newAssetId('skin'),
       name: 'New Skin',
       description: '',
       borderSprites: {},
@@ -710,7 +711,7 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
     e.stopPropagation();
     const duplicated: PuzzleSkin = {
       ...skin,
-      id: 'skin_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+      id: newAssetId('skin'),
       name: skin.name + ' (Copy)',
       borderSprites: { ...skin.borderSprites },
       tileSprites: { ...skin.tileSprites },

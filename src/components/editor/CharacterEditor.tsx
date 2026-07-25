@@ -22,6 +22,7 @@ import { AssetEditorLayout } from './AssetEditorLayout';
 import { AssetBrowseTable, useBrowseSort, type BrowseColumn } from './AssetBrowseTable';
 import { CollapsiblePanel } from './CollapsiblePanel';
 import { useIsMobile } from '../../hooks/useMediaQuery';
+import { newAssetId, newSpriteId } from '../../utils/assetIds';
 
 /**
  * Distinct spells referenced anywhere in a behavior list, branches included.
@@ -58,7 +59,7 @@ export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ init
       isCustom: true,
       createdAt: char.createdAt || new Date().toISOString(),
       customSprite: char.customSprite || {
-        id: 'sprite_' + Date.now() + '_' + Math.random(),
+        id: newSpriteId(),
         name: char.name + ' Sprite',
         type: 'simple',
         shape: 'circle',
@@ -112,9 +113,9 @@ export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ init
 
   const handleNew = () => {
     const newChar: CustomCharacter = {
-      id: 'char_' + Date.now(),
+      id: newAssetId('char'),
       name: 'New Character',
-      spriteId: 'custom_sprite_' + Date.now(),
+      spriteId: newAssetId('custom_sprite'),
       description: 'Custom character',
       health: 1,
       defaultFacing: Direction.EAST,
@@ -123,7 +124,7 @@ export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ init
         { type: ActionType.REPEAT }
       ],
       customSprite: {
-        id: 'sprite_' + Date.now(),
+        id: newSpriteId(),
         name: 'Custom Sprite',
         type: 'simple',
         shape: 'square',
@@ -178,10 +179,10 @@ export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ init
     e.stopPropagation();
     const duplicated: CustomCharacter = {
       ...char,
-      id: 'char_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+      id: newAssetId('char'),
       name: char.name + ' (Copy)',
       behavior: [...char.behavior],
-      customSprite: char.customSprite ? { ...char.customSprite, id: 'sprite_' + Date.now() } : undefined,
+      customSprite: char.customSprite ? { ...char.customSprite, id: newSpriteId() } : undefined,
       createdAt: new Date().toISOString(),
     };
     setEditing(duplicated);

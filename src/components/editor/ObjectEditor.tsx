@@ -18,6 +18,7 @@ import { AssetEditorLayout } from './AssetEditorLayout';
 import { AssetBrowseTable, useBrowseSort, type BrowseColumn } from './AssetBrowseTable';
 import { CollapsiblePanel } from './CollapsiblePanel';
 import { useIsMobile } from '../../hooks/useMediaQuery';
+import { newAssetId, newSpriteId } from '../../utils/assetIds';
 
 const ANCHOR_POINTS: { value: ObjectAnchorPoint; label: string; description: string }[] = [
   { value: 'center', label: 'Center', description: 'Sprite center aligned to tile center' },
@@ -211,11 +212,11 @@ export const ObjectEditor: React.FC<{ initialSelectedId?: string }> = ({ initial
 
   const handleNew = () => {
     const newObj: CustomObject = {
-      id: 'obj_' + Date.now(),
+      id: newAssetId('obj'),
       name: 'New Object',
       description: '',
       customSprite: {
-        id: 'sprite_' + Date.now(),
+        id: newSpriteId(),
         name: 'Object Sprite',
         type: 'simple',
         shape: 'square',
@@ -308,10 +309,10 @@ export const ObjectEditor: React.FC<{ initialSelectedId?: string }> = ({ initial
     e.stopPropagation();
     const duplicated: CustomObject = {
       ...obj,
-      id: 'obj_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+      id: newAssetId('obj'),
       name: obj.name + ' (Copy)',
       effects: [...obj.effects],
-      customSprite: obj.customSprite ? { ...obj.customSprite, id: 'sprite_' + Date.now() } : undefined,
+      customSprite: obj.customSprite ? { ...obj.customSprite, id: newSpriteId() } : undefined,
       createdAt: new Date().toISOString(),
     };
     setEditing(duplicated);

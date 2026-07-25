@@ -18,6 +18,7 @@ import { AssetEditorLayout } from './AssetEditorLayout';
 import { AssetBrowseTable, useBrowseSort, type BrowseColumn } from './AssetBrowseTable';
 import { FolderDropdown, useFilteredAssets, InlineFolderPicker } from './FolderDropdown';
 import { useBulkSelect, BulkActionBar, bulkDelete, bulkMoveToFolder, bulkExport, bulkImport } from './BulkActions';
+import { newAssetId } from '../../utils/assetIds';
 
 // Sound trigger categories for global config
 const GLOBAL_SOUND_TRIGGERS = [
@@ -123,7 +124,7 @@ export const SoundEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
 
   const handleNew = () => {
     const newSound: SoundAsset = {
-      id: 'sound_' + Date.now(),
+      id: newAssetId('sound'),
       name: 'New Sound',
       description: '',
       audioData: '',

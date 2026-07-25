@@ -17,6 +17,7 @@ import { AssetBrowseTable, useBrowseSort, type BrowseColumn } from './AssetBrows
 import { CollapsiblePanel } from './CollapsiblePanel';
 import { SpriteThumbnail } from './SpriteThumbnail';
 import { useIsMobile } from '../../hooks/useMediaQuery';
+import { newAssetId, newSpriteId } from '../../utils/assetIds';
 
 // Helper to convert file to base64
 function fileToBase64(file: File): Promise<string> {
@@ -522,7 +523,7 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
 
   const handleNew = () => {
     const newTileType: CustomTileType = {
-      id: 'tiletype_' + Date.now(),
+      id: newAssetId('tiletype'),
       name: 'New Tile Type',
       description: '',
       baseType: 'empty',
@@ -626,7 +627,7 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
     setEditing({
       ...editing,
       customSprite: {
-        id: 'sprite_' + Date.now(),
+        id: newSpriteId(),
         name: editing.name + ' Sprite',
         type: 'image',
         idleImageData: base64,
@@ -646,7 +647,7 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
     setEditing({
       ...editing,
       offStateSprite: {
-        id: 'sprite_off_' + Date.now(),
+        id: newAssetId('sprite_off'),
         name: editing.name + ' Off Sprite',
         type: 'image',
         idleImageData: base64,
@@ -666,7 +667,7 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
     setEditing({
       ...editing,
       customSprite: {
-        id: 'sprite_' + Date.now(),
+        id: newSpriteId(),
         name: editing.name + ' Sprite',
         type: 'image',
         idleImageUrl: url,
@@ -682,7 +683,7 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
     setEditing({
       ...editing,
       offStateSprite: {
-        id: 'sprite_off_' + Date.now(),
+        id: newAssetId('sprite_off'),
         name: editing.name + ' Off Sprite',
         type: 'image',
         idleImageUrl: url,
@@ -707,10 +708,10 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
     e.stopPropagation();
     const duplicated: CustomTileType = {
       ...tileType,
-      id: 'tiletype_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+      id: newAssetId('tiletype'),
       name: tileType.name + ' (Copy)',
       behaviors: [...tileType.behaviors],
-      customSprite: tileType.customSprite ? { ...tileType.customSprite, id: 'sprite_' + Date.now() } : undefined,
+      customSprite: tileType.customSprite ? { ...tileType.customSprite, id: newSpriteId() } : undefined,
       createdAt: new Date().toISOString(),
     };
     setEditing(duplicated);
