@@ -179,7 +179,7 @@ export const SoundEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
     // These callbacks land after an await, by which time the user may have
     // selected a different sound. Capture the id and apply the write
     // functionally, so the audio can only ever attach to the sound it was
-    // uploaded for — previously the stale `editing` object was written back
+    // uploaded for â€” previously the stale `editing` object was written back
     // wholesale, clobbering the newly selected sound with the old one.
     const targetId = editing.id;
     const derivedName = (prev: SoundAsset) =>
@@ -299,7 +299,7 @@ export const SoundEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
 
   const folderNames = useMemo(() => {
     const map = new Map<string, string>();
-    for (const f of getFolders('objects')) map.set(f.id, f.name);
+    for (const f of getFolders('sounds')) map.set(f.id, f.name);
     return map;
   }, [sounds]); // eslint-disable-line react-hooks/exhaustive-deps -- folders change alongside asset edits
 
@@ -360,7 +360,7 @@ export const SoundEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
             </span>
           );
         }
-        return <span className="text-stone-600">—</span>;
+        return <span className="text-stone-600">â€”</span>;
       },
     },
     {
@@ -371,7 +371,7 @@ export const SoundEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
         const name = s.folderId ? folderNames.get(s.folderId) : undefined;
         return name
           ? <span className="text-xs text-stone-400">{name}</span>
-          : <span className="text-stone-600">—</span>;
+          : <span className="text-stone-600">â€”</span>;
       },
     },
     {
@@ -380,7 +380,7 @@ export const SoundEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
       value: (s) => triggersBySound.get(s.id)?.length || null,
       render: (s) => {
         const labels = triggersBySound.get(s.id) ?? [];
-        if (labels.length === 0) return <span className="text-stone-600">—</span>;
+        if (labels.length === 0) return <span className="text-stone-600">â€”</span>;
         return (
           <div className="flex flex-wrap gap-1">
             {labels.map((label, i) => (
@@ -388,7 +388,7 @@ export const SoundEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
                 key={i}
                 className="text-[10px] px-1.5 py-0 rounded border whitespace-nowrap bg-copper-900/40 text-copper-300 border-copper-700/50"
               >
-                🔊 {label}
+                ðŸ”Š {label}
               </span>
             ))}
           </div>
@@ -402,7 +402,7 @@ export const SoundEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
       render: (s) => (
         s.description
           ? <div className="text-xs text-stone-400 max-w-[22rem] truncate">{s.description}</div>
-          : <span className="text-stone-600">—</span>
+          : <span className="text-stone-600">â€”</span>
       ),
     },
   ];
@@ -428,7 +428,7 @@ export const SoundEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
     </div>
   );
 
-  // ── Global sound + haptic config: their own full-width pages ──────────────
+  // â”€â”€ Global sound + haptic config: their own full-width pages â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (activeTab === 'global') {
     return (
       <div className="p-4">
@@ -524,7 +524,7 @@ export const SoundEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
     );
   }
 
-  // ── Library tab ───────────────────────────────────────────────────────────
+  // â”€â”€ Library tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const searchInput = (
     <input
       type="text"
@@ -537,7 +537,7 @@ export const SoundEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
 
   const folderFilter = (
     <FolderDropdown
-      category="objects"
+      category="sounds"
       selectedFolderId={selectedFolderId}
       onFolderSelect={setSelectedFolderId}
     />
@@ -570,7 +570,7 @@ export const SoundEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
         if (deleted.length) { refreshSounds(); bulk.clear(); if (selectedId && deleted.includes(selectedId)) { setSelectedId(null); setEditing(null); } }
       }}
       onMoveToFolder={() => {
-        bulkMoveToFolder([...bulk.selectedIds], 'objects', (id: string) => sounds.find(s => s.id === id), saveSoundAsset);
+        bulkMoveToFolder([...bulk.selectedIds], 'sounds', (id: string) => sounds.find(s => s.id === id), saveSoundAsset);
         refreshSounds(); bulk.clear();
       }}
       onExport={() => {
@@ -589,7 +589,7 @@ export const SoundEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
   const rowActionButtons = (sound: SoundAsset) => (
     <>
       <InlineFolderPicker
-        category="objects"
+        category="sounds"
         currentFolderId={sound.folderId}
         onFolderChange={(folderId) => handleFolderChange(sound.id, folderId)}
       />
@@ -598,7 +598,7 @@ export const SoundEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
         className="px-1 py-0.5 text-xs leading-none rounded border bg-red-900/40 text-red-300 border-red-700/50 hover:bg-red-900/60"
         title="Delete"
       >
-        ✕
+        âœ•
       </button>
     </>
   );
@@ -658,7 +658,7 @@ export const SoundEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
                       <SoundIcon />
                       {/* Name owns the remaining width; the delete button only
                           takes space once the row is hovered, focused, or
-                          selected. Deliberately a <p>, never an h3 —
+                          selected. Deliberately a <p>, never an h3 â€”
                           `.theme-root h3` sizes headings at 1.25x the theme
                           heading size and beats Tailwind's text-* utility. */}
                       <div className="flex-1 min-w-0">
@@ -676,7 +676,7 @@ export const SoundEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
                           className="px-1 py-0.5 text-xs leading-none rounded border bg-red-900/40 text-red-300 border-red-700/50 hover:bg-red-900/60"
                           title="Delete"
                         >
-                          ✕
+                          âœ•
                         </button>
                       </div>
                     </div>
@@ -833,7 +833,7 @@ export const SoundEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
                         : 'bg-purple-900/40 text-purple-300 border-purple-700/50 hover:bg-purple-900/60'
                     }`}
                   >
-                    {isPlaying ? 'Playing...' : '▶ Preview Sound'}
+                    {isPlaying ? 'Playing...' : 'â–¶ Preview Sound'}
                   </button>
                   {editing.audioUrl && !editing.audioData && (
                     <span className="text-stone-400 text-xs">
@@ -849,7 +849,7 @@ export const SoundEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
               <div>
                 <label className="block text-stone-300 text-sm mb-1">Folder</label>
                 <InlineFolderPicker
-                  category="objects"
+                  category="sounds"
                   currentFolderId={editing.folderId}
                   onFolderChange={(folderId) => handleFolderChange(editing.id, folderId)}
                 />

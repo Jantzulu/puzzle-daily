@@ -5,13 +5,14 @@ import { scaledNameClass } from '../../utils/textScale';
 import { Direction } from '../../types/game';
 import type { HitStampKind } from '../../types/game';
 import type { CustomVessel, CustomSprite } from '../../utils/assetStorage';
-import { saveVessel, deleteVessel, getCustomVessels, getAllCollectibles } from '../../utils/assetStorage';
+import { saveVessel, deleteVessel, getCustomVessels, getAllCollectibles, getFolders } from '../../utils/assetStorage';
 import { getAllEnemies } from '../../data/enemies';
 import { SpriteEditor } from './SpriteEditor';
 import { SpriteThumbnail } from './SpriteThumbnail';
 import { RichTextEditor } from './RichTextEditor';
 import { AssetEditorLayout } from './AssetEditorLayout';
 import { AssetBrowseTable, useBrowseSort, type BrowseColumn } from './AssetBrowseTable';
+import { FolderDropdown, useFilteredAssets, InlineFolderPicker } from './FolderDropdown';
 import { CollapsiblePanel } from './CollapsiblePanel';
 import { useIsMobile } from '../../hooks/useMediaQuery';
 
@@ -51,8 +52,10 @@ export const VesselEditor: React.FC<{ initialSelectedId?: string }> = ({ initial
   });
   const [activeTab, setActiveTab] = useState<'details' | 'sprite'>('details');
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
 
-  const filteredVessels = vessels.filter(v =>
+  const folderFilteredVessels = useFilteredAssets(vessels, selectedFolderId);
+  const filteredVessels = folderFilteredVessels.filter(v =>
     v.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -150,6 +153,22 @@ export const VesselEditor: React.FC<{ initialSelectedId?: string }> = ({ initial
     return map;
   }, [vessels]); // eslint-disable-line react-hooks/exhaustive-deps -- collectibles change alongside asset edits
 
+  const folderNames = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const f of getFolders('vessels')) map.set(f.id, f.name);
+    return map;
+  }, [vessels]); // eslint-disable-line react-hooks/exhaustive-deps -- folders change alongside asset edits
+
+  const handleFolderChange = (vesselId: string, folderId: string | undefined) => {
+    const vessel = vessels.find(v => v.id === vesselId);
+    if (!vessel) return;
+    saveVessel({ ...vessel, folderId });
+    setVessels(getCustomVessels());
+    if (editing && editing.id === vesselId) {
+      setEditing({ ...editing, folderId });
+    }
+  };
+
   const transformTargetName = (id?: string) =>
     id ? (enemyNames.get(id) ?? id) : undefined;
 
@@ -183,6 +202,11 @@ export const VesselEditor: React.FC<{ initialSelectedId?: string }> = ({ initial
 
   const rowActionButtons = (vessel: CustomVessel) => (
     <>
+      <InlineFolderPicker
+        category="vessels"
+        currentFolderId={vessel.folderId}
+        onFolderChange={(folderId) => handleFolderChange(vessel.id, folderId)}
+      />
       <button
         onClick={(e) => handleDuplicate(vessel, e)}
         className="px-1 py-0.5 text-xs leading-none rounded border border-stone-700 text-stone-400 hover:text-stone-200 hover:bg-stone-800"
@@ -261,6 +285,17 @@ export const VesselEditor: React.FC<{ initialSelectedId?: string }> = ({ initial
       },
     },
     {
+      key: 'folder',
+      label: 'Folder',
+      value: (v) => (v.folderId ? folderNames.get(v.folderId) ?? null : null),
+      render: (v) => {
+        const name = v.folderId ? folderNames.get(v.folderId) : undefined;
+        return name
+          ? <span className="text-xs text-stone-400">{name}</span>
+          : <span className="text-stone-600">—</span>;
+      },
+    },
+    {
       key: 'usedBy',
       label: 'Used by',
       value: (v) => usagesByVessel.get(v.id)?.length || null,
@@ -305,6 +340,14 @@ export const VesselEditor: React.FC<{ initialSelectedId?: string }> = ({ initial
     </button>
   );
 
+  const folderFilter = (
+    <FolderDropdown
+      category="vessels"
+      selectedFolderId={selectedFolderId}
+      onFolderSelect={setSelectedFolderId}
+    />
+  );
+
   const countLabel = (
     <span className="ml-1.5 text-xs font-sans text-stone-500">
       {filteredVessels.length}{filteredVessels.length !== vessels.length && ` / ${vessels.length}`}
@@ -328,6 +371,7 @@ export const VesselEditor: React.FC<{ initialSelectedId?: string }> = ({ initial
 
           <div className="flex items-center gap-1.5">
             {searchInput}
+            <div className="w-32 flex-shrink-0">{folderFilter}</div>
           </div>
 
           <div className="border border-stone-700 rounded max-h-[calc(100vh-250px)] overflow-y-auto overflow-x-hidden dense-scrollbar">
@@ -411,6 +455,7 @@ export const VesselEditor: React.FC<{ initialSelectedId?: string }> = ({ initial
             {countLabel}
           </h2>
           <div className="w-48">{searchInput}</div>
+          <div className="w-40">{folderFilter}</div>
           {newButton}
         </div>
       }
