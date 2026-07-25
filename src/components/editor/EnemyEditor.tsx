@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { toast } from '../shared/Toast';
 import { findAssetUsages, formatUsageWarning } from '../../utils/assetDependencies';
 import { scaledNameClass } from '../../utils/textScale';
@@ -19,8 +19,32 @@ import { BehaviorSequenceBuilder } from './BehaviorSequenceBuilder';
 import { VersionHistoryModal } from './VersionHistoryModal';
 import { createVersionSnapshot } from '../../services/versionService';
 import { AssetEditorLayout } from './AssetEditorLayout';
+import { AssetBrowseTable, useBrowseSort, type BrowseColumn } from './AssetBrowseTable';
 import { CollapsiblePanel } from './CollapsiblePanel';
 import { useIsMobile } from '../../hooks/useMediaQuery';
+
+/**
+ * Distinct spells referenced anywhere in a behavior pattern, branches
+ * included. Display only — used for the "Spells" browse column.
+ */
+const countBehaviorSpells = (actions?: CharacterAction[]): number => {
+  const ids = new Set<string>();
+  const walk = (list?: CharacterAction[]) => {
+    for (const action of list || []) {
+      if (action.spellId) ids.add(action.spellId);
+      walk(action.params?.thenActions);
+      walk(action.params?.elseActions);
+    }
+  };
+  walk(actions);
+  return ids.size;
+};
+
+/** Icon per usage kind returned by findAssetUsages for enemy/ally assets. */
+const USAGE_ICON: Record<string, string> = {
+  puzzle: '🧩', vessel: '🏺', spell: '✨', character: '🛡', enemy: '💀',
+  ally: '🤝', collectible: '💎', skin: '🎨',
+};
 
 /**
  * Edits enemy-shaped assets. assetKind='ally' serves the separate Ally asset
@@ -185,6 +209,201 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string; assetKind?: 'en
     setIsCreating(false);
   };
 
+  const folderNames = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const f of getFolders(KIND.folderCategory)) map.set(f.id, f.name);
+    return map;
+  }, [enemies]); // eslint-disable-line react-hooks/exhaustive-deps -- folders change alongside asset edits
+
+  // Computed once per load, not per render and not per sort comparison —
+  // findAssetUsages scans every puzzle and asset, so calling it inside a
+  // comparator would rescan the library O(n log n) times.
+  const usagesByEnemy = useMemo(() => {
+    const map = new Map<string, ReturnType<typeof findAssetUsages>>();
+    for (const e of enemies) map.set(e.id, findAssetUsages(KIND.usageType, e.id));
+    return map;
+  }, [enemies]); // eslint-disable-line react-hooks/exhaustive-deps -- KIND is derived from the assetKind prop
+
+  /** BOSS on enemies, NOBLE on allies — the marker each kind actually uses. */
+  const markerChip = (enemy: CustomEnemy) => {
+    if (!isAlly && enemy.isBoss) {
+      return (
+        <span className="px-1.5 py-0 rounded border text-[10px] whitespace-nowrap bg-blood-900/40 text-blood-300 border-blood-700/50">
+          BOSS
+        </span>
+      );
+    }
+    if (isAlly && enemy.isNoble) {
+      return (
+        <span className="px-1.5 py-0 rounded border text-[10px] whitespace-nowrap bg-copper-900/40 text-copper-300 border-copper-700/50">
+          NOBLE
+        </span>
+      );
+    }
+    return null;
+  };
+
+  const usageChips = (enemyId: string) => (usagesByEnemy.get(enemyId) ?? []).map((u, i) => (
+    <span
+      key={i}
+      className={`text-[10px] px-1.5 py-0 rounded border whitespace-nowrap ${
+        u.type === 'puzzle'
+          ? 'bg-arcane-900/40 text-arcane-300 border-arcane-700/50'
+          : 'bg-stone-800 text-stone-300 border-stone-600'
+      }`}
+    >
+      {USAGE_ICON[u.type] ?? '•'} {u.name}
+    </span>
+  ));
+
+  const rowActionButtons = (enemy: CustomEnemy) => (
+    <>
+      <InlineFolderPicker
+        category={KIND.folderCategory}
+        currentFolderId={enemy.folderId}
+        onFolderChange={(folderId) => handleFolderChange(enemy.id, folderId)}
+      />
+      <button
+        onClick={(e) => handleDuplicate(enemy, e)}
+        className="px-1 py-0.5 text-xs leading-none rounded border border-stone-700 text-stone-400 hover:text-stone-200 hover:bg-stone-800"
+        title="Duplicate"
+      >
+        ⎘
+      </button>
+      <button
+        onClick={(e) => { e.stopPropagation(); handleDelete(enemy.id); }}
+        className="px-1 py-0.5 text-xs leading-none rounded border bg-red-900/40 text-red-300 border-red-700/50 hover:bg-red-900/60"
+        title="Delete"
+      >
+        ✕
+      </button>
+    </>
+  );
+
+  const browseColumns: BrowseColumn<CustomEnemy>[] = [
+    {
+      key: 'sprite',
+      label: '',
+      sortable: false,
+      className: 'w-10',
+      render: (e) => (
+        <div className="w-7 h-7 bg-stone-600 rounded flex items-center justify-center overflow-hidden">
+          <SpriteThumbnail sprite={e.customSprite} size={28} previewType="entity" fillBox />
+        </div>
+      ),
+    },
+    {
+      key: 'name',
+      label: 'Name',
+      value: (e) => e.name || 'Unnamed',
+      render: (e) => (
+        <div className="flex items-center gap-1.5">
+          <span className="text-parchment-100">{e.name || 'Unnamed'}</span>
+          {markerChip(e)}
+        </div>
+      ),
+    },
+    { key: 'health', label: 'HP', align: 'right', value: (e) => e.health ?? null },
+    {
+      key: 'behavior',
+      label: 'Behavior',
+      value: (e) => e.behavior?.type || 'static',
+      render: (e) => (
+        <span className="px-1.5 py-0 rounded border text-[10px] whitespace-nowrap bg-stone-800 text-stone-300 border-stone-600 capitalize">
+          {e.behavior?.type || 'static'}
+        </span>
+      ),
+    },
+    { key: 'actions', label: 'Actions', align: 'right', value: (e) => e.behavior?.pattern?.length || null },
+    { key: 'spells', label: 'Spells', align: 'right', value: (e) => countBehaviorSpells(e.behavior?.pattern) || null },
+    { key: 'effects', label: 'Effects', align: 'right', value: (e) => e.initialStatusEffects?.length || null },
+    {
+      key: 'folder',
+      label: 'Folder',
+      value: (e) => (e.folderId ? folderNames.get(e.folderId) ?? null : null),
+      render: (e) => {
+        const name = e.folderId ? folderNames.get(e.folderId) : undefined;
+        return name
+          ? <span className="text-xs text-stone-400">{name}</span>
+          : <span className="text-stone-600">—</span>;
+      },
+    },
+    {
+      key: 'usedBy',
+      label: 'Used by',
+      value: (e) => usagesByEnemy.get(e.id)?.length || null,
+      render: (e) => {
+        const chips = usageChips(e.id);
+        if (chips.length === 0) return <span className="text-stone-600">—</span>;
+        return <div className="flex flex-wrap gap-1">{chips}</div>;
+      },
+    },
+  ];
+
+  // One ordering feeds the table, the sidebar list, and prev/next.
+  const sort = useBrowseSort(filteredEnemies, browseColumns, 'name');
+
+  const searchInput = (
+    <input
+      type="text"
+      placeholder="Search..."
+      value={searchTerm}
+      onChange={(e) => setSearchTerm(e.target.value)}
+      className="flex-1 min-w-0 bg-stone-800 border border-stone-700 rounded px-2 py-1 text-xs text-parchment-100 placeholder-stone-500 focus:outline-none focus:border-arcane-500"
+    />
+  );
+
+  const folderFilter = (
+    <FolderDropdown
+      category={KIND.folderCategory}
+      selectedFolderId={selectedFolderId}
+      onFolderSelect={setSelectedFolderId}
+    />
+  );
+
+  const newButton = (
+    <button
+      onClick={handleNew}
+      className="px-2 py-0.5 rounded border text-xs bg-green-900/40 text-green-300 border-green-700/50 hover:bg-green-900/60 flex-shrink-0"
+    >
+      + New
+    </button>
+  );
+
+  const countLabel = (
+    <span className="ml-1.5 text-xs font-sans text-stone-500">
+      {filteredEnemies.length}{filteredEnemies.length !== enemies.length && ` / ${enemies.length}`}
+    </span>
+  );
+
+  const bulkBar = (
+    <BulkActionBar
+      count={bulk.count}
+      totalCount={filteredEnemies.length}
+      onSelectAll={() => bulk.selectAll(filteredEnemies.map(e => e.id))}
+      onClear={bulk.clear}
+      onDelete={() => {
+        const nameMap = new Map(enemies.map(e => [e.id, e.name]));
+        const deleted = bulkDelete([...bulk.selectedIds], KIND.usageType, KIND.remove, nameMap);
+        if (deleted.length) { setEnemies(refreshEnemies()); bulk.clear(); if (selectedId && deleted.includes(selectedId)) { setSelectedId(null); setEditing(null); } }
+      }}
+      onMoveToFolder={() => {
+        bulkMoveToFolder([...bulk.selectedIds], KIND.folderCategory, (id: string) => enemies.find(e => e.id === id), KIND.save);
+        setEnemies(refreshEnemies()); bulk.clear();
+      }}
+      onExport={() => {
+        const items = enemies.filter(e => bulk.selectedIds.has(e.id));
+        bulkExport(items, KIND.exportFile, KIND.lower);
+      }}
+      onImport={() => bulkImport({
+        assetType: KIND.lower,
+        saveFn: KIND.save,
+        existingIds: new Set(enemies.map(e => e.id)),
+        onComplete: () => { setEnemies(refreshEnemies()); bulk.clear(); },
+      })}
+    />
+  );
+
   return (
     <>
       <AssetEditorLayout
@@ -193,122 +412,140 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string; assetKind?: 'en
         listTitle={KIND.plural}
         listPanel={
           <>
-            <div className="flex justify-between items-center">
-              <h2 className="text-xl font-bold font-medieval text-copper-400">{KIND.plural}</h2>
-              <button onClick={handleNew} className="dungeon-btn-success text-sm">
-                + New
-              </button>
+            <div className="flex justify-between items-center gap-2">
+              <h2 className="text-lg font-medieval text-copper-400">
+                {KIND.plural}
+                {countLabel}
+              </h2>
+              {newButton}
             </div>
 
-            {/* Search */}
-            <input
-              type="text"
-              placeholder="Search..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="dungeon-input text-sm"
-            />
+            {/* Search + folder filter share one row so the list starts higher */}
+            <div className="flex items-center gap-1.5">
+              {searchInput}
+              <div className="w-32 flex-shrink-0">{folderFilter}</div>
+            </div>
 
-            {/* Folder Filter */}
-            <FolderDropdown
-              category={KIND.folderCategory}
-              selectedFolderId={selectedFolderId}
-              onFolderSelect={setSelectedFolderId}
-            />
+            {bulkBar}
 
-            <BulkActionBar
-              count={bulk.count}
-              totalCount={filteredEnemies.length}
-              onSelectAll={() => bulk.selectAll(filteredEnemies.map(e => e.id))}
-              onClear={bulk.clear}
-              onDelete={() => {
-                const nameMap = new Map(enemies.map(e => [e.id, e.name]));
-                const deleted = bulkDelete([...bulk.selectedIds], KIND.usageType, KIND.remove, nameMap);
-                if (deleted.length) { setEnemies(refreshEnemies()); bulk.clear(); if (selectedId && deleted.includes(selectedId)) { setSelectedId(null); setEditing(null); } }
-              }}
-              onMoveToFolder={() => {
-                bulkMoveToFolder([...bulk.selectedIds], KIND.folderCategory, (id: string) => enemies.find(e => e.id === id), KIND.save);
-                setEnemies(refreshEnemies()); bulk.clear();
-              }}
-              onExport={() => {
-                const items = enemies.filter(e => bulk.selectedIds.has(e.id));
-                bulkExport(items, KIND.exportFile, KIND.lower);
-              }}
-              onImport={() => bulkImport({
-                assetType: KIND.lower,
-                saveFn: KIND.save,
-                existingIds: new Set(enemies.map(e => e.id)),
-                onComplete: () => { setEnemies(refreshEnemies()); bulk.clear(); },
-              })}
-            />
-
-            <div className="space-y-2 max-h-[calc(100vh-350px)] overflow-y-auto overflow-x-hidden">
+            <div className="border border-stone-700 rounded max-h-[calc(100vh-250px)] overflow-y-auto overflow-x-hidden dense-scrollbar">
               {filteredEnemies.length === 0 ? (
-                <div className="dungeon-panel p-4 rounded text-center text-stone-400 text-sm">
-                  {searchTerm ? `No ${KIND.lowerPlural} match your search.` : `No ${KIND.lowerPlural} yet.`}
-                  <br />{!searchTerm && 'Click "+ New" to create one.'}
+                <div className="px-2 py-4 text-center text-stone-500 text-sm">
+                  {searchTerm ? 'No matches' : `No ${KIND.lowerPlural} yet — click "+ New" to create one.`}
                 </div>
               ) : (
-                filteredEnemies.map(enemy => (
-                  <div
-                    key={enemy.id}
-                    className={`p-3 rounded cursor-pointer transition-colors ${
-                      bulk.isSelected(enemy.id) ? 'bg-blue-900/40 border border-blue-500' :
-                      selectedId === enemy.id ? 'bg-arcane-700' : 'dungeon-panel hover:bg-stone-700'
-                    }`}
-                    onClick={() => handleSelect(enemy.id)}
-                  >
-                    <div className="flex justify-between items-start">
-                      <div className="flex items-start gap-2 min-w-0">
+                sort.sorted.map(enemy => {
+                  const isSelected = selectedId === enemy.id;
+                  return (
+                    <div
+                      key={enemy.id}
+                      className={`group px-2 py-1.5 cursor-pointer transition-colors border-t border-stone-700/60 first:border-t-0 ${
+                        bulk.isSelected(enemy.id) ? 'bg-sky-900/40' :
+                        isSelected
+                          ? 'bg-copper-900/50'
+                          : 'hover:bg-stone-800/50'
+                      }`}
+                      onClick={() => handleSelect(enemy.id)}
+                    >
+                      <div className="flex items-center gap-2">
                         <input
                           type="checkbox"
                           checked={bulk.isSelected(enemy.id)}
                           onChange={() => bulk.toggle(enemy.id)}
                           onClick={(e) => e.stopPropagation()}
-                          className="accent-blue-500 flex-shrink-0"
+                          className="accent-sky-500 flex-shrink-0"
                         />
-                        <div
-                          className="bg-stone-600 rounded flex items-center justify-center overflow-hidden flex-shrink-0 transition-all duration-150"
-                          style={{ width: selectedId === enemy.id ? 56 : 40, height: selectedId === enemy.id ? 56 : 40 }}
-                        >
-                          <SpriteThumbnail sprite={enemy.customSprite} size={selectedId === enemy.id ? 56 : 40} previewType="entity" fillBox />
+                        <div className="w-7 h-7 bg-stone-600 rounded flex items-center justify-center overflow-hidden flex-shrink-0">
+                          <SpriteThumbnail sprite={enemy.customSprite} size={28} previewType="entity" fillBox />
                         </div>
-                        <div className="min-w-0">
-                          <h3 className={`font-bold ${scaledNameClass(enemy.name)}`}>{enemy.name}</h3>
-                          <p className="text-xs text-stone-400">
-                            {!isAlly && enemy.isBoss && <span className="text-blood-300 font-medium mr-1">BOSS</span>}
-                            {isAlly && enemy.isNoble && <span className="text-copper-300 font-medium mr-1">NOBLE</span>}
-                            HP: {enemy.health} • {enemy.behavior?.type || 'static'}
-                          </p>
+                        {/* Deliberately a div, not an h3: `.theme-root h3` sizes
+                            every heading at 1.25x the theme heading size in the
+                            theme face, and an element selector outranks
+                            Tailwind's text-* utility — an h3 here renders ~25px
+                            and truncates after a few characters. */}
+                        <div className={`flex-1 min-w-0 truncate text-parchment-100 ${scaledNameClass(enemy.name)}`}>
+                          {enemy.name}
+                        </div>
+                        <div className={`flex items-center gap-1 flex-shrink-0 transition-opacity ${
+                          isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 focus-within:opacity-100'
+                        }`}>
+                          <InlineFolderPicker
+                            category={KIND.folderCategory}
+                            currentFolderId={enemy.folderId}
+                            onFolderChange={(folderId) => handleFolderChange(enemy.id, folderId)}
+                          />
+                          <button
+                            onClick={(e) => handleDuplicate(enemy, e)}
+                            className="px-1 py-0.5 text-xs leading-none rounded border border-stone-700 text-stone-400 hover:text-stone-200 hover:bg-stone-800"
+                            title="Duplicate"
+                          >
+                            ⎘
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleDelete(enemy.id); }}
+                            className="px-1 py-0.5 text-xs leading-none rounded border bg-red-900/40 text-red-300 border-red-700/50 hover:bg-red-900/60"
+                            title="Delete"
+                          >
+                            ✕
+                          </button>
                         </div>
                       </div>
-                      <div className="flex flex-col gap-0.5 flex-shrink-0">
-                        <InlineFolderPicker
-                          category={KIND.folderCategory}
-                          currentFolderId={enemy.folderId}
-                          onFolderChange={(folderId) => handleFolderChange(enemy.id, folderId)}
-                        />
-                        <button
-                          onClick={(e) => handleDuplicate(enemy, e)}
-                          className="p-1 text-xs leading-none bg-stone-600 rounded hover:bg-stone-500"
-                          title="Duplicate"
-                        >
-                          ⎘
-                        </button>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); handleDelete(enemy.id); }}
-                          className="p-1 text-xs leading-none bg-blood-700 rounded hover:bg-blood-600"
-                        >
-                          ✕
-                        </button>
+
+                      {/* Meta line: marker chip, then the numbers that differ
+                          between assets. Indented to sit under the name. */}
+                      <div className="flex flex-wrap items-center gap-1 mt-1 pl-[3.25rem]">
+                        {markerChip(enemy)}
+                        <span className="px-1.5 py-0 rounded border text-[10px] whitespace-nowrap bg-stone-800 text-stone-300 border-stone-600 capitalize">
+                          {enemy.behavior?.type || 'static'}
+                        </span>
+                        <span className="text-[10px] text-stone-500 whitespace-nowrap">
+                          HP {enemy.health}
+                          {enemy.behavior?.pattern?.length
+                            ? <><span className="text-stone-600"> · </span>{enemy.behavior.pattern.length} actions</>
+                            : null}
+                          {enemy.initialStatusEffects?.length
+                            ? <><span className="text-stone-600"> · </span>{enemy.initialStatusEffects.length} effects</>
+                            : null}
+                        </span>
+                        {usageChips(enemy.id)}
                       </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           </>
         }
+        browseControls={
+          <div className="flex items-center gap-2 flex-wrap">
+            <h2 className="text-lg font-medieval text-copper-400 mr-1">
+              {KIND.plural}
+              {countLabel}
+            </h2>
+            <div className="w-48">{searchInput}</div>
+            <div className="w-40">{folderFilter}</div>
+            {newButton}
+            <div className="ml-auto">{bulkBar}</div>
+          </div>
+        }
+        browsePanel={
+          <AssetBrowseTable
+            items={sort.sorted}
+            columns={browseColumns}
+            sortKey={sort.sortKey}
+            sortDir={sort.sortDir}
+            onToggleSort={sort.toggleSort}
+            onOpen={(enemy) => handleSelect(enemy.id)}
+            selection={{ isSelected: bulk.isSelected, toggle: bulk.toggle }}
+            rowActions={rowActionButtons}
+            emptyMessage={searchTerm ? 'No matches' : `No ${KIND.lowerPlural} yet — click "+ New" to create one.`}
+          />
+        }
+        navigation={{
+          items: sort.sorted.map(e => ({ id: e.id, name: e.name || 'Unnamed' })),
+          currentId: selectedId,
+          onSelect: (id) => handleSelect(id),
+        }}
         detailPanel={
           editing ? (
             <>
@@ -982,14 +1219,14 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string; assetKind?: 'en
           ) : null
         }
         emptyState={
-          <div className="dungeon-panel p-8 rounded text-center">
-            <h2 className="text-2xl font-bold font-medieval text-copper-400 mb-4">{KIND.label} Editor</h2>
-            <p className="text-stone-400 mb-6">
+          <div className="border border-stone-700 rounded p-6 text-center">
+            <h2 className="text-lg font-medieval text-copper-400 mb-2">{KIND.label} Editor</h2>
+            <p className="text-sm text-stone-400 mb-4">
               {isAlly
                 ? 'Create friendly units the creator places on the map — guards that fight beside the heroes, or Nobles to protect, escort, and keep alive.'
                 : 'Create and customize enemies with unique sprites and behaviors.'}
             </p>
-            <button onClick={handleNew} className="dungeon-btn-success text-lg">
+            <button onClick={handleNew} className="dungeon-btn-success text-sm px-3 py-1.5">
               + Create New {KIND.label}
             </button>
           </div>

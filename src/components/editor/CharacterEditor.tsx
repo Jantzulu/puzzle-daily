@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { toast } from '../shared/Toast';
 import { findAssetUsages, formatUsageWarning } from '../../utils/assetDependencies';
 import { scaledNameClass } from '../../utils/textScale';
@@ -19,8 +19,34 @@ import { BehaviorSequenceBuilder } from './BehaviorSequenceBuilder';
 import { VersionHistoryModal } from './VersionHistoryModal';
 import { createVersionSnapshot } from '../../services/versionService';
 import { AssetEditorLayout } from './AssetEditorLayout';
+import { AssetBrowseTable, useBrowseSort, type BrowseColumn } from './AssetBrowseTable';
 import { CollapsiblePanel } from './CollapsiblePanel';
 import { useIsMobile } from '../../hooks/useMediaQuery';
+
+/**
+ * Distinct spells referenced anywhere in a behavior list, branches included.
+ * Display only — used for the "Spells" browse column.
+ */
+const countBehaviorSpells = (actions?: CharacterAction[]): number => {
+  const ids = new Set<string>();
+  const walk = (list?: CharacterAction[]) => {
+    for (const action of list || []) {
+      if (action.spellId) ids.add(action.spellId);
+      walk(action.params?.thenActions);
+      walk(action.params?.elseActions);
+    }
+  };
+  walk(actions);
+  return ids.size;
+};
+
+/** Compass arrow for the browse table's Facing column. */
+const FACING_ARROW: Record<string, string> = {
+  [Direction.NORTH]: 'N ↑', [Direction.NORTHEAST]: 'NE ↗',
+  [Direction.EAST]: 'E →', [Direction.SOUTHEAST]: 'SE ↘',
+  [Direction.SOUTH]: 'S ↓', [Direction.SOUTHWEST]: 'SW ↙',
+  [Direction.WEST]: 'W ←', [Direction.NORTHWEST]: 'NW ↖',
+};
 
 export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSelectedId }) => {
   const isMobile = useIsMobile();
@@ -184,6 +210,184 @@ export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ init
     setIsCreating(false);
   };
 
+  const folderNames = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const f of getFolders('characters')) map.set(f.id, f.name);
+    return map;
+  }, [characters]); // eslint-disable-line react-hooks/exhaustive-deps -- folders change alongside asset edits
+
+  // Computed once per load, not per render and not per sort comparison —
+  // findAssetUsages scans every puzzle, so calling it inside a comparator
+  // would rescan the library O(n log n) times.
+  const usagesByCharacter = useMemo(() => {
+    const map = new Map<string, ReturnType<typeof findAssetUsages>>();
+    for (const c of characters) map.set(c.id, findAssetUsages('character', c.id));
+    return map;
+  }, [characters]);
+
+  const nobleChip = (char: CustomCharacter) => (char.isNoble ? (
+    <span className="px-1.5 py-0 rounded border text-[10px] whitespace-nowrap bg-copper-900/40 text-copper-300 border-copper-700/50">
+      NOBLE
+    </span>
+  ) : null);
+
+  const usageChips = (charId: string) => (usagesByCharacter.get(charId) ?? []).map((u, i) => (
+    <span
+      key={i}
+      className="text-[10px] px-1.5 py-0 rounded border whitespace-nowrap bg-arcane-900/40 text-arcane-300 border-arcane-700/50"
+    >
+      🧩 {u.name}
+    </span>
+  ));
+
+  const rowActionButtons = (char: CustomCharacter) => (
+    <>
+      <InlineFolderPicker
+        category="characters"
+        currentFolderId={char.folderId}
+        onFolderChange={(folderId) => handleFolderChange(char.id, folderId)}
+      />
+      <button
+        onClick={(e) => handleDuplicate(char, e)}
+        className="px-1 py-0.5 text-xs leading-none rounded border border-stone-700 text-stone-400 hover:text-stone-200 hover:bg-stone-800"
+        title="Duplicate"
+      >
+        ⎘
+      </button>
+      <button
+        onClick={(e) => { e.stopPropagation(); handleDelete(char.id); }}
+        className="px-1 py-0.5 text-xs leading-none rounded border bg-red-900/40 text-red-300 border-red-700/50 hover:bg-red-900/60"
+        title="Delete"
+      >
+        ✕
+      </button>
+    </>
+  );
+
+  const browseColumns: BrowseColumn<CustomCharacter>[] = [
+    {
+      key: 'sprite',
+      label: '',
+      sortable: false,
+      className: 'w-10',
+      render: (c) => (
+        <div className="w-7 h-7 bg-stone-700 rounded flex items-center justify-center overflow-hidden">
+          <SpriteThumbnail sprite={c.customSprite} size={28} previewType="entity" fillBox />
+        </div>
+      ),
+    },
+    {
+      key: 'name',
+      label: 'Name',
+      value: (c) => c.name || 'Unnamed',
+      render: (c) => (
+        <div className="flex items-center gap-1.5">
+          <span className="text-parchment-100">{c.name || 'Unnamed'}</span>
+          {nobleChip(c)}
+        </div>
+      ),
+    },
+    { key: 'health', label: 'HP', align: 'right', value: (c) => c.health ?? null },
+    { key: 'actions', label: 'Actions', align: 'right', value: (c) => c.behavior?.length || null },
+    { key: 'spells', label: 'Spells', align: 'right', value: (c) => countBehaviorSpells(c.behavior) || null },
+    { key: 'effects', label: 'Effects', align: 'right', value: (c) => c.initialStatusEffects?.length || null },
+    {
+      key: 'facing',
+      label: 'Facing',
+      value: (c) => c.defaultFacing ?? null,
+      render: (c) => (
+        <span className="text-xs text-stone-400 whitespace-nowrap">
+          {FACING_ARROW[c.defaultFacing] ?? c.defaultFacing ?? '—'}
+        </span>
+      ),
+    },
+    {
+      key: 'folder',
+      label: 'Folder',
+      value: (c) => (c.folderId ? folderNames.get(c.folderId) ?? null : null),
+      render: (c) => {
+        const name = c.folderId ? folderNames.get(c.folderId) : undefined;
+        return name
+          ? <span className="text-xs text-stone-400">{name}</span>
+          : <span className="text-stone-600">—</span>;
+      },
+    },
+    {
+      key: 'usedBy',
+      label: 'Used by',
+      value: (c) => usagesByCharacter.get(c.id)?.length || null,
+      render: (c) => {
+        const chips = usageChips(c.id);
+        if (chips.length === 0) return <span className="text-stone-600">—</span>;
+        return <div className="flex flex-wrap gap-1">{chips}</div>;
+      },
+    },
+  ];
+
+  // One ordering feeds the table, the sidebar list, and prev/next.
+  const sort = useBrowseSort(filteredCharacters, browseColumns, 'name');
+
+  const searchInput = (
+    <input
+      type="text"
+      placeholder="Search..."
+      value={searchTerm}
+      onChange={(e) => setSearchTerm(e.target.value)}
+      className="flex-1 min-w-0 bg-stone-800 border border-stone-700 rounded px-2 py-1 text-xs text-parchment-100 placeholder-stone-500 focus:outline-none focus:border-arcane-500"
+    />
+  );
+
+  const folderFilter = (
+    <FolderDropdown
+      category="characters"
+      selectedFolderId={selectedFolderId}
+      onFolderSelect={setSelectedFolderId}
+    />
+  );
+
+  const newButton = (
+    <button
+      onClick={handleNew}
+      className="px-2 py-0.5 rounded border text-xs bg-green-900/40 text-green-300 border-green-700/50 hover:bg-green-900/60 flex-shrink-0"
+    >
+      + New
+    </button>
+  );
+
+  const countLabel = (
+    <span className="ml-1.5 text-xs font-sans text-stone-500">
+      {filteredCharacters.length}{filteredCharacters.length !== characters.length && ` / ${characters.length}`}
+    </span>
+  );
+
+  const bulkBar = (
+    <BulkActionBar
+      count={bulk.count}
+      totalCount={filteredCharacters.length}
+      onSelectAll={() => bulk.selectAll(filteredCharacters.map(c => c.id))}
+      onClear={bulk.clear}
+      onDelete={() => {
+        const nameMap = new Map(characters.map(c => [c.id, c.name]));
+        const deleted = bulkDelete([...bulk.selectedIds], 'character', deleteCharacter, nameMap);
+        if (deleted.length) { refreshCharacters(); bulk.clear(); if (selectedId && deleted.includes(selectedId)) { setSelectedId(null); setEditing(null); } }
+      }}
+      onMoveToFolder={() => {
+        bulkMoveToFolder([...bulk.selectedIds], 'characters', (id: string) => characters.find(c => c.id === id), saveCharacter);
+        refreshCharacters(); bulk.clear();
+      }}
+      onExport={() => {
+        const items = characters.filter(c => bulk.selectedIds.has(c.id));
+        bulkExport(items, 'characters-export.json', 'character');
+      }}
+      onImport={() => bulkImport({
+        assetType: 'character',
+        saveFn: saveCharacter,
+        existingIds: new Set(characters.map(c => c.id)),
+        onComplete: () => { refreshCharacters(); bulk.clear(); },
+      })}
+    />
+  );
+
   return (
     <>
       <AssetEditorLayout
@@ -192,129 +396,138 @@ export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ init
         listTitle="Heroes"
         listPanel={
           <>
-            <div className="flex justify-between items-center">
-              <h2 className="text-xl font-bold font-medieval text-copper-400">Heroes</h2>
-              <button
-                onClick={handleNew}
-                className="dungeon-btn-success text-sm"
-              >
-                + New
-              </button>
+            <div className="flex justify-between items-center gap-2">
+              <h2 className="text-lg font-medieval text-copper-400">
+                Heroes
+                {countLabel}
+              </h2>
+              {newButton}
             </div>
 
-            {/* Search */}
-            <input
-              type="text"
-              placeholder="Search..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="dungeon-input text-sm"
-            />
+            {/* Search + folder filter share one row so the list starts higher */}
+            <div className="flex items-center gap-1.5">
+              {searchInput}
+              <div className="w-32 flex-shrink-0">{folderFilter}</div>
+            </div>
 
-            {/* Folder Filter */}
-            <FolderDropdown
-              category="characters"
-              selectedFolderId={selectedFolderId}
-              onFolderSelect={setSelectedFolderId}
-            />
+            {bulkBar}
 
-            <BulkActionBar
-              count={bulk.count}
-              totalCount={filteredCharacters.length}
-              onSelectAll={() => bulk.selectAll(filteredCharacters.map(c => c.id))}
-              onClear={bulk.clear}
-              onDelete={() => {
-                const nameMap = new Map(characters.map(c => [c.id, c.name]));
-                const deleted = bulkDelete([...bulk.selectedIds], 'character', deleteCharacter, nameMap);
-                if (deleted.length) { refreshCharacters(); bulk.clear(); if (selectedId && deleted.includes(selectedId)) { setSelectedId(null); setEditing(null); } }
-              }}
-              onMoveToFolder={() => {
-                bulkMoveToFolder([...bulk.selectedIds], 'characters', (id: string) => characters.find(c => c.id === id), saveCharacter);
-                refreshCharacters(); bulk.clear();
-              }}
-              onExport={() => {
-                const items = characters.filter(c => bulk.selectedIds.has(c.id));
-                bulkExport(items, 'characters-export.json', 'character');
-              }}
-              onImport={() => bulkImport({
-                assetType: 'character',
-                saveFn: saveCharacter,
-                existingIds: new Set(characters.map(c => c.id)),
-                onComplete: () => { refreshCharacters(); bulk.clear(); },
-              })}
-            />
-
-            <div className="space-y-2 max-h-[calc(100vh-350px)] overflow-y-auto overflow-x-hidden dungeon-scrollbar">
+            <div className="border border-stone-700 rounded max-h-[calc(100vh-250px)] overflow-y-auto overflow-x-hidden dense-scrollbar">
               {filteredCharacters.length === 0 ? (
-                <div className="dungeon-panel p-4 text-center text-stone-400 text-sm">
-                  {searchTerm ? 'No heroes match your search.' : 'No heroes yet.'}
-                  <br />
-                  {!searchTerm && 'Click "+ New" to create one.'}
+                <div className="px-2 py-4 text-center text-stone-500 text-sm">
+                  {searchTerm ? 'No matches' : 'No heroes yet — click "+ New" to create one.'}
                 </div>
               ) : (
-                filteredCharacters.map(char => (
-                  <div
-                    key={char.id}
-                    className={`p-3 rounded-pixel cursor-pointer transition-colors ${
-                      bulk.isSelected(char.id) ? 'bg-blue-900/40 border border-blue-500' :
-                      selectedId === char.id
-                        ? 'bg-copper-700/50 border border-copper-500'
-                        : 'dungeon-panel hover:bg-stone-700'
-                    }`}
-                    onClick={() => handleSelect(char.id)}
-                  >
-                    <div className="flex justify-between items-start">
-                      <div className="flex items-start gap-2 min-w-0">
+                sort.sorted.map(char => {
+                  const isSelected = selectedId === char.id;
+                  return (
+                    <div
+                      key={char.id}
+                      className={`group px-2 py-1.5 cursor-pointer transition-colors border-t border-stone-700/60 first:border-t-0 ${
+                        bulk.isSelected(char.id) ? 'bg-sky-900/40' :
+                        isSelected
+                          ? 'bg-copper-900/50'
+                          : 'hover:bg-stone-800/50'
+                      }`}
+                      onClick={() => handleSelect(char.id)}
+                    >
+                      <div className="flex items-center gap-2">
                         <input
                           type="checkbox"
                           checked={bulk.isSelected(char.id)}
                           onChange={() => bulk.toggle(char.id)}
                           onClick={(e) => e.stopPropagation()}
-                          className="accent-blue-500 flex-shrink-0"
+                          className="accent-sky-500 flex-shrink-0"
                         />
-                        <div
-                          className="bg-stone-700 rounded-pixel flex items-center justify-center overflow-hidden flex-shrink-0 transition-all duration-150"
-                          style={{ width: selectedId === char.id ? 56 : 40, height: selectedId === char.id ? 56 : 40 }}
-                        >
-                          <SpriteThumbnail sprite={char.customSprite} size={selectedId === char.id ? 56 : 40} previewType="entity" fillBox />
+                        <div className="w-7 h-7 bg-stone-700 rounded flex items-center justify-center overflow-hidden flex-shrink-0">
+                          <SpriteThumbnail sprite={char.customSprite} size={28} previewType="entity" fillBox />
                         </div>
-                        <div className="min-w-0">
-                          <h3 className={`font-bold text-parchment-200 ${scaledNameClass(char.name)}`}>{char.name}</h3>
-                          <p className="text-xs text-stone-400">
-                            HP: {char.health} • {char.behavior.length} actions
-                          </p>
+                        {/* Deliberately a div, not an h3: `.theme-root h3` sizes
+                            every heading at 1.25x the theme heading size in the
+                            theme face, and an element selector outranks
+                            Tailwind's text-* utility — an h3 here renders ~25px
+                            and truncates after a few characters. */}
+                        <div className={`flex-1 min-w-0 truncate text-parchment-100 ${scaledNameClass(char.name)}`}>
+                          {char.name}
+                        </div>
+                        <div className={`flex items-center gap-1 flex-shrink-0 transition-opacity ${
+                          isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 focus-within:opacity-100'
+                        }`}>
+                          <InlineFolderPicker
+                            category="characters"
+                            currentFolderId={char.folderId}
+                            onFolderChange={(folderId) => handleFolderChange(char.id, folderId)}
+                          />
+                          <button
+                            onClick={(e) => handleDuplicate(char, e)}
+                            className="px-1 py-0.5 text-xs leading-none rounded border border-stone-700 text-stone-400 hover:text-stone-200 hover:bg-stone-800"
+                            title="Duplicate"
+                          >
+                            ⎘
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDelete(char.id);
+                            }}
+                            className="px-1 py-0.5 text-xs leading-none rounded border bg-red-900/40 text-red-300 border-red-700/50 hover:bg-red-900/60"
+                            title="Delete"
+                          >
+                            ✕
+                          </button>
                         </div>
                       </div>
-                      <div className="flex flex-col gap-0.5 flex-shrink-0">
-                        <InlineFolderPicker
-                          category="characters"
-                          currentFolderId={char.folderId}
-                          onFolderChange={(folderId) => handleFolderChange(char.id, folderId)}
-                        />
-                        <button
-                          onClick={(e) => handleDuplicate(char, e)}
-                          className="p-1 text-xs leading-none bg-stone-600 rounded-pixel hover:bg-stone-500"
-                          title="Duplicate"
-                        >
-                          ⎘
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDelete(char.id);
-                          }}
-                          className="p-1 text-xs leading-none bg-blood-700 rounded-pixel hover:bg-blood-600"
-                        >
-                          ✕
-                        </button>
+
+                      {/* Meta line: the numbers that differ between heroes.
+                          Indented to sit under the name. */}
+                      <div className="flex flex-wrap items-center gap-1 mt-1 pl-[3.25rem]">
+                        {nobleChip(char)}
+                        <span className="text-[10px] text-stone-500 whitespace-nowrap">
+                          HP {char.health}
+                          <span className="text-stone-600"> · </span>{char.behavior.length} actions
+                          {char.initialStatusEffects?.length
+                            ? <><span className="text-stone-600"> · </span>{char.initialStatusEffects.length} effects</>
+                            : null}
+                        </span>
+                        {usageChips(char.id)}
                       </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           </>
         }
+        browseControls={
+          <div className="flex items-center gap-2 flex-wrap">
+            <h2 className="text-lg font-medieval text-copper-400 mr-1">
+              Heroes
+              {countLabel}
+            </h2>
+            <div className="w-48">{searchInput}</div>
+            <div className="w-40">{folderFilter}</div>
+            {newButton}
+            <div className="ml-auto">{bulkBar}</div>
+          </div>
+        }
+        browsePanel={
+          <AssetBrowseTable
+            items={sort.sorted}
+            columns={browseColumns}
+            sortKey={sort.sortKey}
+            sortDir={sort.sortDir}
+            onToggleSort={sort.toggleSort}
+            onOpen={(char) => handleSelect(char.id)}
+            selection={{ isSelected: bulk.isSelected, toggle: bulk.toggle }}
+            rowActions={rowActionButtons}
+            emptyMessage={searchTerm ? 'No matches' : 'No heroes yet — click "+ New" to create one.'}
+          />
+        }
+        navigation={{
+          items: sort.sorted.map(c => ({ id: c.id, name: c.name || 'Unnamed' })),
+          currentId: selectedId,
+          onSelect: (id) => handleSelect(id),
+        }}
         detailPanel={
           editing ? (
             <>
@@ -948,16 +1161,16 @@ export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ init
           ) : null
         }
         emptyState={
-          <div className="dungeon-panel p-8 rounded text-center">
-            <h2 className="text-2xl font-bold font-medieval text-copper-400 mb-4">Hero Editor</h2>
-            <p className="text-stone-400 mb-6">
+          <div className="border border-stone-700 rounded p-6 text-center">
+            <h2 className="text-lg font-medieval text-copper-400 mb-2">Hero Editor</h2>
+            <p className="text-sm text-stone-400 mb-4">
               Create and customize heroes with unique sprites and behaviors.
               <br />
               Select a hero from the list or create a new one.
             </p>
             <button
               onClick={handleNew}
-              className="dungeon-btn-success text-lg"
+              className="dungeon-btn-success text-sm px-3 py-1.5"
             >
               + Create New Hero
             </button>
