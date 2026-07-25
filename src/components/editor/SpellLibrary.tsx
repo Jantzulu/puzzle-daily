@@ -113,31 +113,38 @@ export const SpellLibrary: React.FC<{ initialSelectedId?: string }> = ({ initial
       listTitle="Spells"
       listPanel={
         <>
-          <div className="flex justify-between items-center">
-            <h2 className="text-lg font-medieval text-copper-400">Spells</h2>
+          <div className="flex justify-between items-center gap-2">
+            <h2 className="text-lg font-medieval text-copper-400">
+              Spells
+              <span className="ml-1.5 text-xs font-sans text-stone-500">
+                {filteredSpells.length}{filteredSpells.length !== spells.length && ` / ${spells.length}`}
+              </span>
+            </h2>
             <button
               onClick={handleNew}
-              className="dungeon-btn-success text-xs px-2 py-1"
+              className="px-2 py-0.5 rounded border text-xs bg-green-900/40 text-green-300 border-green-700/50 hover:bg-green-900/60"
             >
               + New
             </button>
           </div>
 
-          {/* Search */}
-          <input
-            type="text"
-            placeholder="Search..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-stone-800 border border-stone-700 rounded px-2 py-1 text-sm text-parchment-100 placeholder-stone-500 focus:outline-none focus:border-arcane-500"
-          />
-
-          {/* Folder Filter */}
-          <FolderDropdown
-            category="spells"
-            selectedFolderId={selectedFolderId}
-            onFolderSelect={setSelectedFolderId}
-          />
+          {/* Search + folder filter share one row so the list starts higher */}
+          <div className="flex items-center gap-1.5">
+            <input
+              type="text"
+              placeholder="Search..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="flex-1 min-w-0 bg-stone-800 border border-stone-700 rounded px-2 py-1 text-xs text-parchment-100 placeholder-stone-500 focus:outline-none focus:border-arcane-500"
+            />
+            <div className="w-32 flex-shrink-0">
+              <FolderDropdown
+                category="spells"
+                selectedFolderId={selectedFolderId}
+                onFolderSelect={setSelectedFolderId}
+              />
+            </div>
+          </div>
 
           <BulkActionBar
             count={bulk.count}
@@ -165,25 +172,27 @@ export const SpellLibrary: React.FC<{ initialSelectedId?: string }> = ({ initial
             })}
           />
 
-          <div className="border border-stone-700 rounded max-h-[calc(100vh-350px)] overflow-y-auto overflow-x-hidden">
+          <div className="border border-stone-700 rounded max-h-[calc(100vh-250px)] overflow-y-auto overflow-x-hidden dense-scrollbar">
             {filteredSpells.length === 0 ? (
               <div className="px-2 py-4 text-center text-stone-500 text-sm">
                 {searchTerm ? 'No matches' : 'No spells yet — click "+ New" to create one.'}
               </div>
             ) : (
-              filteredSpells.map(spell => (
-                <div
-                  key={spell.id}
-                  className={`px-2 py-1.5 cursor-pointer transition-colors border-t border-stone-700/60 first:border-t-0 ${
-                    bulk.isSelected(spell.id) ? 'bg-sky-900/40' :
-                    selectedId === spell.id
-                      ? 'bg-copper-900/50'
-                      : 'hover:bg-stone-800/50'
-                  }`}
-                  onClick={() => handleSelect(spell)}
-                >
-                  <div className="flex justify-between items-center gap-2">
-                    <div className="flex items-center gap-2 min-w-0">
+              filteredSpells.map(spell => {
+                const isSelected = selectedId === spell.id;
+                const usages = findAssetUsages('spell', spell.id);
+                return (
+                  <div
+                    key={spell.id}
+                    className={`group px-2 py-1.5 cursor-pointer transition-colors border-t border-stone-700/60 first:border-t-0 ${
+                      bulk.isSelected(spell.id) ? 'bg-sky-900/40' :
+                      isSelected
+                        ? 'bg-copper-900/50'
+                        : 'hover:bg-stone-800/50'
+                    }`}
+                    onClick={() => handleSelect(spell)}
+                  >
+                    <div className="flex items-center gap-2">
                       <input
                         type="checkbox"
                         checked={bulk.isSelected(spell.id)}
@@ -203,61 +212,63 @@ export const SpellLibrary: React.FC<{ initialSelectedId?: string }> = ({ initial
                           ?
                         </div>
                       )}
-                      <div className="min-w-0">
-                        <h3 className={`text-parchment-100 truncate ${scaledNameClass(spell.name || 'Unnamed')}`}>{spell.name || 'Unnamed'}</h3>
-                        <p className="text-[10px] text-stone-500 capitalize truncate">
-                          {spell.templateType.replace('_', ' ')}
-                          <span className="text-stone-600"> · </span>Dmg {spell.damage}
-                          {spell.range ? <><span className="text-stone-600"> · </span>Rng {spell.range}</> : null}
-                          {spell.radius ? <><span className="text-stone-600"> · </span>Rad {spell.radius}</> : null}
-                        </p>
+                      {/* Name owns the full remaining width; actions only take
+                          space once the row is hovered, focused, or selected. */}
+                      <h3 className={`flex-1 min-w-0 truncate text-parchment-100 ${scaledNameClass(spell.name || 'Unnamed')}`}>
+                        {spell.name || 'Unnamed'}
+                      </h3>
+                      <div className={`flex items-center gap-1 flex-shrink-0 transition-opacity ${
+                        isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 focus-within:opacity-100'
+                      }`}>
+                        <InlineFolderPicker
+                          category="spells"
+                          currentFolderId={spell.folderId}
+                          onFolderChange={(folderId) => handleFolderChange(spell.id, folderId)}
+                        />
+                        <button
+                          onClick={(e) => handleDuplicate(spell, e)}
+                          className="px-1 py-0.5 text-xs leading-none rounded border border-stone-700 text-stone-400 hover:text-stone-200 hover:bg-stone-800"
+                          title="Duplicate"
+                        >
+                          ⎘
+                        </button>
+                        <button
+                          onClick={(e) => handleDelete(spell.id, e)}
+                          className="px-1 py-0.5 text-xs leading-none rounded border bg-red-900/40 text-red-300 border-red-700/50 hover:bg-red-900/60"
+                          title="Delete"
+                        >
+                          ✕
+                        </button>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1 flex-shrink-0">
-                      <InlineFolderPicker
-                        category="spells"
-                        currentFolderId={spell.folderId}
-                        onFolderChange={(folderId) => handleFolderChange(spell.id, folderId)}
-                      />
-                      <button
-                        onClick={(e) => handleDuplicate(spell, e)}
-                        className="px-1 py-0.5 text-xs leading-none rounded border border-stone-700 text-stone-400 hover:text-stone-200 hover:bg-stone-800"
-                        title="Duplicate"
-                      >
-                        ⎘
-                      </button>
-                      <button
-                        onClick={(e) => handleDelete(spell.id, e)}
-                        className="px-1 py-0.5 text-xs leading-none rounded border bg-red-900/40 text-red-300 border-red-700/50 hover:bg-red-900/60"
-                        title="Delete"
-                      >
-                        ✕
-                      </button>
+
+                    {/* Meta line: type as a chip, then the numbers that differ
+                        between spells. Indented to sit under the name. */}
+                    <div className="flex flex-wrap items-center gap-1 mt-1 pl-[3.25rem]">
+                      <span className="px-1.5 py-0 rounded border text-[10px] whitespace-nowrap bg-stone-800 text-stone-300 border-stone-600 capitalize">
+                        {spell.templateType.replace('_', ' ')}
+                      </span>
+                      <span className="text-[10px] text-stone-500 whitespace-nowrap">
+                        Dmg {spell.damage}
+                        {spell.range ? <><span className="text-stone-600"> · </span>Rng {spell.range}</> : null}
+                        {spell.radius ? <><span className="text-stone-600"> · </span>Rad {spell.radius}</> : null}
+                      </span>
+                      {usages.map((u, i) => (
+                        <span
+                          key={i}
+                          className={`text-[10px] px-1.5 py-0 rounded border whitespace-nowrap ${
+                            u.type === 'character'
+                              ? 'bg-arcane-900/40 text-arcane-300 border-arcane-700/50'
+                              : 'bg-red-900/40 text-red-300 border-red-700/50'
+                          }`}
+                        >
+                          {u.type === 'character' ? '🛡' : '💀'} {u.name}
+                        </span>
+                      ))}
                     </div>
                   </div>
-                  {/* Entity usage */}
-                  {(() => {
-                    const usages = findAssetUsages('spell', spell.id);
-                    if (usages.length === 0) return null;
-                    return (
-                      <div className="flex flex-wrap gap-1 mt-1 pl-[3.25rem]">
-                        {usages.map((u, i) => (
-                          <span
-                            key={i}
-                            className={`text-[10px] px-1.5 py-0 rounded border whitespace-nowrap ${
-                              u.type === 'character'
-                                ? 'bg-arcane-900/40 text-arcane-300 border-arcane-700/50'
-                                : 'bg-red-900/40 text-red-300 border-red-700/50'
-                            }`}
-                          >
-                            {u.type === 'character' ? '🛡' : '💀'} {u.name}
-                          </span>
-                        ))}
-                      </div>
-                    );
-                  })()}
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </>
