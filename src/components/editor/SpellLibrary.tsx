@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { findAssetUsages, formatUsageWarning } from '../../utils/assetDependencies';
 import { scaledNameClass } from '../../utils/textScale';
 import type { SpellAsset } from '../../types/game';
-import { getSpellAssets, deleteSpellAsset, saveSpellAsset } from '../../utils/assetStorage';
+import { getSpellAssets, deleteSpellAsset, saveSpellAsset, getFolders } from '../../utils/assetStorage';
 import { SpellAssetBuilder } from './SpellAssetBuilder';
 import { AssetEditorLayout } from './AssetEditorLayout';
+import { AssetBrowseTable, useBrowseSort, type BrowseColumn } from './AssetBrowseTable';
 import { FolderDropdown, useFilteredAssets, InlineFolderPicker } from './FolderDropdown';
 import { useBulkSelect, BulkActionBar, bulkDelete, bulkMoveToFolder, bulkExport, bulkImport } from './BulkActions';
 
@@ -106,6 +107,176 @@ export const SpellLibrary: React.FC<{ initialSelectedId?: string }> = ({ initial
 
   const handleBack = () => handleCancel();
 
+  const folderNames = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const f of getFolders('spells')) map.set(f.id, f.name);
+    return map;
+  }, [spells]); // eslint-disable-line react-hooks/exhaustive-deps -- folders change alongside asset edits
+
+  // Computed once per load, not per render and not per sort comparison —
+  // findAssetUsages scans every other asset, so calling it inside a
+  // comparator would rescan the library O(n log n) times.
+  const usagesBySpell = useMemo(() => {
+    const map = new Map<string, ReturnType<typeof findAssetUsages>>();
+    for (const s of spells) map.set(s.id, findAssetUsages('spell', s.id));
+    return map;
+  }, [spells]);
+
+  const rowActionButtons = (spell: SpellAsset) => (
+    <>
+      <InlineFolderPicker
+        category="spells"
+        currentFolderId={spell.folderId}
+        onFolderChange={(folderId) => handleFolderChange(spell.id, folderId)}
+      />
+      <button
+        onClick={(e) => handleDuplicate(spell, e)}
+        className="px-1 py-0.5 text-xs leading-none rounded border border-stone-700 text-stone-400 hover:text-stone-200 hover:bg-stone-800"
+        title="Duplicate"
+      >
+        ⎘
+      </button>
+      <button
+        onClick={(e) => handleDelete(spell.id, e)}
+        className="px-1 py-0.5 text-xs leading-none rounded border bg-red-900/40 text-red-300 border-red-700/50 hover:bg-red-900/60"
+        title="Delete"
+      >
+        ✕
+      </button>
+    </>
+  );
+
+  const browseColumns: BrowseColumn<SpellAsset>[] = [
+    {
+      key: 'sprite',
+      label: '',
+      sortable: false,
+      className: 'w-10',
+      render: (s) => s.thumbnailIcon
+        ? <img src={s.thumbnailIcon} alt="" className="w-7 h-7 object-contain bg-stone-900 rounded" loading="lazy" decoding="async" />
+        : <div className="w-7 h-7 bg-stone-800 border border-stone-700 rounded flex items-center justify-center text-stone-500 text-xs">?</div>,
+    },
+    {
+      key: 'name',
+      label: 'Name',
+      value: (s) => s.name || 'Unnamed',
+      render: (s) => <span className="text-parchment-100">{s.name || 'Unnamed'}</span>,
+    },
+    {
+      key: 'type',
+      label: 'Type',
+      value: (s) => s.templateType,
+      render: (s) => (
+        <span className="px-1.5 py-0 rounded border text-[10px] whitespace-nowrap bg-stone-800 text-stone-300 border-stone-600 capitalize">
+          {s.templateType.replace('_', ' ')}
+        </span>
+      ),
+    },
+    { key: 'damage', label: 'Dmg', align: 'right', value: (s) => s.damage ?? null },
+    { key: 'range', label: 'Rng', align: 'right', value: (s) => s.range ?? null },
+    { key: 'radius', label: 'Rad', align: 'right', value: (s) => s.radius ?? null },
+    {
+      key: 'folder',
+      label: 'Folder',
+      value: (s) => (s.folderId ? folderNames.get(s.folderId) ?? null : null),
+      render: (s) => {
+        const name = s.folderId ? folderNames.get(s.folderId) : undefined;
+        return name
+          ? <span className="text-xs text-stone-400">{name}</span>
+          : <span className="text-stone-600">—</span>;
+      },
+    },
+    {
+      key: 'usedBy',
+      label: 'Used by',
+      value: (s) => usagesBySpell.get(s.id)?.length || null,
+      render: (s) => {
+        const usages = usagesBySpell.get(s.id) ?? [];
+        if (usages.length === 0) return <span className="text-stone-600">—</span>;
+        return (
+          <div className="flex flex-wrap gap-1">
+            {usages.map((u, i) => (
+              <span
+                key={i}
+                className={`text-[10px] px-1.5 py-0 rounded border whitespace-nowrap ${
+                  u.type === 'character'
+                    ? 'bg-arcane-900/40 text-arcane-300 border-arcane-700/50'
+                    : 'bg-red-900/40 text-red-300 border-red-700/50'
+                }`}
+              >
+                {u.type === 'character' ? '🛡' : '💀'} {u.name}
+              </span>
+            ))}
+          </div>
+        );
+      },
+    },
+  ];
+
+  // One ordering feeds the table, the sidebar list, and prev/next.
+  const sort = useBrowseSort(filteredSpells, browseColumns, 'name');
+
+  const searchInput = (
+    <input
+      type="text"
+      placeholder="Search..."
+      value={searchTerm}
+      onChange={(e) => setSearchTerm(e.target.value)}
+      className="flex-1 min-w-0 bg-stone-800 border border-stone-700 rounded px-2 py-1 text-xs text-parchment-100 placeholder-stone-500 focus:outline-none focus:border-arcane-500"
+    />
+  );
+
+  const folderFilter = (
+    <FolderDropdown
+      category="spells"
+      selectedFolderId={selectedFolderId}
+      onFolderSelect={setSelectedFolderId}
+    />
+  );
+
+  const newButton = (
+    <button
+      onClick={handleNew}
+      className="px-2 py-0.5 rounded border text-xs bg-green-900/40 text-green-300 border-green-700/50 hover:bg-green-900/60 flex-shrink-0"
+    >
+      + New
+    </button>
+  );
+
+  const countLabel = (
+    <span className="ml-1.5 text-xs font-sans text-stone-500">
+      {filteredSpells.length}{filteredSpells.length !== spells.length && ` / ${spells.length}`}
+    </span>
+  );
+
+  const bulkBar = (
+    <BulkActionBar
+      count={bulk.count}
+      totalCount={filteredSpells.length}
+      onSelectAll={() => bulk.selectAll(filteredSpells.map(s => s.id))}
+      onClear={bulk.clear}
+      onDelete={() => {
+        const nameMap = new Map(spells.map(s => [s.id, s.name]));
+        const deleted = bulkDelete([...bulk.selectedIds], 'spell', deleteSpellAsset, nameMap);
+        if (deleted.length) { loadSpells(); bulk.clear(); if (selectedId && deleted.includes(selectedId)) { setSelectedId(null); setEditingSpell(null); } }
+      }}
+      onMoveToFolder={() => {
+        bulkMoveToFolder([...bulk.selectedIds], 'spells', (id: string) => spells.find(s => s.id === id), saveSpellAsset);
+        loadSpells(); bulk.clear();
+      }}
+      onExport={() => {
+        const items = spells.filter(s => bulk.selectedIds.has(s.id));
+        bulkExport(items, 'spells-export.json', 'spell');
+      }}
+      onImport={() => bulkImport({
+        assetType: 'spell',
+        saveFn: saveSpellAsset,
+        existingIds: new Set(spells.map(s => s.id)),
+        onComplete: () => { loadSpells(); bulk.clear(); },
+      })}
+    />
+  );
+
   return (
     <AssetEditorLayout
       isEditing={isCreating || !!editingSpell}
@@ -116,61 +287,18 @@ export const SpellLibrary: React.FC<{ initialSelectedId?: string }> = ({ initial
           <div className="flex justify-between items-center gap-2">
             <h2 className="text-lg font-medieval text-copper-400">
               Spells
-              <span className="ml-1.5 text-xs font-sans text-stone-500">
-                {filteredSpells.length}{filteredSpells.length !== spells.length && ` / ${spells.length}`}
-              </span>
+              {countLabel}
             </h2>
-            <button
-              onClick={handleNew}
-              className="px-2 py-0.5 rounded border text-xs bg-green-900/40 text-green-300 border-green-700/50 hover:bg-green-900/60"
-            >
-              + New
-            </button>
+            {newButton}
           </div>
 
           {/* Search + folder filter share one row so the list starts higher */}
           <div className="flex items-center gap-1.5">
-            <input
-              type="text"
-              placeholder="Search..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="flex-1 min-w-0 bg-stone-800 border border-stone-700 rounded px-2 py-1 text-xs text-parchment-100 placeholder-stone-500 focus:outline-none focus:border-arcane-500"
-            />
-            <div className="w-32 flex-shrink-0">
-              <FolderDropdown
-                category="spells"
-                selectedFolderId={selectedFolderId}
-                onFolderSelect={setSelectedFolderId}
-              />
-            </div>
+            {searchInput}
+            <div className="w-32 flex-shrink-0">{folderFilter}</div>
           </div>
 
-          <BulkActionBar
-            count={bulk.count}
-            totalCount={filteredSpells.length}
-            onSelectAll={() => bulk.selectAll(filteredSpells.map(s => s.id))}
-            onClear={bulk.clear}
-            onDelete={() => {
-              const nameMap = new Map(spells.map(s => [s.id, s.name]));
-              const deleted = bulkDelete([...bulk.selectedIds], 'spell', deleteSpellAsset, nameMap);
-              if (deleted.length) { loadSpells(); bulk.clear(); if (selectedId && deleted.includes(selectedId)) { setSelectedId(null); setEditingSpell(null); } }
-            }}
-            onMoveToFolder={() => {
-              bulkMoveToFolder([...bulk.selectedIds], 'spells', (id: string) => spells.find(s => s.id === id), saveSpellAsset);
-              loadSpells(); bulk.clear();
-            }}
-            onExport={() => {
-              const items = spells.filter(s => bulk.selectedIds.has(s.id));
-              bulkExport(items, 'spells-export.json', 'spell');
-            }}
-            onImport={() => bulkImport({
-              assetType: 'spell',
-              saveFn: saveSpellAsset,
-              existingIds: new Set(spells.map(s => s.id)),
-              onComplete: () => { loadSpells(); bulk.clear(); },
-            })}
-          />
+          {bulkBar}
 
           <div className="border border-stone-700 rounded max-h-[calc(100vh-250px)] overflow-y-auto overflow-x-hidden dense-scrollbar">
             {filteredSpells.length === 0 ? (
@@ -178,9 +306,9 @@ export const SpellLibrary: React.FC<{ initialSelectedId?: string }> = ({ initial
                 {searchTerm ? 'No matches' : 'No spells yet — click "+ New" to create one.'}
               </div>
             ) : (
-              filteredSpells.map(spell => {
+              sort.sorted.map(spell => {
                 const isSelected = selectedId === spell.id;
-                const usages = findAssetUsages('spell', spell.id);
+                const usages = usagesBySpell.get(spell.id) ?? [];
                 return (
                   <div
                     key={spell.id}
@@ -278,6 +406,39 @@ export const SpellLibrary: React.FC<{ initialSelectedId?: string }> = ({ initial
           </div>
         </>
       }
+      browseControls={
+        <div className="flex items-center gap-2 flex-wrap">
+          <h2 className="text-lg font-medieval text-copper-400 mr-1">
+            Spells
+            {countLabel}
+          </h2>
+          <div className="w-48">{searchInput}</div>
+          <div className="w-40">{folderFilter}</div>
+          {newButton}
+          <div className="ml-auto">{bulkBar}</div>
+        </div>
+      }
+      browsePanel={
+        <AssetBrowseTable
+          items={sort.sorted}
+          columns={browseColumns}
+          sortKey={sort.sortKey}
+          sortDir={sort.sortDir}
+          onToggleSort={sort.toggleSort}
+          onOpen={handleSelect}
+          selection={{ isSelected: bulk.isSelected, toggle: bulk.toggle }}
+          rowActions={rowActionButtons}
+          emptyMessage={searchTerm ? 'No matches' : 'No spells yet — click "+ New" to create one.'}
+        />
+      }
+      navigation={{
+        items: sort.sorted.map(s => ({ id: s.id, name: s.name || 'Unnamed' })),
+        currentId: selectedId,
+        onSelect: (id) => {
+          const spell = spells.find(s => s.id === id);
+          if (spell) handleSelect(spell);
+        },
+      }}
       detailPanel={
         <SpellAssetBuilder
           key={editingSpell?.id || 'new'}
