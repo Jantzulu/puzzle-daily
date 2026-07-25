@@ -1,6 +1,6 @@
 # Claude Handoff Document - Puzzle Daily
 
-Last Updated: July 21, 2026, second session — FIVE arcs closed: (1) SHOWCASE DISTRIBUTION + SLAB REVEAL TIMING (publish stamps, shared reveal predicate, and player asset CLOSURE PREFETCH — a brief boot pull-all was superseded same-session by `be21e08` after a second design round with the user; top entry under Pending Tasks); (2) CONTENT PRODUCTION DASHBOARD (Puzzle Resources "Production" tab + auto-refresh; now the user-set styling reference for all dev pages — see "Dev-Page Styling Reference" section); (3) HOMING-REFLECT TIMING DIVERGENCE closed — known real/headless divergence ledger EMPTY; (4) CI's vacuous Type check fixed (`tsc -b` required — plain `tsc --noEmit` checks ZERO files here); (5) re-publish now refreshes ALL deps (edited live assets finally reach assets_live). Everything AWAITING USER TEST. Session tail: player asset pull-all SUPERSEDED by closure prefetch (`be21e08`) + LoadingRune plumbing (`32ac1cb`, art pending). **NEXT SESSION (user-directed): dev-page restyle pass to the Production standard — see "Next session — start here".** Previous: July 14, 2026, third session (MAP EDITOR REDESIGN COMPLETE — Phase 1 decomposition, Phase 2 layout rework, Phase 3 interaction gestures + mobile, all user-approved along the way, dungeon-theming pass CANCELLED by the user; plus 2 new theme fonts. See "Recently completed (July 14, third session)". Earlier the same day: HIT-STAMP CONDITIONS closed out the trigger overhaul — that whole batch still AWAITS USER TESTING on deploy. NOTE: the July 1–12 work — engine audit sweeps 1–10, summon/necromancy/vessels, Phase E homing helpers, strafe actions, contact redesign — is chronicled in the user-memory `in-progress.md`, not here; this doc's session log resumes at June 30 below.)
+Last Updated: July 25, 2026 — **DEV-PAGE RESTYLE PASS COMPLETE AND PUSHED** (18 commits, `6b762ee`..`33cd4d7`). All five Puzzle Resources tabs and all twelve Asset Manager tabs now follow the Production standard, and every asset editor gained **browse-vs-edit full-width modes** (a design round with the user, not just a restyle — see "Asset Editor Browse Mode" and "Next session — start here"). Also fixed en route: signed-in creators being bounced off gated routes by an AuthContext race; showcase heroes not counting as usages (deleting one silently broke Slab demos); unguarded `pickupPermissions` throwing in the editor and mid-turn; colliding asset ids; missing folder categories for vessels + sounds. **AWAITING USER TEST on multiple devices.** Previous: July 21, 2026, second session — FIVE arcs closed: (1) SHOWCASE DISTRIBUTION + SLAB REVEAL TIMING (publish stamps, shared reveal predicate, and player asset CLOSURE PREFETCH — a brief boot pull-all was superseded same-session by `be21e08` after a second design round with the user; top entry under Pending Tasks); (2) CONTENT PRODUCTION DASHBOARD (Puzzle Resources "Production" tab + auto-refresh; now the user-set styling reference for all dev pages — see "Dev-Page Styling Reference" section); (3) HOMING-REFLECT TIMING DIVERGENCE closed — known real/headless divergence ledger EMPTY; (4) CI's vacuous Type check fixed (`tsc -b` required — plain `tsc --noEmit` checks ZERO files here); (5) re-publish now refreshes ALL deps (edited live assets finally reach assets_live). Everything AWAITING USER TEST. Session tail: player asset pull-all SUPERSEDED by closure prefetch (`be21e08`) + LoadingRune plumbing (`32ac1cb`, art pending). **NEXT SESSION (user-directed): dev-page restyle pass to the Production standard — see "Next session — start here".** Previous: July 14, 2026, third session (MAP EDITOR REDESIGN COMPLETE — Phase 1 decomposition, Phase 2 layout rework, Phase 3 interaction gestures + mobile, all user-approved along the way, dungeon-theming pass CANCELLED by the user; plus 2 new theme fonts. See "Recently completed (July 14, third session)". Earlier the same day: HIT-STAMP CONDITIONS closed out the trigger overhaul — that whole batch still AWAITS USER TESTING on deploy. NOTE: the July 1–12 work — engine audit sweeps 1–10, summon/necromancy/vessels, Phase E homing helpers, strafe actions, contact redesign — is chronicled in the user-memory `in-progress.md`, not here; this doc's session log resumes at June 30 below.)
 
 ## Doc Map — Where to Find What
 
@@ -720,24 +720,77 @@ stay in the backlog, not requested yet.
    ungated. AWAITING USER FEEL-CHECK (is 2s right? knob is the
    constant).
 
-### Next session — start here (user-directed 2026-07-21 end of second session)
+### Next session — start here (2026-07-25)
 
-**DEV-PAGE RESTYLE PASS: bring the other dev pages in line with the
-Production tab's look** — the user set this explicitly ("I'd like the
-next session to begin with making some of the other dev pages more
-consistent with the direction of the Production page"). The recipe is
-codified in the "Dev-Page Styling Reference" section near the top of
-this doc (thin single borders, dense tables, tinted chips, glyph
-booleans, compact stat cards, no outer panel frames — density over
-dungeon dressing; full theming stays player-facing). Workflow per the
-user's standing preferences: real code in SMALL ISOLATED COMMITS, one
-surface per commit, screenshots between slices for their review.
-Natural candidates in rough priority order (same screen as Production,
-so the contrast is loudest): **SchedulingDashboard**, **StatsDashboard**,
-**BugReportViewer** (Puzzle Resources tabs), then the **Asset Manager**
-shell/tab chrome; NewsEditor and SettingsPage as stretch. Behavior must
-not change — restyle only; anything that smells like a functional
-improvement gets surfaced, not slipped in.
+**DEV-PAGE RESTYLE PASS: ✅ COMPLETE AND PUSHED** (18 commits,
+`6b762ee`..`33cd4d7`, on origin/main — both sites redeployed).
+**AWAITING USER TEST across multiple devices** — the user pushed
+specifically to test on real hardware; expect a feedback round.
+
+What shipped, beyond the styling recipe:
+1. **All five Puzzle Resources tabs + all twelve Asset Manager tabs**
+   moved to the Production standard.
+2. **Browse-vs-edit modes** for every asset editor — see the new
+   "Asset Editor Browse Mode" section below. This was a design round
+   with the user, not a restyle: the old layout wasted ~two-thirds of
+   the screen on a "select an asset" placeholder.
+3. **Bug fixes found along the way** (all pre-existing): showcase heroes
+   now count as usages (deleting one previously took a Slab demo down
+   with no warning); missing `pickupPermissions` no longer throws in the
+   editor OR mid-turn in `actions.ts`; sound uploads can't attach to the
+   wrong sound; colliding asset ids centralised into `utils/assetIds.ts`.
+4. **Folder categories for vessels + sounds** — `AssetCategory` was
+   missing both. Sounds had been borrowing `'objects'` (shared
+   namespace); vessels had no folder UI at all. Verified against live
+   storage that no migration was needed.
+
+**Open items / likely next:**
+- **SoundEditor config tabs no longer render the sound edit form
+  beside them** (they became full-width pages). State is preserved; the
+  proposed better fix if the user misses it is a ▶ preview button next
+  to each trigger's dropdown, which beats the old side-by-side.
+- **MediaLibraryTab** was untouched (it is a 10-line wrapper; the
+  styling lives in `MediaLibrary.tsx`), as were **NewsEditor** and
+  **SettingsPage** — the original stretch goals.
+- Feature queue after this: projectile linger, hero behavior slots.
+  SETTINGS AUDIT REMAINS ON HOLD (user, 2026-07-21).
+
+### Asset Editor Browse Mode (2026-07-25, design agreed with user)
+
+Every asset editor has two DESKTOP modes; mobile keeps the old
+list/detail swap because a data table does not fit a phone.
+- **Browse** (nothing selected): full-width sortable `AssetBrowseTable`,
+  no sidebar. Columns are declared per editor (`BrowseColumn<T>` with
+  `value` for sorting and optional `render`).
+- **Edit** (something selected): the editor at full width, with a nav
+  bar — back / prev-next / jump dropdown / N-of-M position.
+
+Rules that matter if you touch this:
+- `AssetEditorLayout`'s `browsePanel` / `browseControls` / `navigation`
+  props are **OPTIONAL**; omit them and the original two-pane layout is
+  byte-identical. That is how nine editors were migrated one at a time.
+- **Sort state lives in the exported `useBrowseSort` hook, never inside
+  the table.** One ordering must feed the table, the sidebar list, AND
+  prev/next — when the table owned it, the arrows walked storage order
+  while the screen showed alphabetical.
+- `UsageChips` collapses "Used by" by kind: one usage shows its name,
+  several become a counted chip ("9 puzzles") with names in a tooltip.
+  Required because the puzzle library will grow into the hundreds.
+  SoundEditor deliberately does NOT use it — its "Used by" lists global
+  trigger labels, not asset references.
+- Precompute `findAssetUsages` into a Map per load. Never call it inside
+  a sort comparator; it rescans the entire library.
+
+**TWO TRAPS that cost time this session:**
+1. **`.theme-root h1`–`h4`** (index.css) set font-size from the theme
+   heading scale, and a bare element selector outranks Tailwind's
+   `text-sm`. An `<h3>` used as a row label renders ~25px and truncates
+   regardless of class. **Use `<div>` for labels on dev pages.**
+2. **`dungeon-panel`, `dungeon-input` and every `dungeon-btn*`** expand
+   to `border-2` plus bevel shadows — they will always fight the
+   thin-border standard. `CollapsiblePanel` was the shared blocker and
+   has been restyled (it also now applies `className` to its BODY, which
+   is what every call site intended; it previously did nothing).
 
 **Also outstanding:** everything below is AWAITING USER TEST — expect
 feedback rounds to interleave. Settings audit remains ON HOLD (user,
