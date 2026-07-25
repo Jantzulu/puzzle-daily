@@ -94,13 +94,13 @@ export const FolderDropdown: React.FC<FolderDropdownProps> = ({
       {/* Dropdown button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full px-3 py-2 bg-stone-700 rounded text-sm flex items-center justify-between hover:bg-stone-600 transition-colors"
+        className="w-full px-2 py-1 bg-stone-800 border border-stone-700 rounded text-xs flex items-center justify-between gap-1 text-stone-300 hover:bg-stone-700/60 transition-colors"
       >
-        <span className="flex items-center gap-2">
-          <span className="text-stone-400">Folder:</span>
-          <span>{getSelectedLabel()}</span>
+        <span className="flex items-center gap-1 min-w-0">
+          <span className="text-stone-500 flex-shrink-0">Folder:</span>
+          <span className="truncate">{getSelectedLabel()}</span>
         </span>
-        <span className="text-stone-400">{isOpen ? '▲' : '▼'}</span>
+        <span className="text-stone-500 flex-shrink-0">{isOpen ? '▲' : '▼'}</span>
       </button>
 
       {/* Dropdown menu */}

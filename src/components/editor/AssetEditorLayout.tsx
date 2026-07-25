@@ -34,12 +34,12 @@ export const AssetEditorLayout: React.FC<AssetEditorLayoutProps> = ({
   }, [isMobile, isEditing]);
 
   return (
-    <div className="p-4 md:p-8">
+    <div className="p-4">
       <div className="max-w-7xl mx-auto">
-        <div className="flex flex-col md:flex-row gap-4 md:gap-8">
+        <div className="flex flex-col md:flex-row gap-4">
           {/* List panel: always on desktop, hidden on mobile when editing */}
           {(!isMobile || !isEditing) && (
-            <div className="w-full md:w-72 space-y-4 overflow-hidden">
+            <div className="w-full md:w-80 space-y-2 overflow-hidden">
               {listPanel}
             </div>
           )}

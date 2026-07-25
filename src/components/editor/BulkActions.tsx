@@ -50,43 +50,38 @@ interface BulkActionBarProps {
 
 export function BulkActionBar({ count, totalCount, onSelectAll, onClear, onDelete, onMoveToFolder, onExport, onImport }: BulkActionBarProps) {
   // When nothing selected, show only the Import button if available
+  // Shared chip idiom for the bar's buttons (Production dev-page standard).
+  const chip = 'px-2 py-0.5 rounded border text-xs border-stone-700 text-stone-400 hover:text-stone-200 hover:bg-stone-800';
+
   if (count === 0) {
     if (!onImport) return null;
     return (
       <div className="flex justify-end">
-        <button onClick={onImport} className="px-2 py-1 bg-stone-700 hover:bg-stone-600 rounded text-xs">
-          Import
-        </button>
+        <button onClick={onImport} className={chip}>Import</button>
       </div>
     );
   }
 
   return (
-    <div className="bg-blue-900/60 border border-blue-600 rounded px-3 py-2 flex flex-wrap items-center gap-2 text-sm">
-      <span className="text-blue-200 font-medium">{count} selected</span>
+    <div className="border border-sky-700/50 bg-sky-900/40 rounded px-2 py-1 flex flex-wrap items-center gap-1.5 text-xs">
+      <span className="text-sky-300">{count} selected</span>
       <div className="flex-1" />
       {count < totalCount && (
-        <button onClick={onSelectAll} className="px-2 py-1 bg-stone-700 hover:bg-stone-600 rounded text-xs">
-          Select All ({totalCount})
+        <button onClick={onSelectAll} className={chip}>
+          All ({totalCount})
         </button>
       )}
       {onMoveToFolder && (
-        <button onClick={onMoveToFolder} className="px-2 py-1 bg-stone-700 hover:bg-stone-600 rounded text-xs">
-          Move
-        </button>
+        <button onClick={onMoveToFolder} className={chip}>Move</button>
       )}
-      <button onClick={onExport} className="px-2 py-1 bg-stone-700 hover:bg-stone-600 rounded text-xs">
-        Export
-      </button>
+      <button onClick={onExport} className={chip}>Export</button>
       {onImport && (
-        <button onClick={onImport} className="px-2 py-1 bg-stone-700 hover:bg-stone-600 rounded text-xs">
-          Import
-        </button>
+        <button onClick={onImport} className={chip}>Import</button>
       )}
-      <button onClick={onDelete} className="px-2 py-1 bg-blood-700 hover:bg-blood-600 rounded text-xs">
+      <button onClick={onDelete} className="px-2 py-0.5 rounded border text-xs bg-red-900/40 text-red-300 border-red-700/50 hover:bg-red-900/60">
         Delete
       </button>
-      <button onClick={onClear} className="px-2 py-1 text-stone-400 hover:text-white text-xs">
+      <button onClick={onClear} className="px-1 text-stone-400 hover:text-parchment-100" title="Clear selection">
         {'\u00D7'}
       </button>
     </div>

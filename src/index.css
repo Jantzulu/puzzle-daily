@@ -292,6 +292,31 @@ canvas {
     @apply bg-stone-500;
   }
 
+  /* Dense scrollbar for dev/editor surfaces — thin, unframed, and it
+     does not reserve a track gutter the way dungeon-scrollbar does.
+     Pairs with the thin-border list panes on the Production standard. */
+  .dense-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: theme('colors.stone.600') transparent;
+  }
+
+  .dense-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .dense-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .dense-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-stone-600 rounded-full;
+  }
+
+  .dense-scrollbar::-webkit-scrollbar-thumb:hover {
+    @apply bg-stone-500;
+  }
+
   /* Torch glow effect for important elements */
   .torch-glow {
     animation: torch-glow 2s ease-in-out infinite;
