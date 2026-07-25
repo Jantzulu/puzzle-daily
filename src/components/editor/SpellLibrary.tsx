@@ -114,10 +114,10 @@ export const SpellLibrary: React.FC<{ initialSelectedId?: string }> = ({ initial
       listPanel={
         <>
           <div className="flex justify-between items-center">
-            <h2 className="text-xl font-bold font-medieval text-copper-400">Spells</h2>
+            <h2 className="text-lg font-medieval text-copper-400">Spells</h2>
             <button
               onClick={handleNew}
-              className="dungeon-btn-success text-sm"
+              className="dungeon-btn-success text-xs px-2 py-1"
             >
               + New
             </button>
@@ -129,7 +129,7 @@ export const SpellLibrary: React.FC<{ initialSelectedId?: string }> = ({ initial
             placeholder="Search..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="dungeon-input text-sm"
+            className="w-full bg-stone-800 border border-stone-700 rounded px-2 py-1 text-sm text-parchment-100 placeholder-stone-500 focus:outline-none focus:border-arcane-500"
           />
 
           {/* Folder Filter */}
@@ -165,58 +165,55 @@ export const SpellLibrary: React.FC<{ initialSelectedId?: string }> = ({ initial
             })}
           />
 
-          <div className="space-y-2 max-h-[calc(100vh-350px)] overflow-y-auto overflow-x-hidden">
+          <div className="border border-stone-700 rounded max-h-[calc(100vh-350px)] overflow-y-auto overflow-x-hidden">
             {filteredSpells.length === 0 ? (
-              <div className="dungeon-panel p-4 rounded text-center text-stone-400 text-sm">
-                {searchTerm ? 'No matches' : 'No spells yet.'}
-                <br />
-                {!searchTerm && 'Click "+ New" to create one.'}
+              <div className="px-2 py-4 text-center text-stone-500 text-sm">
+                {searchTerm ? 'No matches' : 'No spells yet — click "+ New" to create one.'}
               </div>
             ) : (
               filteredSpells.map(spell => (
                 <div
                   key={spell.id}
-                  className={`p-3 rounded cursor-pointer transition-colors ${
-                    bulk.isSelected(spell.id) ? 'bg-blue-900/40 border border-blue-500' :
+                  className={`px-2 py-1.5 cursor-pointer transition-colors border-t border-stone-700/60 first:border-t-0 ${
+                    bulk.isSelected(spell.id) ? 'bg-sky-900/40' :
                     selectedId === spell.id
-                      ? 'bg-copper-700/50 border border-copper-500'
-                      : 'dungeon-panel hover:bg-stone-700'
+                      ? 'bg-copper-900/50'
+                      : 'hover:bg-stone-800/50'
                   }`}
                   onClick={() => handleSelect(spell)}
                 >
-                  <div className="flex justify-between items-start">
-                    <div className="flex items-start gap-2 min-w-0">
+                  <div className="flex justify-between items-center gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
                       <input
                         type="checkbox"
                         checked={bulk.isSelected(spell.id)}
                         onChange={() => bulk.toggle(spell.id)}
                         onClick={(e) => e.stopPropagation()}
-                        className="accent-blue-500 flex-shrink-0"
+                        className="accent-sky-500 flex-shrink-0"
                       />
                       {spell.thumbnailIcon ? (
                         <img
                           src={spell.thumbnailIcon}
                           alt={spell.name}
-                          className="object-contain bg-stone-900 rounded flex-shrink-0 transition-all duration-150"
-                          style={{ width: selectedId === spell.id ? 56 : 40, height: selectedId === spell.id ? 56 : 40 }}
+                          className="w-7 h-7 object-contain bg-stone-900 rounded flex-shrink-0"
                           loading="lazy" decoding="async"
                         />
                       ) : (
-                        <div
-                          className="bg-stone-600 rounded flex items-center justify-center text-stone-400 text-xs flex-shrink-0 transition-all duration-150"
-                          style={{ width: selectedId === spell.id ? 56 : 40, height: selectedId === spell.id ? 56 : 40 }}
-                        >
+                        <div className="w-7 h-7 bg-stone-800 border border-stone-700 rounded flex items-center justify-center text-stone-500 text-xs flex-shrink-0">
                           ?
                         </div>
                       )}
                       <div className="min-w-0">
-                        <h3 className={`font-bold ${scaledNameClass(spell.name || 'Unnamed')}`}>{spell.name || 'Unnamed'}</h3>
-                        <p className="text-xs text-stone-400 capitalize">
+                        <h3 className={`text-parchment-100 truncate ${scaledNameClass(spell.name || 'Unnamed')}`}>{spell.name || 'Unnamed'}</h3>
+                        <p className="text-[10px] text-stone-500 capitalize truncate">
                           {spell.templateType.replace('_', ' ')}
+                          <span className="text-stone-600"> · </span>Dmg {spell.damage}
+                          {spell.range ? <><span className="text-stone-600"> · </span>Rng {spell.range}</> : null}
+                          {spell.radius ? <><span className="text-stone-600"> · </span>Rad {spell.radius}</> : null}
                         </p>
                       </div>
                     </div>
-                    <div className="flex flex-col gap-0.5 flex-shrink-0">
+                    <div className="flex items-center gap-1 flex-shrink-0">
                       <InlineFolderPicker
                         category="spells"
                         currentFolderId={spell.folderId}
@@ -224,37 +221,33 @@ export const SpellLibrary: React.FC<{ initialSelectedId?: string }> = ({ initial
                       />
                       <button
                         onClick={(e) => handleDuplicate(spell, e)}
-                        className="p-1 text-xs leading-none bg-stone-600 rounded hover:bg-stone-500"
+                        className="px-1 py-0.5 text-xs leading-none rounded border border-stone-700 text-stone-400 hover:text-stone-200 hover:bg-stone-800"
                         title="Duplicate"
                       >
                         ⎘
                       </button>
                       <button
                         onClick={(e) => handleDelete(spell.id, e)}
-                        className="p-1 text-xs leading-none bg-blood-700 rounded hover:bg-blood-600"
+                        className="px-1 py-0.5 text-xs leading-none rounded border bg-red-900/40 text-red-300 border-red-700/50 hover:bg-red-900/60"
                         title="Delete"
                       >
                         ✕
                       </button>
                     </div>
                   </div>
-                  {/* Quick stats */}
-                  <div className="flex gap-2 mt-2 text-xs text-stone-400">
-                    <span>Dmg: {spell.damage}</span>
-                    {spell.range && <span>Range: {spell.range}</span>}
-                    {spell.radius && <span>Radius: {spell.radius}</span>}
-                  </div>
                   {/* Entity usage */}
                   {(() => {
                     const usages = findAssetUsages('spell', spell.id);
                     if (usages.length === 0) return null;
                     return (
-                      <div className="flex flex-wrap gap-1 mt-1.5">
+                      <div className="flex flex-wrap gap-1 mt-1 pl-[3.25rem]">
                         {usages.map((u, i) => (
                           <span
                             key={i}
-                            className={`text-[10px] px-1.5 py-0.5 rounded ${
-                              u.type === 'character' ? 'bg-arcane-900/60 text-arcane-300' : 'bg-blood-900/60 text-blood-300'
+                            className={`text-[10px] px-1.5 py-0 rounded border whitespace-nowrap ${
+                              u.type === 'character'
+                                ? 'bg-arcane-900/40 text-arcane-300 border-arcane-700/50'
+                                : 'bg-red-900/40 text-red-300 border-red-700/50'
                             }`}
                           >
                             {u.type === 'character' ? '🛡' : '💀'} {u.name}
@@ -278,16 +271,16 @@ export const SpellLibrary: React.FC<{ initialSelectedId?: string }> = ({ initial
         />
       }
       emptyState={
-        <div className="dungeon-panel p-8 rounded text-center">
-          <h2 className="text-2xl font-bold font-medieval text-copper-400 mb-4">Spell Editor</h2>
-          <p className="text-stone-400 mb-6">
+        <div className="border border-stone-700 rounded p-6 text-center">
+          <h2 className="text-lg font-medieval text-copper-400 mb-2">Spell Editor</h2>
+          <p className="text-sm text-stone-400 mb-4">
             Create spell assets that can be equipped to heroes and enemies.
             <br />
             Select a spell from the list or create a new one.
           </p>
           <button
             onClick={handleNew}
-            className="dungeon-btn-success text-lg"
+            className="dungeon-btn-success text-sm px-3 py-1.5"
           >
             + Create New Spell
           </button>
