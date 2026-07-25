@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect, useMemo } from 'react';
 import { toast } from '../shared/Toast';
 import { findAssetUsages, formatUsageWarning } from '../../utils/assetDependencies';
 import { scaledNameClass } from '../../utils/textScale';
@@ -13,9 +13,10 @@ import { MediaBrowseButton } from './MediaBrowseButton';
 import { VersionHistoryModal } from './VersionHistoryModal';
 import { createVersionSnapshot } from '../../services/versionService';
 import { AssetEditorLayout } from './AssetEditorLayout';
+import { AssetBrowseTable, useBrowseSort, type BrowseColumn } from './AssetBrowseTable';
+import { CollapsiblePanel } from './CollapsiblePanel';
 import { SpriteThumbnail } from './SpriteThumbnail';
 import { useIsMobile } from '../../hooks/useMediaQuery';
-import { CollapsiblePanel } from './CollapsiblePanel';
 
 // Helper to convert file to base64
 function fileToBase64(file: File): Promise<string> {
@@ -244,7 +245,7 @@ const BehaviorEditor: React.FC<BehaviorEditorProps> = ({ behavior, onChange, onR
               </div>
             ) : (
               <label className="block cursor-pointer">
-                <div className="w-full h-16 border-2 border-dashed border-stone-500 rounded flex flex-col items-center justify-center text-stone-400 hover:border-stone-400 text-sm">
+                <div className="w-full h-16 border border-dashed border-stone-500 rounded flex flex-col items-center justify-center text-stone-400 hover:border-stone-400 text-sm">
                   <span>+ Upload Activation Sprite</span>
                   <span className="text-xs text-stone-500">Single image or horizontal spritesheet</span>
                 </div>
@@ -322,10 +323,10 @@ const BehaviorEditor: React.FC<BehaviorEditorProps> = ({ behavior, onChange, onR
                 onChange={e => onChange({ ...behavior, directionChangeAngle: parseInt(e.target.value) as 45 | 90 | 135 | 180 })}
                 className="w-full bg-stone-600 rounded px-2 py-1 text-sm mt-1"
               >
-                <option value={45}>45° (one step)</option>
-                <option value={90}>90° (quarter turn)</option>
-                <option value={135}>135° (three steps)</option>
-                <option value={180}>180° (reverse)</option>
+                <option value={45}>45Â° (one step)</option>
+                <option value={90}>90Â° (quarter turn)</option>
+                <option value={135}>135Â° (three steps)</option>
+                <option value={180}>180Â° (reverse)</option>
               </select>
             </div>
           )}
@@ -357,7 +358,7 @@ const BehaviorEditor: React.FC<BehaviorEditorProps> = ({ behavior, onChange, onR
                   }}
                   className="text-red-400 hover:text-red-300 text-xs"
                 >
-                  ×
+                  Ã—
                 </button>
               </div>
               {(effect.type === 'toggle_wall' || effect.type === 'trigger_teleport') && (
@@ -467,11 +468,11 @@ const BehaviorEditor: React.FC<BehaviorEditorProps> = ({ behavior, onChange, onR
 // Get behavior icon
 const getBehaviorIcon = (type: TileBehaviorType): string => {
   switch (type) {
-    case 'damage': return '🔥';
-    case 'teleport': return '🌀';
-    case 'direction_change': return '➡️';
-    case 'ice': return '❄️';
-    case 'pressure_plate': return '⬇️';
+    case 'damage': return 'ðŸ”¥';
+    case 'teleport': return 'ðŸŒ€';
+    case 'direction_change': return 'âž¡ï¸';
+    case 'ice': return 'â„ï¸';
+    case 'pressure_plate': return 'â¬‡ï¸';
     default: return '?';
   }
 };
@@ -717,156 +718,397 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
     setIsCreating(true);
   };
 
+  const folderNames = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const f of getFolders('tiles')) map.set(f.id, f.name);
+    return map;
+  }, [tileTypes]); // eslint-disable-line react-hooks/exhaustive-deps -- folders change alongside asset edits
+
+  // Computed once per load, not per render and not per sort comparison â€”
+  // findAssetUsages scans every other asset, so calling it inside a
+  // comparator would rescan the library O(n log n) times.
+  const usagesByTile = useMemo(() => {
+    const map = new Map<string, ReturnType<typeof findAssetUsages>>();
+    for (const t of tileTypes) map.set(t.id, findAssetUsages('tile_type', t.id));
+    return map;
+  }, [tileTypes]);
+
+  const tileThumbnail = (tileType: CustomTileType) => {
+    const src = tileType.customSprite?.idleImageData || tileType.customSprite?.idleImageUrl;
+    return src ? (
+      <img
+        src={src}
+        alt=""
+        className="w-7 h-7 object-cover bg-stone-900 rounded flex-shrink-0"
+        loading="lazy" decoding="async"
+      />
+    ) : (
+      <div className="w-7 h-7 bg-stone-800 border border-stone-700 rounded flex items-center justify-center text-sm flex-shrink-0">
+        {tileType.behaviors[0] ? getBehaviorIcon(tileType.behaviors[0].type) : 'â¬œ'}
+      </div>
+    );
+  };
+
+  /** State label: cadence and pressure-plate triggering are mutually exclusive in the UI. */
+  const toggleLabel = (t: CustomTileType): string | null =>
+    t.cadence?.enabled ? `Cadence: ${t.cadence.pattern}` : t.canBeTriggered ? 'Triggered' : null;
+
+  /** Damage dealt by the first damage behavior, if any. */
+  const tileDamage = (t: CustomTileType): number | null => {
+    const dmg = t.behaviors.find(b => b.type === 'damage');
+    return dmg ? (dmg.damageAmount ?? 1) : null;
+  };
+
+  const rowActionButtons = (tileType: CustomTileType) => (
+    <>
+      <InlineFolderPicker
+        category="tiles"
+        currentFolderId={tileType.folderId}
+        onFolderChange={(folderId) => handleFolderChange(tileType.id, folderId)}
+      />
+      <button
+        onClick={(e) => handleDuplicate(tileType, e)}
+        className="px-1 py-0.5 text-xs leading-none rounded border border-stone-700 text-stone-400 hover:text-stone-200 hover:bg-stone-800"
+        title="Duplicate"
+      >
+        âŽ˜
+      </button>
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          handleDelete(tileType.id);
+        }}
+        className="px-1 py-0.5 text-xs leading-none rounded border bg-red-900/40 text-red-300 border-red-700/50 hover:bg-red-900/60"
+        title="Delete"
+      >
+        âœ•
+      </button>
+    </>
+  );
+
+  const browseColumns: BrowseColumn<CustomTileType>[] = [
+    {
+      key: 'sprite',
+      label: '',
+      sortable: false,
+      className: 'w-10',
+      render: (t) => tileThumbnail(t),
+    },
+    {
+      key: 'name',
+      label: 'Name',
+      value: (t) => t.name || 'Unnamed',
+      render: (t) => <span className="text-parchment-100">{t.name || 'Unnamed'}</span>,
+    },
+    {
+      key: 'baseType',
+      label: 'Base',
+      value: (t) => t.baseType,
+      render: (t) => (
+        <span className={`px-1.5 py-0 rounded border text-[10px] whitespace-nowrap ${
+          t.baseType === 'wall'
+            ? 'bg-stone-700 text-stone-300 border-stone-500'
+            : 'bg-moss-900/40 text-moss-300 border-moss-700/50'
+        }`}>
+          {t.baseType === 'wall' ? 'Wall' : 'Walkable'}
+        </span>
+      ),
+    },
+    {
+      key: 'behaviors',
+      label: 'Behaviors',
+      value: (t) => t.behaviors.length,
+      render: (t) => {
+        if (t.behaviors.length === 0) return <span className="text-stone-600">â€”</span>;
+        return (
+          <div className="flex flex-wrap gap-1">
+            {t.behaviors.map((b, i) => (
+              <span
+                key={i}
+                className="px-1.5 py-0 rounded border text-[10px] whitespace-nowrap bg-stone-800 text-stone-300 border-stone-600"
+              >
+                {getBehaviorIcon(b.type)} {BEHAVIOR_OPTIONS.find(o => o.type === b.type)?.label || b.type}
+              </span>
+            ))}
+          </div>
+        );
+      },
+    },
+    { key: 'damage', label: 'Dmg', align: 'right', value: (t) => tileDamage(t) },
+    {
+      key: 'toggle',
+      label: 'Toggle',
+      value: (t) => toggleLabel(t),
+      render: (t) => {
+        const label = toggleLabel(t);
+        return label
+          ? <span className="px-1.5 py-0 rounded border text-[10px] whitespace-nowrap bg-arcane-900/40 text-arcane-300 border-arcane-700/50 capitalize">{label}</span>
+          : <span className="text-stone-600">â€”</span>;
+      },
+    },
+    {
+      key: 'folder',
+      label: 'Folder',
+      value: (t) => (t.folderId ? folderNames.get(t.folderId) ?? null : null),
+      render: (t) => {
+        const name = t.folderId ? folderNames.get(t.folderId) : undefined;
+        return name
+          ? <span className="text-xs text-stone-400">{name}</span>
+          : <span className="text-stone-600">â€”</span>;
+      },
+    },
+    {
+      key: 'usedBy',
+      label: 'Used by',
+      value: (t) => usagesByTile.get(t.id)?.length || null,
+      render: (t) => {
+        const usages = usagesByTile.get(t.id) ?? [];
+        if (usages.length === 0) return <span className="text-stone-600">â€”</span>;
+        return (
+          <div className="flex flex-wrap gap-1">
+            {usages.map((u, i) => (
+              <span
+                key={i}
+                className={`text-[10px] px-1.5 py-0 rounded border whitespace-nowrap ${
+                  u.type === 'skin'
+                    ? 'bg-arcane-900/40 text-arcane-300 border-arcane-700/50'
+                    : 'bg-copper-900/40 text-copper-300 border-copper-700/50'
+                }`}
+              >
+                {u.type === 'skin' ? 'ðŸŽ¨' : 'ðŸ§©'} {u.name}
+              </span>
+            ))}
+          </div>
+        );
+      },
+    },
+  ];
+
+  // One ordering feeds the table, the sidebar list, and prev/next.
+  const sort = useBrowseSort(filteredTileTypes, browseColumns, 'name');
+
+  const searchInput = (
+    <input
+      type="text"
+      placeholder="Search..."
+      value={searchTerm}
+      onChange={(e) => setSearchTerm(e.target.value)}
+      className="flex-1 min-w-0 bg-stone-800 border border-stone-700 rounded px-2 py-1 text-xs text-parchment-100 placeholder-stone-500 focus:outline-none focus:border-arcane-500"
+    />
+  );
+
+  const folderFilter = (
+    <FolderDropdown
+      category="tiles"
+      selectedFolderId={selectedFolderId}
+      onFolderSelect={setSelectedFolderId}
+    />
+  );
+
+  const newButton = (
+    <button
+      onClick={handleNew}
+      className="px-2 py-0.5 rounded border text-xs bg-green-900/40 text-green-300 border-green-700/50 hover:bg-green-900/60 flex-shrink-0"
+    >
+      + New
+    </button>
+  );
+
+  const countLabel = (
+    <span className="ml-1.5 text-xs font-sans text-stone-500">
+      {filteredTileTypes.length}{filteredTileTypes.length !== tileTypes.length && ` / ${tileTypes.length}`}
+    </span>
+  );
+
+  const bulkBar = (
+    <BulkActionBar
+      count={bulk.count}
+      totalCount={filteredTileTypes.length}
+      onSelectAll={() => bulk.selectAll(filteredTileTypes.map(t => t.id))}
+      onClear={bulk.clear}
+      onDelete={() => {
+        const nameMap = new Map(tileTypes.map(t => [t.id, t.name]));
+        const deleted = bulkDelete([...bulk.selectedIds], 'tile_type', deleteTileType, nameMap);
+        if (deleted.length) { refreshTileTypes(); bulk.clear(); if (selectedId && deleted.includes(selectedId)) { setSelectedId(null); setEditing(null); } }
+      }}
+      onMoveToFolder={() => {
+        bulkMoveToFolder([...bulk.selectedIds], 'tiles', (id: string) => tileTypes.find(t => t.id === id), saveTileType);
+        refreshTileTypes(); bulk.clear();
+      }}
+      onExport={() => {
+        const items = tileTypes.filter(t => bulk.selectedIds.has(t.id));
+        bulkExport(items, 'tiles-export.json', 'tile');
+      }}
+      onImport={() => bulkImport({
+        assetType: 'tile',
+        saveFn: saveTileType,
+        existingIds: new Set(tileTypes.map(t => t.id)),
+        onComplete: () => { refreshTileTypes(); bulk.clear(); },
+      })}
+    />
+  );
+
   return (
     <AssetEditorLayout
       isEditing={!!editing}
       onBack={handleBack}
       listTitle="Tile Types"
       listPanel={<>
-            <div className="flex justify-between items-center">
-              <h2 className="text-xl font-bold font-medieval text-copper-400">Custom Tile Types</h2>
-              <button
-                onClick={handleNew}
-                className="dungeon-btn-success text-sm"
-              >
-                + New
-              </button>
+            <div className="flex justify-between items-center gap-2">
+              <h2 className="text-lg font-medieval text-copper-400">
+                Tile Types
+                {countLabel}
+              </h2>
+              {newButton}
             </div>
 
-            {/* Search */}
-            <input
-              type="text"
-              placeholder="Search..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="dungeon-input w-full"
-            />
+            {/* Search + folder filter share one row so the list starts higher */}
+            <div className="flex items-center gap-1.5">
+              {searchInput}
+              <div className="w-32 flex-shrink-0">{folderFilter}</div>
+            </div>
 
-            {/* Folder Filter */}
-            <FolderDropdown
-              category="tiles"
-              selectedFolderId={selectedFolderId}
-              onFolderSelect={setSelectedFolderId}
-            />
+            {bulkBar}
 
-            <BulkActionBar
-              count={bulk.count}
-              totalCount={filteredTileTypes.length}
-              onSelectAll={() => bulk.selectAll(filteredTileTypes.map(t => t.id))}
-              onClear={bulk.clear}
-              onDelete={() => {
-                const nameMap = new Map(tileTypes.map(t => [t.id, t.name]));
-                const deleted = bulkDelete([...bulk.selectedIds], 'tile_type', deleteTileType, nameMap);
-                if (deleted.length) { refreshTileTypes(); bulk.clear(); if (selectedId && deleted.includes(selectedId)) { setSelectedId(null); setEditing(null); } }
-              }}
-              onMoveToFolder={() => {
-                bulkMoveToFolder([...bulk.selectedIds], 'tiles', (id: string) => tileTypes.find(t => t.id === id), saveTileType);
-                refreshTileTypes(); bulk.clear();
-              }}
-              onExport={() => {
-                const items = tileTypes.filter(t => bulk.selectedIds.has(t.id));
-                bulkExport(items, 'tiles-export.json', 'tile');
-              }}
-              onImport={() => bulkImport({
-                assetType: 'tile',
-                saveFn: saveTileType,
-                existingIds: new Set(tileTypes.map(t => t.id)),
-                onComplete: () => { refreshTileTypes(); bulk.clear(); },
-              })}
-            />
-
-            <div className="space-y-2 max-h-[calc(100vh-350px)] overflow-y-auto overflow-x-hidden">
+            <div className="border border-stone-700 rounded max-h-[calc(100vh-250px)] overflow-y-auto overflow-x-hidden dense-scrollbar">
               {filteredTileTypes.length === 0 ? (
-                <div className="dungeon-panel p-4 rounded text-center text-stone-400 text-sm">
-                  {searchTerm ? 'No tile types match your search.' : 'No custom tile types yet.'}
-                  <br />
-                  {!searchTerm && 'Click "+ New" to create one.'}
+                <div className="px-2 py-4 text-center text-stone-500 text-sm">
+                  {searchTerm ? 'No matches' : 'No custom tile types yet â€” click "+ New" to create one.'}
                 </div>
               ) : (
-                filteredTileTypes.map(tileType => (
-                  <div
-                    key={tileType.id}
-                    className={`p-3 rounded cursor-pointer transition-colors ${
-                      bulk.isSelected(tileType.id) ? 'bg-blue-900/40 border border-blue-500' :
-                      selectedId === tileType.id
-                        ? 'bg-arcane-700'
-                        : 'dungeon-panel hover:bg-stone-700'
-                    }`}
-                    onClick={() => handleSelect(tileType.id)}
-                  >
-                    <div className="flex justify-between items-start">
-                      <div className="flex items-start gap-2 min-w-0">
+                sort.sorted.map(tileType => {
+                  const isSelected = selectedId === tileType.id;
+                  const toggle = toggleLabel(tileType);
+                  return (
+                    <div
+                      key={tileType.id}
+                      className={`group px-2 py-1.5 cursor-pointer transition-colors border-t border-stone-700/60 first:border-t-0 ${
+                        bulk.isSelected(tileType.id) ? 'bg-sky-900/40' :
+                        isSelected
+                          ? 'bg-copper-900/50'
+                          : 'hover:bg-stone-800/50'
+                      }`}
+                      onClick={() => handleSelect(tileType.id)}
+                    >
+                      <div className="flex items-center gap-2">
                         <input
                           type="checkbox"
                           checked={bulk.isSelected(tileType.id)}
                           onChange={() => bulk.toggle(tileType.id)}
                           onClick={(e) => e.stopPropagation()}
-                          className="accent-blue-500 flex-shrink-0"
+                          className="accent-sky-500 flex-shrink-0"
                         />
-                        {/* Preview thumbnail */}
-                        <div className="w-10 h-10 bg-stone-600 rounded flex items-center justify-center overflow-hidden flex-shrink-0">
-                          {(tileType.customSprite?.idleImageData || tileType.customSprite?.idleImageUrl) ? (
-                            <img
-                              src={tileType.customSprite.idleImageData || tileType.customSprite.idleImageUrl}
-                              alt=""
-                              className="w-full h-full object-cover"
-                              loading="lazy" decoding="async"
-                            />
-                          ) : (
-                            <span className="text-lg">
-                              {tileType.behaviors[0] ? getBehaviorIcon(tileType.behaviors[0].type) : '⬜'}
-                            </span>
-                          )}
+                        {tileThumbnail(tileType)}
+                        {/* Name owns the full remaining width; actions only take
+                            space once the row is hovered, focused, or selected. */}
+                        {/* Deliberately a div, not an h3: `.theme-root h3` sizes
+                            every heading at 1.25x the theme heading size, and an
+                            element selector outranks Tailwind's text-* utility â€”
+                            an h3 here renders ~25px and truncates early. */}
+                        <div className={`flex-1 min-w-0 truncate text-parchment-100 ${scaledNameClass(tileType.name)}`}>
+                          {tileType.name}
                         </div>
-                        <div className="min-w-0">
-                          <h3 className={`font-bold ${scaledNameClass(tileType.name)}`}>{tileType.name}</h3>
-                          <p className="text-xs text-stone-400">
-                            {tileType.baseType} • {tileType.behaviors.length} behavior{tileType.behaviors.length !== 1 ? 's' : ''}
-                          </p>
+                        <div className={`flex items-center gap-1 flex-shrink-0 transition-opacity ${
+                          isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 focus-within:opacity-100'
+                        }`}>
+                          <InlineFolderPicker
+                            category="tiles"
+                            currentFolderId={tileType.folderId}
+                            onFolderChange={(folderId) => handleFolderChange(tileType.id, folderId)}
+                          />
+                          <button
+                            onClick={(e) => handleDuplicate(tileType, e)}
+                            className="px-1 py-0.5 text-xs leading-none rounded border border-stone-700 text-stone-400 hover:text-stone-200 hover:bg-stone-800"
+                            title="Duplicate"
+                          >
+                            âŽ˜
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDelete(tileType.id);
+                            }}
+                            className="px-1 py-0.5 text-xs leading-none rounded border bg-red-900/40 text-red-300 border-red-700/50 hover:bg-red-900/60"
+                            title="Delete"
+                          >
+                            âœ•
+                          </button>
                         </div>
                       </div>
-                      <div className="flex flex-col gap-0.5 flex-shrink-0">
-                        <InlineFolderPicker
-                          category="tiles"
-                          currentFolderId={tileType.folderId}
-                          onFolderChange={(folderId) => handleFolderChange(tileType.id, folderId)}
-                        />
-                        <button
-                          onClick={(e) => handleDuplicate(tileType, e)}
-                          className="p-1 text-xs leading-none bg-stone-600 rounded hover:bg-stone-500"
-                          title="Duplicate"
-                        >
-                          ⎘
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDelete(tileType.id);
-                          }}
-                          className="p-1 text-xs leading-none bg-blood-700 rounded hover:bg-blood-600"
-                        >
-                          ✕
-                        </button>
+
+                      {/* Meta line: base type chip, then what actually differs
+                          between tiles. Indented to sit under the name. */}
+                      <div className="flex flex-wrap items-center gap-1 mt-1 pl-[3.25rem]">
+                        <span className={`px-1.5 py-0 rounded border text-[10px] whitespace-nowrap ${
+                          tileType.baseType === 'wall'
+                            ? 'bg-stone-700 text-stone-300 border-stone-500'
+                            : 'bg-moss-900/40 text-moss-300 border-moss-700/50'
+                        }`}>
+                          {tileType.baseType === 'wall' ? 'Wall' : 'Walkable'}
+                        </span>
+                        <span className="text-[10px] text-stone-500 whitespace-nowrap">
+                          {tileType.behaviors.length} behavior{tileType.behaviors.length !== 1 ? 's' : ''}
+                        </span>
+                        {tileType.behaviors.map((b, i) => (
+                          <span key={i} className="text-[10px] text-stone-400" title={BEHAVIOR_OPTIONS.find(o => o.type === b.type)?.label}>
+                            {getBehaviorIcon(b.type)}
+                          </span>
+                        ))}
+                        {toggle && (
+                          <span className="px-1.5 py-0 rounded border text-[10px] whitespace-nowrap bg-arcane-900/40 text-arcane-300 border-arcane-700/50 capitalize">
+                            {toggle}
+                          </span>
+                        )}
                       </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
       </>}
-      detailPanel={editing ? (<>
+      browseControls={
+        <div className="flex items-center gap-2 flex-wrap">
+          <h2 className="text-lg font-medieval text-copper-400 mr-1">
+            Tile Types
+            {countLabel}
+          </h2>
+          <div className="w-48">{searchInput}</div>
+          <div className="w-40">{folderFilter}</div>
+          {newButton}
+          <div className="ml-auto">{bulkBar}</div>
+        </div>
+      }
+      browsePanel={
+        <AssetBrowseTable
+          items={sort.sorted}
+          columns={browseColumns}
+          sortKey={sort.sortKey}
+          sortDir={sort.sortDir}
+          onToggleSort={sort.toggleSort}
+          onOpen={(t) => handleSelect(t.id)}
+          selection={{ isSelected: bulk.isSelected, toggle: bulk.toggle }}
+          rowActions={rowActionButtons}
+          emptyMessage={searchTerm ? 'No matches' : 'No custom tile types yet â€” click "+ New" to create one.'}
+        />
+      }
+      navigation={{
+        items: sort.sorted.map(t => ({ id: t.id, name: t.name || 'Unnamed' })),
+        currentId: selectedId,
+        onSelect: (id) => handleSelect(id),
+      }}
+      detailPanel={editing ? (<div className="space-y-3">
                 {/* Persistent Header */}
-                <div className="dungeon-panel p-3 md:p-4 rounded">
+                <div className="border border-stone-700 rounded p-3">
                   <div className="flex justify-between items-center gap-2">
                     <div className="flex items-center gap-2 md:gap-4 min-w-0">
-                      <div className="flex w-10 h-10 md:w-16 md:h-16 bg-stone-700 rounded-pixel items-center justify-center overflow-hidden flex-shrink-0">
+                      <div className="flex w-10 h-10 md:w-16 md:h-16 bg-stone-800 border border-stone-700 rounded items-center justify-center overflow-hidden flex-shrink-0">
                         <SpriteThumbnail sprite={editing.customSprite} size={isMobile ? 40 : 64} />
                       </div>
                       <div className="min-w-0">
-                        <h2 className="text-lg md:text-2xl font-bold font-medieval text-copper-400 truncate">
+                        <h2 className="text-lg font-medieval text-copper-400 truncate">
                           {editing.name || 'Unnamed Tile'}
                         </h2>
-                        <p className="text-xs text-stone-400">{editing.baseType} • {editing.behaviors.length} behavior{editing.behaviors.length !== 1 ? 's' : ''}</p>
+                        <p className="text-xs text-stone-400">{editing.baseType} â€¢ {editing.behaviors.length} behavior{editing.behaviors.length !== 1 ? 's' : ''}</p>
                       </div>
                     </div>
                     <div className="flex gap-1.5 md:gap-2 flex-shrink-0">
@@ -881,20 +1123,20 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
                             className="p-2 md:px-3 md:py-1.5 text-sm bg-copper-600/20 hover:bg-copper-600/30 text-copper-300 rounded border border-copper-500/30"
                             title="Save version snapshot"
                           >
-                            📸
+                            ðŸ“¸
                           </button>
                           <button
                             onClick={() => setShowVersionHistory(true)}
                             className="p-2 md:px-3 md:py-1.5 text-sm bg-stone-700 hover:bg-stone-600 rounded"
                             title="Version history"
                           >
-                            <span className="md:hidden">📜</span>
+                            <span className="md:hidden">ðŸ“œ</span>
                             <span className="hidden md:inline">History</span>
                           </button>
                         </>
                       )}
                       <button onClick={handleSave} className="dungeon-btn-success text-sm">
-                        <span className="md:hidden">💾</span>
+                        <span className="md:hidden">ðŸ’¾</span>
                         <span className="hidden md:inline">Save Tile Type</span>
                       </button>
                     </div>
@@ -989,7 +1231,7 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
                       Hide from the Slab
                     </label>
                     <p className="text-xs text-stone-500 mt-1">
-                      No compendium page even when published — for showcase-only variants and the like.
+                      No compendium page even when published â€” for showcase-only variants and the like.
                     </p>
                   </div>
 
@@ -1317,19 +1559,19 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
                           onClick={handleSpriteRemove}
                           className="absolute top-0 right-0 px-2 py-1 bg-blood-700 rounded text-xs hover:bg-blood-600"
                         >
-                          ✕
+                          âœ•
                         </button>
                       </div>
                       <p className="text-xs text-stone-400">
                         {editing.customSprite.idleImageUrl && !editing.customSprite.idleImageData
-                          ? '✓ Using URL'
-                          : '✓ Image uploaded'}
+                          ? 'âœ“ Using URL'
+                          : 'âœ“ Image uploaded'}
                       </p>
                     </div>
                   ) : (
                     <div className="space-y-2">
                       <label className="block cursor-pointer">
-                        <div className="w-full h-24 border-2 border-dashed border-stone-500 rounded flex flex-col items-center justify-center text-stone-400 hover:border-stone-400">
+                        <div className="w-full h-24 border border-dashed border-stone-500 rounded flex flex-col items-center justify-center text-stone-400 hover:border-stone-400">
                           <span>+ Upload Sprite</span>
                           <span className="text-xs text-stone-500 mt-1">48x48 recommended</span>
                         </div>
@@ -1348,7 +1590,7 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
                       <div className="flex items-center gap-2">
                         <MediaBrowseButton
                           onSelect={(url) => setSpriteUrl(url)}
-                          label="☁️ Browse Media"
+                          label="â˜ï¸ Browse Media"
                           className="px-2 py-1 text-xs"
                         />
                         <button
@@ -1356,7 +1598,7 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
                           onClick={() => setShowSpriteUrl(!showSpriteUrl)}
                           className="text-xs text-arcane-400 hover:text-arcane-300"
                         >
-                          {showSpriteUrl ? '▼ Hide URL input' : '▶ Or paste URL...'}
+                          {showSpriteUrl ? 'â–¼ Hide URL input' : 'â–¶ Or paste URL...'}
                         </button>
                       </div>
 
@@ -1430,19 +1672,19 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
                             onClick={handleOffStateSpriteRemove}
                             className="absolute top-0 right-0 px-2 py-1 bg-blood-700 rounded text-xs hover:bg-blood-600"
                           >
-                            ✕
+                            âœ•
                           </button>
                         </div>
                         <p className="text-xs text-stone-400">
                           {editing.offStateSprite.idleImageUrl && !editing.offStateSprite.idleImageData
-                            ? '✓ Using URL'
-                            : '✓ Image uploaded'}
+                            ? 'âœ“ Using URL'
+                            : 'âœ“ Image uploaded'}
                         </p>
                       </div>
                     ) : (
                       <div className="space-y-2">
                         <label className="block cursor-pointer">
-                          <div className="w-full h-24 border-2 border-dashed border-stone-500 rounded flex flex-col items-center justify-center text-stone-400 hover:border-stone-400">
+                          <div className="w-full h-24 border border-dashed border-stone-500 rounded flex flex-col items-center justify-center text-stone-400 hover:border-stone-400">
                             <span>+ Upload Off State Sprite</span>
                             <span className="text-xs text-stone-500 mt-1">48x48 recommended</span>
                           </div>
@@ -1461,7 +1703,7 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
                         <div className="flex items-center gap-2">
                           <MediaBrowseButton
                             onSelect={(url) => setOffSpriteUrl(url)}
-                            label="☁️ Browse Media"
+                            label="â˜ï¸ Browse Media"
                             className="px-2 py-1 text-xs"
                           />
                           <button
@@ -1469,7 +1711,7 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
                             onClick={() => setShowOffSpriteUrl(!showOffSpriteUrl)}
                             className="text-xs text-arcane-400 hover:text-arcane-300"
                           >
-                            {showOffSpriteUrl ? '▼ Hide URL input' : '▶ Or paste URL...'}
+                            {showOffSpriteUrl ? 'â–¼ Hide URL input' : 'â–¶ Or paste URL...'}
                           </button>
                         </div>
 
@@ -1507,17 +1749,17 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
                     )}
                   </CollapsiblePanel>
                 )}
-      </>) : null}
+      </div>) : null}
       emptyState={
-              <div className="dungeon-panel p-8 rounded text-center">
-                <h2 className="text-2xl font-bold mb-4">Custom Tile Type Editor</h2>
-                <p className="text-stone-400 mb-6">
+              <div className="border border-stone-700 rounded p-6 text-center">
+                <h2 className="text-lg font-medieval text-copper-400 mb-2">Custom Tile Type Editor</h2>
+                <p className="text-sm text-stone-400 mb-4">
                   Create custom tile types with special behaviors like damage zones, teleporters,
                   ice tiles, and pressure plates. Tile types can be placed in the map editor.
                 </p>
                 <button
                   onClick={handleNew}
-                  className="px-6 py-3 bg-moss-700 rounded text-lg hover:bg-moss-600"
+                  className="px-2 py-0.5 rounded border text-xs bg-green-900/40 text-green-300 border-green-700/50 hover:bg-green-900/60"
                 >
                   + Create New Tile Type
                 </button>
