@@ -632,11 +632,23 @@ section) are also active picks from this conversation.
   Original capture:
   the Attributes list was a flat `string[]`. *Captured 2026-07-21.*
 
-- [ ] **POLISH/AUDIT — Dev-page Settings tab cleanup.** The Settings
-  tab's organization is "a mess": tab layout is scattered, some
-  settings are vestigial after later changes, some may no longer work
-  at all. Wants a full audit (what does each setting still do?) plus a
-  visual/organization pass. *Captured 2026-07-21.*
+- [x] **POLISH/AUDIT — Dev-page Settings tab cleanup — ✅ SHIPPED**
+  (restyle `24b59a9` 2026-07-25; audit `ca2d35c` + `e770245`
+  2026-07-26). The "some settings may no longer work at all" hunch was
+  right and then some: **44 of ~140 did nothing whatsoever** — the whole
+  Defeat Panel tab, everything on Action Buttons except the three
+  images, seven icons, and three compendium keys whose category was not
+  even in `ASSET_CATEGORIES`, so they never had a tab. All deleted; the
+  Effects tab went with them. Four real bugs fixed alongside: a Reset
+  button that reached across tabs, colour defaults that covered 18 of
+  ~60 keys and had drifted from index.css, an un-pickable Inter on the
+  heading/menu fonts, and an import that accepted ANY valid JSON and
+  overwrote the theme while reporting success. Pins in
+  `theme-settings.test.ts` (defaults vs index.css, category exists, no
+  empty tab, import validation). Still open, cosmetic only: a stale
+  `logoVariants` description, two tabs sharing 🖼️, and
+  `FxSettingsPanel` mixing diagnostics in with real settings.
+  *Captured 2026-07-21.*
 
 - [x] **POLISH — Soul-return visual on resurrect.** ✅ SHIPPED
   2026-07-21 (`d5f3569` + `b1c681b`): inverse of the departing soul —
