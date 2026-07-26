@@ -57,13 +57,6 @@ const BORDER_WIDTH_OPTIONS = [
   { value: '4px', label: 'Heavy (4px)' },
 ];
 
-const SHADOW_OPTIONS = [
-  { value: 'none', label: 'None' },
-  { value: 'light', label: 'Light' },
-  { value: 'medium', label: 'Medium' },
-  { value: 'heavy', label: 'Heavy' },
-];
-
 const FONT_OPTIONS = [
   // "Default" is its own chip now (it clears the setting); picking Inter here
   // writes Inter explicitly, which is the only way to get it on the heading
@@ -101,12 +94,6 @@ const SUBTITLE_SIZE_OPTIONS = [
   { value: 'medium', label: 'Medium' },
   { value: 'large', label: 'Large' },
   { value: 'x-large', label: 'Extra Large (1.25x)' },
-];
-
-const BUTTON_SHAPE_OPTIONS = [
-  { value: 'default', label: 'Standard' },
-  { value: 'rounded', label: 'Rounded' },
-  { value: 'pill', label: 'Pill' },
 ];
 
 // ── Shared chrome (2026-07-25 dev-page restyle) ─────────────────────────────
@@ -699,11 +686,6 @@ const StyleSelector: React.FC<StyleSelectorProps> = ({ assetKey, value, onChange
       defaultHint = '2px';
       previewFallback = '2px';
       break;
-    case 'shadowIntensity':
-      options = SHADOW_OPTIONS;
-      defaultHint = 'medium';
-      previewFallback = 'medium';
-      break;
     case 'fontFamily':
       options = FONT_OPTIONS;
       defaultHint = 'Inter';
@@ -729,14 +711,6 @@ const StyleSelector: React.FC<StyleSelectorProps> = ({ assetKey, value, onChange
       options = SUBTITLE_SIZE_OPTIONS;
       defaultHint = 'small';
       previewFallback = 'small';
-      break;
-    case 'actionButtonPlayShape':
-    case 'actionButtonTestHeroesShape':
-    case 'actionButtonTestEnemiesShape':
-    case 'actionButtonConcedeShape':
-      options = BUTTON_SHAPE_OPTIONS;
-      defaultHint = 'the theme button shape';
-      previewFallback = 'default';
       break;
   }
 
@@ -956,11 +930,9 @@ export const ThemeAssetsEditor: React.FC = () => {
     buttons: 'Buttons',
     borders: 'Borders',
     icons: 'Icons',
-    effects: 'Effects',
     colors: 'Colors',
     actionButtons: 'Action Buttons',
     concedeModal: 'Concede Overlay',
-    defeatPanel: 'Defeat Panel',
     gameOverPanel: 'Game Over Panel',
     styles: 'Styles',
   };
@@ -971,11 +943,9 @@ export const ThemeAssetsEditor: React.FC = () => {
     buttons: '🔘',
     borders: '🖼️',
     icons: '⚔️',
-    effects: '✨',
     colors: '🎨',
     actionButtons: '▶️',
     concedeModal: '🏳️',
-    defeatPanel: '💀',
     gameOverPanel: '🏁',
     styles: '⚙️',
   };

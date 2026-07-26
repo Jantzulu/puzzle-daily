@@ -55,7 +55,6 @@ export interface ThemeAssets {
   // Backgrounds
   bgMain?: string; // Main page background
   bgPanel?: string; // Panel/card background
-  bgGameArea?: string; // Underground/cave background for game area
   bgNavbar?: string; // Navigation bar background
   bgCard?: string; // Inner card background image (heroes, enemies, items)
 
@@ -66,30 +65,17 @@ export interface ThemeAssets {
 
   // Buttons (can be 9-slice sprites or simple images)
   buttonPrimary?: string;
-  buttonSecondary?: string;
-  buttonDanger?: string;
-  buttonSuccess?: string;
 
   // Border frames
   borderFrame?: string; // Decorative border for panels
-  borderFrameSmall?: string; // Smaller decorative border
 
   // Icons (optional custom icons)
   iconHeart?: string;
   iconHeartEmpty?: string;
-  iconSword?: string;
-  iconShield?: string;
   iconBossHealthBar?: string; // Skull icon shown next to boss health bars
   iconNobleHealthBar?: string; // Crown icon shown next to Noble health bars (allies + heroes)
   iconAllyHealthBar?: string;  // Shield icon shown next to ally health bars
   iconDungeonDetails?: string; // Icon for the Dungeon Details divider (between Heroes and info sections)
-
-  // Navigation & Tab Icons (emoji/text)
-  iconNavPlay?: string;       // Icon for Play nav button (default: ⚔)
-  iconNavCompendium?: string; // Icon for Compendium nav button (default: 📖)
-  iconNavEditor?: string;     // Icon for Map Editor nav button (default: 🛠)
-  iconNavAssets?: string;     // Icon for Assets nav button (default: 📦)
-  iconBugReport?: string;     // Icon for Report Bug link (default: 🐛)
 
   // Compendium Tab Icons (emoji/text)
   iconTabHeroes?: string;       // Icon for Heroes tab (default: ⚔️)
@@ -113,10 +99,6 @@ export interface ThemeAssets {
   iconPixelCircle?: string;     // Custom icon for Circle tool
   iconPixelLine?: string;       // Custom icon for Line tool
 
-  // Overlay effects
-  overlayVignette?: string;
-  overlayNoise?: string;
-
   // === COLOR SETTINGS ===
   // Background colors
   colorBgPrimary?: string;    // Main page background color
@@ -139,7 +121,6 @@ export interface ThemeAssets {
   colorAccentPrimary?: string;  // Primary accent (buttons, links)
   colorAccentSuccess?: string;  // Success/positive actions
   colorAccentDanger?: string;   // Danger/warning actions
-  colorAccentMagic?: string;    // Magic/special effects
 
   // Button colors
   colorButtonBg?: string;         // Default button background
@@ -150,28 +131,11 @@ export interface ThemeAssets {
   colorButtonDangerBorder?: string; // Danger button border
 
   // Game Action Buttons (Test Heroes / Play / Test Enemies)
-  actionButtonPlayBg?: string;        // Play button background color
-  actionButtonPlayBorder?: string;    // Play button border color
-  actionButtonPlayText?: string;      // Play button text color
-  actionButtonPlayShape?: string;     // Play button shape (default, rounded, pill)
-  actionButtonPlayImage?: string;     // Play button custom image (replaces bg when set)
-  actionButtonPlayImageDisabled?: string; // Play button image when disabled (optional, auto-greys if not set)
-  actionButtonTestHeroesBg?: string;  // Test Heroes button background color
-  actionButtonTestHeroesBorder?: string; // Test Heroes button border color
-  actionButtonTestHeroesText?: string; // Test Heroes button text color
-  actionButtonTestHeroesShape?: string; // Test Heroes button shape
+  // Only the images are consumed — the colour/shape/disabled-image variants
+  // were never wired to anything and were removed 2026-07-26.
+  actionButtonPlayImage?: string;       // Play button custom image (replaces bg when set)
   actionButtonTestHeroesImage?: string; // Test Heroes button custom image
-  actionButtonTestHeroesImageDisabled?: string; // Test Heroes button image when disabled
-  actionButtonTestEnemiesBg?: string; // Test Enemies button background color
-  actionButtonTestEnemiesBorder?: string; // Test Enemies button border color
-  actionButtonTestEnemiesText?: string; // Test Enemies button text color
-  actionButtonTestEnemiesShape?: string; // Test Enemies button shape
   actionButtonTestEnemiesImage?: string; // Test Enemies button custom image
-  actionButtonTestEnemiesImageDisabled?: string; // Test Enemies button image when disabled
-  actionButtonConcedeBg?: string; // Concede button background color
-  actionButtonConcedeBorder?: string; // Concede button border color
-  actionButtonConcedeText?: string; // Concede button text color
-  actionButtonConcedeShape?: string; // Concede button shape
 
   // Concede Confirmation Modal
   concedeModalOverlayBg?: string;    // Overlay background color (default: black/70%)
@@ -186,13 +150,9 @@ export interface ThemeAssets {
   concedeModalConfirmBorder?: string; // Confirm button border
   concedeModalConfirmText?: string;  // Confirm button text
 
-  // Defeat Panel (loss of life overlay)
-  defeatPanelOverlayBg?: string;     // Overlay background color (default: black/75%)
-  defeatPanelBg?: string;            // Panel background color
-  defeatPanelBorder?: string;        // Panel border color
-  defeatPanelTitleText?: string;     // Title text color (e.g., "Defeat" or "Out of Time!")
-  defeatPanelMessageText?: string;   // Message text color
-  defeatPanelSubText?: string;       // Sub-text color (lives remaining message)
+  // (A "Defeat Panel" group used to sit here. Nothing ever read it — the
+  // loss-of-life overlay renders from the gameOverPanel* keys and the
+  // `defeat-panel` class. Removed 2026-07-26.)
 
   // Game Over Panel (all lives lost)
   gameOverPanelOverlayBg?: string;   // Overlay background color (default: black/80%)
@@ -223,17 +183,16 @@ export interface ThemeAssets {
   // === STYLE SETTINGS ===
   borderRadius?: string;        // Border radius (e.g., "4px", "8px", "0px")
   borderWidth?: string;         // Border width (e.g., "1px", "2px", "3px")
-  shadowIntensity?: string;     // Shadow intensity ("none", "light", "medium", "heavy")
   fontFamily?: string;          // Font family override (applies to body text)
   fontFamilyHeading?: string;   // Font family for headings/titles
   fontFamilyMenu?: string;      // Font family for the hamburger gate-menu buttons
   fontSizeBody?: string;        // Body text size multiplier
   fontSizeHeading?: string;     // Heading text size multiplier
 
-  // === COMPENDIUM BOOK ===
-  compendiumPageTexture?: string;      // Background texture for book pages (data URL)
-  compendiumSpineTexture?: string;     // Background texture/image for book spine (data URL)
-  compendiumCornerDecoration?: string; // Corner decoration image (data URL, replaces L-bracket corners)
+  // (A "Compendium Book" group used to sit here — page/spine textures and a
+  // corner decoration. Nothing read them, and their category was never in
+  // ASSET_CATEGORIES, so they had no tab to appear on either. Removed
+  // 2026-07-26.)
 }
 
 export type ThemeAssetKey = keyof ThemeAssets;
@@ -268,27 +227,15 @@ export const THEME_ASSET_CONFIG: Record<ThemeAssetKey, { label: string; descript
   bgPanelTile: { label: 'Tile Panel Background', description: 'Tile (repeat) instead of stretch to cover', category: 'backgrounds', inputType: 'toggle' },
   bgCard: { label: 'Card Background', description: 'Background image for inner cards (heroes, enemies, items)', category: 'backgrounds', inputType: 'image' },
   bgCardTile: { label: 'Tile Card Background', description: 'Tile (repeat) instead of stretch to cover', category: 'backgrounds', inputType: 'toggle' },
-  bgGameArea: { label: 'Game Area Background', description: 'Underground/cave background surrounding the dungeon', category: 'backgrounds', inputType: 'image' },
   bgNavbar: { label: 'Navbar Background', description: 'Navigation bar background', category: 'backgrounds', inputType: 'image' },
   buttonPrimary: { label: 'Primary Button', description: 'Main action button style', category: 'buttons', inputType: 'image' },
-  buttonSecondary: { label: 'Secondary Button', description: 'Secondary button style', category: 'buttons', inputType: 'image' },
-  buttonDanger: { label: 'Danger Button', description: 'Warning/delete button style', category: 'buttons', inputType: 'image' },
-  buttonSuccess: { label: 'Success Button', description: 'Confirm/success button style', category: 'buttons', inputType: 'image' },
   borderFrame: { label: 'Border Frame', description: 'Decorative border for large panels', category: 'borders', inputType: 'image' },
-  borderFrameSmall: { label: 'Small Border Frame', description: 'Decorative border for smaller elements', category: 'borders', inputType: 'image' },
   iconHeart: { label: 'Heart Icon (Filled)', description: 'Custom filled heart for lives display', category: 'icons', inputType: 'image' },
   iconHeartEmpty: { label: 'Heart Icon (Empty)', description: 'Custom empty heart for lives display', category: 'icons', inputType: 'image' },
-  iconSword: { label: 'Sword Icon', description: 'Attack/combat icon', category: 'icons', inputType: 'image' },
-  iconShield: { label: 'Shield Icon', description: 'Defense/protection icon', category: 'icons', inputType: 'image' },
   iconBossHealthBar: { label: 'Boss Health Bar Icon', description: 'Small skull/icon shown next to boss health bars (recommended: 8x8 or 16x16 pixels)', category: 'icons', inputType: 'image' },
   iconNobleHealthBar: { label: 'Noble Health Bar Icon', description: 'Small crown/icon shown next to Noble health bars — allies and heroes (recommended: 8x8 or 16x16 pixels)', category: 'icons', inputType: 'image' },
   iconAllyHealthBar: { label: 'Ally Health Bar Icon', description: 'Small shield/icon shown next to ally health bars (recommended: 8x8 or 16x16 pixels)', category: 'icons', inputType: 'image' },
   iconDungeonDetails: { label: 'Dungeon Details Icon', description: 'Icon for the divider between Heroes and Dungeon Details sections (recommended: 12x12 or 16x16 pixels)', category: 'icons', inputType: 'image' },
-  iconNavPlay: { label: 'Play Nav Icon', description: 'Icon/emoji for Play button in navbar (default: ⚔)', category: 'icons', inputType: 'text' },
-  iconNavCompendium: { label: 'Compendium Nav Icon', description: 'Icon/emoji for Compendium button in navbar (default: 📖)', category: 'icons', inputType: 'text' },
-  iconNavEditor: { label: 'Editor Nav Icon', description: 'Icon/emoji for Map Editor button in navbar (default: 🛠)', category: 'icons', inputType: 'text' },
-  iconNavAssets: { label: 'Assets Nav Icon', description: 'Icon/emoji for Assets button in navbar (default: 📦)', category: 'icons', inputType: 'text' },
-  iconBugReport: { label: 'Bug Report Icon', description: 'Icon/emoji shown on the Report Bug link (default: 🐛)', category: 'icons', inputType: 'text' },
   iconTabHeroes: { label: 'Heroes Tab Icon', description: 'Icon/emoji for Heroes tab in Compendium (default: ⚔️)', category: 'icons', inputType: 'text' },
   iconTabAllies: { label: 'Allies Tab Icon', description: 'Icon/emoji for Allies tab in Compendium (default: 🛡️)', category: 'icons', inputType: 'text' },
   iconTabEnemies: { label: 'Enemies Tab Icon', description: 'Icon/emoji for Enemies tab in Compendium (default: 👹)', category: 'icons', inputType: 'text' },
@@ -307,8 +254,6 @@ export const THEME_ASSET_CONFIG: Record<ThemeAssetKey, { label: string; descript
   iconPixelRect: { label: 'Pixel Rectangle Icon', description: 'Custom icon for the Rectangle tool in Pixel Editor', category: 'icons', inputType: 'image' },
   iconPixelCircle: { label: 'Pixel Circle Icon', description: 'Custom icon for the Circle tool in Pixel Editor', category: 'icons', inputType: 'image' },
   iconPixelLine: { label: 'Pixel Line Icon', description: 'Custom icon for the Line tool in Pixel Editor', category: 'icons', inputType: 'image' },
-  overlayVignette: { label: 'Vignette Overlay', description: 'Edge darkening effect', category: 'effects', inputType: 'image' },
-  overlayNoise: { label: 'Noise Overlay', description: 'Texture noise overlay', category: 'effects', inputType: 'image' },
 
   // Color settings
   colorBgPrimary: { label: 'Page Background', description: 'Main page background color', category: 'colors', inputType: 'color' },
@@ -325,7 +270,6 @@ export const THEME_ASSET_CONFIG: Record<ThemeAssetKey, { label: string; descript
   colorAccentPrimary: { label: 'Primary Accent', description: 'Main accent color for links', category: 'colors', inputType: 'color' },
   colorAccentSuccess: { label: 'Success Color', description: 'Positive/success actions color', category: 'colors', inputType: 'color' },
   colorAccentDanger: { label: 'Danger Color', description: 'Warning/danger actions color', category: 'colors', inputType: 'color' },
-  colorAccentMagic: { label: 'Magic Color', description: 'Magic/arcane effect color', category: 'colors', inputType: 'color' },
   colorButtonBg: { label: 'Button Background', description: 'Default button background color', category: 'colors', inputType: 'color' },
   colorButtonBorder: { label: 'Button Border', description: 'Default button border color', category: 'colors', inputType: 'color' },
   colorButtonPrimaryBg: { label: 'Primary Button Bg', description: 'Primary/action button background', category: 'colors', inputType: 'color' },
@@ -334,27 +278,8 @@ export const THEME_ASSET_CONFIG: Record<ThemeAssetKey, { label: string; descript
   colorButtonDangerBorder: { label: 'Danger Button Border', description: 'Danger button border color', category: 'colors', inputType: 'color' },
   // Game Action Buttons (Test Heroes / Play / Test Enemies)
   actionButtonPlayImage: { label: 'Play Button Image', description: 'Custom image for the Play button (replaces default styling)', category: 'actionButtons', inputType: 'image' },
-  actionButtonPlayImageDisabled: { label: 'Play Button Disabled', description: 'Image shown when Play button is disabled (optional, auto-greys if not set)', category: 'actionButtons', inputType: 'image' },
-  actionButtonPlayBg: { label: 'Play Button Background', description: 'Background color for the Play button', category: 'actionButtons', inputType: 'color' },
-  actionButtonPlayBorder: { label: 'Play Button Border', description: 'Border color for the Play button', category: 'actionButtons', inputType: 'color' },
-  actionButtonPlayText: { label: 'Play Button Text', description: 'Text color for the Play button', category: 'actionButtons', inputType: 'color' },
-  actionButtonPlayShape: { label: 'Play Button Shape', description: 'Shape of the Play button (default, rounded, pill)', category: 'actionButtons', inputType: 'select' },
   actionButtonTestHeroesImage: { label: 'Test Heroes Image', description: 'Custom image for the Test Heroes button (replaces default styling)', category: 'actionButtons', inputType: 'image' },
-  actionButtonTestHeroesImageDisabled: { label: 'Test Heroes Disabled', description: 'Image shown when Test Heroes is unavailable (optional)', category: 'actionButtons', inputType: 'image' },
-  actionButtonTestHeroesBg: { label: 'Test Heroes Background', description: 'Background color for the Test Heroes button', category: 'actionButtons', inputType: 'color' },
-  actionButtonTestHeroesBorder: { label: 'Test Heroes Border', description: 'Border color for the Test Heroes button', category: 'actionButtons', inputType: 'color' },
-  actionButtonTestHeroesText: { label: 'Test Heroes Text', description: 'Text color for the Test Heroes button', category: 'actionButtons', inputType: 'color' },
-  actionButtonTestHeroesShape: { label: 'Test Heroes Shape', description: 'Shape of the Test Heroes button (default, rounded, pill)', category: 'actionButtons', inputType: 'select' },
   actionButtonTestEnemiesImage: { label: 'Test Enemies Image', description: 'Custom image for the Test Enemies button (replaces default styling)', category: 'actionButtons', inputType: 'image' },
-  actionButtonTestEnemiesImageDisabled: { label: 'Test Enemies Disabled', description: 'Image shown when Test Enemies is unavailable (optional)', category: 'actionButtons', inputType: 'image' },
-  actionButtonTestEnemiesBg: { label: 'Test Enemies Background', description: 'Background color for the Test Enemies button', category: 'actionButtons', inputType: 'color' },
-  actionButtonTestEnemiesBorder: { label: 'Test Enemies Border', description: 'Border color for the Test Enemies button', category: 'actionButtons', inputType: 'color' },
-  actionButtonTestEnemiesText: { label: 'Test Enemies Text', description: 'Text color for the Test Enemies button', category: 'actionButtons', inputType: 'color' },
-  actionButtonTestEnemiesShape: { label: 'Test Enemies Shape', description: 'Shape of the Test Enemies button (default, rounded, pill)', category: 'actionButtons', inputType: 'select' },
-  actionButtonConcedeBg: { label: 'Concede Background', description: 'Background color for the Concede button', category: 'actionButtons', inputType: 'color' },
-  actionButtonConcedeBorder: { label: 'Concede Border', description: 'Border color for the Concede button', category: 'actionButtons', inputType: 'color' },
-  actionButtonConcedeText: { label: 'Concede Text', description: 'Text color for the Concede button', category: 'actionButtons', inputType: 'color' },
-  actionButtonConcedeShape: { label: 'Concede Shape', description: 'Shape of the Concede button (default, rounded, pill)', category: 'actionButtons', inputType: 'select' },
   // Concede Confirmation Modal
   concedeModalOverlayBg: { label: 'Overlay Background', description: 'Background color for the darkened overlay behind the modal', category: 'concedeModal', inputType: 'color' },
   concedeModalPanelBg: { label: 'Panel Background', description: 'Background color for the modal panel', category: 'concedeModal', inputType: 'color' },
@@ -368,12 +293,6 @@ export const THEME_ASSET_CONFIG: Record<ThemeAssetKey, { label: string; descript
   concedeModalConfirmBorder: { label: 'Confirm Button Border', description: 'Border color for the Concede button', category: 'concedeModal', inputType: 'color' },
   concedeModalConfirmText: { label: 'Confirm Button Text', description: 'Text color for the Concede button', category: 'concedeModal', inputType: 'color' },
   // Defeat Panel (loss of life overlay)
-  defeatPanelOverlayBg: { label: 'Overlay Background', description: 'Background color for the darkened overlay behind the defeat panel', category: 'defeatPanel', inputType: 'color' },
-  defeatPanelBg: { label: 'Panel Background', description: 'Background color for the defeat panel', category: 'defeatPanel', inputType: 'color' },
-  defeatPanelBorder: { label: 'Panel Border', description: 'Border color for the defeat panel', category: 'defeatPanel', inputType: 'color' },
-  defeatPanelTitleText: { label: 'Title Text', description: 'Color for the "Defeat" or "Out of Time!" title', category: 'defeatPanel', inputType: 'color' },
-  defeatPanelMessageText: { label: 'Message Text', description: 'Color for the defeat message text', category: 'defeatPanel', inputType: 'color' },
-  defeatPanelSubText: { label: 'Sub-Text', description: 'Color for lives remaining and other sub-text', category: 'defeatPanel', inputType: 'color' },
   // Game Over Panel (all lives lost)
   gameOverPanelOverlayBg: { label: 'Overlay Background', description: 'Background color for the darkened overlay behind the game over panel', category: 'gameOverPanel', inputType: 'color' },
   gameOverPanelBg: { label: 'Panel Background', description: 'Background color for the game over panel', category: 'gameOverPanel', inputType: 'color' },
@@ -401,7 +320,6 @@ export const THEME_ASSET_CONFIG: Record<ThemeAssetKey, { label: string; descript
   // Style settings
   borderRadius: { label: 'Border Radius', description: 'Roundness of corners', category: 'styles', inputType: 'select' },
   borderWidth: { label: 'Border Width', description: 'Thickness of borders', category: 'styles', inputType: 'select' },
-  shadowIntensity: { label: 'Shadow Intensity', description: 'Strength of drop shadows', category: 'styles', inputType: 'select' },
   fontFamily: { label: 'Body Font', description: 'Font for body text and UI elements', category: 'styles', inputType: 'select' },
   fontFamilyHeading: { label: 'Heading Font', description: 'Font for titles and headings', category: 'styles', inputType: 'select' },
   fontFamilyMenu: { label: 'Menu Font', description: 'Font for the hamburger gate-menu buttons', category: 'styles', inputType: 'select' },
@@ -409,12 +327,12 @@ export const THEME_ASSET_CONFIG: Record<ThemeAssetKey, { label: string; descript
   fontSizeHeading: { label: 'Heading Size', description: 'Size of headings and titles', category: 'styles', inputType: 'select' },
 
   // Compendium Book
-  compendiumPageTexture: { label: 'Page Texture', description: 'Background texture for compendium book pages', category: 'compendium', inputType: 'image' },
-  compendiumSpineTexture: { label: 'Spine Texture', description: 'Background texture for the book spine', category: 'compendium', inputType: 'image' },
-  compendiumCornerDecoration: { label: 'Corner Decoration', description: 'Corner decorations for book pages (replaces default L-brackets)', category: 'compendium', inputType: 'image' },
 };
 
-export const ASSET_CATEGORIES = ['branding', 'backgrounds', 'buttons', 'borders', 'icons', 'effects', 'colors', 'actionButtons', 'concedeModal', 'defeatPanel', 'gameOverPanel', 'styles'] as const;
+// 'effects' and 'defeatPanel' went with the 2026-07-26 dead-key removal —
+// both tabs had nothing left to show. (The Effects TAB here is unrelated to
+// FxSettingsPanel, which renders on SettingsPage.)
+export const ASSET_CATEGORIES = ['branding', 'backgrounds', 'buttons', 'borders', 'icons', 'colors', 'actionButtons', 'concedeModal', 'gameOverPanel', 'styles'] as const;
 export type AssetCategory = typeof ASSET_CATEGORIES[number];
 
 /**
@@ -713,7 +631,6 @@ export function getThemeAssetsCSSProperties(): Record<string, string> {
   if (assets.bgMain) properties['--asset-bg-main'] = `url(${assets.bgMain})`;
   if (assets.bgPanel) properties['--asset-bg-panel'] = `url(${assets.bgPanel})`;
   if (assets.bgCard) properties['--asset-bg-card'] = `url(${assets.bgCard})`;
-  if (assets.bgGameArea) properties['--asset-bg-game-area'] = `url(${assets.bgGameArea})`;
   if (assets.buttonPrimary) properties['--asset-button-primary'] = `url(${assets.buttonPrimary})`;
   if (assets.borderFrame) properties['--asset-border-frame'] = `url(${assets.borderFrame})`;
 
@@ -757,7 +674,6 @@ export function getThemeAssetsCSSProperties(): Record<string, string> {
   if (assets.colorAccentPrimary) properties['--theme-accent-primary'] = assets.colorAccentPrimary;
   if (assets.colorAccentSuccess) properties['--theme-accent-success'] = assets.colorAccentSuccess;
   if (assets.colorAccentDanger) properties['--theme-accent-danger'] = assets.colorAccentDanger;
-  if (assets.colorAccentMagic) properties['--theme-accent-magic'] = assets.colorAccentMagic;
 
   // Button colors
   if (assets.colorButtonBg) properties['--theme-button-bg'] = assets.colorButtonBg;
@@ -873,7 +789,6 @@ const ALL_THEME_CSS_VARS = [
   '--asset-bg-main',
   '--asset-bg-panel',
   '--asset-bg-card',
-  '--asset-bg-game-area',
   '--asset-button-primary',
   '--asset-border-frame',
   '--asset-bg-main-repeat',
@@ -896,7 +811,6 @@ const ALL_THEME_CSS_VARS = [
   '--theme-accent-primary',
   '--theme-accent-success',
   '--theme-accent-danger',
-  '--theme-accent-magic',
   '--theme-button-bg',
   '--theme-button-border',
   '--theme-button-primary-bg',

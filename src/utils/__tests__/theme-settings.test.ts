@@ -22,6 +22,7 @@ import { dirname, resolve } from 'node:path';
 import {
   THEME_COLOR_DEFAULTS,
   THEME_ASSET_CONFIG,
+  ASSET_CATEGORIES,
   importThemeAssets,
   loadThemeAssets,
   saveThemeAssets,
@@ -126,6 +127,26 @@ describe('THEME_COLOR_DEFAULTS', () => {
     // a swatch would be a fiction. (The old map showed them as black.)
     expect(THEME_COLOR_DEFAULTS.concedeModalPanelBg).toBeUndefined();
     expect(THEME_COLOR_DEFAULTS.gameOverPanelButtonBg).toBeUndefined();
+  });
+});
+
+describe('THEME_ASSET_CONFIG', () => {
+  it('gives every setting a category that actually has a tab', () => {
+    // The three compendium* texture keys carried category 'compendium', which
+    // was never in ASSET_CATEGORIES — they had no tab to appear on for as
+    // long as they existed. Removed 2026-07-26; this stops it recurring.
+    const tabs = new Set<string>(ASSET_CATEGORIES);
+    for (const [key, config] of Object.entries(THEME_ASSET_CONFIG)) {
+      expect(tabs.has(config.category), `${key} -> ${config.category}`).toBe(true);
+    }
+  });
+
+  it('has no empty tabs', () => {
+    for (const category of ASSET_CATEGORIES) {
+      const count = Object.values(THEME_ASSET_CONFIG)
+        .filter((c) => c.category === category).length;
+      expect(count, `${category} tab has no settings`).toBeGreaterThan(0);
+    }
   });
 });
 
