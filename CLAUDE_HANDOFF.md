@@ -1,6 +1,6 @@
 # Claude Handoff Document - Puzzle Daily
 
-Last Updated: July 25, 2026 — **DEV-PAGE RESTYLE PASS COMPLETE AND PUSHED** (18 commits, `6b762ee`..`33cd4d7`). All five Puzzle Resources tabs and all twelve Asset Manager tabs now follow the Production standard, and every asset editor gained **browse-vs-edit full-width modes** (a design round with the user, not just a restyle — see "Asset Editor Browse Mode" and "Next session — start here"). Also fixed en route: signed-in creators being bounced off gated routes by an AuthContext race; showcase heroes not counting as usages (deleting one silently broke Slab demos); unguarded `pickupPermissions` throwing in the editor and mid-turn; colliding asset ids; missing folder categories for vessels + sounds. **AWAITING USER TEST on multiple devices.** Previous: July 21, 2026, second session — FIVE arcs closed: (1) SHOWCASE DISTRIBUTION + SLAB REVEAL TIMING (publish stamps, shared reveal predicate, and player asset CLOSURE PREFETCH — a brief boot pull-all was superseded same-session by `be21e08` after a second design round with the user; top entry under Pending Tasks); (2) CONTENT PRODUCTION DASHBOARD (Puzzle Resources "Production" tab + auto-refresh; now the user-set styling reference for all dev pages — see "Dev-Page Styling Reference" section); (3) HOMING-REFLECT TIMING DIVERGENCE closed — known real/headless divergence ledger EMPTY; (4) CI's vacuous Type check fixed (`tsc -b` required — plain `tsc --noEmit` checks ZERO files here); (5) re-publish now refreshes ALL deps (edited live assets finally reach assets_live). Everything AWAITING USER TEST. Session tail: player asset pull-all SUPERSEDED by closure prefetch (`be21e08`) + LoadingRune plumbing (`32ac1cb`, art pending). **NEXT SESSION (user-directed): dev-page restyle pass to the Production standard — see "Next session — start here".** Previous: July 14, 2026, third session (MAP EDITOR REDESIGN COMPLETE — Phase 1 decomposition, Phase 2 layout rework, Phase 3 interaction gestures + mobile, all user-approved along the way, dungeon-theming pass CANCELLED by the user; plus 2 new theme fonts. See "Recently completed (July 14, third session)". Earlier the same day: HIT-STAMP CONDITIONS closed out the trigger overhaul — that whole batch still AWAITS USER TESTING on deploy. NOTE: the July 1–12 work — engine audit sweeps 1–10, summon/necromancy/vessels, Phase E homing helpers, strafe actions, contact redesign — is chronicled in the user-memory `in-progress.md`, not here; this doc's session log resumes at June 30 below.)
+Last Updated: July 25, 2026 — **DEV-PAGE RESTYLE PASS COMPLETE AND PUSHED** (21 commits, `6b762ee`..`4339ace`, including the Settings page). **NEXT SESSION STARTS WITH THE SETTINGS AUDIT — ten findings are gathered and waiting on user decisions, see "Settings audit — findings" under "Next session — start here".** Also new and important: a **"Testing Philosophy" section near the top** — the AWAITING USER TEST markers throughout this doc are NOT a backlog to clear, per the user directly. All five Puzzle Resources tabs and all twelve Asset Manager tabs now follow the Production standard, and every asset editor gained **browse-vs-edit full-width modes** (a design round with the user, not just a restyle — see "Asset Editor Browse Mode" and "Next session — start here"). Also fixed en route: signed-in creators being bounced off gated routes by an AuthContext race; showcase heroes not counting as usages (deleting one silently broke Slab demos); unguarded `pickupPermissions` throwing in the editor and mid-turn; colliding asset ids; missing folder categories for vessels + sounds. **AWAITING USER TEST on multiple devices.** Previous: July 21, 2026, second session — FIVE arcs closed: (1) SHOWCASE DISTRIBUTION + SLAB REVEAL TIMING (publish stamps, shared reveal predicate, and player asset CLOSURE PREFETCH — a brief boot pull-all was superseded same-session by `be21e08` after a second design round with the user; top entry under Pending Tasks); (2) CONTENT PRODUCTION DASHBOARD (Puzzle Resources "Production" tab + auto-refresh; now the user-set styling reference for all dev pages — see "Dev-Page Styling Reference" section); (3) HOMING-REFLECT TIMING DIVERGENCE closed — known real/headless divergence ledger EMPTY; (4) CI's vacuous Type check fixed (`tsc -b` required — plain `tsc --noEmit` checks ZERO files here); (5) re-publish now refreshes ALL deps (edited live assets finally reach assets_live). Everything AWAITING USER TEST. Session tail: player asset pull-all SUPERSEDED by closure prefetch (`be21e08`) + LoadingRune plumbing (`32ac1cb`, art pending). **NEXT SESSION (user-directed): dev-page restyle pass to the Production standard — see "Next session — start here".** Previous: July 14, 2026, third session (MAP EDITOR REDESIGN COMPLETE — Phase 1 decomposition, Phase 2 layout rework, Phase 3 interaction gestures + mobile, all user-approved along the way, dungeon-theming pass CANCELLED by the user; plus 2 new theme fonts. See "Recently completed (July 14, third session)". Earlier the same day: HIT-STAMP CONDITIONS closed out the trigger overhaul — that whole batch still AWAITS USER TESTING on deploy. NOTE: the July 1–12 work — engine audit sweeps 1–10, summon/necromancy/vessels, Phase E homing helpers, strafe actions, contact redesign — is chronicled in the user-memory `in-progress.md`, not here; this doc's session log resumes at June 30 below.)
 
 ## Doc Map — Where to Find What
 
@@ -745,38 +745,114 @@ stay in the backlog, not requested yet.
 
 ### Next session — start here (2026-07-25)
 
-**DEV-PAGE RESTYLE PASS: ✅ COMPLETE AND PUSHED** (18 commits,
-`6b762ee`..`33cd4d7`, on origin/main — both sites redeployed).
-**AWAITING USER TEST across multiple devices** — the user pushed
-specifically to test on real hardware; expect a feedback round.
+**START WITH: the settings audit — ten findings are gathered and waiting
+on the user's decisions. See "Settings audit — findings" below. Several
+resolve to "delete this setting", so bring findings and ask; do not
+start deleting.**
+
+**DEV-PAGE RESTYLE PASS: ✅ COMPLETE AND PUSHED** — 21 commits,
+`6b762ee`..`4339ace`, on origin/main. Every Puzzle Resources tab, all
+twelve Asset Manager tabs, and the Settings page. Only NewsEditor and
+`MediaLibrary.tsx` remain untouched, both minor. The user browsed the
+result on desktop and mobile and approved ("Looks great").
 
 What shipped, beyond the styling recipe:
-1. **All five Puzzle Resources tabs + all twelve Asset Manager tabs**
-   moved to the Production standard.
-2. **Browse-vs-edit modes** for every asset editor — see the new
+1. **Browse-vs-edit modes** for every asset editor — see the
    "Asset Editor Browse Mode" section below. This was a design round
    with the user, not a restyle: the old layout wasted ~two-thirds of
    the screen on a "select an asset" placeholder.
-3. **Bug fixes found along the way** (all pre-existing): showcase heroes
+2. **Bug fixes found along the way** (all pre-existing): showcase heroes
    now count as usages (deleting one previously took a Slab demo down
    with no warning); missing `pickupPermissions` no longer throws in the
    editor OR mid-turn in `actions.ts`; sound uploads can't attach to the
    wrong sound; colliding asset ids centralised into `utils/assetIds.ts`.
-4. **Folder categories for vessels + sounds** — `AssetCategory` was
+3. **Folder categories for vessels + sounds** — `AssetCategory` was
    missing both. Sounds had been borrowing `'objects'` (shared
    namespace); vessels had no folder UI at all. Verified against live
    storage that no migration was needed.
+4. **`UsageChips`** collapses "Used by" by kind — one usage shows its
+   name, several become "9 puzzles" with a tooltip. Added after the user
+   pointed out that listing every puzzle will not survive a library of
+   hundreds.
+5. **Mobile fix (`912c3d8`)**: `BulkActionBar`'s idle state used to
+   render only an Import button but still claimed a full row. It now
+   returns null, and Import sits beside "+ New" in every editor header.
 
-**Open items / likely next:**
+**Open items:**
 - **SoundEditor config tabs no longer render the sound edit form
   beside them** (they became full-width pages). State is preserved; the
   proposed better fix if the user misses it is a ▶ preview button next
   to each trigger's dropdown, which beats the old side-by-side.
-- **MediaLibraryTab** was untouched (it is a 10-line wrapper; the
-  styling lives in `MediaLibrary.tsx`), as were **NewsEditor** and
-  **SettingsPage** — the original stretch goals.
-- Feature queue after this: projectile linger, hero behavior slots.
-  SETTINGS AUDIT REMAINS ON HOLD (user, 2026-07-21).
+- Feature queue after the audit: **projectile linger, hero behavior
+  slots**.
+
+### Settings audit — findings ready for the user's decisions (2026-07-25)
+
+Gathered while restyling the Settings page. **Nothing here has been
+acted on** — the restyle was deliberately kept presentation-only, and
+the user chose "restyle first, audit after" so that deletions are their
+call. Line numbers are as of `24b59a9`, in
+`src/components/editor/ThemeAssetsEditor.tsx` unless stated.
+
+REAL BUGS (worth fixing regardless of the organisation question):
+1. **`DEFAULT_COLORS` covers only 18 of ~60 colour keys** (lines 24-48).
+   Everything outside it — `colorBgCard`, `colorBgControlPanel`,
+   `colorBgPreviewEntity`, `colorBgPreviewAsset`, `siteSubtitleColor`,
+   and all of `actionButton*`, `concedeModal*`, `defeatPanel*`,
+   `gameOverPanel*` — falls back to `'#000000'` in `ColorPicker`
+   (~626). The swatch/hex placeholder therefore shows black rather than
+   the real CSS default, and the `isCustom` test (~627) compares against
+   black, so those cards read "custom" as soon as any value is set and
+   the preview strip misreports the unset state. **Honest fix: derive
+   defaults from the CSS variables instead of the hand-copied map.**
+2. **"Reset Colors" / "Reset Styles" reach beyond their own tab.**
+   `handleResetAllColors` (869) deletes EVERY key with
+   `inputType: 'color'`, including the Action Buttons, Concede, Defeat
+   and Game Over tabs, but the button only renders on the Colors tab
+   (1022). `handleResetAllStyles` (879) likewise wipes the four
+   `actionButton*Shape` selects while only appearing on Styles (1027).
+   Unlabelled, cross-tab, destructive, no confirmation. **Cheapest
+   high-value fix; recommend doing this one first.**
+3. **Inter is unpickable for the gate menu font.** `StyleSelector` uses
+   `defaultValue = 'default'` (690) while the preview special-cases the
+   menu to Almendra (`menuDefault`, 774), and choosing the option equal
+   to `defaultValue` stores `undefined` (716) — so selecting "Default
+   (Inter)" clears the key and it renders Almendra again.
+4. **Failed theme import is silent.** `handleImport` (856) only acts
+   when `importThemeAssets` returns true; on a malformed file nothing
+   happens and `handleError` is never called, though the banner exists.
+
+DRIFT / TRUST ISSUES:
+5. `DEFAULT_COLORS` is a hand-copied duplicate of the CSS variable
+   defaults in index.css and has already drifted (e.g.
+   `colorBorderPrimary: '#5a4a35'` vs `.dungeon-panel-dark`'s
+   `--theme-border-primary, #3d3224`). Same root cause as #1.
+6. Style `defaultValue`s disagree with CSS fallbacks: `borderRadius`
+   defaults to `'2px'` (676) against 4px/3px fallbacks in index.css;
+   `borderWidth` `'2px'` (680) against a fallback the new thin-border
+   dev pages no longer honour. The "which chip is lit when unset"
+   indicator is untrustworthy for both.
+7. `handleAssetChange`'s comment claims a save check that never happens
+   (832); a localStorage quota failure passes unnoticed. The error
+   banner is only ever fed by image-upload/URL-validation failures.
+
+ORGANISATION / LABELLING (the user's original "it's a mess" complaint):
+8. `logoVariants`' description says "managed via Logo Variants editor
+   below" (`utils/themeAssets.ts:248`) — the card *is* that editor. It
+   is also the only key with no `inputType`, special-cased in
+   `renderAssetControl` (~937).
+9. `colorBgPreview` is labelled "Preview Background (Fallback)"
+   (`themeAssets.ts:397`) next to `colorBgPreviewEntity` and
+   `colorBgPreviewAsset`; only the first is in `DEFAULT_COLORS`, and
+   `.sprite-preview-bg` reads `--theme-bg-preview` with `!important`.
+   Confirm the entity/asset variants reach any surface at all.
+10. `backgrounds` and `borders` share the 🖼️ icon in
+    `categoryLabels`/`categoryIcons`, ambiguous at chip size.
+11. (Found separately, Effects tab) `FxSettingsPanel` mixes two
+    debugging instruments — "Frame profiler HUD" and "Freeze board
+    drawing (diagnostic)" — into the same list as real settings, and
+    "Static-layer bake" is documented as "leave ON, off exists only for
+    A/B comparison". Candidates for a separate diagnostics grouping.
 
 ### Asset Editor Browse Mode (2026-07-25, design agreed with user)
 
