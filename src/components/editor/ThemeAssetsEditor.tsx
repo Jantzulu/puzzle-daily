@@ -13,6 +13,7 @@ import {
   deleteThemeImageFromStorage,
   isSupabaseStorageUrl,
   THEME_ASSET_CONFIG,
+  THEME_COLOR_DEFAULTS,
   ASSET_CATEGORIES,
   type ThemeAssets,
   type ThemeAssetKey,
@@ -20,31 +21,24 @@ import {
   type LogoVariant,
 } from '../../utils/themeAssets';
 
-// Default dungeon theme colors for reset functionality
-const DEFAULT_COLORS: Partial<Record<ThemeAssetKey, string>> = {
-  colorBgPrimary: '#0a0805',      // Page background (darkest)
-  colorBgSecondary: '#2a2118',    // Panel background
-  colorBgNavbar: '#080706',       // Navbar background — warm, a whisper
-                                  // above the page bg (#0a0805 family);
-                                  // neutral greys (#141414) read as an
-                                  // off-palette grey bar, worst on OLED
-  colorBgInput: '#15100a',        // Input/dark panel background
-  colorBgPreview: '#1f1810',      // Preview/thumbnail background
-  colorTextPrimary: '#f2e0b5',
-  colorTextSecondary: '#7d6c52',
-  colorTextHeading: '#d4a574',
-  colorBorderPrimary: '#5a4a35',
-  colorBorderAccent: '#c4915c',
-  colorAccentPrimary: '#c4915c',
-  colorAccentSuccess: '#556b2f',
-  colorAccentDanger: '#c12525',
-  colorAccentMagic: '#8a5fc4',
-  colorButtonBg: '#44403c',
-  colorButtonBorder: '#57534e',
-  colorButtonPrimaryBg: '#8c5c37',
-  colorButtonPrimaryBorder: '#c4915c',
-  colorButtonDangerBg: '#841919',
-  colorButtonDangerBorder: '#b91c1c',
+// Colour defaults live in themeAssets.ts (THEME_COLOR_DEFAULTS), transcribed
+// from the CSS fallbacks and pinned by a test. The map that used to sit here
+// covered 18 of ~60 keys and had drifted from index.css.
+
+// `<input type="color">` only accepts hex, but a default can legitimately be
+// an rgba() — show the picker the opaque equivalent.
+const toHexForPicker = (color: string): string | undefined => {
+  if (/^#[0-9a-f]{6}$/i.test(color)) return color;
+  if (/^#[0-9a-f]{3}$/i.test(color)) {
+    return '#' + color.slice(1).split('').map((c) => c + c).join('');
+  }
+  const rgb = color.match(/^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i);
+  if (rgb) {
+    return '#' + [rgb[1], rgb[2], rgb[3]]
+      .map((n) => Math.min(255, parseInt(n, 10)).toString(16).padStart(2, '0'))
+      .join('');
+  }
+  return undefined;
 };
 
 // Style options
@@ -71,7 +65,10 @@ const SHADOW_OPTIONS = [
 ];
 
 const FONT_OPTIONS = [
-  { value: 'default', label: 'Default (Inter)' },
+  // "Default" is its own chip now (it clears the setting); picking Inter here
+  // writes Inter explicitly, which is the only way to get it on the heading
+  // and gate-menu fonts — their unset fallback is Almendra.
+  { value: 'default', label: 'Inter' },
   { value: 'medieval', label: 'Medieval (Almendra)' },
   { value: 'pixel', label: 'Pixel (Press Start 2P)' },
   { value: 'fantasy', label: 'Fantasy (MedievalSharp)' },
@@ -100,14 +97,14 @@ const FONT_SIZE_OPTIONS = [
 
 const SUBTITLE_SIZE_OPTIONS = [
   { value: 'x-small', label: 'Extra Small' },
-  { value: 'small', label: 'Small (default)' },
+  { value: 'small', label: 'Small' },
   { value: 'medium', label: 'Medium' },
   { value: 'large', label: 'Large' },
   { value: 'x-large', label: 'Extra Large (1.25x)' },
 ];
 
 const BUTTON_SHAPE_OPTIONS = [
-  { value: 'default', label: 'Default' },
+  { value: 'default', label: 'Standard' },
   { value: 'rounded', label: 'Rounded' },
   { value: 'pill', label: 'Pill' },
 ];
@@ -586,8 +583,13 @@ interface ColorPickerProps {
 
 const ColorPicker: React.FC<ColorPickerProps> = ({ assetKey, value, onChange }) => {
   const config = THEME_ASSET_CONFIG[assetKey];
-  const defaultColor = DEFAULT_COLORS[assetKey as keyof typeof DEFAULT_COLORS] || '#000000';
-  const isCustom = value !== undefined && value !== defaultColor;
+  // Undefined where the unset state is not a flat colour (a gradient, a plate)
+  const defaultColor = THEME_COLOR_DEFAULTS[assetKey];
+  // A stored value IS the custom state — comparing against a default made
+  // "set it to exactly the default" read as unset and disabled its Reset.
+  const isCustom = value !== undefined;
+  const shown = value ?? defaultColor;
+  const pickerValue = (shown && toHexForPicker(shown)) || '#000000';
 
   const handleReset = () => {
     // Set to undefined to use the CSS default, then notify
@@ -611,7 +613,7 @@ const ColorPicker: React.FC<ColorPickerProps> = ({ assetKey, value, onChange }) 
         <div className="relative flex-shrink-0">
           <input
             type="color"
-            value={value || defaultColor}
+            value={pickerValue}
             onChange={(e) => onChange(e.target.value)}
             className="w-10 h-8 rounded border border-stone-700 cursor-pointer bg-transparent"
           />
@@ -627,7 +629,7 @@ const ColorPicker: React.FC<ColorPickerProps> = ({ assetKey, value, onChange }) 
               onChange(val || undefined);
             }
           }}
-          placeholder={defaultColor}
+          placeholder={defaultColor ?? 'not set'}
           className={`${INPUT} flex-1 min-w-[80px] font-mono`}
         />
 
@@ -646,13 +648,23 @@ const ColorPicker: React.FC<ColorPickerProps> = ({ assetKey, value, onChange }) 
         </button>
       </div>
 
-      {/* Preview swatch with label */}
+      {/* Preview swatch with label — hatched when nothing is set and the
+          unset appearance is not a flat colour we can honestly show */}
       <div className="flex items-center gap-2">
         <div
           className="flex-1 h-6 rounded border border-stone-700"
-          style={{ backgroundColor: value || defaultColor }}
+          style={
+            shown
+              ? { backgroundColor: shown }
+              : {
+                  backgroundImage:
+                    'repeating-linear-gradient(45deg, #292524 0 6px, #1c1917 6px 12px)',
+                }
+          }
         />
-        <span className="text-xs text-stone-500 font-mono">{value || defaultColor}</span>
+        <span className="text-xs text-stone-500 font-mono">
+          {shown ?? 'not set'}
+        </span>
       </div>
     </ControlCard>
   );
@@ -668,54 +680,86 @@ const StyleSelector: React.FC<StyleSelectorProps> = ({ assetKey, value, onChange
   const config = THEME_ASSET_CONFIG[assetKey];
 
   let options: { value: string; label: string }[] = [];
-  let defaultValue = '';
+  // What the surface renders as when the setting is CLEARED. Used for the
+  // "Default" chip's tooltip and for the previews below — never to decide
+  // which chip is lit, which is what made the old indicator untrustworthy
+  // (its guesses disagreed with the CSS fallbacks, and the gate menu's
+  // "Default (Inter)" cleared the key and rendered Almendra instead).
+  let defaultHint = '';
+  let previewFallback = '';
 
   switch (assetKey) {
     case 'borderRadius':
       options = BORDER_RADIUS_OPTIONS;
-      defaultValue = '2px';
+      defaultHint = '4px on panels, 3px on buttons';
+      previewFallback = '4px';
       break;
     case 'borderWidth':
       options = BORDER_WIDTH_OPTIONS;
-      defaultValue = '2px';
+      defaultHint = '2px';
+      previewFallback = '2px';
       break;
     case 'shadowIntensity':
       options = SHADOW_OPTIONS;
-      defaultValue = 'medium';
+      defaultHint = 'medium';
+      previewFallback = 'medium';
       break;
     case 'fontFamily':
+      options = FONT_OPTIONS;
+      defaultHint = 'Inter';
+      previewFallback = 'default';
+      break;
     case 'fontFamilyHeading':
+      options = FONT_OPTIONS;
+      defaultHint = 'the body font, or Almendra when that is unset too';
+      previewFallback = 'medieval';
+      break;
     case 'fontFamilyMenu':
       options = FONT_OPTIONS;
-      defaultValue = 'default';
+      defaultHint = 'Almendra';
+      previewFallback = 'medieval';
       break;
     case 'fontSizeBody':
     case 'fontSizeHeading':
       options = FONT_SIZE_OPTIONS;
-      defaultValue = 'medium';
+      defaultHint = 'medium (1x)';
+      previewFallback = 'medium';
       break;
     case 'siteSubtitleSize':
       options = SUBTITLE_SIZE_OPTIONS;
-      defaultValue = 'small';
+      defaultHint = 'small';
+      previewFallback = 'small';
       break;
     case 'actionButtonPlayShape':
     case 'actionButtonTestHeroesShape':
     case 'actionButtonTestEnemiesShape':
     case 'actionButtonConcedeShape':
       options = BUTTON_SHAPE_OPTIONS;
-      defaultValue = 'default';
+      defaultHint = 'the theme button shape';
+      previewFallback = 'default';
       break;
   }
+
+  const effective = value ?? previewFallback;
 
   return (
     <ControlCard title={config.label} description={config.description}>
       <div className="flex flex-wrap gap-1.5">
+        <button
+          onClick={() => onChange(undefined)}
+          title={defaultHint ? `Unset — renders as ${defaultHint}` : 'Unset'}
+          className={`px-2 py-0.5 rounded text-xs border transition-colors ${
+            value === undefined ? CHIP_ACTIVE : CHIP_IDLE
+          }`}
+        >
+          Default
+        </button>
         {options.map((option) => (
           <button
             key={option.value}
-            onClick={() => onChange(option.value === defaultValue ? undefined : option.value)}
+            onClick={() => onChange(option.value)}
             className={`px-2 py-0.5 rounded text-xs border transition-colors ${
-              (value || defaultValue) === option.value ? CHIP_ACTIVE : CHIP_IDLE
+              value === option.value ? CHIP_ACTIVE : CHIP_IDLE
             }`}
           >
             {option.label}
@@ -728,7 +772,7 @@ const StyleSelector: React.FC<StyleSelectorProps> = ({ assetKey, value, onChange
         <div>
           <div
             className="w-full h-12 bg-copper-700 border border-copper-500"
-            style={{ borderRadius: value || defaultValue }}
+            style={{ borderRadius: effective }}
           />
         </div>
       )}
@@ -738,7 +782,7 @@ const StyleSelector: React.FC<StyleSelectorProps> = ({ assetKey, value, onChange
         <div>
           <div
             className="w-full h-12 bg-stone-800 border-copper-500"
-            style={{ borderWidth: value || defaultValue, borderStyle: 'solid' }}
+            style={{ borderWidth: effective, borderStyle: 'solid' }}
           />
         </div>
       )}
@@ -770,9 +814,7 @@ const StyleSelector: React.FC<StyleSelectorProps> = ({ assetKey, value, onChange
                   'amarante': "'Amarante', serif",
                   'faculty': "'Faculty Glyphic', serif",
                 };
-                // The gate menu's un-themed default is Almendra, not the body default
-                const menuDefault = assetKey === 'fontFamilyMenu' ? 'medieval' : defaultValue;
-                return fontMap[value || menuDefault] || fontMap['default'];
+                return fontMap[effective] || fontMap['default'];
               })()
             }}
           >
@@ -799,7 +841,7 @@ const StyleSelector: React.FC<StyleSelectorProps> = ({ assetKey, value, onChange
                   'large': '18px',
                   'x-large': '20px',
                 };
-                return sizeMap[value || defaultValue] || sizeMap['medium'];
+                return sizeMap[effective] || sizeMap['medium'];
               })()
             }}
           >
@@ -822,23 +864,20 @@ export const ThemeAssetsEditor: React.FC = () => {
     setAssets(loadThemeAssets());
   }, []);
 
-  const handleAssetChange = (key: ThemeAssetKey, value: string | undefined) => {
-    setError(null);
-    if (value) {
-      setThemeAsset(key, value);
-    } else {
-      deleteThemeAsset(key);
-    }
-    // Check if save was successful
-    const currentAssets = loadThemeAssets();
-    setAssets(currentAssets);
-    notifyThemeAssetsChanged();
-  };
-
   const handleError = (errorMessage: string) => {
     setError(errorMessage);
     // Auto-clear error after 5 seconds
     setTimeout(() => setError(null), 5000);
+  };
+
+  const handleAssetChange = (key: ThemeAssetKey, value: string | undefined) => {
+    setError(null);
+    const result = value ? setThemeAsset(key, value) : deleteThemeAsset(key);
+    if (!result.success) {
+      handleError(result.error || 'Failed to save theme settings.');
+    }
+    setAssets(loadThemeAssets());
+    notifyThemeAssetsChanged();
   };
 
   const handleExport = () => {
@@ -855,10 +894,14 @@ export const ThemeAssetsEditor: React.FC = () => {
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      setError(null);
       const text = await file.text();
-      if (importThemeAssets(text)) {
+      const result = importThemeAssets(text);
+      if (result.success) {
         setAssets(loadThemeAssets());
         notifyThemeAssetsChanged();
+      } else {
+        handleError(result.error || 'Failed to import theme settings.');
       }
     }
     if (importInputRef.current) {
@@ -866,22 +909,29 @@ export const ThemeAssetsEditor: React.FC = () => {
     }
   };
 
-  const handleResetAllColors = () => {
-    // Clear all color settings
-    const colorKeys = Object.keys(THEME_ASSET_CONFIG).filter(
-      key => THEME_ASSET_CONFIG[key as ThemeAssetKey].inputType === 'color'
+  // Reset clears THIS TAB only. It used to clear every colour (or every
+  // select) in the whole theme from a button that only appeared on the
+  // Colors/Styles tab — so it silently wiped Action Buttons, Concede,
+  // Defeat and Game Over settings as well.
+  const handleResetCategory = () => {
+    const keys = (Object.keys(THEME_ASSET_CONFIG) as ThemeAssetKey[]).filter(
+      (key) =>
+        THEME_ASSET_CONFIG[key].category === activeCategory &&
+        assets[key] !== undefined
     );
-    colorKeys.forEach(key => deleteThemeAsset(key as ThemeAssetKey));
-    setAssets(loadThemeAssets());
-    notifyThemeAssetsChanged();
-  };
-
-  const handleResetAllStyles = () => {
-    // Clear all style settings
-    const styleKeys = Object.keys(THEME_ASSET_CONFIG).filter(
-      key => THEME_ASSET_CONFIG[key as ThemeAssetKey].inputType === 'select'
-    );
-    styleKeys.forEach(key => deleteThemeAsset(key as ThemeAssetKey));
+    if (keys.length === 0) return;
+    const label = categoryLabels[activeCategory];
+    if (!window.confirm(
+      `Reset ${keys.length} customised ${label} setting${keys.length === 1 ? '' : 's'} to their defaults? Other tabs are not affected.`
+    )) {
+      return;
+    }
+    let failure: string | undefined;
+    keys.forEach((key) => {
+      const result = deleteThemeAsset(key);
+      if (!result.success && !failure) failure = result.error;
+    });
+    if (failure) handleError(failure);
     setAssets(loadThemeAssets());
     notifyThemeAssetsChanged();
   };
@@ -890,6 +940,15 @@ export const ThemeAssetsEditor: React.FC = () => {
   const categoryAssets = Object.entries(THEME_ASSET_CONFIG)
     .filter(([_, config]) => config.category === activeCategory)
     .map(([key]) => key as ThemeAssetKey);
+
+  // Bulk reset is offered only where every setting is a colour or a select —
+  // uploaded images are cleared one card at a time, deliberately.
+  const canResetCategory =
+    categoryAssets.some((key) => assets[key] !== undefined) &&
+    categoryAssets.every((key) => {
+      const type = THEME_ASSET_CONFIG[key].inputType;
+      return type === 'color' || type === 'select';
+    });
 
   const categoryLabels: Record<AssetCategory, string> = {
     branding: 'Branding',
@@ -930,7 +989,10 @@ export const ThemeAssetsEditor: React.FC = () => {
     } else {
       delete currentAssets.logoVariants;
     }
-    saveThemeAssets(currentAssets);
+    const result = saveThemeAssets(currentAssets);
+    if (!result.success) {
+      handleError(result.error || 'Failed to save theme settings.');
+    }
     setAssets(loadThemeAssets());
     notifyThemeAssetsChanged();
   };
@@ -1018,14 +1080,13 @@ export const ThemeAssetsEditor: React.FC = () => {
           </button>
         ))}
         <div className="flex gap-1.5 ml-auto flex-shrink-0">
-          {activeCategory === 'colors' && (
-            <button onClick={handleResetAllColors} className={BTN_DANGER}>
-              Reset Colors
-            </button>
-          )}
-          {activeCategory === 'styles' && (
-            <button onClick={handleResetAllStyles} className={BTN_DANGER}>
-              Reset Styles
+          {canResetCategory && (
+            <button
+              onClick={handleResetCategory}
+              className={BTN_DANGER}
+              title={`Clear the customised ${categoryLabels[activeCategory]} settings on this tab`}
+            >
+              Reset {categoryLabels[activeCategory]}
             </button>
           )}
           <button onClick={handleExport} className={BTN}>

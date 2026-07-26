@@ -418,6 +418,56 @@ export const ASSET_CATEGORIES = ['branding', 'backgrounds', 'buttons', 'borders'
 export type AssetCategory = typeof ASSET_CATEGORIES[number];
 
 /**
+ * What a colour setting renders as when it is NOT set — the value the
+ * surface actually falls back to, transcribed from index.css (or from the
+ * inline fallback where a component consumes the key directly).
+ *
+ * A key is ABSENT here when its unset state is not a flat colour at all
+ * (a Tailwind gradient, a `dungeon-btn` plate). The editor shows those as
+ * "not set" rather than inventing a swatch — the previous hand-kept map in
+ * ThemeAssetsEditor covered 18 of ~60 keys and defaulted the rest to black,
+ * so every uncovered card read as "custom" the moment it was touched.
+ *
+ * Pinned against index.css by theme-color-defaults.test.ts.
+ */
+export const THEME_COLOR_DEFAULTS: Partial<Record<ThemeAssetKey, string>> = {
+  // Backgrounds
+  colorBgPrimary: '#0a0805',        // .theme-root
+  colorBgSecondary: '#2a2118',      // .dungeon-panel
+  colorBgCard: 'rgba(42, 42, 42, 0.8)', // .theme-root [class*="bg-stone-800"]
+  colorBgNavbar: '#3a332b',         // the navbar plate
+  colorBgInput: '#15100a',          // .dungeon-input
+  colorBgControlPanel: '#15100a',   // .dungeon-panel-dark, via the input colour
+  // Text
+  colorTextPrimary: '#f2e0b5',      // --color-text-primary
+  colorTextSecondary: '#7d6c52',
+  colorTextHeading: '#d4a574',
+  // Borders — .dungeon-panel's value; .dungeon-panel-dark carries its own
+  // darker #3d3224 fallback, so a dark panel shifts more than this swatch shows
+  colorBorderPrimary: '#5a4a35',
+  colorBorderAccent: '#c4915c',
+  // Accents
+  colorAccentPrimary: '#8c5c37',
+  colorAccentSuccess: '#3d4d21',    // .dungeon-btn-success
+  colorAccentDanger: '#841919',     // .dungeon-btn-danger
+  // Buttons
+  colorButtonBg: '#44403c',
+  colorButtonBorder: '#57534e',
+  colorButtonPrimaryBg: '#8c5c37',
+  colorButtonPrimaryBorder: '#c4915c',
+  colorButtonDangerBg: '#841919',
+  colorButtonDangerBorder: '#b91c1c',
+  // Sprite previews — the entity/asset colours fall through to this one
+  colorBgPreview: '#15100a',        // .sprite-preview-bg
+  colorBgPreviewEntity: '#15100a',
+  colorBgPreviewAsset: '#15100a',
+  // Consumed inline by components rather than through a CSS variable
+  siteSubtitleColor: 'rgba(212, 165, 116, 0.8)',
+  concedeModalOverlayBg: 'rgba(0, 0, 0, 0.7)',
+  gameOverPanelOverlayBg: 'rgba(0, 0, 0, 0.8)',
+};
+
+/**
  * Load theme assets from localStorage
  */
 export function loadThemeAssets(): ThemeAssets {
@@ -478,7 +528,12 @@ export async function fetchThemeAssetsFromCloud(
 /**
  * Save theme assets to localStorage
  */
-export function saveThemeAssets(assets: ThemeAssets): { success: boolean; error?: string } {
+export interface ThemeSaveResult {
+  success: boolean;
+  error?: string;
+}
+
+export function saveThemeAssets(assets: ThemeAssets): ThemeSaveResult {
   try {
     const json = JSON.stringify(assets);
     const sizeKB = Math.round(json.length / 1024);
@@ -522,22 +577,25 @@ export function getThemeAsset<K extends ThemeAssetKey>(key: K): ThemeAssets[K] {
 
 /**
  * Set a single theme asset
+ * Returns the save result — callers must surface a failure, or a full
+ * localStorage silently discards the edit (the editor's card keeps showing
+ * the new value because it re-reads a store that never took it).
  */
-export function setThemeAsset<K extends ThemeAssetKey>(key: K, value: ThemeAssets[K]): void {
+export function setThemeAsset<K extends ThemeAssetKey>(key: K, value: ThemeAssets[K]): ThemeSaveResult {
   const assets = loadThemeAssets();
   if (value !== undefined && value !== '') {
     assets[key] = value;
   } else {
     delete assets[key];
   }
-  saveThemeAssets(assets);
+  return saveThemeAssets(assets);
 }
 
 /**
  * Delete a theme asset
  */
-export function deleteThemeAsset(key: ThemeAssetKey): void {
-  setThemeAsset(key, undefined);
+export function deleteThemeAsset(key: ThemeAssetKey): ThemeSaveResult {
+  return setThemeAsset(key, undefined);
 }
 
 /**
@@ -621,15 +679,25 @@ export function exportThemeAssets(): string {
 /**
  * Import theme assets from a JSON string
  */
-export function importThemeAssets(json: string): boolean {
+export function importThemeAssets(json: string): ThemeSaveResult {
+  let parsed: unknown;
   try {
-    const assets = JSON.parse(json);
-    saveThemeAssets(assets);
-    return true;
+    parsed = JSON.parse(json);
   } catch (e) {
     console.error('Failed to import theme assets:', e);
-    return false;
+    return { success: false, error: 'That file is not valid JSON.' };
   }
+  // Any valid JSON used to be accepted and written straight over the theme —
+  // importing a number or an array wiped every setting.
+  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    return { success: false, error: 'That file is not a theme export.' };
+  }
+  const known = new Set(Object.keys(THEME_ASSET_CONFIG));
+  const keys = Object.keys(parsed as Record<string, unknown>);
+  if (keys.length > 0 && !keys.some((k) => known.has(k))) {
+    return { success: false, error: 'That file contains no recognisable theme settings.' };
+  }
+  return saveThemeAssets(parsed as ThemeAssets);
 }
 
 /**
@@ -737,6 +805,10 @@ export function getThemeAssetsCSSProperties(): Record<string, string> {
 
   // Font family - map option values to actual CSS font-family strings
   const fontMap: Record<string, string> = {
+    // 'default' must MAP, not be skipped: the heading and menu variables fall
+    // back to Almendra when unset, so "Default (Inter)" has to be written out
+    // explicitly or picking it is a no-op.
+    'default': "'Inter', system-ui, sans-serif",
     'medieval': "'Almendra', serif",
     'pixel': "'Press Start 2P', monospace",
     'fantasy': "'MedievalSharp', cursive",
@@ -756,18 +828,20 @@ export function getThemeAssetsCSSProperties(): Record<string, string> {
     'faculty': "'Faculty Glyphic', serif",
   };
 
-  // Body font
-  if (assets.fontFamily && assets.fontFamily !== 'default' && fontMap[assets.fontFamily]) {
+  // A stored value always writes its variable; clearing the setting is what
+  // hands the surface back to the CSS fallback (Inter for body, Almendra for
+  // headings and the gate menu).
+  if (assets.fontFamily && fontMap[assets.fontFamily]) {
     properties['--theme-font-family'] = fontMap[assets.fontFamily];
   }
 
   // Heading font (separate from body)
-  if (assets.fontFamilyHeading && assets.fontFamilyHeading !== 'default' && fontMap[assets.fontFamilyHeading]) {
+  if (assets.fontFamilyHeading && fontMap[assets.fontFamilyHeading]) {
     properties['--theme-font-family-heading'] = fontMap[assets.fontFamilyHeading];
   }
 
-  // Gate-menu font (the hamburger menu's steel-plate labels; default stays Almendra via the CSS fallback)
-  if (assets.fontFamilyMenu && assets.fontFamilyMenu !== 'default' && fontMap[assets.fontFamilyMenu]) {
+  // Gate-menu font (the hamburger menu's steel-plate labels)
+  if (assets.fontFamilyMenu && fontMap[assets.fontFamilyMenu]) {
     properties['--theme-font-family-menu'] = fontMap[assets.fontFamilyMenu];
   }
 
@@ -780,6 +854,9 @@ export function getThemeAssetsCSSProperties(): Record<string, string> {
     'x-large': '20px',
   };
 
+  // 'medium' is genuinely the CSS fallback for both, so leaving the variable
+  // unset is correct — and `.font-medieval` falls back to `inherit`, which a
+  // written-out 16px would override.
   if (assets.fontSizeBody && assets.fontSizeBody !== 'medium' && fontSizeMap[assets.fontSizeBody]) {
     properties['--theme-font-size-body-px'] = fontSizeMap[assets.fontSizeBody];
   }
