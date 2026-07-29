@@ -18,6 +18,7 @@ export interface SavedSetup {
   puzzleId: string;
   placements: PlacedCharacter[];
   spellDirectionOverrides: Record<string, Record<string, Direction>>;
+  facingOverrides?: Record<string, Direction>; // player-chosen starting facing per hero (facingAcceptsUserInput)
 }
 
 export function saveSetupState(state: SavedSetup): void {

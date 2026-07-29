@@ -188,9 +188,22 @@ do, complementary to [`feature-roadmap.md`](../../puzzle-game/feature-roadmap.md
     pre-existing redirect behavior): an untouched compass DISPLAYS
     north but the engine falls back to the authored config until the
     player clicks — flag if this ever confuses.
-  - [ ] Pick initial facing of a placed hero (heroes currently have a
-    hardcoded starting facing baked into the asset, e.g. "Bob always
-    starts facing south"). When toggled on, the player picks at placement.
+  - [x] Pick initial facing of a placed hero. SHIPPED 2026-07-28 —
+    `Character.facingAcceptsUserInput` ("Player picks starting facing"
+    checkbox in CharacterEditor). Facing compass joins the spell compasses
+    in the hero card's new CHOOSE column (Actions | Choose | Attributes);
+    ALL player direction inputs are now REQUIRED before placement (gate +
+    "Hold On!" modal in Game + TrainingGrounds — the untouched-compass
+    display/engine mismatch flagged below is structurally gone for heroes).
+    Solver permutes all 8 facings for flagged heroes; setup recovery
+    persists the choice; redirect_spell/spell_direction help sections
+    deleted (the column captions explain themselves). Same session:
+    creator-restricted compasses — `Character.allowedFacingDirections` +
+    `SpellAsset.allowedInputDirections` (DirectionCompass picker appears
+    under each input toggle; unset = all 8). Disallowed arrows render
+    dimmed/unclickable, the solver permutes only the allowed subset, and
+    a stored choice outside a narrowed subset counts as not-chosen at the
+    placement gate.
   - [ ] Pick which spell to use when a hero has multiple in the same
     behavior slot (creator authors several options, player picks one per
     run).

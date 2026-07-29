@@ -2,6 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { toast } from '../shared/Toast';
 import type { SpellAsset, SpellTemplate, DirectionMode, SpriteReference, RelativeDirection, StatusEffectAsset } from '../../types/game';
 import { Direction } from '../../types/game';
+import { DirectionCompass } from './DirectionCompass';
+import { ALL_COMPASS_DIRECTIONS } from '../../utils/directionInput';
 import type { SpriteSheetConfig } from '../../utils/assetStorage';
 import { saveSpellAsset, getFolders, getStatusEffectAssets, getSoundAssets, getCustomCollectibles, getCustomEnemies } from '../../utils/assetStorage';
 import { RichTextEditor } from './RichTextEditor';
@@ -1291,6 +1293,16 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                     The player aims this spell via a compass when placing the hero.
                     {editedSpell.directionAcceptsUserInput && ' The direction settings below serve as defaults for enemies/AI.'}
                   </p>
+                  {editedSpell.directionAcceptsUserInput && (
+                    <div className="mt-2 ml-6 p-2 rounded bg-stone-900/40 border border-stone-700/60">
+                      <p className="text-xs text-stone-400 mb-2">Allowed directions — the player can only pick from these (all lit = no restriction):</p>
+                      <DirectionCompass
+                        mode="absolute"
+                        selectedDirections={editedSpell.allowedInputDirections?.length ? editedSpell.allowedInputDirections : ALL_COMPASS_DIRECTIONS}
+                        onChange={(dirs) => setEditedSpell({ ...editedSpell, allowedInputDirections: dirs.length >= 8 ? undefined : (dirs as Direction[]) })}
+                      />
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1860,6 +1872,16 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                     The player picks the redirect direction via a compass when placing the hero.
                     {editedSpell.redirectAcceptsUserInput && ' The settings below serve as defaults for enemies/AI.'}
                   </p>
+                  {editedSpell.redirectAcceptsUserInput && (
+                    <div className="mt-2 ml-6 p-2 rounded bg-stone-900/40 border border-stone-700/60">
+                      <p className="text-xs text-stone-400 mb-2">Allowed directions — the player can only pick from these (all lit = no restriction):</p>
+                      <DirectionCompass
+                        mode="absolute"
+                        selectedDirections={editedSpell.allowedInputDirections?.length ? editedSpell.allowedInputDirections : ALL_COMPASS_DIRECTIONS}
+                        onChange={(dirs) => setEditedSpell({ ...editedSpell, allowedInputDirections: dirs.length >= 8 ? undefined : (dirs as Direction[]) })}
+                      />
+                    </div>
+                  )}
                 </div>
 
                 <div>

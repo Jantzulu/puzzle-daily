@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import type { GameState, PlacedCharacter, Puzzle } from '../../types/game';
+import type { Direction, GameState, PlacedCharacter, Puzzle } from '../../types/game';
 import { TURN_INTERVAL_MS } from '../../types/game';
+import { getMissingDirectionInputs } from '../../utils/directionInput';
+import { WarningModal } from '../shared/WarningModal';
 import { getAllPuzzles } from '../../data/puzzles';
 import { getAllCharacters, getCharacter, isOfficialCharacter } from '../../data/characters';
 import { usePlayerReveal, isAssetRevealed, getLiveTrainingPuzzles } from '../../utils/reveal';
@@ -94,6 +96,11 @@ export const TrainingGrounds: React.FC<TrainingGroundsProps> = ({ playerReveal }
   const [isSimulating, setIsSimulating] = useState(false);
   const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null);
   const [playStartCharacters, setPlayStartCharacters] = useState<PlacedCharacter[]>([]);
+  // Player direction input during setup — same required-input rule as the
+  // daily (compasses on the hero card, placement gated until chosen).
+  const [pendingSpellDirectionOverrides, setPendingSpellDirectionOverrides] = useState<Record<string, Record<string, Direction>>>({});
+  const [pendingFacingOverrides, setPendingFacingOverrides] = useState<Record<string, Direction>>({});
+  const [warningModal, setWarningModal] = useState<{ isOpen: boolean; message: string }>({ isOpen: false, message: '' });
 
   // -- Replay state --
   const [replayMode, setReplayMode] = useState(false);
@@ -202,15 +209,33 @@ export const TrainingGrounds: React.FC<TrainingGroundsProps> = ({ playerReveal }
       const charData = getCharacter(selectedCharacterId);
       if (!charData) return;
 
+      // Required player input — same gate as the daily: every compass on the
+      // hero card must be chosen before placement.
+      const missingInputs = getMissingDirectionInputs(
+        charData,
+        pendingFacingOverrides[selectedCharacterId],
+        pendingSpellDirectionOverrides[selectedCharacterId]
+      );
+      if (missingInputs.length > 0) {
+        playGameSound('error');
+        setWarningModal({
+          isOpen: true,
+          message: `Choose a ${missingInputs.join(' and ')} for ${charData.name} first.`,
+        });
+        return;
+      }
+
+      const pendingOverrides = pendingSpellDirectionOverrides[selectedCharacterId];
       const newChar: PlacedCharacter = {
         characterId: selectedCharacterId,
         x, y,
-        facing: charData.defaultFacing,
+        facing: pendingFacingOverrides[selectedCharacterId] ?? charData.defaultFacing,
         currentHealth: charData.health,
         maxHealth: charData.health,
         actionIndex: 0,
         active: true,
         dead: false,
+        ...(pendingOverrides && { spellDirectionOverrides: pendingOverrides }),
       };
 
       setGameState(prev => prev && ({
@@ -220,7 +245,7 @@ export const TrainingGrounds: React.FC<TrainingGroundsProps> = ({ playerReveal }
       playGameSound('character_placed');
       vibrate('characterPlace');
     },
-    [selectedCharacterId, gameState],
+    [selectedCharacterId, gameState, pendingSpellDirectionOverrides, pendingFacingOverrides],
   );
 
   // ============================================================
@@ -636,10 +661,43 @@ export const TrainingGrounds: React.FC<TrainingGroundsProps> = ({ playerReveal }
               onClearAll={isSetup ? handleWipe : undefined}
               disabled={!isSetup}
               noPanel
+              placedCharacters={gameState.placedCharacters}
+              pendingSpellDirectionOverrides={pendingSpellDirectionOverrides}
+              onSpellDirectionOverride={isSetup ? (characterId, spellId, direction) => {
+                setPendingSpellDirectionOverrides(prev => ({
+                  ...prev,
+                  [characterId]: { ...prev[characterId], [spellId]: direction },
+                }));
+                setGameState(prev => prev && ({
+                  ...prev,
+                  placedCharacters: prev.placedCharacters.map(pc =>
+                    pc.characterId === characterId
+                      ? { ...pc, spellDirectionOverrides: { ...pc.spellDirectionOverrides, [spellId]: direction } }
+                      : pc
+                  ),
+                }));
+              } : undefined}
+              pendingFacingOverrides={pendingFacingOverrides}
+              onFacingOverride={isSetup ? (characterId, direction) => {
+                setPendingFacingOverrides(prev => ({ ...prev, [characterId]: direction }));
+                setGameState(prev => prev && ({
+                  ...prev,
+                  placedCharacters: prev.placedCharacters.map(pc =>
+                    pc.characterId === characterId ? { ...pc, facing: direction } : pc
+                  ),
+                }));
+              } : undefined}
             />
           </div>
         )}
       </div>
+
+      <WarningModal
+        isOpen={warningModal.isOpen}
+        onClose={() => setWarningModal({ isOpen: false, message: '' })}
+        title="Hold On!"
+        message={warningModal.message}
+      />
     </div>
   );
 };

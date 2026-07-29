@@ -303,6 +303,15 @@ export interface Character {
   description: string;
   health: number;
   defaultFacing: Direction;
+  // Player picks this hero's starting facing during setup (compass on the
+  // hero card, same required-input rule as direction-input spells); the
+  // defaultFacing above becomes the fallback for surfaces without the
+  // compass (showcase demos, enemy-side adapters).
+  facingAcceptsUserInput?: boolean;
+  // With facingAcceptsUserInput: restrict the compass to this subset of the
+  // 8 directions (disallowed arrows render dimmed/unclickable; the solver
+  // permutes only these). Unset or empty = all 8 allowed.
+  allowedFacingDirections?: Direction[];
   isNoble?: boolean; // Noble marker (backlog: heroes can be Nobles too) — this hero counts for the noble win/lose conditions when placed
   behavior: CharacterAction[];
   actionSteps?: ActionStep[]; // Numbered action steps displayed on play/playtest pages
@@ -1653,6 +1662,12 @@ export interface SpellAsset {
   // instead — that input aims the target's NEW facing, not the cast
   // direction, and the two share the spellDirectionOverrides storage slot.
   directionAcceptsUserInput?: boolean;
+  // Restrict the player's compass to this subset of the 8 directions —
+  // applies to whichever input this spell accepts (directionAcceptsUserInput
+  // aim OR redirectAcceptsUserInput redirect; a spell only ever has one).
+  // Disallowed arrows render dimmed/unclickable; the solver permutes only
+  // these. Unset or empty = all 8 allowed.
+  allowedInputDirections?: Direction[];
 
   // Damage/Healing
   damage?: number;              // Damage dealt (mutually exclusive with healing)

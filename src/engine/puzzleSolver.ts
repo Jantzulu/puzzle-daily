@@ -4,7 +4,8 @@
 import { initializeGameState, executeTurn } from './simulation';
 import { getCharacter } from '../data/characters';
 import { getEnemy } from '../data/enemies';
-import { loadTileType, loadCollectible, loadSpellAsset, loadStatusEffectAsset } from '../utils/assetStorage';
+import { loadTileType, loadCollectible, loadStatusEffectAsset } from '../utils/assetStorage';
+import { getDirectionInputSpells, allowedFacingDirections, allowedSpellDirections } from '../utils/directionInput';
 import type { Puzzle, PlacedCharacter, Direction, TileType, GameStatus } from '../types/game';
 
 export interface SolverResult {
@@ -103,52 +104,44 @@ function* combinations<T>(array: T[], k: number): Generator<T[]> {
   yield* combinations(rest, k);
 }
 
-const ALL_DIRECTIONS: Direction[] = [
-  'north' as Direction, 'northeast' as Direction, 'east' as Direction, 'southeast' as Direction,
-  'south' as Direction, 'southwest' as Direction, 'west' as Direction, 'northwest' as Direction,
-];
-
 /**
- * Find spell IDs whose direction is player-chosen for a given character:
- * redirect spells with redirectAcceptsUserInput (the input aims the target's
- * new facing) and any other spell with directionAcceptsUserInput (the input
- * aims the cast direction). Both store their choice in spellDirectionOverrides.
+ * Player-input spells for a character with their creator-allowed direction
+ * subsets — shared filter with the compass UI and the placement gates
+ * (utils/directionInput).
  */
-function getUserInputSpellIds(charId: string): string[] {
-  const charData = getCharacter(charId);
-  if (!charData) return [];
-  return charData.behavior
-    .filter(a => a.type === 'spell' && a.spellId)
-    .map(a => loadSpellAsset(a.spellId!))
-    .filter(s => s && (
-      (s.templateType === 'redirect' && s.redirectAcceptsUserInput) ||
-      (s.templateType !== 'redirect' && s.directionAcceptsUserInput)
-    ))
-    .map(s => s!.id);
+function getUserInputSpellDirs(charId: string): Array<{ id: string; dirs: Direction[] }> {
+  return getDirectionInputSpells(getCharacter(charId)).map(s => ({
+    id: s.id,
+    dirs: allowedSpellDirections(s),
+  }));
 }
 
 /**
  * Generate all direction override combinations for a list of player-input
- * spell IDs. Each spell gets one of 8 directions, yielding 8^N combinations.
+ * spells. Each spell gets one of its allowed directions (all 8 unless the
+ * creator restricted the compass), yielding ∏|allowed| combinations.
  */
 function* generateDirectionOverrides(
-  spellIds: string[]
+  spells: Array<{ id: string; dirs: Direction[] }>
 ): Generator<Record<string, Direction>> {
-  if (spellIds.length === 0) {
+  if (spells.length === 0) {
     yield {};
     return;
   }
-  const [first, ...rest] = spellIds;
-  for (const dir of ALL_DIRECTIONS) {
+  const [first, ...rest] = spells;
+  for (const dir of first.dirs) {
     for (const restOverrides of generateDirectionOverrides(rest)) {
-      yield { [first]: dir, ...restOverrides };
+      yield { [first.id]: dir, ...restOverrides };
     }
   }
 }
 
 /**
- * Generate all possible placements for a set of characters on valid tiles
- * Uses each character's actual defaultFacing (not all 8 directions)
+ * Generate all possible placements for a set of characters on valid tiles.
+ * Facing: the character's authored defaultFacing, EXCEPT heroes with
+ * facingAcceptsUserInput — the player chooses at placement, so every facing
+ * the creator allows is permuted (all 8 unless the compass was restricted;
+ * mirrors the live placement gate).
  * Also permutes spell direction overrides for heroes with player-choosable spell directions (redirect + aimed spells)
  */
 function* generatePlacements(
@@ -162,29 +155,32 @@ function* generatePlacements(
 
   const [charId, ...remainingChars] = characters;
 
-  // Get the character's actual default facing direction
   const charData = getCharacter(charId);
-  const facing = charData?.defaultFacing || ('south' as Direction);
+  const facings: Direction[] = charData?.facingAcceptsUserInput
+    ? allowedFacingDirections(charData)
+    : [charData?.defaultFacing || ('south' as Direction)];
 
   // Find spells whose direction the player chooses for this character
-  const userInputSpellIds = getUserInputSpellIds(charId);
+  const userInputSpells = getUserInputSpellDirs(charId);
 
   for (const tile of tiles) {
     // Remaining tiles (exclude current to prevent overlaps)
     const remainingTiles = tiles.filter(t => t.x !== tile.x || t.y !== tile.y);
 
-    // Generate direction permutations (or single empty override if none)
-    for (const overrides of generateDirectionOverrides(userInputSpellIds)) {
-      const placement: CharacterPlacement = {
-        characterId: charId,
-        x: tile.x,
-        y: tile.y,
-        facing,
-        ...(Object.keys(overrides).length > 0 ? { spellDirectionOverrides: overrides } : {}),
-      };
+    for (const facing of facings) {
+      // Generate direction permutations (or single empty override if none)
+      for (const overrides of generateDirectionOverrides(userInputSpells)) {
+        const placement: CharacterPlacement = {
+          characterId: charId,
+          x: tile.x,
+          y: tile.y,
+          facing,
+          ...(Object.keys(overrides).length > 0 ? { spellDirectionOverrides: overrides } : {}),
+        };
 
-      for (const restPlacements of generatePlacements(remainingChars, remainingTiles)) {
-        yield [placement, ...restPlacements];
+        for (const restPlacements of generatePlacements(remainingChars, remainingTiles)) {
+          yield [placement, ...restPlacements];
+        }
       }
     }
   }

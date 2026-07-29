@@ -1,7 +1,7 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { getCharacter } from '../../data/characters';
 import type { CharacterAction, PlacedCharacter, Direction } from '../../types/game';
-import { loadSpellAsset } from '../../utils/assetStorage';
+import { getDirectionInputSpells, spellDirectionCaption, FACING_CAPTION, allowedFacingDirections, allowedSpellDirections } from '../../utils/directionInput';
 import { SpriteThumbnail } from '../editor/SpriteThumbnail';
 import { GemMesh } from './GemMesh';
 import { RichTextRenderer } from '../editor/RichTextEditor';
@@ -62,6 +62,8 @@ interface CharacterSelectorProps {
   placedCharacters?: PlacedCharacter[];
   onSpellDirectionOverride?: (characterId: string, spellId: string, direction: Direction) => void;
   pendingSpellDirectionOverrides?: Record<string, Record<string, Direction>>;
+  onFacingOverride?: (characterId: string, direction: Direction) => void;
+  pendingFacingOverrides?: Record<string, Direction>;
 }
 
 export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
@@ -78,6 +80,8 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
   placedCharacters = [],
   onSpellDirectionOverride,
   pendingSpellDirectionOverrides = {},
+  onFacingOverride,
+  pendingFacingOverrides = {},
 }) => {
   const effectiveMaxPlaceable = maxPlaceable ?? availableCharacterIds.length;
   const isAtMaxPlaced = placedCharacterIds.length >= effectiveMaxPlaceable;
@@ -167,22 +171,45 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
   const hasActionSteps = (renderedCharacter?.actionSteps?.length ?? 0) > 0;
   const hasAttributes = (renderedCharacter?.attributes?.length ?? 0) > 0;
 
-  // Spells whose direction the player chooses: redirect spells (the compass
-  // aims the target's new facing) and aimed spells with
-  // directionAcceptsUserInput (the compass aims the cast direction). Both
-  // store their choice in spellDirectionOverrides, so one compass UI serves
-  // both — must match the solver's getUserInputSpellIds filter.
-  const directionInputSpells = renderedCharacter
-    ? renderedCharacter.behavior
-        .filter(a => a.type === 'spell' && a.spellId)
-        .map(a => loadSpellAsset(a.spellId!))
-        .filter(s => s && (
-          (s.templateType === 'redirect' && s.redirectAcceptsUserInput) ||
-          (s.templateType !== 'redirect' && s.directionAcceptsUserInput)
-        ))
-    : [];
+  const directionInputSpells = getDirectionInputSpells(renderedCharacter);
+  const hasFacingInput = !!renderedCharacter?.facingAcceptsUserInput;
+  const hasDirectionInputs = hasFacingInput || directionInputSpells.length > 0;
 
   const placedSelectedChar = placedCharacters.find(pc => pc.characterId === renderedCharId);
+
+  // The CHOOSE column's entries — starting facing first, then each
+  // direction-input spell. `current` stays undefined until the player has
+  // actually picked (no phantom default: the engine has no fallback to
+  // display, placement is gated on every entry being chosen).
+  const directionInputEntries: Array<{
+    key: string;
+    caption: string;
+    current?: Direction;
+    allowed: Direction[];
+    onPick?: (d: Direction) => void;
+  }> = [
+    ...(hasFacingInput && renderedCharacter ? [{
+      key: '__facing',
+      caption: FACING_CAPTION,
+      current: placedSelectedChar
+        ? placedSelectedChar.facing
+        : (renderedCharId ? pendingFacingOverrides[renderedCharId] : undefined),
+      allowed: allowedFacingDirections(renderedCharacter),
+      onPick: onFacingOverride && selectedCharacterId
+        ? (d: Direction) => onFacingOverride(selectedCharacterId, d)
+        : undefined,
+    }] : []),
+    ...directionInputSpells.map(spell => ({
+      key: spell.id,
+      caption: spellDirectionCaption(spell),
+      current: placedSelectedChar?.spellDirectionOverrides?.[spell.id]
+        || (renderedCharId ? pendingSpellDirectionOverrides[renderedCharId]?.[spell.id] : undefined),
+      allowed: allowedSpellDirections(spell),
+      onPick: onSpellDirectionOverride && selectedCharacterId
+        ? (d: Direction) => onSpellDirectionOverride(selectedCharacterId, spell.id, d)
+        : undefined,
+    })),
+  ];
 
   // Slot list for the strip + sliding selection overlay: only ids that
   // resolve to real characters render cards, so the overlay's slot math
@@ -403,7 +430,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
           hero used to open an empty tinted box holding just the placement
           hint, expanding the panel at selection (read as the trash button
           displacing the layout). The hint now lives in a static row below. */}
-      {renderedCharId && renderedCharacter && (hasActionSteps || hasAttributes || directionInputSpells.length > 0) && (
+      {renderedCharId && renderedCharacter && (hasActionSteps || hasAttributes || hasDirectionInputs) && (
         <div style={{
           display: 'grid',
           gridTemplateRows: isOpen ? '1fr' : '0fr',
@@ -423,11 +450,13 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
           }}
         >
 
-          {/* Action Steps + Attributes: split 50/50 if both present, full-width centered if only one */}
-          {(hasActionSteps || hasAttributes) && (
-            <div className={`flex mb-2 px-2 ${hasActionSteps && hasAttributes ? 'gap-0' : 'justify-center'}`}>
+          {/* Actions | Choose | Attributes — the text columns split the
+              remaining space; the CHOOSE column (present only when this hero
+              has player direction input) is fixed-width and sandwiched
+              between them. A lone column renders full-width centered. */}
+          <div className={`flex mb-2 px-2 ${[hasActionSteps, hasDirectionInputs, hasAttributes].filter(Boolean).length === 1 ? 'justify-center' : 'gap-0'}`}>
               {hasActionSteps && (
-                <div className={`${hasAttributes ? 'flex-1 pr-2' : 'w-full'}`}>
+                <div className={`${hasAttributes || hasDirectionInputs ? 'flex-1 pr-2' : 'w-full'}`}>
                   <p className="text-xs font-semibold text-stone-500 uppercase tracking-wide mb-1 text-center">Actions</p>
                   <ol className="text-xs lg:text-sm text-stone-300 space-y-1 pl-2">
                     {renderedCharacter.actionSteps!.map((step, idx) => (
@@ -451,11 +480,83 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                   </ol>
                 </div>
               )}
-              {hasActionSteps && hasAttributes && (
+              {hasActionSteps && (hasDirectionInputs || hasAttributes) && (
+                <div className="self-stretch mx-2 flex-shrink-0 border-l border-dashed border-stone-600/40" />
+              )}
+
+              {/* DIRECTIONS — player direction input (starting facing and/or
+                  spell compasses). Titled as a hero-subject noun to stay
+                  parallel with Actions/Attributes. Fixed width so the text
+                  columns keep the flex space; entries stack when a hero has
+                  more than one. */}
+              {hasDirectionInputs && (
+                <div className="flex-shrink-0 px-1" style={{ minWidth: '76px' }}>
+                  <p className="text-xs font-semibold text-stone-500 uppercase tracking-wide mb-1 text-center">Directions</p>
+                  {directionInputEntries.map(entry => {
+                    if (disabled || !entry.onPick) {
+                      return (
+                        <div key={entry.key} className="flex flex-col items-center mb-2">
+                          <span className="text-[9px] text-purple-300 font-medium text-center">{entry.caption}</span>
+                          {entry.current ? (
+                            <div className="flex items-center gap-1 mt-0.5">
+                              <CompassArrow direction={entry.current} size={14} className="text-purple-300" />
+                              <span className="text-[10px] text-purple-300 capitalize">{entry.current}</span>
+                            </div>
+                          ) : (
+                            <span className="text-[10px] text-stone-500 mt-0.5">—</span>
+                          )}
+                        </div>
+                      );
+                    }
+                    return (
+                      <div key={entry.key} className="flex flex-col items-center gap-1 mb-2">
+                        <span className="text-[9px] text-purple-300 font-medium text-center">{entry.caption}</span>
+                        <div className="grid grid-cols-3 gap-px" style={{ width: '54px' }}>
+                          {[
+                            ...COMPASS_DIRS.slice(0, 4),
+                            null,
+                            ...COMPASS_DIRS.slice(4),
+                          ].map((d, i) => d ? (
+                            entry.allowed.includes(d.value) ? (
+                              <button
+                                key={d.value}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  entry.onPick?.(d.value);
+                                }}
+                                className={`w-[17px] h-[17px] rounded-sm transition-colors flex items-center justify-center ${
+                                  entry.current === d.value
+                                    ? 'bg-purple-600 text-white border border-purple-400'
+                                    : 'bg-stone-700 text-stone-400 border border-stone-600 hover:bg-stone-600'
+                                }`}
+                              >
+                                <CompassArrow direction={d.dir} size={9} />
+                              </button>
+                            ) : (
+                              // Creator-disallowed direction — hold the grid
+                              // shape but read as inert.
+                              <div
+                                key={d.value}
+                                className="w-[17px] h-[17px] rounded-sm flex items-center justify-center bg-stone-800/60 text-stone-700 border border-stone-700/40"
+                              >
+                                <CompassArrow direction={d.dir} size={9} />
+                              </div>
+                            )
+                          ) : (
+                            <div key={`center-${i}`} className="w-[17px] h-[17px]" />
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {hasDirectionInputs && hasAttributes && (
                 <div className="self-stretch mx-2 flex-shrink-0 border-l border-dashed border-stone-600/40" />
               )}
               {hasAttributes && (
-                <div className={`${hasActionSteps ? 'flex-1 pl-2' : 'w-full'}`}>
+                <div className={`${hasActionSteps || hasDirectionInputs ? 'flex-1 pl-2' : 'w-full'}`}>
                   <p className="text-xs font-semibold text-stone-500 uppercase tracking-wide mb-1 text-center">Attributes</p>
                   <ul className="text-xs lg:text-sm text-stone-300 space-y-1">
                     {renderedCharacter.attributes!.map((attr, idx) => (
@@ -475,62 +576,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                   </ul>
                 </div>
               )}
-            </div>
-          )}
-
-          {/* Direction-input spell compass (redirect + aimed spells) */}
-          {directionInputSpells.map(spell => {
-            if (!spell) return null;
-            const currentDir: Direction = (
-              placedSelectedChar?.spellDirectionOverrides?.[spell.id]
-              || pendingSpellDirectionOverrides[renderedCharId]?.[spell.id]
-              || 'north'
-            ) as Direction;
-
-            if (disabled || !onSpellDirectionOverride) {
-              return (
-                <div key={spell.id} className="flex items-center justify-center gap-1 mb-1">
-                  <CompassArrow direction={currentDir} size={14} className="text-purple-300" />
-                  <span className="text-[10px] text-purple-300 capitalize">{currentDir}</span>
-                </div>
-              );
-            }
-
-            return (
-              <div key={spell.id} className="flex flex-col items-center gap-1 mb-2">
-                <div className="relative w-full flex items-center justify-center">
-                  <div className="absolute left-2">
-                    <HelpButton sectionId={spell.templateType === 'redirect' ? 'redirect_spell' : 'spell_direction'} className="!p-0" />
-                  </div>
-                  <span className="text-[9px] text-purple-300 font-medium">{spell.name}</span>
-                </div>
-                <div className="grid grid-cols-3 gap-px" style={{ width: '54px' }}>
-                  {[
-                    ...COMPASS_DIRS.slice(0, 4),
-                    null,
-                    ...COMPASS_DIRS.slice(4),
-                  ].map((d, i) => d ? (
-                    <button
-                      key={d.value}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (selectedCharacterId) onSpellDirectionOverride?.(selectedCharacterId, spell.id, d.value);
-                      }}
-                      className={`w-[17px] h-[17px] rounded-sm transition-colors flex items-center justify-center ${
-                        currentDir === d.value
-                          ? 'bg-purple-600 text-white border border-purple-400'
-                          : 'bg-stone-700 text-stone-400 border border-stone-600 hover:bg-stone-600'
-                      }`}
-                    >
-                      <CompassArrow direction={d.dir} size={9} />
-                    </button>
-                  ) : (
-                    <div key={`center-${i}`} className="w-[17px] h-[17px]" />
-                  ))}
-                </div>
-              </div>
-            );
-          })}
+          </div>
 
         </div>
         </div>

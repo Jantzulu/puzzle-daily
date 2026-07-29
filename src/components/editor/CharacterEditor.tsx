@@ -16,6 +16,8 @@ import { FolderDropdown, useFilteredAssets, InlineFolderPicker } from './FolderD
 import { useBulkSelect, BulkActionBar, bulkDelete, bulkMoveToFolder, bulkExport, bulkImport } from './BulkActions';
 import { RichTextEditor } from './RichTextEditor';
 import { BehaviorSequenceBuilder } from './BehaviorSequenceBuilder';
+import { DirectionCompass } from './DirectionCompass';
+import { ALL_COMPASS_DIRECTIONS } from '../../utils/directionInput';
 import { VersionHistoryModal } from './VersionHistoryModal';
 import { createVersionSnapshot } from '../../services/versionService';
 import { AssetEditorLayout } from './AssetEditorLayout';
@@ -922,6 +924,22 @@ export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ init
                           </select>
                         </div>
                       </div>
+                      <label className="flex items-center gap-2 p-2 mt-3 rounded bg-stone-700/40 border border-stone-600/50">
+                        <input type="checkbox" checked={editing.facingAcceptsUserInput || false}
+                          onChange={(e) => updateCharacter({ facingAcceptsUserInput: e.target.checked || undefined })} className="w-4 h-4" />
+                        <span className="text-sm font-medium">Player picks starting facing</span>
+                      </label>
+                      <p className="text-xs text-stone-400 ml-1 mt-1">A compass on the hero card lets the player choose this hero's starting facing during setup (required before placing). Default Facing above stays the fallback for showcase demos and AI-side uses.</p>
+                      {editing.facingAcceptsUserInput && (
+                        <div className="mt-2 p-2 rounded bg-stone-800/60 border border-stone-700/60">
+                          <p className="text-xs text-stone-400 mb-2">Allowed directions — the player can only pick from these (all lit = no restriction):</p>
+                          <DirectionCompass
+                            mode="absolute"
+                            selectedDirections={editing.allowedFacingDirections?.length ? editing.allowedFacingDirections : ALL_COMPASS_DIRECTIONS}
+                            onChange={(dirs) => updateCharacter({ allowedFacingDirections: dirs.length >= 8 ? undefined : (dirs as Direction[]) })}
+                          />
+                        </div>
+                      )}
                     </CollapsiblePanel>
 
                     {/* Properties */}

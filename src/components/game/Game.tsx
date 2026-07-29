@@ -32,6 +32,7 @@ import { LoadingRune } from '../shared/LoadingRune';
 import { fetchTodaysPuzzle as fetchCloudTodaysPuzzle } from '../../services/supabaseService';
 import { loadCachedDailyPuzzle, saveCachedDailyPuzzle } from '../../utils/dailyPuzzleCache';
 import { saveSetupState, loadSetupState, clearSetupState } from '../../utils/setupRecovery';
+import { getMissingDirectionInputs } from '../../utils/directionInput';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { lockBodyScroll } from '../../utils/scrollLock';
 import { submitCompletion } from '../../services/statsService';
@@ -185,6 +186,10 @@ export const Game: React.FC<GameProps> = ({
   const [isSimulating, setIsSimulating] = useState(false);
   // Pre-placement direction overrides: charId -> spellId -> direction
   const [pendingSpellDirectionOverrides, setPendingSpellDirectionOverrides] = useState<Record<string, Record<string, Direction>>>({});
+  // Player-chosen starting facing per hero (facingAcceptsUserInput assets) —
+  // pending sibling of the spell-direction map above; stamped into the
+  // PlacedCharacter's facing at placement.
+  const [pendingFacingOverrides, setPendingFacingOverrides] = useState<Record<string, Direction>>({});
 
   // Daily lock — only relevant when enableDailyLock and the puzzle has a date.
   // We compute this once per puzzle and re-derive when the puzzle changes.
@@ -568,6 +573,9 @@ export const Game: React.FC<GameProps> = ({
     if (saved.spellDirectionOverrides) {
       setPendingSpellDirectionOverrides(saved.spellDirectionOverrides);
     }
+    if (saved.facingOverrides) {
+      setPendingFacingOverrides(saved.facingOverrides);
+    }
   }, [isDailyContext, dailyLockStatus, gameState.gameStatus, gameState.placedCharacters.length, currentPuzzle.id]);
 
   // Save — every setup change after the restore attempt has been consumed
@@ -587,8 +595,9 @@ export const Game: React.FC<GameProps> = ({
       puzzleId: currentPuzzle.id,
       placements: gameState.placedCharacters,
       spellDirectionOverrides: pendingSpellDirectionOverrides,
+      facingOverrides: pendingFacingOverrides,
     });
-  }, [isDailyContext, dailyLockStatus, gameState.gameStatus, gameState.placedCharacters, pendingSpellDirectionOverrides, currentPuzzle.id, currentPuzzle.date]);
+  }, [isDailyContext, dailyLockStatus, gameState.gameStatus, gameState.placedCharacters, pendingSpellDirectionOverrides, pendingFacingOverrides, currentPuzzle.id, currentPuzzle.date]);
 
   // The day is decided — nothing left to recover.
   useEffect(() => {
@@ -1034,13 +1043,30 @@ export const Game: React.FC<GameProps> = ({
       const charData = getCharacter(selectedCharacterId);
       if (!charData) return;
 
-      // Place character with default facing direction, merging any pending direction overrides
+      // Required player input: every compass on the hero card (starting
+      // facing and/or spell directions) must be chosen before placement —
+      // there is no silent fallback to the authored config for heroes.
+      const missingInputs = getMissingDirectionInputs(
+        charData,
+        pendingFacingOverrides[selectedCharacterId],
+        pendingSpellDirectionOverrides[selectedCharacterId]
+      );
+      if (missingInputs.length > 0) {
+        playGameSound('error');
+        setWarningModal({
+          isOpen: true,
+          message: `Choose a ${missingInputs.join(' and ')} for ${charData.name} first.`,
+        });
+        return;
+      }
+
+      // Place character with the chosen (or default) facing, merging any pending direction overrides
       const pendingOverrides = pendingSpellDirectionOverrides[selectedCharacterId];
       const newCharacter: PlacedCharacter = {
         characterId: selectedCharacterId,
         x,
         y,
-        facing: charData.defaultFacing,
+        facing: pendingFacingOverrides[selectedCharacterId] ?? charData.defaultFacing,
         currentHealth: charData.health,
         maxHealth: charData.health,
         actionIndex: 0,
@@ -1076,7 +1102,10 @@ export const Game: React.FC<GameProps> = ({
       playGameSound('character_placed');
       vibrate('characterPlace');
     },
-    [selectedCharacterId, gameState]
+    // The pending maps are read at click time — omitting them left the
+    // callback closing over stale choices (latent before the placement gate,
+    // load-bearing now).
+    [selectedCharacterId, gameState, pendingSpellDirectionOverrides, pendingFacingOverrides]
   );
 
   // Called from AnimatedGameBoard when a projectile kills an enemy
@@ -3331,22 +3360,31 @@ export const Game: React.FC<GameProps> = ({
                     placedCharacters={gameState.placedCharacters}
                     pendingSpellDirectionOverrides={pendingSpellDirectionOverrides}
                     onSpellDirectionOverride={testMode === 'none' && gameState.gameStatus === 'setup' ? (characterId: string, spellId: string, direction: Direction) => {
-                      const isPlaced = gameState.placedCharacters.some(pc => pc.characterId === characterId);
-                      if (isPlaced) {
-                        setGameState(prev => ({
-                          ...prev,
-                          placedCharacters: prev.placedCharacters.map(pc =>
-                            pc.characterId === characterId
-                              ? { ...pc, spellDirectionOverrides: { ...pc.spellDirectionOverrides, [spellId]: direction } }
-                              : pc
-                          ),
-                        }));
-                      } else {
-                        setPendingSpellDirectionOverrides(prev => ({
-                          ...prev,
-                          [characterId]: { ...prev[characterId], [spellId]: direction },
-                        }));
-                      }
+                      // Pending map is always the canonical setup record (so a
+                      // picked-up hero re-places with their latest choice);
+                      // a placed copy is updated in step.
+                      setPendingSpellDirectionOverrides(prev => ({
+                        ...prev,
+                        [characterId]: { ...prev[characterId], [spellId]: direction },
+                      }));
+                      setGameState(prev => ({
+                        ...prev,
+                        placedCharacters: prev.placedCharacters.map(pc =>
+                          pc.characterId === characterId
+                            ? { ...pc, spellDirectionOverrides: { ...pc.spellDirectionOverrides, [spellId]: direction } }
+                            : pc
+                        ),
+                      }));
+                    } : undefined}
+                    pendingFacingOverrides={pendingFacingOverrides}
+                    onFacingOverride={testMode === 'none' && gameState.gameStatus === 'setup' ? (characterId: string, direction: Direction) => {
+                      setPendingFacingOverrides(prev => ({ ...prev, [characterId]: direction }));
+                      setGameState(prev => ({
+                        ...prev,
+                        placedCharacters: prev.placedCharacters.map(pc =>
+                          pc.characterId === characterId ? { ...pc, facing: direction } : pc
+                        ),
+                      }));
                     } : undefined}
                   />
                 )}
