@@ -313,7 +313,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
             <div
               key={charId}
               onClick={() => !cannotSelect && onSelectCharacter(isSelected ? null : charId)}
-              className={`flex-1 flex flex-col items-center px-1 pt-1 pb-0.5 relative transition-colors ${
+              className={`flex-1 flex flex-col items-center px-1 pt-1 pb-1.5 relative transition-colors ${
                 cannotSelect
                   ? 'opacity-40 cursor-not-allowed'
                   : isPlaced && isSelected
@@ -420,18 +420,12 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                 </div>
               </div>
 
-              {/* "More Info" + down caret (unselected), or up caret straddling boundary (selected) */}
-              <div className="mt-0.5 flex flex-col items-center justify-center" style={{ minHeight: '20px' }}>
-                {!isSelected && !cannotSelect && (
-                  <span className="text-[9px] text-stone-500 leading-none">More Info</span>
-                )}
-                {!isSelected && (
-                  <svg width="12" height="7" viewBox="0 0 12 7" fill="currentColor" className="text-stone-600 mt-0.5">
-                    <path d="M6 7L0 0h12z" />
-                  </svg>
-                )}
-              </div>
-              {/* Selected caret now lives in the SlidingSelection overlay */}
+              {/* No per-card "more info" affordance (design decision,
+                  2026-07-29): the old reserved "More Info" row cost ~22px
+                  per card, and even a pinned caret proved redundant — the
+                  first tap teaches that every card opens. The words live in
+                  the shared hint line below the strip; the selected amber
+                  up caret rides the SlidingSelection overlay, height-free. */}
             </div>
           );
         })}
@@ -453,7 +447,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
         }}>
         <div style={{ overflow: 'hidden', minHeight: 0 }}>
         <div
-          className="pt-4 pb-3 mt-0 bg-copper-900/15 rounded-b-pixel-md"
+          className="pt-2.5 pb-3 mt-0 bg-copper-900/15 rounded-b-pixel-md"
           style={{
             opacity: isOpen ? 1 : 0,
             transform: isOpen ? 'translateY(0)' : 'translateY(-8px)',
@@ -603,7 +597,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
           {isAtMaxPlaced ? null : selectedCharacterId && !placedCharacterIds.includes(selectedCharacterId) ? (
             <span className="text-copper-400">Click on the dungeon to place your hero</span>
           ) : (
-            <span className="text-stone-500">Select a hero</span>
+            <span className="text-stone-500">Select a hero for details</span>
           )}
         </div>
       )}

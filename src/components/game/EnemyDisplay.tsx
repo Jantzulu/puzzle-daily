@@ -18,6 +18,19 @@ const MOVEMENT_TYPES = new Set([
   'move_diagonal_ne', 'move_diagonal_nw', 'move_diagonal_se', 'move_diagonal_sw',
 ]);
 
+// One-time coach line (2026-07-29): the enemy strip has no permanent hint
+// row (heroes get one for free — it doubles as the placement instruction),
+// so "Tap an enemy for more info" shows under the strip until the player's
+// FIRST-EVER card tap, then never again on this device. Storage failure
+// degrades to never showing the hint — better than showing it forever.
+const ENEMY_HINT_KEY = 'enemy_card_hint_dismissed_v1';
+const isEnemyHintDismissed = () => {
+  try { return localStorage.getItem(ENEMY_HINT_KEY) === '1'; } catch { return true; }
+};
+const dismissEnemyHint = () => {
+  try { localStorage.setItem(ENEMY_HINT_KEY, '1'); } catch { /* ditto */ }
+};
+
 function getEnemyMovementInfo(behavior?: EnemyBehavior) {
   if (!behavior?.pattern) return null;
   const moveAction = behavior.pattern.find(a => MOVEMENT_TYPES.has(a.type));
@@ -53,6 +66,9 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
   // Info panel animation state — grid 0fr→1fr so easing applies to real content height.
   // Double rAF ensures browser paints the closed (0fr) state before opening.
   const [selectedEnemyId, setSelectedEnemyId] = useState<string | null>(null);
+  // Coach line renders only on the Enemies side (no duplicate under Allies);
+  // a tap on either side's cards writes the dismissal flag.
+  const [showTapHint, setShowTapHint] = useState(() => !isAllySide && !isEnemyHintDismissed());
   const [renderedEnemyId, setRenderedEnemyId] = useState<string | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   const prevEnemyIdRef = useRef<string | null>(null);
@@ -310,8 +326,12 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
           return (
             <div
               key={enemyId}
-              onClick={() => setSelectedEnemyId(isSelected ? null : enemyId)}
-              className={`flex-1 flex flex-col items-center px-1 pt-1 pb-0.5 relative transition-colors cursor-pointer ${
+              onClick={() => {
+                if (!isEnemyHintDismissed()) dismissEnemyHint();
+                if (showTapHint) setShowTapHint(false);
+                setSelectedEnemyId(isSelected ? null : enemyId);
+              }}
+              className={`flex-1 flex flex-col items-center px-1 pt-1 pb-1.5 relative transition-colors cursor-pointer ${
                 isSelected
                   // Flat tint matching the info panel's wash — one surface;
                   // transition-colors crossfades it between cards (the tint
@@ -385,19 +405,9 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
                 </div>
               )}
 
-              {/* "More Info" + down caret (unselected) */}
-              <div className="mt-0.5 flex flex-col items-center justify-center" style={{ minHeight: '20px' }}>
-                {!isSelected && (
-                  <>
-                    <span className="text-[9px] text-stone-500 leading-none">More Info</span>
-                    <svg width="12" height="7" viewBox="0 0 12 7" fill="currentColor" className="text-stone-600 mt-0.5">
-                      <path d="M6 7L0 0h12z" />
-                    </svg>
-                  </>
-                )}
-              </div>
-
-              {/* Selected caret now lives in the SlidingSelection overlay */}
+              {/* No per-card "more info" affordance — mirrors the hero
+                  strip: the first tap teaches that cards open; the selected
+                  amber caret rides the SlidingSelection overlay. */}
             </div>
           );
         })}
@@ -415,7 +425,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
         }}>
         <div style={{ overflow: 'hidden', minHeight: 0 }}>
           <div
-            className="pt-4 pb-3 mt-0 bg-blood-900/15 rounded-b-pixel-md"
+            className="pt-2.5 pb-3 mt-0 bg-blood-900/15 rounded-b-pixel-md"
             style={{
               opacity: isOpen ? 1 : 0,
               transform: isOpen ? 'translateY(0)' : 'translateY(-8px)',
@@ -482,6 +492,13 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
             )}
           </div>
         </div>
+        </div>
+      )}
+
+      {/* One-time coach line — styled like the hero strip's hint row. */}
+      {showTapHint && uniqueEnemyIds.length > 0 && (
+        <div className="mt-1.5 text-sm font-medium text-center min-h-[20px]">
+          <span className="text-stone-500">Tap an enemy for more info</span>
         </div>
       )}
     </>
