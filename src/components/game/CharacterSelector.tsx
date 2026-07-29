@@ -7,7 +7,7 @@ import { GemMesh } from './GemMesh';
 import { RichTextRenderer } from '../editor/RichTextEditor';
 import { attributeText, attributeSubItems } from '../../utils/attributeShape';
 import { HelpButton } from './HelpOverlay';
-import { DirectionArrow } from './DirectionArrow';
+import { MovementArrow } from './DirectionArrow';
 import type { ThemeAssets } from '../../utils/themeAssets';
 import { CARD_PIXEL_SCALE, computeCardSpriteAreaHeight } from './cardConstants';
 import { SlidingSelection } from './SlidingSelection';
@@ -392,16 +392,29 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                     {character.health}
                   </span>
                 </div>
-                <div className="flex items-center gap-0.5 pl-1.5 text-copper-400">
-                  {moveInfo ? (
-                    <>
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" className="opacity-60">
-                        <path d="M13.5 5.5c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zM9.8 8.9L7 23h2.1l1.8-8 2.1 2v6h2v-7.5l-2.1-2 .6-3C14.8 12 16.8 13 19 13v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1L6 8.3V13h2V9.6l1.8-.7"/>
-                      </svg>
-                      <span className="text-xs font-medium">{moveInfo.tilesPerMove}</span>
-                      <DirectionArrow direction={character.defaultFacing} className="text-copper-400" size={8} />
-                    </>
-                  ) : (
+                <div className="flex items-center gap-1 pl-1.5 text-copper-400">
+                  {moveInfo ? (() => {
+                    // Input heroes have no meaningful default — the arrow
+                    // live-binds to the player's compass choice (pending or
+                    // placed) and shows "?" until one is made.
+                    const isInputFacing = !!character.facingAcceptsUserInput;
+                    const arrowDir = isInputFacing
+                      ? (placedCharacters.find(pc => pc.characterId === character.id)?.facing
+                          ?? pendingFacingOverrides[character.id])
+                      : character.defaultFacing;
+                    return (
+                      <>
+                        {moveInfo.tilesPerMove > 1 && (
+                          <span className="text-xs font-medium">{moveInfo.tilesPerMove}</span>
+                        )}
+                        {arrowDir ? (
+                          <MovementArrow direction={arrowDir} className={isInputFacing ? 'text-purple-300' : 'text-copper-400'} size={13} />
+                        ) : (
+                          <span className="text-[11px] font-bold text-purple-300/80 leading-none">?</span>
+                        )}
+                      </>
+                    );
+                  })() : (
                     <span className="text-xs text-stone-500">—</span>
                   )}
                 </div>
