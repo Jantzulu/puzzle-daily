@@ -656,8 +656,26 @@ html body.theme-font-active,
   color: var(--theme-text-heading, #d4a574);
 }
 
-/* Muted text */
-.text-stone-400, .text-stone-500 {
+/* Muted text.
+
+   These used to be ONE rule, which collapsed two different jobs into the
+   darker of the two colours. stone-400 (#9a8a6e) measures 5.60:1 on the
+   panel wash and PASSES AA; stone-500 (#7d6c52) measures 3.71:1 and FAILS.
+   Overriding stone-400 with the stone-500 value silently pushed ~15
+   elements — the '3/3 placed' counter, column heads, hero body copy —
+   below the floor.
+
+   The split gives stone-400 its own variable. themeAssets writes BOTH
+   `--theme-text-secondary` and `--theme-text-secondary-strong` from the
+   same `colorTextSecondary` setting, so a THEMED page is byte-identical to
+   before; only the default (untheme'd) game gets the contrast fix.
+
+   stone-500 is hereafter a HAIRLINE colour, not a text colour. */
+.text-stone-400 {
+  color: var(--theme-text-secondary-strong, #9a8a6e);
+}
+
+.text-stone-500 {
   color: var(--theme-text-secondary, #7d6c52);
 }
 
@@ -1645,6 +1663,28 @@ html body.theme-font-active,
   z-index: 1;
 }
 
+/* The band is 52px tall but only its middle ~24px is content: pt-3 above and
+   pb-4 below are the CLOTH's margin, and nothing in them is interactive (the
+   mesh is already pointer-events:none, and ::before/::after are two decorative
+   rivets). The band still carries z-20 — it has to, so a bottom hallway's
+   corridor overhang paints UNDER it — and a z-20 box hit-tests above the hero
+   panel's header row 4px below it. That padding was therefore eating the top
+   8px of every panel-header control's touch slop: Test, the panel Help and the
+   clear-all trash all measured 32px tall against a 40px available box.
+   Make the band's own box pointer-transparent and hand the events back to its
+   content rows, which is where every real control in it lives. This changes no
+   paint and no layout; the band and the board do not overlap vertically (board
+   hit-box bottom sits ~6px above the band's top), so nothing falls through to
+   the board. Mirrors the z-index rule above deliberately — a row added to the
+   banner later inherits the correct behaviour from the same selector shape. */
+.quest-banner {
+  pointer-events: none;
+}
+
+.quest-banner > :not(.quest-banner-mesh) {
+  pointer-events: auto;
+}
+
 /* ============================================
    PRIVACY CONSENT BANNER + opt-out toggle (see ConsentBanner / PrivacyPolicy)
    ============================================ */
@@ -1882,16 +1922,19 @@ body:not(.menu-gate-lowered) .control-rail.rail-riding {
 }
 
 /* During replay the board slides up into the space the rail vacated —
-   the portcullis rises and the dungeon rises to meet the bar (the rail's
-   reserved box is ~69px: mt-[5px] + pt-2 + 48px min-height + pb-1 +
-   mb-1). One property, so the sticky rail wrapper is untouched: no new
-   ancestors to break sticky, no overflow clipping of the spikes. */
+   the portcullis rises and the dungeon rises to meet the bar. The rail's
+   reserved box was ~69px when the rung was 52px tall; standardizing the
+   rung to the 44px nav-gate box took 8px off it, hence -61px. Keep this
+   in step with the mid-transition correction in Game.tsx (the replay
+   slab's height math applies the remainder of this same slide). One
+   property, so the sticky rail wrapper is untouched: no new ancestors to
+   break sticky, no overflow clipping of the spikes. */
 .board-rise {
   transition: margin-top 0.52s cubic-bezier(0.45, 0.3, 0.25, 1);
 }
 
 .board-rise-collapsed {
-  margin-top: -69px;
+  margin-top: -61px;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -2747,4 +2790,728 @@ body.menu-gate-instant .quest-panel-sticky {
   .movement-arrow-anim {
     animation: none;
   }
+}
+
+/* ============================================
+   .hit-44 — TAP-TARGET SLOP (WCAG 2.5.8 / iOS 44pt / Android 48dp)
+   An invisible, absolutely-positioned ::after centered on the control,
+   grown to at least 44x44 without changing the control's PAINT or the
+   layout around it. Zero vertical pixels spent — the whole point: the
+   play page's budget is measured in single-digit pixels, so accessibility
+   here has to be free.
+
+   This generalizes the technique the repo already invented by hand on the
+   hero panel's trash button (`min-h-[28px] -my-1`, CharacterSelector).
+
+   max(100%, …) is self-sizing: a control that is ALREADY bigger than the
+   floor keeps its own box, so the class never has to be tuned per site.
+   Override the axes with --hit-w / --hit-h in the rare case where the slop
+   has to stay inside a gutter or off a neighbouring target — measure the
+   room first, and note that capping BELOW 44 means the control still fails
+   the floor on that axis, so a cap is only ever worth it against a real
+   collision.
+
+   THREE RULES FOR USING IT.
+   1. It must go on the CONTROL ITSELF, never on a wrapper around it. The
+      slop is a pseudo-element, so a click on it targets the element that
+      owns it; owned by the button, the click bubbles to the button, and
+      :hover still resolves to the button. Owned by a WRAPPER, the click
+      targets the wrapper and the handler never fires — a bigger measured
+      box that does nothing. Where the control's ::after is already spoken
+      for (`.nav-pill` draws its forge bolts with both pseudo-elements),
+      use `.hit-slop` below instead.
+   2. The slop is CLIPPED by any ancestor with overflow hidden/auto, so it
+      cannot be relied on inside a scrolling pane. Controls there must be
+      >= 44px natively.
+   3. The slop is invisible but it does hit-test, so it can shadow a
+      NEIGHBOUR. Overlap only ever resolves in favour of whichever element
+      paints last; cap the axis with --hit-w / --hit-h where a destructive
+      control sits next to a common one, or next to a page edge.
+   ============================================ */
+.hit-44 {
+  position: relative;
+}
+
+.hit-44::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: max(100%, var(--hit-w, 44px));
+  height: max(100%, var(--hit-h, 44px));
+  transform: translate(-50%, -50%);
+}
+
+/* Same slop, as a real child element, for controls whose ::after is
+   already carrying something (the nav pills' forge bolts). Being INSIDE
+   the control is what makes it work: a tap on it bubbles to the button and
+   fires its handler, and the control's own :hover still resolves. It is
+   inert to assistive tech (aria-hidden at the call site) and paints
+   nothing. Keep it the FIRST child so the bolts, which paint later, stay
+   on top of it. */
+.hit-slop {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: max(100%, var(--hit-w, 44px));
+  height: max(100%, var(--hit-h, 44px));
+  transform: translate(-50%, -50%);
+}
+
+/* The same slop, anchored to the control's BOTTOM edge and grown upward
+   instead of centred — rule 3's "cap the axis" case for a control that
+   sits on a seam.
+
+   THE SHAPE OF THE PROBLEM. The hero plate's cap band rests on the top
+   rail of the hero strip. Directly below that rail is a hero card — the
+   most common target on the page — and one of the caps is a destructive
+   clear-all; a centred 44px slop would spend its bottom half inside card 3
+   and fire "remove all placed heroes" on a tap meant for the Knight.
+
+   `bottom: 0` pins the slop's bottom edge to the control's own bottom
+   edge — which is the seam — so nothing ever crosses into the strip, while
+   the full 44px is still reached by growing UP into the banner's cloth
+   margin, which holds no controls. BOTH AXES KEEP THE FULL 44px. An
+   earlier cut capped `--hit-h` to the cap band's own 22px because the quest
+   banner's help button sat directly above the LEFT tab and the slop
+   swallowed it; the fix was to move that collision out of the way (the
+   left tab is now pure engraving and every cap control lives in the right
+   tab, ~150px clear of the banner's button at every width) rather than to
+   spend the axis. Capping below 44 fails the floor — it is only ever worth
+   it against a collision that cannot be moved.
+
+   Same three rules as `.hit-44`: put it on the CONTROL, not a wrapper; it
+   is clipped by overflow ancestors; and it still hit-tests, so check what
+   sits above the control before using it. */
+.hit-44-up {
+  position: relative;
+}
+
+.hit-44-up::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: max(100%, var(--hit-w, 44px));
+  height: max(100%, var(--hit-h, 44px));
+  transform: translateX(-50%);
+}
+
+/* ============================================
+   HUD DESIGN TOKENS — type ramp, colour roles, seam, breathe
+   (the play page's compact-tactical register; ornate materials stay in
+   the DUNGEON CHROME block above — this is the DISCIPLINE half)
+
+   WHY THESE LIVE AT THE END OF THE FILE. `.theme-root .font-medieval`
+   (index.css:508) is specificity (0,2,0) and sets `font-size` from the
+   theme's heading variable. Every carved header and every medieval-faced
+   label in the game therefore renders at that size no matter what
+   `text-lg` / `text-xl` / `text-base` the markup asks for — those Tailwind
+   utilities are (0,1,0) and lose. A (0,1,0) `.hud-*` class would lose too.
+   So the ramp is declared at (0,2,0) AND after line 508, which is the only
+   combination that actually wins. Do NOT edit line 508 to "fix" this: it
+   governs every compendium and editor page.
+
+   THE RAMP INVERTS TODAY'S SIZES ON PURPOSE. Right now 12px does five
+   unrelated jobs (hero name, 'HP:', column heads, all body copy) while
+   '3/3 placed' is set LARGER than any hero name. Rank comes from weight,
+   colour and tracking FIRST and size second: body goes UP 12 -> 13 so it
+   is readable, labels go DOWN 12 -> 11 and become uppercase + tracked so
+   they read as furniture rather than as content.
+
+   TWO RULES CLAIM THE TOP STEP, AND THEY MUST NEVER SHARE AN ELEMENT.
+   `.hud-display` is a FIXED 17px display step; `.carved-header` is the
+   legacy section cap and is THEME-SIZED (20px on the shipped theme, 17px
+   on a bare install). Both are (0,2,0), so source order alone decides a
+   tie — which is why `.carved-header` is deliberately declared FIRST
+   below, so an element that somehow carries both resolves to the fixed
+   17px rather than silently inheriting the theme's 20px. S5 onward must
+   still put exactly ONE of them on any given element, never both: the
+   existing 'Heroes' / 'Enemies' h3s keep `.carved-header` and stay
+   themed, new plate engraving takes `.hud-display`.
+   ============================================ */
+
+/* The carved section headers finally get a real size. `text-lg lg:text-xl`
+   on those h3s has always been dead code: line 508 wins and hands them the
+   theme's HEADING variable instead, which on a bare install has no value and
+   falls through to `inherit` — 16px, smaller than either class asks for.
+
+   MEASURED, NOT ASSUMED: on a THEMED install the same line 508 resolves to
+   whatever heading size the theme picked (the shipped theme uses x-large, so
+   'Heroes' and 'Enemies' render 20px today, not 16px). A flat 17px here would
+   therefore SHRINK the live play page's section headers by 3px — a restyle,
+   not a fix. Reading the same variable with 17px as the FALLBACK gives the
+   bare game its 16 -> 17px correction and leaves every themed page byte-
+   identical, which is the same bargain the stone-400 split above makes.
+
+   DECLARED BEFORE `.hud-display` ON PURPOSE — see the tie-break note above.
+   Moving it below would make the ramp's fixed top step unreachable on any
+   element that also carries `.carved-header`. */
+.theme-root .carved-header {
+  font-size: var(--theme-font-size-heading-px, 17px);
+}
+
+/* Display — section caps and plate engraving. The medieval face, resolved
+   through the theme chain (identical to `.font-medieval`, so a themed
+   heading font still applies here; bare default is Almendra). */
+.theme-root .hud-display {
+  font-family: var(--theme-font-family-heading, var(--theme-font-family, 'Almendra', serif));
+  font-size: 17px;
+  line-height: 20px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+/* Title — hero and enemy names. The loudest thing inside a card. */
+.theme-root .hud-title {
+  font-size: 15px;
+  line-height: 17px;
+  font-weight: 600;
+}
+
+/* Body — action and trait copy. The one size that must be comfortable. */
+.theme-root .hud-body {
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 400;
+}
+
+/* Label — furniture: 'HP', 'ACTIONS', 'TRAITS', state chips. Small is fine
+   BECAUSE it is uppercase, tracked and never carries content. */
+.theme-root .hud-label {
+  font-size: 11px;
+  line-height: 13px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* Numerals — stat values. Tabular so a changing HP does not reflow its row. */
+.theme-root .hud-num {
+  font-size: 13px;
+  line-height: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Compact density (short viewports). Only the title steps down: it is the
+   only ramp entry with slack.
+
+   NOT WIRED YET — nothing sets `data-hero-density` today. The latch must be
+   set from JS on the html element by the slice that introduces the short-
+   viewport density mode, never from a CSS height query: a media query can
+   only see the VIEWPORT, not the hero panel's own content height, which is
+   what actually decides whether the panel needs to tighten. */
+:root[data-hero-density="compact"] .theme-root .hud-title {
+  font-size: 13px;
+  line-height: 15px;
+}
+
+/* ---- Colour roles ----------------------------------------------------
+   Named by JOB, not by hue. Every hex is an existing palette entry from
+   tailwind.config.js — this is a vocabulary, not a new palette.
+   --hud-ink-3 is the FLOOR: stone-500 is demoted to hairlines above and may
+   never be text again. --hud-gold means "you can touch this" and nothing
+   else.
+
+   DECLARED ON `.theme-root` AS WELL AS `.hero-plate`. The plate is the
+   local override point, but later slices restyle the quest rung, the
+   control rail and the hero strip cards, none of which are inside it —
+   and `color: var(--hud-gold)` with no fallback outside the declaring
+   subtree is invalid-at-computed-value-time, which silently resolves to
+   `inherit` and looks exactly like "the class didn't apply". `.theme-root`
+   wraps the whole app (App.tsx:620) and is re-applied by the portalled
+   surfaces (NavSheet, HelpOverlay), so the vocabulary reaches every
+   surface the plan touches. Costs 0px and 0 paint: nothing consumes these
+   yet.
+
+   THEMED PAGES MUST STAY THEMED. Three of these roles have a real theme
+   counterpart already driving the same pixels today, so they are read
+   through the variable with the palette hex as fallback — otherwise the
+   first S5 consumer would quietly unhook that text from the user's theme.
+   Measured on the shipped fixture theme: `.text-stone-400` (which reads
+   --theme-text-secondary-strong, :674) and `.text-copper-400` (which reads
+   --theme-text-heading, :655) BOTH compute to #c69c5d, so a literal
+   #9a8a6e / #d4a574 here would turn panel text khaki under a banner and
+   carved headers that are still gold. Same bargain as the stone-400 split.
+
+   The other four stay literal ON PURPOSE. stone-300 has no index.css theme
+   override today, so routing --hud-ink-2 through a variable would be NEW
+   theming behaviour, not preservation. --hud-hero / --hud-foe / --hud-vital
+   are semantic identity colours (hero vs enemy vs alive) with no theme
+   variable to read — they must not drift with a palette. */
+.theme-root,
+.hero-plate {
+  --hud-ink: var(--theme-text-primary, #f9efd6);           /* parchment-200 — primary reading colour */
+  --hud-ink-2: #b5a892;                                    /* stone-300 — secondary copy (no theme var) */
+  --hud-ink-3: var(--theme-text-secondary-strong, #9a8a6e);/* stone-400 — the muted FLOOR (AA on the wash) */
+  --hud-hero: #c9b5e6;     /* arcane-300 — hero identity (semantic, never themed) */
+  --hud-foe: #f4a8a8;      /* blood-300 — enemy identity (semantic, never themed) */
+  --hud-gold: var(--theme-text-heading, #d4a574);          /* copper-400 — interactive affordance ONLY */
+  --hud-vital: #789c78;    /* moss-400 — health / alive (semantic, never themed) */
+}
+
+/* THE PLATE'S FRAME. Pulled forward from S9's plate work because S5's caps
+   are meaningless without it — a cap has to cap something, and with
+   `noPanel` set the play page's hero panel has no background, no border,
+   no radius and no shadow at all, so the engraved band read as an accident
+   floating in black.
+
+   THE GROUND IS THE HALF THAT MAKES IT READ. The first cut shipped the
+   bevels alone and no surface: the panel computed
+   `background-color: rgba(0,0,0,0)` with `background-image: none`, so the
+   only paint was a 1px `rgba(255,235,200,.08)` hairline — sampled at
+   RGB(23,21,18) against a page ground of RGB(4,4,3), i.e. 19 levels, which
+   is invisible at arm's length and undetectable in a review screenshot.
+   The stone wash + grain below is what the caps actually cap, and it is
+   what turns their inset from the panel edge into a deliberate margin.
+
+   ZERO LAYOUT PIXELS. A background and a radius cost nothing, and every
+   edge is an INSET shadow — inset paints inside the border box where a
+   border would cost 2px — so the 54px this slice reclaimed from the header
+   and hint rows stays reclaimed.
+
+   `--theme-bg-secondary` at 55% keeps a themed page's own panel colour
+   driving the wash (and lets the dungeon behind show through, so the plate
+   reads as set into the page rather than pasted on it). It cannot carry the
+   surface ALONE, though: the shipped theme sets that variable to #0d0a08,
+   which at 55% over a near-black page ground is a 3-level difference — the
+   same invisibility the bevel-only version had. So the theme colour is the
+   TINT and a fixed top-lit wash in `--chrome-bevel-light` is the VALUE, and
+   the plate reads as a lit stone face under every theme. Static gradients,
+   no per-frame paint — the pinned decoration rule is about animation.
+
+   `--chrome-bevel-light` is the same lit-edge token `.dungeon-panel` uses
+   (index.css:545), so the plate is lit from the same direction as every
+   other stone surface on the page. */
+.hero-plate {
+  background-color: color-mix(in srgb, var(--theme-bg-secondary, #2a2118) 55%, transparent);
+  background-image:
+    linear-gradient(180deg, rgba(255, 235, 200, 0.05) 0, rgba(255, 235, 200, 0) 56px),
+    linear-gradient(var(--chrome-bevel-light), var(--chrome-bevel-light)),
+    var(--chrome-noise);
+  border-radius: var(--theme-border-radius, 4px) var(--theme-border-radius, 4px) 0 0;
+  box-shadow:
+    inset 0 1px 0 var(--chrome-bevel-light),
+    inset 1px 0 0 rgba(0, 0, 0, 0.35),
+    inset -1px 0 0 rgba(0, 0, 0, 0.35);
+}
+
+/* ---- The plate's caps ------------------------------------------------
+   Two iron tabs standing on the plate's top rail, out of flow, 0 layout px.
+
+   WHY THEY ARE FORGED AND NOT BOXED. The tabs sit in front of the quest
+   banner's hanging cloth — there is nowhere else for them to go: the cloth
+   fills the band's whole `pb-4` and only 4px separate the band's bottom
+   from the plate's top, so a cap that clears the cloth entirely does not
+   fit. The first cut drew them as near-black rectangles with a 1px stone
+   border, which sliced the cloth's torn hem and read as a z-index accident.
+   This is the same stock, bevels and forge bolts as `.nav-pill` — the
+   portcullis's own signage language, and the same iron as the rod the
+   banner hangs from — so the tab reads as mounted hardware and the dags
+   terminate INTO it instead of being cut by it. The 2px lit top edge is
+   what does most of that work; the halo shadow puts the tab in front.
+
+   `border-bottom: 0` + top-only radius is the other half: the tab's bottom
+   is the plate's top rail, so it rises OUT of the plate rather than
+   floating on the banner. */
+.hero-cap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 0 12px;
+  border: 1px solid #17130f;
+  border-bottom: 0;
+  border-radius: 3px 3px 0 0;
+  background: #262019;
+  box-shadow:
+    inset 0 2px 0 rgba(255, 235, 200, 0.16),
+    inset 2px 0 0 rgba(255, 235, 200, 0.07),
+    inset -2px 0 0 rgba(0, 0, 0, 0.35),
+    0 0 7px 1px rgba(0, 0, 0, 0.55);
+}
+
+/* Forge bolts through the tab's ends — square heads with a lit rim, the
+   same 5px bolt `.nav-pill` and the gate's beam plates wear (index.css
+   2342-2366). `padding: 0 12px` is what keeps the content clear of them. */
+.hero-cap::before,
+.hero-cap::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 5px;
+  height: 5px;
+  transform: translateY(-50%);
+  background: #2b2620;
+  border: 1px solid #4a4239;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+}
+
+.hero-cap::before {
+  left: 3px;
+}
+
+.hero-cap::after {
+  right: 3px;
+}
+
+/* A CONTROL on a cap, as opposed to a READOUT on a cap. The two must not
+   look alike: the right tab carries `N/M` next to a destructive clear-all,
+   and when both were `text-stone-400` glyphs 4px apart at the same optical
+   size the trash read as decoration bookending a counter. The control gets
+   a recessed well and `--hud-gold`, which the token block above reserves
+   for "you can touch this" and nothing else; the readout stays flat
+   engraved ink. */
+.hero-cap__well {
+  color: var(--hud-gold);
+  background: rgba(0, 0, 0, 0.45);
+  border-radius: 2px;
+  box-shadow:
+    inset 0 1px 2px rgba(0, 0, 0, 0.8),
+    inset 0 -1px 0 rgba(255, 235, 200, 0.07);
+}
+
+.hero-cap__well:hover {
+  background: rgba(0, 0, 0, 0.25);
+}
+
+/* The groove that separates the readout from the control cluster — the
+   plate's own seam language (`.dungeon-seam-flush`), stood on end. */
+.hero-cap__groove {
+  flex: none;
+  width: 1px;
+  height: 12px;
+  background: rgba(0, 0, 0, 0.75);
+  box-shadow: 1px 0 0 rgba(255, 235, 200, 0.07);
+}
+
+/* Flush seam. `.dungeon-seam` carries `margin: 6px 0` — 14px of vertical
+   cost per divider, which is fine between the page's informational sections
+   but is exactly what the plate's compartments cannot afford. Same groove,
+   zero margin: 2px total. A variant rather than a fork so ItemsDisplay's
+   existing usage is untouched. */
+.dungeon-seam-flush {
+  height: 0;
+  border-top: 1px solid rgba(0, 0, 0, 0.6);
+  border-bottom: 1px solid rgba(255, 235, 200, 0.05);
+  margin: 0;
+}
+
+/* Breathe — the "this is waiting on you" pulse for a blocking input.
+   OPACITY ONLY (pinned page-decoration perf rule: never animate filters,
+   shadows or geometry per frame). */
+@keyframes hud-breathe {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.hud-breathe {
+  animation: hud-breathe 2s ease-in-out infinite;
+}
+
+/* Redefining the keyframes under reduced-motion neutralizes EVERY user of
+   the animation, including Tailwind arbitrary-value call sites like
+   `animate-[hud-breathe_2s_ease-in-out_infinite]`, which a class-scoped
+   `animation: none` would miss. */
+@media (prefers-reduced-motion: reduce) {
+  @keyframes hud-breathe {
+    0%,
+    100% {
+      opacity: 1;
+    }
+  }
+
+  .hud-breathe {
+    animation: none;
+  }
+}
+
+/* ============================================
+   THE ORDERS PILL + THE DIRECTION PICKER
+   (S6 — the compass leaves the hero card)
+
+   The 3x3 compass was 17x17px cells on an 18.3px pitch: the play page's only
+   outright WCAG 2.5.8 failure, sitting on an input the player is REQUIRED to
+   give before certain heroes can be placed. It could not be fixed in place —
+   a 44px slop ring at an 18.3px pitch overlaps all eight neighbours, so the
+   slop only decides mis-taps in favour of whichever sibling paints last, and
+   growing the real pitch costs ~81px of panel per entry (a hero can have
+   two). So the control moved to a portalled sheet with room for it, and what
+   stays in the panel is a 44px-tall PILL that states the blocking condition.
+
+   The trade is deliberate: the panel now shows the STATE of the order
+   ("Facing Direction — Choose") where it used to show the MECHANISM, and the
+   mechanism gets a surface big enough to work with one thumb.
+   ============================================ */
+
+/* ---- The orders pill -------------------------------------------------
+   44px NATIVE, not 44px of slop: this control has to survive inside the
+   internally-scrolling drawer that comes next, and slop is clipped by any
+   `overflow: auto` ancestor (see the three rules on `.hit-44`).
+
+   Material is the plate's own: a lit top edge, a weighted base, and a real
+   press. */
+.hero-order {
+  background-image: linear-gradient(180deg, rgba(255, 235, 200, 0.06), rgba(0, 0, 0, 0.18));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 235, 200, 0.1),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.35);
+}
+
+/* OUTSTANDING — the one thing stopping the player from placing this hero.
+   It gets FILL, and that is the whole correction: the first cut gave both
+   states a 25%-ish tint and let HUE alone carry the difference, on a panel
+   whose ground is `bg-copper-900/15`. Outstanding was copper on copper (same
+   family, so it sank) and satisfied was arcane on copper (complementary, so
+   it jumped) — the finished order out-shouted the blocking one.
+
+   So the blocking state is now a solid, lit brass plate with a `--hud-gold`
+   rim: the reserved "you can touch this" colour, at full strength, on the
+   only object in the panel that is filled. Value carries it, not hue, which
+   is why it still reads against a copper ground.
+
+   Text is parchment-100 on the copper-700 -> copper-900 body: 5.3:1, clear
+   of AA at this 11px/600 size. The outer glow is STATIC — the pinned
+   decoration rule bans animated shadows, and the breathing dot (opacity
+   only) is what moves. */
+.hero-order--open {
+  border-color: var(--hud-gold);
+  color: #fdf8eb;
+  background-color: #8c5c37;
+  background-image: linear-gradient(180deg, #a06a3f, #5e3d29);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 235, 200, 0.3),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.4),
+    0 0 10px rgba(212, 165, 116, 0.3);
+}
+
+/* SATISFIED — an item already ticked off. Unfilled, recessed, arcane: the
+   hero identity colour, at outline weight, so the eye slides past it to
+   whatever is still outstanding. Still legible, still re-openable, just no
+   longer asking for anything. */
+.hero-order--done {
+  border-color: rgba(92, 51, 139, 0.55);
+  color: #a98ad6;
+  background-color: rgba(0, 0, 0, 0.18);
+  background-image: none;
+  box-shadow: inset 0 1px 0 rgba(255, 235, 200, 0.04);
+}
+
+.hero-order:active {
+  transform: translateY(1px);
+  background-image: linear-gradient(180deg, rgba(0, 0, 0, 0.28), rgba(0, 0, 0, 0.08));
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.5);
+}
+
+/* ---- The picker ------------------------------------------------------
+   Portalled to <body>, so `.theme-root` has to be re-applied for the font
+   and the `.theme-root .hud-*` type ramp — and that class also paints the
+   app's opaque page background, which as a full-page wrapper would black out
+   the game behind the scrim. The wrapper itself is a zero-height static box;
+   `background: none` makes that explicit rather than incidental. */
+.dir-picker {
+  background: none;
+}
+
+.dir-picker__scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 58;
+  background: rgba(0, 0, 0, 0.58);
+  opacity: 0;
+  transition: opacity 0.2s cubic-bezier(0.2, 0, 0, 1);
+}
+
+.dir-picker__scrim--in {
+  opacity: 1;
+}
+
+/* A bottom sheet below lg: the rose lands under the thumb, not under the eye.
+   TRANSFORM AND OPACITY ONLY (pinned page-decoration rule) — no height
+   animation, no filter, no shadow tween.
+
+   THE GROUND IS OPAQUE, and that is not a detail. The first cut wore
+   `.hero-plate`, whose wash is deliberately 55% transparent so the plate reads
+   as set INTO the page — correct for a panel that lives on the page, wrong for
+   a sheet that slides OVER it: the hero cards and their HP rows showed
+   straight through the rose and the whole object read as a ghost. A sheet is
+   a slab of stone that has been lifted in front of the table, so it gets the
+   theme's own panel colour at full strength, the same top-lit wash and grain
+   as the plate, a lit top edge, and a shadow that puts it in front.
+
+   AND IT IS CARVED LIKE ONE. The second cut still had square top corners and
+   no side edges — a plain dark band, the only unframed surface in the app,
+   and less finished on PHONES than the same object's own lg+ popover, which
+   already had a full border and a radius. Every other surface here is cut:
+   `.hero-plate` has top-corner radius plus two dark side bevels, the lintel,
+   the quest ribbon and the Heroes cap are all framed. So the sheet takes the
+   plate's exact treatment — same radius token, same
+   `inset ±1px 0 0 rgba(0,0,0,.35)` side bevels — and reads as a slab of the
+   same stone, lifted.
+
+   FLOOR CLEARANCE IS PART OF THE FRAME. 42px sits above the rose (12 pad +
+   20 cap row + 10 gap), so 42px sits below it. At 12px the bottom row of a
+   REQUIRED control was all but touching the bottom of the content viewport,
+   where Android's `env(safe-area-inset-bottom)` resolves to 0 and there is
+   no system inset to save it. Free, too: the sheet is `position: fixed` and
+   portalled to <body>, so none of this reaches playableSpan. */
+.dir-picker__sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 59;
+  padding: 12px 16px 42px;
+  padding-bottom: calc(42px + env(safe-area-inset-bottom));
+  background-color: var(--theme-bg-secondary, #2a2118);
+  background-image:
+    linear-gradient(180deg, rgba(255, 235, 200, 0.07) 0, rgba(255, 235, 200, 0) 72px),
+    linear-gradient(rgba(255, 235, 200, 0.06), rgba(255, 235, 200, 0.06)),
+    var(--chrome-noise);
+  border-top: 1px solid rgba(255, 235, 200, 0.22);
+  border-radius: var(--theme-border-radius, 4px) var(--theme-border-radius, 4px) 0 0;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 235, 200, 0.1),
+    inset 1px 0 0 rgba(0, 0, 0, 0.35),
+    inset -1px 0 0 rgba(0, 0, 0, 0.35),
+    0 -12px 28px rgba(0, 0, 0, 0.65);
+  transform: translateY(100%);
+  opacity: 0;
+  transition:
+    transform 0.2s cubic-bezier(0.2, 0, 0, 1),
+    opacity 0.2s cubic-bezier(0.2, 0, 0, 1);
+}
+
+.dir-picker__sheet--in {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+/* At lg+ the page is not thumb-driven and the panel is not the bottom of the
+   screen, so the same object becomes a centred popover: a real border on all
+   four sides instead of the phone sheet's bevels, and the radius closes right
+   round. The 42/42 field above and below the rose is kept — it is what makes
+   the rose read as the subject of the surface rather than a thing dropped in
+   the corner of it — and the 184px rose fits the 256px content width. */
+@media (min-width: 1024px) {
+  .dir-picker__sheet {
+    left: 50%;
+    right: auto;
+    bottom: auto;
+    top: 50%;
+    width: 288px;
+    padding-bottom: 42px;
+    border: 1px solid rgba(255, 235, 200, 0.22);
+    border-radius: var(--theme-border-radius, 4px);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 235, 200, 0.1),
+      0 12px 34px rgba(0, 0, 0, 0.7);
+    transform: translate(-50%, -50%) translateY(10px);
+  }
+
+  .dir-picker__sheet--in {
+    transform: translate(-50%, -50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dir-picker__scrim,
+  .dir-picker__sheet {
+    transition: none;
+  }
+}
+
+/* The rose. Three 56px columns with 8px gutters = 184px, centred. 56 clears
+   the iOS 44pt floor AND the Android 48dp floor with margin to spare, and the
+   gutters mean the separation is REAL — no two targets touch, which is the
+   whole difference between this and the 18.3px pitch it replaces.
+
+   WHY 56 AND NOT THE MINIMUM 48. At 48/6 the rose was 156px marooned in the
+   middle of a 393px sheet with ~118px of dead ground either side, while the
+   cap row above it ran to both edges — the composition read as a placeholder
+   dropped on a band. Filling more of the measure is free (the sheet is
+   portalled and fixed, so none of it touches playableSpan) and it buys a
+   bigger target on the one control that had the page's only tap-size
+   failure. 184px still clears the narrowest phone we support: 320px viewport
+   minus the sheet's 16px side padding leaves 288px. */
+.dir-rose {
+  display: grid;
+  grid-template-columns: repeat(3, 56px);
+  gap: 8px;
+  justify-content: center;
+}
+
+/* An iron plate, cut and lit like every other control on the page. Colours
+   are literal on purpose: these are not text, so they answer to SC 1.4.11
+   (3:1 non-text contrast) rather than to the theme's text variables — the
+   17px version's #57534e border on #44403c measured 2.21:1 and its arrow
+   2.46:1, both failures. */
+.dir-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border: 1px solid #78716c;
+  border-radius: var(--theme-border-radius, 3px);
+  background-image: linear-gradient(180deg, #4b453d, #33302a);
+  color: #e8cc8a;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 235, 200, 0.12),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.35);
+}
+
+.dir-cell:active {
+  transform: translateY(1px);
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.5);
+}
+
+@media (hover: hover) {
+  .dir-cell:hover {
+    background-image: linear-gradient(180deg, #5b544a, #3d3933);
+  }
+}
+
+/* The chosen bearing. Arcane is the hero identity colour everywhere else in
+   this panel, so "this is the one you picked" needs no legend. */
+.dir-cell--on {
+  border-color: #a98ad6;
+  background-image: linear-gradient(180deg, #7040a9, #4a2a71);
+  color: #fdf8eb;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 235, 200, 0.22),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.4),
+    0 0 8px rgba(138, 95, 196, 0.45);
+}
+
+/* Creator-disallowed bearing: a socket with no plate in it. Holds the rose's
+   shape (the spatial mnemonic is the point of a rose) and reads as
+   unavailable rather than as an unlit button. */
+.dir-cell--off {
+  border-color: rgba(87, 83, 78, 0.45);
+  background-image: none;
+  background-color: rgba(0, 0, 0, 0.35);
+  color: rgba(120, 113, 108, 0.5);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.6);
+}
+
+/* The hub — the hero being aimed, sunk into the middle of the rose under a
+   torch-warm pool of light. */
+.dir-rose__hub {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  overflow: hidden;
+  border-radius: var(--theme-border-radius, 3px);
+  background-image: radial-gradient(circle at 50% 42%, var(--chrome-torch), rgba(0, 0, 0, 0.55) 72%);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.65);
 }

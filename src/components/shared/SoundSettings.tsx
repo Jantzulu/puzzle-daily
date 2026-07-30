@@ -104,6 +104,11 @@ export const SoundSettings: React.FC = () => {
         }`}
         title="Sound & Haptics"
       >
+        {/* 42x34 of paint, 44x44 of target. .hit-slop rather than .hit-44
+            because .nav-pill spends BOTH its pseudo-elements on the forge
+            bolts — see index.css. Growing the pill itself is not an option:
+            its height is the nav gate's tuned rung geometry. */}
+        <span aria-hidden="true" className="hit-slop" />
         {settings.enabled ? (
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072M12 6.253v11.494m0 0A5.001 5.001 0 0112 12m0 5.747V6.253m0 0A5.001 5.001 0 0012 12m0-5.747L8 9H5a1 1 0 00-1 1v4a1 1 0 001 1h3l4 2.747" />

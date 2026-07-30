@@ -400,15 +400,16 @@ export const Game: React.FC<GameProps> = ({
         y += node.offsetTop;
         node = node.offsetParent as HTMLElement | null;
       }
-      // The board slide (margin-top -> -69px, see .board-rise-collapsed) is
+      // The board slide (margin-top -> -61px, see .board-rise-collapsed) is
       // usually still mid-transition when this measures — apply however much
       // of the slide is still to come, so the stone is born at its FINAL
-      // size. Without this it grew 69px at the replay flip and the mesh
-      // visibly restretched (crown thickened, controls shifted).
+      // size. Without this it grew by the full slide at the replay flip and
+      // the mesh visibly restretched (crown thickened, controls shifted).
+      // MUST match .board-rise-collapsed's margin-top exactly.
       const boardWrap = document.querySelector('.board-rise');
       if (boardWrap) {
         const current = parseFloat(getComputedStyle(boardWrap).marginTop) || 0;
-        y += -69 - current;
+        y += -61 - current;
       }
       const needed = Math.ceil(window.scrollY + window.innerHeight - y + 80);
       setReplaySlabH(Math.max(225, needed));
@@ -2384,9 +2385,24 @@ export const Game: React.FC<GameProps> = ({
                   the replay flip freed its layout space and the board
                   snapped up under the navbar. visibility keeps the space. */}
               {(
-              // pt-2/pb-1: contents sit 2px low of geometric center — the
-              // beam's bottom lip + hanging spikes add visual mass below,
-              // and dead-center read as riding high (user-tuned)
+              // RUNG BOX: 44px, the SAME box every nav-gate beam is forged
+              // at. It used to be 52 (pt-2 + 40px controls + pb-1), so the
+              // bottom rung's iron read 1.71x thicker than the lattice
+              // above it. The controls dropped to 36px (h-9) and the box
+              // to 4+36+4 — the .control-rail-mesh is untouched, so the
+              // band still fills 100% of the box (44px of iron, controls
+              // fully on the face with a 4px shoulder) and its TOP edge
+              // still sits at exactly 0% of the box regardless of box
+              // height, which is what keeps the menu gate's pb-[17px]
+              // docking tuned.
+              // pt-1/pb-1: the old pt-2/pb-1 sat the controls 2px low of
+              // geometric center (user-tuned: the beam's bottom lip and
+              // hanging spikes add mass below, so dead-center read as
+              // riding high). That bias is RETIRED at this box size — it
+              // was affordable with 8px/4px of shoulder, but 6px/2px
+              // leaves the Play stone's drop-shadow (0 2px 4px) crossing
+              // the rung's bottom lip, which reads as the stone hanging
+              // off the iron. 4px/4px keeps a visible shoulder both sides.
               // mt-0 (was mt-[5px]): the band's top edge sits exactly at
               // this box's top (see PortcullisMesh zones), so any top
               // margin left a strip of bare gate bars showing between the
@@ -2396,7 +2412,7 @@ export const Game: React.FC<GameProps> = ({
               // beam-to-beam gap is unchanged. rail-riding: once the page
               // scrolls, the rail drops 14px and the bars reveal
               // themselves (see index.css).
-              <div className={`control-rail relative z-0 w-full max-w-2xl grid grid-cols-3 items-center px-3 pt-2 pb-1 mt-0 mb-1 min-h-[48px]${railRiding ? ' rail-riding' : ''}${justExitedReplay ? ' animate-rail-descend' : ''}${enteringReplay ? ' animate-rail-ascend' : ''}${replayMode && !enteringReplay ? ' invisible' : ''}`}>
+              <div data-hud="control-rail" className={`control-rail relative z-0 w-full max-w-2xl grid grid-cols-3 items-center px-3 pt-1 pb-1 mt-0 mb-1 min-h-[44px]${railRiding ? ' rail-riding' : ''}${justExitedReplay ? ' animate-rail-descend' : ''}${enteringReplay ? ' animate-rail-ascend' : ''}${replayMode && !enteringReplay ? ' invisible' : ''}`}>
                   {/* Portcullis rail: with the mobile menu OPEN the sticky
                       wrapper rides the gate's leading edge (translated by
                       --gate-drop, see index.css), so this rail hangs
@@ -2406,8 +2422,41 @@ export const Game: React.FC<GameProps> = ({
                       rail as the spiked bottom. Spikes hang over the
                       dungeon (wrapper z-40 > board z-10). */}
                   <PortcullisMesh />
-                  {/* Left: Lives - centered in left third */}
+                  {/* Left: Test (dev only) + Lives - centered in left third.
+                      The dev-only Test button lands here when the hero
+                      panel's header row is deleted (plate chrome). The rail
+                      is height-neutral up to 36px of content, so it is free.
+                      It keeps the FLASK glyph rather than the old play
+                      triangle — a second unlabelled play affordance 15px
+                      from the green Play stone, with the opposite meaning,
+                      was the reason an earlier cut pulled it back off the
+                      rail. The `Lives:` label stays: the flask is 20px of
+                      paint with an invisible 44px slop, so it buys its room
+                      from nothing. Hidden below 360px, where the left third
+                      cannot seat both. */}
                   <div className="flex items-center justify-center gap-1">
+                    {!hideTestButtons && testMode === 'none' && gameState.gameStatus === 'setup' && (
+                      <button
+                        onClick={handleTestCharactersWithScroll}
+                        className="hit-44 hidden min-[360px]:flex items-center justify-center w-5 h-5 rounded-pixel text-stone-400 hover:text-arcane-300 transition-colors"
+                        title="Test your heroes without enemies for 5 turns"
+                        aria-label="Test heroes"
+                      >
+                        {themeAssets.actionButtonTestHeroesImage ? (
+                          <img
+                            src={themeAssets.actionButtonTestHeroesImage}
+                            alt=""
+                            className="h-4 w-auto"
+                            style={{ imageRendering: 'pixelated' }}
+                            loading="lazy" decoding="async"
+                          />
+                        ) : (
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3h6M10 3v6.5L5.6 17.4A2 2 0 007.3 20.5h9.4a2 2 0 001.7-3.1L14 9.5V3M8.5 14h7" />
+                          </svg>
+                        )}
+                      </button>
+                    )}
                     <span className="text-stone-400 text-xs">Lives:</span>
                     <div className="flex items-center gap-0.5">
                       {(() => {
@@ -2474,7 +2523,11 @@ export const Game: React.FC<GameProps> = ({
                       themeAssets.actionButtonPlayImage ? (
                         <button
                           onClick={handlePlay}
-                          className={`relative transition-all ${gameState.placedCharacters.length === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105 active:scale-95'}`}
+                          // hit-44: the themed Play art is h-6 (24px) and
+                          // this branch is PLAYER-FACING whenever a theme
+                          // supplies its own button image — the worst tap
+                          // target in the game. The slop costs no layout.
+                          className={`relative transition-all hit-44 ${gameState.placedCharacters.length === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105 active:scale-95'}`}
                         >
                           <img
                             src={themeAssets.actionButtonPlayImage}
@@ -2486,7 +2539,11 @@ export const Game: React.FC<GameProps> = ({
                       ) : (
                         <button
                           onClick={handlePlay}
-                          className={`gem-btn w-[118px] lg:w-[132px] shrink-0 h-10 font-bold text-sm lg:text-base transition-all flex items-center justify-center !py-0 ${
+                          // h-9 (36px), not h-10: the rail's box is the
+                          // 44px nav rung now, so the tallest child sets
+                          // the paint at 4+36+4. hit-44 keeps the TARGET
+                          // at 44px while the stone shrinks to 36.
+                          className={`gem-btn w-[118px] lg:w-[132px] shrink-0 h-9 font-bold text-sm lg:text-base transition-all flex items-center justify-center !py-0 hit-44 ${
                             gameState.placedCharacters.length === 0 ? 'opacity-50 cursor-not-allowed' : ''
                           }`}
                           style={{ minHeight: 'unset' }}
@@ -2517,7 +2574,11 @@ export const Game: React.FC<GameProps> = ({
                       // too tight) without bloating the stone. The label is
                       // ONE inline span so Turn/number/max share a baseline
                       // and can never wrap.
-                      <div className="gem-plate gem-plate-aura h-10 w-[118px] lg:w-[132px] shrink-0 px-4 flex items-center justify-center">
+                      // hit-44 on the (non-interactive) turn plate keeps it
+                      // dimensionally identical to the Play button it
+                      // replaces, so the stone's 44px envelope survives the
+                      // rail's paint shrinking under it.
+                      <div className="gem-plate gem-plate-aura h-9 w-[118px] lg:w-[132px] shrink-0 px-4 flex items-center justify-center hit-44">
                         <GemMesh tone="emerald" phase={0} />
                         <span className="whitespace-nowrap">
                           <span className="text-xs lg:text-sm font-medium opacity-80">Turn&nbsp;</span>
@@ -2569,7 +2630,11 @@ export const Game: React.FC<GameProps> = ({
                     ) : (
                       <button
                         onClick={() => setShowConcedeConfirm(true)}
-                        className="gem-btn text-xs px-2 py-1"
+                        // px-3 py-2.5 grows the stone from 18px to 36px of
+                        // paint, which is FREE: it exactly matches the 36px
+                        // turn plate beside it, so it sets no new height on
+                        // the 44px rung box. hit-44 carries the rest.
+                        className="gem-btn text-xs px-3 py-2.5 hit-44"
                         title="Give up this attempt and lose a life"
                       >
                         {/* Orange topaz — matches the gem action-button set */}
@@ -2595,7 +2660,7 @@ export const Game: React.FC<GameProps> = ({
                 (board-rise needs vertical clipping); in normal play only
                 the x-axis clips, so hallway corridors may bleed above and
                 below the board's layout box (intended illusion). */}
-            <div className={`relative top-1.5 lg:top-[7px] z-10 w-full max-w-[900px] board-rise ${(replayMode || enteringReplay) ? 'overflow-hidden board-rise-collapsed ' : 'overflow-x-clip '}${gameState.gameStatus === 'defeat' ? 'animate-screen-shake' : ''}`}>
+            <div data-hud="board" className={`relative top-1.5 lg:top-[7px] z-10 w-full max-w-[900px] board-rise ${(replayMode || enteringReplay) ? 'overflow-hidden board-rise-collapsed ' : 'overflow-x-clip '}${gameState.gameStatus === 'defeat' ? 'animate-screen-shake' : ''}`}>
               <div
                 ref={boardFadeRef}
                 className={`transition-[opacity,transform] duration-700 ease-out ${spritesReady ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
@@ -2624,6 +2689,25 @@ export const Game: React.FC<GameProps> = ({
                   </button>
                 </div>
               )}
+
+              {/* Placement prompt — the live half of the hero panel's old
+                  permanent hint row. It is not a hint but an instruction, so
+                  it now sits ON the thing it points at instead of 500px below
+                  it, and costs zero layout (same absolute-over-the-board
+                  precedent as the loading rune and the sprite-failure pill).
+                  pointer-events-none is MANDATORY: it floats over the bottom
+                  rows of placement tiles and must never eat a tile tap. */}
+              {(() => {
+                if (testMode !== 'none' || gameState.gameStatus !== 'setup' || !selectedCharacterId) return null;
+                if (gameState.placedCharacters.some(c => c.characterId === selectedCharacterId)) return null;
+                const maxPlaceable = gameState.puzzle.maxPlaceableCharacters ?? gameState.puzzle.maxCharacters;
+                if (maxPlaceable != null && gameState.placedCharacters.length >= maxPlaceable) return null;
+                return (
+                  <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-20 px-3 py-1 rounded-pixel bg-stone-900/85 border border-copper-700 hud-label text-copper-300 whitespace-nowrap pointer-events-none">
+                    Tap the dungeon to place your hero
+                  </div>
+                );
+              })()}
 
 
               {/* Game Over Overlay — dismissible (matches Victory pattern) */}
@@ -3107,7 +3191,7 @@ export const Game: React.FC<GameProps> = ({
               // z-20: above the board's z-10 so a bottom hallway's corridor
               // overhang slides UNDER the banner, not over it (user call,
               // 2026-07-16 — layering only, position untouched).
-              <div className="w-full max-w-2xl px-8 md:px-9 pt-3 pb-4 quest-banner relative z-20 overflow-visible mb-1">
+              <div data-hud="quest-band" className="w-full max-w-2xl px-8 md:px-9 pt-3 pb-4 quest-banner relative z-20 overflow-visible mb-1">
                 {/* Low-poly stone banner behind the quest HUD (see BannerMesh) */}
                 <BannerMesh />
                 {/* Puzzle Number & Quest Row */}
@@ -3162,7 +3246,15 @@ export const Game: React.FC<GameProps> = ({
                     <span className="flex items-center gap-2 min-w-0">
                     <HelpButton
                       sectionId="game_general"
-                      className="flex-shrink-0"
+                      // relative z-10: `.shimmer-container` beside it is also
+                      // position:relative and comes later in DOM order, so it
+                      // hit-tested ABOVE this button's 44px slop and clipped
+                      // the target to 42px wide. Raising the button wins the
+                      // 3px back. Paint is unchanged — the two never overlap
+                      // visually, only the invisible slop does, and what it
+                      // reaches into is the "Quest:" label, which is text and
+                      // not a competing target.
+                      className="flex-shrink-0 relative z-10"
                       preamble={gameState.puzzle.questDescription?.trim()
                         ? { title: 'About this Puzzle', text: gameState.puzzle.questDescription.trim() }
                         : undefined}
@@ -3357,6 +3449,12 @@ export const Game: React.FC<GameProps> = ({
                     themeAssets={themeAssets}
                     disabled={gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none'}
                     noPanel
+                    // The play page wears the war-table chrome: identity is
+                    // engraved on the frame instead of costing a header row,
+                    // and the permanent hint row becomes a one-shot coach
+                    // line. TrainingGrounds and the editor playtest mount
+                    // pass nothing and keep today's inline markup exactly.
+                    chrome="plate"
                     placedCharacters={gameState.placedCharacters}
                     pendingSpellDirectionOverrides={pendingSpellDirectionOverrides}
                     onSpellDirectionOverride={testMode === 'none' && gameState.gameStatus === 'setup' ? (characterId: string, spellId: string, direction: Direction) => {

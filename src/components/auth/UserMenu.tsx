@@ -50,6 +50,9 @@ export const UserMenu: React.FC = () => {
         to="/login"
         className="nav-pill px-3 py-1.5 text-xs text-stone-300 transition-colors"
       >
+        {/* 28px of paint, 44px of target. .hit-slop rather than .hit-44:
+            .nav-pill spends both pseudo-elements on its forge bolts. */}
+        <span aria-hidden="true" className="hit-slop" />
         Sign In
       </Link>
     );
@@ -120,6 +123,8 @@ export const UserMenu: React.FC = () => {
         onClick={() => setOpen(!open)}
         className="nav-pill flex items-center gap-2 px-2 py-1 transition-colors"
       >
+        {/* .hit-slop, not .hit-44 — see the Sign In branch above. */}
+        <span aria-hidden="true" className="hit-slop" />
         <div className={`w-7 h-7 rounded-full ${avatar.color} flex items-center justify-center text-xs font-bold text-white`}>
           {avatar.icon}
         </div>

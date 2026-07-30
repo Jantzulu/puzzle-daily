@@ -1,0 +1,1223 @@
+{
+  "recordedAt": "2026-07-30T13:10:40.570Z",
+  "purpose": "Pre-work vertical-budget baseline for the UI mobile-fit work (branch ui-mobile-fit, tag ui-baseline-2026-07-29). Captured after slice S1 planted the data-hud measurement hooks; S1 is attribute-only, so these numbers ARE the pre-work baseline.",
+  "harness": "scratchpad/shotkit/shoot.mjs (outside the repo). Deterministic fixture: 9x12 tall dungeon, 3 heroes, info panel open on the worst-case hero (direction compass + long action text).",
+  "viewportNote": "Heights are BROWSER CONTENT viewports, not physical screens. Mobile Safari/Chrome spend ~90-115px on browser chrome.",
+  "metricDefinitions": {
+    "playableSpan": "heroPanel.bottom - boardCanvas.top. The control rail is EXCLUDED (it is sticky and floats over the board).",
+    "railInclusive": "heroPanel.bottom - min(boardCanvas.top, controlRail.top). Stricter reading that counts the sticky rail as viewport pressure.",
+    "spanModel": "board + questBand + heroPanel + 10 (10 = inter-band gaps). Verified below.",
+    "bandsBoard": "The board CANVAS height, not its wrapper. Quantized to {288,432,576} - there is no in-between."
+  },
+  "spanModelVerified": {
+    "iphone-se": {
+      "span": 944,
+      "model": 944,
+      "error": 0
+    },
+    "iphone-14pro": {
+      "span": 928,
+      "model": 928,
+      "error": 0
+    },
+    "pixel-7": {
+      "span": 912,
+      "model": 912,
+      "error": 0
+    },
+    "iphone-16promax": {
+      "span": 880,
+      "model": 880,
+      "error": 0
+    },
+    "desktop": {
+      "span": 721,
+      "model": 720,
+      "error": 1
+    }
+  },
+  "targets": {
+    "iphone-se": 553,
+    "iphone-14pro": 761,
+    "pixel-7": 824,
+    "iphone-16promax": 865,
+    "desktop": 800
+  },
+  "devices": {
+    "iphone-se": {
+      "buildBroken": false,
+      "viewport": {
+        "w": 375,
+        "h": 553
+      },
+      "documentHeight": 1387,
+      "overflowBeyondViewport": 834,
+      "horizontalOverflow": 0,
+      "selectorSource": {
+        "board": "data-hud",
+        "control-rail": "data-hud",
+        "quest-band": "data-hud",
+        "hero-strip": "data-hud",
+        "hero-panel": "data-hud",
+        "hero-info": "data-hud"
+      },
+      "bands": {
+        "controlRail": 52,
+        "board": 432,
+        "boardBox": 432,
+        "questBanner": 52,
+        "questBand": 52,
+        "heroStrip": 128,
+        "heroPanel": 450,
+        "heroInfoPanel": 268,
+        "heroInfo": 268
+      },
+      "boardTop": 114,
+      "playableSpan": 944,
+      "playableFitsViewport": false,
+      "playableOverflow": 391,
+      "railInclusive": 990,
+      "railInclusiveFitsViewport": false,
+      "spanModel": 944,
+      "spanModelError": 0,
+      "tapTargetsUnder44": [
+        {
+          "label": "nav-pill flex items-center gap-2 px-3 py",
+          "w": 42,
+          "h": 34,
+          "rawW": 42,
+          "rawH": 34
+        },
+        {
+          "label": "Play",
+          "w": 118,
+          "h": 40,
+          "rawW": 118,
+          "rawH": 40
+        },
+        {
+          "label": "Help",
+          "w": 24,
+          "h": 24,
+          "rawW": 24,
+          "rawH": 24
+        },
+        {
+          "label": "Test",
+          "w": 57,
+          "h": 18,
+          "rawW": 57,
+          "rawH": 18
+        },
+        {
+          "label": "Help",
+          "w": 24,
+          "h": 24,
+          "rawW": 24,
+          "rawH": 24
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17,
+          "rawW": 17,
+          "rawH": 17
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17,
+          "rawW": 17,
+          "rawH": 17
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17,
+          "rawW": 17,
+          "rawH": 17
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17,
+          "rawW": 17,
+          "rawH": 17
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17,
+          "rawW": 17,
+          "rawH": 17
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17,
+          "rawW": 17,
+          "rawH": 17
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17,
+          "rawW": 17,
+          "rawH": 17
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17,
+          "rawW": 17,
+          "rawH": 17
+        },
+        {
+          "label": "Test",
+          "w": 57,
+          "h": 18,
+          "rawW": 57,
+          "rawH": 18
+        },
+        {
+          "label": "Help",
+          "w": 24,
+          "h": 24,
+          "rawW": 24,
+          "rawH": 24
+        }
+      ],
+      "tapTargetsUnder44Raw": [
+        {
+          "label": "nav-pill flex items-center gap-2 px-3 py",
+          "w": 42,
+          "h": 34
+        },
+        {
+          "label": "Play",
+          "w": 118,
+          "h": 40
+        },
+        {
+          "label": "Help",
+          "w": 24,
+          "h": 24
+        },
+        {
+          "label": "Test",
+          "w": 57,
+          "h": 18
+        },
+        {
+          "label": "Help",
+          "w": 24,
+          "h": 24
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17
+        },
+        {
+          "label": "Test",
+          "w": 57,
+          "h": 18
+        },
+        {
+          "label": "Help",
+          "w": 24,
+          "h": 24
+        }
+      ],
+      "textUnder12px": [
+        {
+          "text": "the Wizard Blue",
+          "px": 10
+        },
+        {
+          "text": "the Second",
+          "px": 10
+        },
+        {
+          "text": "Facing Direction",
+          "px": 9
+        }
+      ]
+    },
+    "iphone-14pro": {
+      "buildBroken": false,
+      "viewport": {
+        "w": 393,
+        "h": 761
+      },
+      "documentHeight": 1371,
+      "overflowBeyondViewport": 610,
+      "horizontalOverflow": 0,
+      "selectorSource": {
+        "board": "data-hud",
+        "control-rail": "data-hud",
+        "quest-band": "data-hud",
+        "hero-strip": "data-hud",
+        "hero-panel": "data-hud",
+        "hero-info": "data-hud"
+      },
+      "bands": {
+        "controlRail": 52,
+        "board": 432,
+        "boardBox": 432,
+        "questBanner": 52,
+        "questBand": 52,
+        "heroStrip": 128,
+        "heroPanel": 434,
+        "heroInfoPanel": 252,
+        "heroInfo": 252
+      },
+      "boardTop": 114,
+      "playableSpan": 928,
+      "playableFitsViewport": false,
+      "playableOverflow": 167,
+      "railInclusive": 974,
+      "railInclusiveFitsViewport": false,
+      "spanModel": 928,
+      "spanModelError": 0,
+      "tapTargetsUnder44": [
+        {
+          "label": "nav-pill flex items-center gap-2 px-3 py",
+          "w": 42,
+          "h": 34,
+          "rawW": 42,
+          "rawH": 34
+        },
+        {
+          "label": "Play",
+          "w": 118,
+          "h": 40,
+          "rawW": 118,
+          "rawH": 40
+        },
+        {
+          "label": "Help",
+          "w": 24,
+          "h": 24,
+          "rawW": 24,
+          "rawH": 24
+        },
+        {
+          "label": "Test",
+          "w": 57,
+          "h": 18,
+          "rawW": 57,
+          "rawH": 18
+        },
+        {
+          "label": "Help",
+          "w": 24,
+          "h": 24,
+          "rawW": 24,
+          "rawH": 24
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17,
+          "rawW": 17,
+          "rawH": 17
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17,
+          "rawW": 17,
+          "rawH": 17
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17,
+          "rawW": 17,
+          "rawH": 17
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17,
+          "rawW": 17,
+          "rawH": 17
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17,
+          "rawW": 17,
+          "rawH": 17
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17,
+          "rawW": 17,
+          "rawH": 17
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17,
+          "rawW": 17,
+          "rawH": 17
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17,
+          "rawW": 17,
+          "rawH": 17
+        },
+        {
+          "label": "Test",
+          "w": 57,
+          "h": 18,
+          "rawW": 57,
+          "rawH": 18
+        },
+        {
+          "label": "Help",
+          "w": 24,
+          "h": 24,
+          "rawW": 24,
+          "rawH": 24
+        }
+      ],
+      "tapTargetsUnder44Raw": [
+        {
+          "label": "nav-pill flex items-center gap-2 px-3 py",
+          "w": 42,
+          "h": 34
+        },
+        {
+          "label": "Play",
+          "w": 118,
+          "h": 40
+        },
+        {
+          "label": "Help",
+          "w": 24,
+          "h": 24
+        },
+        {
+          "label": "Test",
+          "w": 57,
+          "h": 18
+        },
+        {
+          "label": "Help",
+          "w": 24,
+          "h": 24
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17
+        },
+        {
+          "label": "Test",
+          "w": 57,
+          "h": 18
+        },
+        {
+          "label": "Help",
+          "w": 24,
+          "h": 24
+        }
+      ],
+      "textUnder12px": [
+        {
+          "text": "the Wizard Blue",
+          "px": 10
+        },
+        {
+          "text": "the Second",
+          "px": 10
+        },
+        {
+          "text": "Facing Direction",
+          "px": 9
+        }
+      ]
+    },
+    "pixel-7": {
+      "buildBroken": false,
+      "viewport": {
+        "w": 412,
+        "h": 824
+      },
+      "documentHeight": 1355,
+      "overflowBeyondViewport": 531,
+      "horizontalOverflow": 0,
+      "selectorSource": {
+        "board": "data-hud",
+        "control-rail": "data-hud",
+        "quest-band": "data-hud",
+        "hero-strip": "data-hud",
+        "hero-panel": "data-hud",
+        "hero-info": "data-hud"
+      },
+      "bands": {
+        "controlRail": 52,
+        "board": 432,
+        "boardBox": 432,
+        "questBanner": 52,
+        "questBand": 52,
+        "heroStrip": 128,
+        "heroPanel": 418,
+        "heroInfoPanel": 236,
+        "heroInfo": 236
+      },
+      "boardTop": 114,
+      "playableSpan": 912,
+      "playableFitsViewport": false,
+      "playableOverflow": 88,
+      "railInclusive": 958,
+      "railInclusiveFitsViewport": false,
+      "spanModel": 912,
+      "spanModelError": 0,
+      "tapTargetsUnder44": [
+        {
+          "label": "nav-pill flex items-center gap-2 px-3 py",
+          "w": 42,
+          "h": 34,
+          "rawW": 42,
+          "rawH": 34
+        },
+        {
+          "label": "Play",
+          "w": 118,
+          "h": 40,
+          "rawW": 118,
+          "rawH": 40
+        },
+        {
+          "label": "Help",
+          "w": 24,
+          "h": 24,
+          "rawW": 24,
+          "rawH": 24
+        },
+        {
+          "label": "Test",
+          "w": 57,
+          "h": 18,
+          "rawW": 57,
+          "rawH": 18
+        },
+        {
+          "label": "Help",
+          "w": 24,
+          "h": 24,
+          "rawW": 24,
+          "rawH": 24
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17,
+          "rawW": 17,
+          "rawH": 17
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17,
+          "rawW": 17,
+          "rawH": 17
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17,
+          "rawW": 17,
+          "rawH": 17
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17,
+          "rawW": 17,
+          "rawH": 17
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17,
+          "rawW": 17,
+          "rawH": 17
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17,
+          "rawW": 17,
+          "rawH": 17
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17,
+          "rawW": 17,
+          "rawH": 17
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17,
+          "rawW": 17,
+          "rawH": 17
+        },
+        {
+          "label": "Test",
+          "w": 57,
+          "h": 18,
+          "rawW": 57,
+          "rawH": 18
+        },
+        {
+          "label": "Help",
+          "w": 24,
+          "h": 24,
+          "rawW": 24,
+          "rawH": 24
+        }
+      ],
+      "tapTargetsUnder44Raw": [
+        {
+          "label": "nav-pill flex items-center gap-2 px-3 py",
+          "w": 42,
+          "h": 34
+        },
+        {
+          "label": "Play",
+          "w": 118,
+          "h": 40
+        },
+        {
+          "label": "Help",
+          "w": 24,
+          "h": 24
+        },
+        {
+          "label": "Test",
+          "w": 57,
+          "h": 18
+        },
+        {
+          "label": "Help",
+          "w": 24,
+          "h": 24
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17
+        },
+        {
+          "label": "Test",
+          "w": 57,
+          "h": 18
+        },
+        {
+          "label": "Help",
+          "w": 24,
+          "h": 24
+        }
+      ],
+      "textUnder12px": [
+        {
+          "text": "the Wizard Blue",
+          "px": 10
+        },
+        {
+          "text": "the Second",
+          "px": 10
+        },
+        {
+          "text": "Facing Direction",
+          "px": 9
+        }
+      ]
+    },
+    "iphone-16promax": {
+      "buildBroken": false,
+      "viewport": {
+        "w": 440,
+        "h": 865
+      },
+      "documentHeight": 1323,
+      "overflowBeyondViewport": 458,
+      "horizontalOverflow": 0,
+      "selectorSource": {
+        "board": "data-hud",
+        "control-rail": "data-hud",
+        "quest-band": "data-hud",
+        "hero-strip": "data-hud",
+        "hero-panel": "data-hud",
+        "hero-info": "data-hud"
+      },
+      "bands": {
+        "controlRail": 52,
+        "board": 432,
+        "boardBox": 432,
+        "questBanner": 52,
+        "questBand": 52,
+        "heroStrip": 128,
+        "heroPanel": 386,
+        "heroInfoPanel": 204,
+        "heroInfo": 204
+      },
+      "boardTop": 114,
+      "playableSpan": 880,
+      "playableFitsViewport": false,
+      "playableOverflow": 15,
+      "railInclusive": 926,
+      "railInclusiveFitsViewport": false,
+      "spanModel": 880,
+      "spanModelError": 0,
+      "tapTargetsUnder44": [
+        {
+          "label": "nav-pill flex items-center gap-2 px-3 py",
+          "w": 42,
+          "h": 34,
+          "rawW": 42,
+          "rawH": 34
+        },
+        {
+          "label": "Play",
+          "w": 118,
+          "h": 40,
+          "rawW": 118,
+          "rawH": 40
+        },
+        {
+          "label": "Help",
+          "w": 24,
+          "h": 24,
+          "rawW": 24,
+          "rawH": 24
+        },
+        {
+          "label": "Test",
+          "w": 57,
+          "h": 18,
+          "rawW": 57,
+          "rawH": 18
+        },
+        {
+          "label": "Help",
+          "w": 24,
+          "h": 24,
+          "rawW": 24,
+          "rawH": 24
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17,
+          "rawW": 17,
+          "rawH": 17
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17,
+          "rawW": 17,
+          "rawH": 17
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17,
+          "rawW": 17,
+          "rawH": 17
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17,
+          "rawW": 17,
+          "rawH": 17
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17,
+          "rawW": 17,
+          "rawH": 17
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17,
+          "rawW": 17,
+          "rawH": 17
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17,
+          "rawW": 17,
+          "rawH": 17
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17,
+          "rawW": 17,
+          "rawH": 17
+        },
+        {
+          "label": "Test",
+          "w": 57,
+          "h": 18,
+          "rawW": 57,
+          "rawH": 18
+        },
+        {
+          "label": "Help",
+          "w": 24,
+          "h": 24,
+          "rawW": 24,
+          "rawH": 24
+        }
+      ],
+      "tapTargetsUnder44Raw": [
+        {
+          "label": "nav-pill flex items-center gap-2 px-3 py",
+          "w": 42,
+          "h": 34
+        },
+        {
+          "label": "Play",
+          "w": 118,
+          "h": 40
+        },
+        {
+          "label": "Help",
+          "w": 24,
+          "h": 24
+        },
+        {
+          "label": "Test",
+          "w": 57,
+          "h": 18
+        },
+        {
+          "label": "Help",
+          "w": 24,
+          "h": 24
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17
+        },
+        {
+          "label": "Test",
+          "w": 57,
+          "h": 18
+        },
+        {
+          "label": "Help",
+          "w": 24,
+          "h": 24
+        }
+      ],
+      "textUnder12px": [
+        {
+          "text": "the Wizard Blue",
+          "px": 10
+        },
+        {
+          "text": "the Second",
+          "px": 10
+        },
+        {
+          "text": "Facing Direction",
+          "px": 9
+        }
+      ]
+    },
+    "desktop": {
+      "buildBroken": false,
+      "viewport": {
+        "w": 1280,
+        "h": 800
+      },
+      "documentHeight": 1202,
+      "overflowBeyondViewport": 402,
+      "horizontalOverflow": 0,
+      "selectorSource": {
+        "board": "data-hud",
+        "control-rail": "data-hud",
+        "quest-band": "data-hud",
+        "hero-strip": "data-hud",
+        "hero-panel": "data-hud",
+        "hero-info": "data-hud"
+      },
+      "bands": {
+        "controlRail": 52,
+        "board": 288,
+        "boardBox": 288,
+        "questBanner": 56,
+        "questBand": 56,
+        "heroStrip": 128,
+        "heroPanel": 366,
+        "heroInfoPanel": 180,
+        "heroInfo": 180
+      },
+      "boardTop": 123,
+      "playableSpan": 721,
+      "playableFitsViewport": true,
+      "playableOverflow": 0,
+      "railInclusive": 721,
+      "railInclusiveFitsViewport": true,
+      "spanModel": 720,
+      "spanModelError": 1,
+      "tapTargetsUnder44": [
+        {
+          "label": "nav-pill flex items-center gap-2 px-3 py",
+          "w": 42,
+          "h": 34,
+          "rawW": 42,
+          "rawH": 34
+        },
+        {
+          "label": "Play",
+          "w": 132,
+          "h": 40,
+          "rawW": 132,
+          "rawH": 40
+        },
+        {
+          "label": "Help",
+          "w": 24,
+          "h": 24,
+          "rawW": 24,
+          "rawH": 24
+        },
+        {
+          "label": "Test",
+          "w": 61,
+          "h": 18,
+          "rawW": 61,
+          "rawH": 18
+        },
+        {
+          "label": "Help",
+          "w": 24,
+          "h": 24,
+          "rawW": 24,
+          "rawH": 24
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17,
+          "rawW": 17,
+          "rawH": 17
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17,
+          "rawW": 17,
+          "rawH": 17
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17,
+          "rawW": 17,
+          "rawH": 17
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17,
+          "rawW": 17,
+          "rawH": 17
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17,
+          "rawW": 17,
+          "rawH": 17
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17,
+          "rawW": 17,
+          "rawH": 17
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17,
+          "rawW": 17,
+          "rawH": 17
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17,
+          "rawW": 17,
+          "rawH": 17
+        },
+        {
+          "label": "Test",
+          "w": 61,
+          "h": 18,
+          "rawW": 61,
+          "rawH": 18
+        },
+        {
+          "label": "Help",
+          "w": 24,
+          "h": 24,
+          "rawW": 24,
+          "rawH": 24
+        }
+      ],
+      "tapTargetsUnder44Raw": [
+        {
+          "label": "nav-pill flex items-center gap-2 px-3 py",
+          "w": 42,
+          "h": 34
+        },
+        {
+          "label": "Play",
+          "w": 132,
+          "h": 40
+        },
+        {
+          "label": "Help",
+          "w": 24,
+          "h": 24
+        },
+        {
+          "label": "Test",
+          "w": 61,
+          "h": 18
+        },
+        {
+          "label": "Help",
+          "w": 24,
+          "h": 24
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17
+        },
+        {
+          "label": "w-[17px] h-[17px] rounded-sm transition-",
+          "w": 17,
+          "h": 17
+        },
+        {
+          "label": "Test",
+          "w": 61,
+          "h": 18
+        },
+        {
+          "label": "Help",
+          "w": 24,
+          "h": 24
+        }
+      ],
+      "textUnder12px": [
+        {
+          "text": "the Wizard Blue",
+          "px": 10
+        },
+        {
+          "text": "the Second",
+          "px": 10
+        },
+        {
+          "text": "Facing Direction",
+          "px": 9
+        }
+      ]
+    }
+  }
+}

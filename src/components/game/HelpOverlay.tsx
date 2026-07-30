@@ -191,16 +191,34 @@ interface HelpButtonProps {
   sectionId: HelpSectionId;
   className?: string;
   preamble?: { title: string; text: string };
+  /**
+   * Which tap-slop shape the 24px icon wears.
+   *
+   * 'center' (DEFAULT) is `.hit-44` — a 44px box centred on the icon, right
+   * for a button with room on every side.
+   *
+   * 'up' is `.hit-44-up` — the same 44px grown upward from the icon's centre
+   * line. Required where the button sits ON a seam with a tappable
+   * neighbour directly below (the hero plate's cap band straddles the hero
+   * strip's top edge), because a centred slop there would fire the help
+   * overlay on a tap meant for the hero card underneath it.
+   */
+  hitMode?: 'center' | 'up';
 }
 
-export const HelpButton: React.FC<HelpButtonProps> = ({ sectionId, className = '', preamble }) => {
+export const HelpButton: React.FC<HelpButtonProps> = ({ sectionId, className = '', preamble, hitMode = 'center' }) => {
   const [isOpen, setIsOpen] = React.useState(false);
 
   return (
     <>
       <button
         onClick={() => setIsOpen(true)}
-        className={`p-1 text-stone-400 hover:text-parchment-100 hover:bg-stone-700 rounded transition-colors ${className}`}
+        // hit-44: the icon paints at 24px (p-1 + a 16px glyph) but the
+        // touch target is grown to 44px by an invisible ::after — no layout
+        // cost, which matters because this button appears in every panel
+        // header on the play page. rounded-pixel (was bare `rounded` = 4px)
+        // puts the hover plate on the theme's own radius scale.
+        className={`p-1 text-stone-400 hover:text-parchment-100 hover:bg-stone-700 rounded-pixel ${hitMode === 'up' ? 'hit-44-up' : 'hit-44'} transition-colors ${className}`}
         aria-label="Help"
         title="What's this?"
       >

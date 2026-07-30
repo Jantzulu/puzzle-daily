@@ -667,7 +667,16 @@ export function getThemeAssetsCSSProperties(): Record<string, string> {
   if (assets.colorBgInput) properties['--theme-bg-input'] = assets.colorBgInput;
   if (assets.colorBgControlPanel) properties['--theme-bg-control-panel'] = assets.colorBgControlPanel;
   if (assets.colorTextPrimary) properties['--theme-text-primary'] = assets.colorTextPrimary;
-  if (assets.colorTextSecondary) properties['--theme-text-secondary'] = assets.colorTextSecondary;
+  if (assets.colorTextSecondary) {
+    properties['--theme-text-secondary'] = assets.colorTextSecondary;
+    // index.css split `.text-stone-400, .text-stone-500` into two rules: the
+    // shared rule was pinning stone-400 to the stone-500 value, which drops
+    // ~15 elements from 5.60:1 to 3.71:1 (below AA). stone-400 now reads
+    // `--theme-text-secondary-strong`. Writing BOTH from the same setting
+    // keeps a THEMED page byte-identical to before the split — only the
+    // untheme'd default picks up the brighter fallback.
+    properties['--theme-text-secondary-strong'] = assets.colorTextSecondary;
+  }
   if (assets.colorTextHeading) properties['--theme-text-heading'] = assets.colorTextHeading;
   if (assets.colorBorderPrimary) properties['--theme-border-primary'] = assets.colorBorderPrimary;
   if (assets.colorBorderAccent) properties['--theme-border-accent'] = assets.colorBorderAccent;
@@ -805,6 +814,7 @@ const ALL_THEME_CSS_VARS = [
   '--theme-bg-control-panel',
   '--theme-text-primary',
   '--theme-text-secondary',
+  '--theme-text-secondary-strong',
   '--theme-text-heading',
   '--theme-border-primary',
   '--theme-border-accent',
