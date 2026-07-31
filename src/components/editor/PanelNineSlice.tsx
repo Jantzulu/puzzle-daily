@@ -52,6 +52,16 @@ interface Props {
    * the slicer had eaten them.
    */
   dividerYs?: number[];
+  /**
+   * Draw where the tile periods actually fall, and hatch the part that gets
+   * cut off. Without this the panel answers "does it look right at THIS size"
+   * but never "what happens when it is resized" — which is the question that
+   * decides whether a flourish can live on a repeating piece at all. A notch
+   * painted into an edge tile repeats every period; a notch painted into the
+   * middle of a RUN is simply discarded, and both failures look identical in
+   * a static preview.
+   */
+  showSeams?: boolean;
 }
 
 const byId = (pieces: NineSlicePiece[]) => {
@@ -80,7 +90,7 @@ const layer = (
   };
 };
 
-export const PanelNineSlice: React.FC<Props> = ({ pieces, zoom, width, height, showContent, ground, dividerYs = [] }) => {
+export const PanelNineSlice: React.FC<Props> = ({ pieces, zoom, width, height, showContent, ground, dividerYs = [], showSeams = false }) => {
   const p = useMemo(() => byId(pieces), [pieces]);
 
   const tl = p['corner-tl'];
@@ -126,6 +136,40 @@ export const PanelNineSlice: React.FC<Props> = ({ pieces, zoom, width, height, s
 
   const anyArt = layers.some(Boolean);
 
+  // ---- where the periods actually land -----------------------------------
+  // A tiling run is only honest about itself at sizes where it happens to fit
+  // a whole number of periods. Everywhere else the last tile is chopped, and
+  // that chop is where painted flourishes get eaten.
+  const innerW = Math.max(0, width - bLeft - bRight);
+  const innerH = Math.max(0, height - bt - bb);
+  const topPeriod = (top?.w ?? 0) * zoom;
+  const sidePeriod = (left?.h ?? 0) * zoom;
+
+  const run = (span: number, period: number) => {
+    if (!period) return null;
+    const full = Math.floor(span / period);
+    const remainder = span - full * period;
+    return { full, remainder, pct: period ? Math.round((remainder / period) * 100) : 0 };
+  };
+  const topRun = run(innerW, topPeriod);
+  const sideRun = run(innerH, sidePeriod);
+
+  const seamLine = (style: React.CSSProperties): React.CSSProperties => ({
+    position: 'absolute',
+    background: 'rgba(56,189,248,0.55)',
+    pointerEvents: 'none',
+    ...style,
+  });
+  // Diagonal hatch marking the clipped remainder — "this much of the last
+  // tile never renders".
+  const hatch: React.CSSProperties = {
+    position: 'absolute',
+    pointerEvents: 'none',
+    backgroundImage:
+      'repeating-linear-gradient(45deg, rgba(248,113,113,0.45) 0 3px, rgba(0,0,0,0) 3px 6px)',
+    outline: '1px solid rgba(248,113,113,0.7)',
+  };
+
   return (
     <div style={{ background: ground, padding: 16, borderRadius: 2 }}>
       <div style={{ position: 'relative', width, height, overflow: 'hidden' }}>
@@ -135,6 +179,32 @@ export const PanelNineSlice: React.FC<Props> = ({ pieces, zoom, width, height, s
           <div className="absolute inset-0 flex items-center justify-center text-xs text-stone-500 border border-dashed border-stone-700">
             Nothing painted yet — slice a sheet above.
           </div>
+        )}
+
+        {showSeams && (
+          <>
+            {/* period boundaries along the top/bottom runs */}
+            {topRun && topPeriod > 0 && Array.from({ length: topRun.full + 1 }, (_, i) => i).map(i => (
+              <div key={`vx${i}`} aria-hidden style={seamLine({ left: bLeft + i * topPeriod, top: 0, width: 1, height })} />
+            ))}
+            {/* period boundaries along the side runs */}
+            {sideRun && sidePeriod > 0 && Array.from({ length: sideRun.full + 1 }, (_, i) => i).map(i => (
+              <div key={`hz${i}`} aria-hidden style={seamLine({ top: bt + i * sidePeriod, left: 0, height: 1, width })} />
+            ))}
+            {/* the clipped remainder of each run */}
+            {topRun && topRun.remainder > 0 && (
+              <div aria-hidden style={{ ...hatch, left: bLeft + topRun.full * topPeriod, width: topRun.remainder, top: 0, height: bt }} />
+            )}
+            {topRun && topRun.remainder > 0 && (
+              <div aria-hidden style={{ ...hatch, left: bLeft + topRun.full * topPeriod, width: topRun.remainder, bottom: 0, height: bb }} />
+            )}
+            {sideRun && sideRun.remainder > 0 && (
+              <div aria-hidden style={{ ...hatch, top: bt + sideRun.full * sidePeriod, height: sideRun.remainder, left: 0, width: bLeft }} />
+            )}
+            {sideRun && sideRun.remainder > 0 && (
+              <div aria-hidden style={{ ...hatch, top: bt + sideRun.full * sidePeriod, height: sideRun.remainder, right: 0, width: bRight }} />
+            )}
+          </>
         )}
 
         {showContent && (
@@ -171,6 +241,30 @@ export const PanelNineSlice: React.FC<Props> = ({ pieces, zoom, width, height, s
           </div>
         )}
       </div>
+
+      {showSeams && (
+        <div className="mt-2 text-[11px] text-stone-300 space-y-0.5 font-mono">
+          {topRun && topPeriod > 0 && (
+            <div>
+              top/bottom run: {innerW}px ÷ {topPeriod}px period = <strong>{topRun.full} whole tiles</strong>
+              {topRun.remainder > 0
+                ? <> + <span className="text-red-300">{topRun.remainder}px clipped ({topRun.pct}% of a tile)</span></>
+                : <span className="text-green-300"> — exact fit</span>}
+            </div>
+          )}
+          {sideRun && sidePeriod > 0 && (
+            <div>
+              left/right run: {innerH}px ÷ {sidePeriod}px period = <strong>{sideRun.full} whole tiles</strong>
+              {sideRun.remainder > 0
+                ? <> + <span className="text-red-300">{sideRun.remainder}px clipped ({sideRun.pct}% of a tile)</span></>
+                : <span className="text-green-300"> — exact fit</span>}
+            </div>
+          )}
+          <div className="text-stone-500">
+            anything painted inside one period repeats every period; the hatched strip never renders.
+          </div>
+        </div>
+      )}
     </div>
   );
 };

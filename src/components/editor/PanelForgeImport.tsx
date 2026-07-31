@@ -82,6 +82,7 @@ export const PanelForgeImport: React.FC<Props> = ({ kit, assembly }) => {
   // is cut and then never drawn, which reads as the slicer losing your art.
   const [dividerY, setDividerY] = useState(56);
   const [showDivider, setShowDivider] = useState(true);
+  const [showSeams, setShowSeams] = useState(false);
 
   const handleRef = useRef<FilePickerHandle | null>(null);
   const lastModifiedRef = useRef<number>(0);
@@ -453,6 +454,15 @@ export const PanelForgeImport: React.FC<Props> = ({ kit, assembly }) => {
                 />
                 Sample text
               </label>
+              <label className="flex items-center gap-1.5 text-xs text-stone-300">
+                <input
+                  type="checkbox"
+                  checked={showSeams}
+                  onChange={e => setShowSeams(e.target.checked)}
+                  className="w-3.5 h-3.5"
+                />
+                Tile seams
+              </label>
               <button
                 onClick={() => { setPanelW(361); setPanelH(274); }}
                 className="px-2 py-0.5 text-xs rounded border border-stone-600 text-stone-300 hover:bg-stone-700"
@@ -509,6 +519,7 @@ export const PanelForgeImport: React.FC<Props> = ({ kit, assembly }) => {
               showContent={showContent}
               ground="#040403"
               dividerYs={showDivider ? [dividerY] : []}
+              showSeams={showSeams}
             />
           </div>
 
