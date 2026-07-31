@@ -43,6 +43,15 @@ interface Props {
   showContent: boolean;
   /** Page ground behind the panel — the real one is near-black. */
   ground: string;
+  /**
+   * Where to lay `divider` runs, in display px from the panel's top edge.
+   * The divider is the one kit piece with no fixed home — corners and edges
+   * are positional by definition, but a section rule goes wherever the panel
+   * happens to change subject. Without this it was cut and then never drawn,
+   * so a sheet painted WITH dividers rendered without them and looked like
+   * the slicer had eaten them.
+   */
+  dividerYs?: number[];
 }
 
 const byId = (pieces: NineSlicePiece[]) => {
@@ -71,7 +80,7 @@ const layer = (
   };
 };
 
-export const PanelNineSlice: React.FC<Props> = ({ pieces, zoom, width, height, showContent, ground }) => {
+export const PanelNineSlice: React.FC<Props> = ({ pieces, zoom, width, height, showContent, ground, dividerYs = [] }) => {
   const p = useMemo(() => byId(pieces), [pieces]);
 
   const tl = p['corner-tl'];
@@ -103,6 +112,16 @@ export const PanelNineSlice: React.FC<Props> = ({ pieces, zoom, width, height, s
     layer(tr, zoom, 'no-repeat', { right: 0, top: 0, width: (tr?.w ?? 0) * zoom, height: (tr?.h ?? 0) * zoom }),
     layer(bl, zoom, 'no-repeat', { left: 0, bottom: 0, width: (bl?.w ?? 0) * zoom, height: (bl?.h ?? 0) * zoom }),
     layer(br, zoom, 'no-repeat', { right: 0, bottom: 0, width: (br?.w ?? 0) * zoom, height: (br?.h ?? 0) * zoom }),
+    // Section rules last: they run across the field, between the side edges,
+    // and should sit over the centre fill.
+    ...dividerYs.map(y =>
+      layer(p['divider'], zoom, 'repeat-x', {
+        left: bLeft,
+        right: bRight,
+        top: y,
+        height: (p['divider']?.h ?? 0) * zoom,
+      }),
+    ),
   ];
 
   const anyArt = layers.some(Boolean);

@@ -77,6 +77,11 @@ export const PanelForgeImport: React.FC<Props> = ({ kit, assembly }) => {
   const [panelW, setPanelW] = useState(361);
   const [panelH, setPanelH] = useState(274);
   const [showContent, setShowContent] = useState(true);
+  // Where the section rule sits. It has no fixed home the way a corner does,
+  // so the preview has to let you place it — otherwise a divider you painted
+  // is cut and then never drawn, which reads as the slicer losing your art.
+  const [dividerY, setDividerY] = useState(56);
+  const [showDivider, setShowDivider] = useState(true);
 
   const handleRef = useRef<FilePickerHandle | null>(null);
   const lastModifiedRef = useRef<number>(0);
@@ -455,6 +460,23 @@ export const PanelForgeImport: React.FC<Props> = ({ kit, assembly }) => {
               >
                 Hero panel @393
               </button>
+              {slices.some(s => s.pieceId === 'divider' && !s.empty) && (
+                <label className="flex items-center gap-1.5 text-xs text-stone-300">
+                  <input
+                    type="checkbox"
+                    checked={showDivider}
+                    onChange={e => setShowDivider(e.target.checked)}
+                    className="w-3.5 h-3.5"
+                  />
+                  Divider at
+                  <input
+                    type="range" min={0} max={Math.max(0, panelH - 4)} value={dividerY}
+                    onChange={e => setDividerY(Number(e.target.value))}
+                    className="w-28"
+                  />
+                  <span className="w-8 tabular-nums text-stone-400">{dividerY}</span>
+                </label>
+              )}
             </div>
 
             <div className="flex items-center gap-3 flex-wrap text-xs text-stone-400">
@@ -486,6 +508,7 @@ export const PanelForgeImport: React.FC<Props> = ({ kit, assembly }) => {
               height={panelH}
               showContent={showContent}
               ground="#040403"
+              dividerYs={showDivider ? [dividerY] : []}
             />
           </div>
 
