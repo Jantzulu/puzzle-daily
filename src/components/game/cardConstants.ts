@@ -20,8 +20,27 @@ import { loadImage, isImageReady } from '../../utils/imageLoader';
  * each other on a shared floor in a reference image, all magnified uniformly).
  *
  * Adjust this constant to make all card sprites bigger or smaller.
+ *
+ * ON-DEVICE OVERRIDE: `?cardscale=2` (2026-07-31). Card sprite size is a
+ * judgement that cannot be made on a desktop monitor — a dpr-1 simulated phone
+ * renders the BOARD at a smaller integer zoom step than a real dpr-3 handset,
+ * so the sprite-to-board relationship you are comparing against is wrong.
+ * This lets the scale be flipped on the actual phone with a reload instead of
+ * a rebuild. Same shape as the existing `?perf=1` / `?perfsweep=1` hatches.
+ * Read once at module load; integers 1-6 only, anything else ignored.
  */
-export const CARD_PIXEL_SCALE = 3;
+function readCardScaleOverride(): number | null {
+  try {
+    const raw = new URLSearchParams(window.location.search).get('cardscale');
+    if (!raw) return null;
+    const n = Number(raw);
+    return Number.isInteger(n) && n >= 1 && n <= 6 ? n : null;
+  } catch {
+    return null;
+  }
+}
+
+export const CARD_PIXEL_SCALE = readCardScaleOverride() ?? 3;
 
 /**
  * Fallback native-pixel height for sprites whose native dimensions cannot
