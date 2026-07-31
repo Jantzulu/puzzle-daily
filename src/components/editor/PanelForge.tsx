@@ -127,7 +127,16 @@ const DEFAULT_KITS: KitSpec[] = [
     builtIn: true,
     description:
       'Nine-slice with FINISHED EDGE ENDS. Each edge is a fixed cap at both ends plus a repeating middle, so end notches and terminals survive any panel size — only the plain middle tiles. Use this when the frame has ornament rather than a uniform run.',
-    pieces: nineSliceCapped(12, 12, 10, 16, 24),
+    // corner 12, edge 12, cap 12, MID 24, centre 24.
+    // The mid period deliberately MATCHES the plain kit's edge period (24), so
+    // a repeating motif drawn for `window-panel` transfers to this kit's
+    // middle unchanged — the capped kit adds ends, it does not re-scale what
+    // was already working. The cap matches the corner (12) so the two read as
+    // one continuous block of hardware rather than two arbitrary sizes.
+    // First cut used cap 10 / mid 16, which made the assembled sample SMALLER
+    // than the plain kit (92x76 against 120x96) with a third less room for the
+    // repeating motif. That was an accident of the numbers, not a decision.
+    pieces: nineSliceCapped(12, 12, 12, 24, 24),
   },
   {
     id: 'window-panel',
@@ -205,7 +214,11 @@ const STORAGE_KEY = 'panel_forge_kits_v1';
 // Bump when DEFAULT_KITS change shape/sizes: stored BUILT-IN kits are then
 // replaced with the fresh defaults (mesh-derived proportions); user variants
 // are kept as-is.
-const DEFAULTS_VERSION = 3;
+// v4: capped kit resized (cap 10->12, mid 16->24) so its period matches the
+// plain kit's and its sample is not the smaller canvas. Without the bump the
+// stored copy of a built-in silently wins over the code, and a sizing change
+// looks like it simply did not apply.
+const DEFAULTS_VERSION = 4;
 
 function loadKits(): KitSpec[] {
   try {
@@ -534,8 +547,10 @@ function assembleNineSliceCapped(kit: KitSpec): Assembly | null {
   const ct = P('center');
   if (!c || !tcl || !tm || !lct || !lm || !ct) return null;
 
-  const RX = 3; // repeats of the horizontal middle
-  const RY = 2; // repeats of the vertical middle
+  // Same repeat counts as the plain kit, so the two samples are directly
+  // comparable and the capped one is never the smaller canvas.
+  const RX = 4; // repeats of the horizontal middle
+  const RY = 3; // repeats of the vertical middle
   const W = c.w * 2 + tcl.w * 2 + RX * tm.w;
   const H = c.h * 2 + lct.h * 2 + RY * lm.h;
   const regions: AssemblyRegion[] = [];
