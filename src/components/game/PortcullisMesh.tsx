@@ -107,10 +107,19 @@ export const PortcullisMesh: React.FC<{ className?: string }> = ({ className = '
         the same fixed light every mesh here uses. This one was centred, which
         read as a different make of iron. Inset converted: 0.92u vertical,
         3.75u horizontal. */}
+    {/* Plate width is 11.25u = 2.5x the beam's 4.5u, which is exactly the
+        ratio of the two viewBox widths (1000 vs 400). Both meshes always
+        render at the SAME element width, so that ratio makes the two plates
+        render identically at every viewport — the user's requirement — and
+        the pair is sized to land square at 672px, the shared max-width.
+        (A nested <svg preserveAspectRatio> was tried here first and does NOT
+        work: it only controls mapping inside the nested viewport, and the
+        parent's preserveAspectRatio="none" stretch is applied on top of the
+        result. It measured 3.7x7.6 against the beam's 12.7x7.6.) */}
     {BAR_XS.map((x, i) => (
       <g key={`rivet${i}`}>
-        <rect x={x - 11.25} y="32.9" width="22.5" height="5.5" fill={IRON.lit} />
-        <rect x={x - 7.5} y="33.8" width="18.75" height="4.6" fill={IRON.body} />
+        <rect x={x - 5.625} y="32.9" width="11.25" height="5.5" fill={IRON.lit} />
+        <rect x={x - 3.715} y="33.835" width="9.34" height="4.565" fill={IRON.body} />
       </g>
     ))}
 

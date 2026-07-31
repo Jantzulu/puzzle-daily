@@ -31,8 +31,16 @@ import { IRON } from '../game/PortcullisMesh';
 
 const VIEW_W = 400;
 const VIEW_H = 52;
-const BEAM_TOP = 8;
-const BEAM_BOT = 44;
+// EVERY RUNG IS THE SAME THICKNESS OF IRON (user, 2026-07-31). The nav item
+// box is 52px and the play page's control rail is 44px, but what the eye
+// compares is the IRON, not the box. The rail's band maps exactly onto its
+// 44px box (the -62.5%/200% trick), so it draws 44px of iron; this beam drew
+// y 8..44 of 52 = 36px inside a 52px item. Eight pixels thinner, which reads
+// as a lighter rung without being obviously wrong.
+// 4..48 of 52 is 44px of iron at the item's natural height — same iron as the
+// rail, and the menu's layout is untouched because the ITEM box does not move.
+const BEAM_TOP = 4;
+const BEAM_BOT = 48;
 
 // Vertical bars — same x positions on every item so segments line up into
 // continuous bars down the whole menu (all items share width and viewBox)
@@ -63,16 +71,30 @@ export const GateBeamMesh: React.FC<{ first?: boolean }> = ({ first = false }) =
         </g>
       ))}
 
-      {/* The beam: dark under-frame, flat face, lit top edge */}
+      {/* The beam: dark under-frame, flat face, lit top edge. Layer
+          thicknesses are the rail's, in rendered pixels: 2.54 top inset,
+          2.54 highlight, 4.23 bottom lip. One unit here IS one rendered pixel
+          at the 52px item, so the numbers carry straight across. */}
       <rect x="0" y={BEAM_TOP} width={VIEW_W} height={BEAM_BOT - BEAM_TOP} fill={IRON.dark} />
-      <rect x="0" y={BEAM_TOP + 3} width={VIEW_W} height={BEAM_BOT - BEAM_TOP - 8} fill={IRON.face} />
-      <rect x="0" y={BEAM_TOP + 3} width={VIEW_W} height="3" fill={IRON.highlight} />
+      <rect x="0" y={BEAM_TOP + 2.54} width={VIEW_W} height={BEAM_BOT - BEAM_TOP - 6.77} fill={IRON.face} />
+      <rect x="0" y={BEAM_TOP + 2.54} width={VIEW_W} height="2.54" fill={IRON.highlight} />
 
-      {/* Square forge plates bolting each bar to the beam */}
+      {/* Forge plates bolting each bar to the beam.
+          NESTED SVG, and that is the whole trick. The outer mesh uses
+          preserveAspectRatio="none", so a "square" written in viewBox units
+          only renders square at ONE element width — measured 15.1x9 at 672px,
+          i.e. visibly squished, and it squashed differently on the rail than
+          here. A nested svg with xMidYMid meet keeps its CONTENT's aspect no
+          matter how the parent is stretched: the box below is deliberately
+          wider than tall, so the plate is sized by the height and lands
+          square at every viewport. Painted plate art will inherit the same
+          protection instead of being stretched with the rest of the mesh. */}
       {BAR_XS.map((x, i) => (
         <g key={`rivet${i}`}>
-          <rect x={x - 4.5} y="21" width="9" height="9" fill={IRON.lit} />
-          <rect x={x - 3} y="22.5" width="7.5" height="7.5" fill={IRON.body} />
+          <rect x={x - 2.25} y={BEAM_TOP + 17.73} width="4.5" height="7.56" fill={IRON.lit} />
+          {/* Flush bottom-right, inset top-left: the fixed light every mesh
+              here shares. */}
+          <rect x={x - 1.485} y={BEAM_TOP + 19.015} width="3.735" height="6.275" fill={IRON.body} />
         </g>
       ))}
 
