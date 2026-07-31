@@ -979,7 +979,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
             <div className="flex px-1">
               {hasActionSteps && (
                 <div className={hasDirectionInputs || hasAttributes ? 'flex-1 min-w-0 pr-2' : 'w-full'}>
-                  <p className="hud-label text-stone-400 mb-1">Actions</p>
+                  <p className="hud-label text-stone-400 mb-1 text-center">Actions</p>
                   {/* No `pl-2` here and none on the traits list below: both
                       lists hang off ONE left rail. The mismatched indents were
                       the most visible "nobody laid this out" tell in the
@@ -1033,7 +1033,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
 
               {hasAttributes && (
                 <div className={hasActionSteps || hasDirectionInputs ? 'flex-1 min-w-0 pl-0' : 'w-full'}>
-                  <p className="hud-label text-stone-400 mb-1">Attributes</p>
+                  <p className="hud-label text-stone-400 mb-1 text-center">Attributes</p>
                   <ul className="hud-body text-stone-300 space-y-1">
                     {renderedCharacter.attributes!.map((attr, idx) => (
                       <li key={idx}>

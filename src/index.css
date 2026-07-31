@@ -3921,7 +3921,15 @@ body.menu-gate-instant .quest-panel-sticky {
 
 .quest-rung {
   position: relative;
-  height: var(--quest-rung-h);
+  /* MIN-height, not height (2026-07-31, user call): "the text inside the bar
+     is also allowed to trail off with '...' which should not be allowed."
+     A fixed 26px box forced `truncate` on the objective, and the objective is
+     the one sentence on this page the player must actually be able to read.
+     The rung grows to two lines on a long quest instead of amputating it;
+     every other quest costs exactly what it did before. */
+  min-height: var(--quest-rung-h);
+  padding-top: 2px;
+  padding-bottom: 2px;
   background: linear-gradient(#3b352d 0 60%, #2b2620 60% 100%);
   border-top: 1px solid rgba(255, 235, 200, 0.22);
   border-bottom: 1px solid #17130f;

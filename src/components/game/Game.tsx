@@ -257,16 +257,22 @@ export const Game: React.FC<GameProps> = ({
   //
   // >= 768px NEVER COLLAPSES. Tablets and desktops have the vertical room,
   // and the banner's two dev controls keep their labels there.
-  const [questSeen, setQuestSeen] = useState(false);
+  // NO FLASH OF THE CLOTH BANNER ON PHONES (2026-07-31, user call: "the quest
+  // banner still loads briefly before being replaced with the new slimmer
+  // bar"). Both of these used to start in the EXPANDED state on every device,
+  // so a phone painted the full banner and then swapped it out — the layout
+  // visibly resettling on load, which reads as jank no matter how well the
+  // cross-fade is tuned. Narrow viewports now boot straight to the rung. The
+  // rung states the objective inline, so nothing is hidden by starting there.
+  const questStartsWide = typeof window !== 'undefined' && window.matchMedia('(min-width: 768px)').matches;
+  const [questSeen, setQuestSeen] = useState(() => !questStartsWide);
   const [questReopened, setQuestReopened] = useState(false);
   // `questRender` is the state actually PAINTED; it lags the desired state by
   // one 90ms fade step so the height change happens while the band is
   // invisible (see the swap effect). true = the full cloth banner.
-  const [questRender, setQuestRender] = useState(true);
+  const [questRender, setQuestRender] = useState(() => questStartsWide);
   const [questDim, setQuestDim] = useState(false);
-  const [questWide, setQuestWide] = useState(
-    () => typeof window !== 'undefined' && window.matchMedia('(min-width: 768px)').matches
-  );
+  const [questWide, setQuestWide] = useState(() => questStartsWide);
   const [showSideQuestHelp, setShowSideQuestHelp] = useState(false);
   // The rung's expand is a TOGGLE whose other half is the player's next move,
   // not a second tap on the banner. Re-collapsing by tapping the open banner
@@ -280,11 +286,14 @@ export const Game: React.FC<GameProps> = ({
     setQuestReopened(false);
   }, []);
 
-  // A new puzzle is a new quest: show the cloth again.
+  // A new puzzle is a new quest: show the cloth again — but only where the
+  // cloth is ever shown. Resetting to expanded unconditionally re-created the
+  // load flash every time the puzzle changed on a phone.
   useEffect(() => {
-    setQuestSeen(false);
+    const wide = window.matchMedia('(min-width: 768px)').matches;
+    setQuestSeen(!wide);
     setQuestReopened(false);
-    setQuestRender(true);
+    setQuestRender(wide);
     setQuestDim(false);
   }, [currentPuzzle.id]);
 
@@ -3766,7 +3775,10 @@ export const Game: React.FC<GameProps> = ({
                       +{gameState.puzzle.sideQuests.length}
                     </button>
                   )}
-                  <span className="hud-body min-w-0 flex-1 truncate text-copper-300">{questLabel}</span>
+                  {/* No `truncate`: the objective wraps rather than trailing
+                      off into an ellipsis (user call, 2026-07-31). The rung's
+                      height is a min, so a long quest takes a second line. */}
+                  <span className="hud-body min-w-0 flex-1 text-copper-300 leading-tight">{questLabel}</span>
                 </div>
                 <HelpOverlay
                   sectionId="side_quests"
