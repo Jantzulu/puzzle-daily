@@ -905,3 +905,73 @@ during the next session.
   forever). A behavior-ACTION variant (full trigger/ordering
   flexibility) remains a possible future refinement if the status
   proves too rigid.
+
+## THE PANELS SHOULD BE PART OF THE WORLD (captured 2026-07-31, user vision)
+
+Captured verbatim-in-spirit at the end of the mobile-fit work, while the user
+was deciding what to keep from the "War Table" experiment (see
+`~/.claude/.../memory/project_mobile_fit_state.md` for that branch state).
+
+**What they liked about the new interface:** the FEEL of clicking through it,
+and the directional selector. Also: the unified glow/colour change marking
+"this hero is selected and this is its information" works *in theory*.
+
+**What is wrong, in their words:** "the panels themselves are hard to look at.
+The brownish grey gradients with the rounded edges do not match the style of
+the game at all." And the core of it:
+
+> "The board is a rich *world*, these panels and cards are sterile panels. It
+> feels natural that pixel art would end up in these areas, where the panels
+> themselves are a scene made up of the constituent parts."
+
+So the direction is: **the UI stops being chrome drawn in CSS and becomes
+authored pixel art — a continuation of the dungeon rather than a dashboard
+bolted to it.** Panels are scenes assembled from parts, the same way the board
+is assembled from tiles.
+
+Minor nitpicks noted at the same time: the hero title should be BIGGER and
+CENTRED.
+
+### Why the current chrome clashes (diagnosis, not yet a decision)
+The board is integer-scaled pixel art: hard edges, a fixed palette, every
+edge landing on a whole art pixel. The panels are CSS: smooth gradients,
+sub-pixel rounded corners, soft inset shadows — a resolution-INDEPENDENT
+grammar sitting next to a resolution-LOCKED one. They cannot agree, and the
+mismatch reads as "sterile" no matter how carefully the CSS is tuned. Rounded
+corners and gradients are the two loudest tells.
+
+### The technical crux
+If panel art is drawn as pixel art it must obey the SAME rule the board obeys:
+native resolution × INTEGER zoom, never fit-to-box (see
+`native-resolution-rendering-plan.md`, a won't-do record). A stretched 9-slice
+frame at a fractional scale will look worse than the CSS does now. That likely
+means:
+- panel art authored at a native size, composed of edge/corner/fill parts
+  (9-slice or a hand-placed part kit), and
+- panel dimensions QUANTISED to the art's pixel grid, which constrains layout
+  in the same way the board's zoom steps do.
+
+### The readability tension (the thing to solve, per the user)
+Texture behind text is the enemy of reading it. Likely resolution: the art
+carries the FRAME, the fixtures and the edges; text sits on quiet inset
+"plates" (parchment, slate, recessed stone) that are themselves art but
+deliberately low-contrast and flat where the glyphs land. Selection state
+could then be expressed IN the art (a lit frame, a torch, a banner unfurling)
+rather than as a CSS tint — which is what the glow is standing in for today.
+
+### Tooling implication (user raised this themselves)
+"We made the tool to help with drawing these assets, but that may need to be
+revised with our work and this vision." The sprite/pixel editor is built for
+ENTITY sprites (frames, directions, animation slots). Panel art needs a
+different authoring model: 9-slice margins, tileable fills, corner/edge parts,
+fixtures placed at anchors, and a preview at integer zoom against real text.
+Probably a new asset CATEGORY rather than a change to the sprite editor.
+
+### Open questions for the design conversation
+1. Does panel art scale with the board's zoom, or does the UI keep its own
+   fixed integer scale? (The board's scale changes with viewport AND dpr.)
+2. 9-slice frames (cheap, flexible, slightly generic) vs authored part kits
+   per panel (richer, far more art, harder to make responsive)?
+3. How much art is the user willing to draw for this? It is the real cost.
+4. Does the enemy/ally panel get its own material language (blood/iron) the
+   way heroes would get theirs (arcane/lavender)?
