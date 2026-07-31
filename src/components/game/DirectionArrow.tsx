@@ -49,8 +49,18 @@ export function DirectionArrow({ direction, className = '', size = 12 }: Directi
  * opacity only per the page-decoration perf rule). Rotation sits on the
  * wrapper so the animated translateX inside always follows the arrow's
  * heading. Same east-pointing base + rotation convention as DirectionArrow.
+ *
+ * `animated` defaults to TRUE so every existing call site is unchanged. Pass
+ * false to render the glyph at rest: a card strip runs one of these per card,
+ * and six-plus infinite 1.2s loops ticking at idle is motion nobody asked for
+ * on the row the player is not currently reading.
  */
-export function MovementArrow({ direction, className = '', size = 13 }: DirectionArrowProps) {
+export function MovementArrow({
+  direction,
+  className = '',
+  size = 13,
+  animated = true,
+}: DirectionArrowProps & { animated?: boolean }) {
   const rotation = directionRotation[direction];
 
   return (
@@ -62,7 +72,7 @@ export function MovementArrow({ direction, className = '', size = 13 }: Directio
         width={size}
         height={size}
         viewBox="0 0 12 12"
-        className="movement-arrow-anim"
+        className={animated ? 'movement-arrow-anim' : undefined}
       >
         <path
           d="M2 6 L9 6 M6 3 L9 6 L6 9"

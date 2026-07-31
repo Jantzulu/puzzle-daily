@@ -12,22 +12,38 @@ import { lockBodyScroll } from '../../utils/scrollLock';
  * is now the compass's home; the hero panel imports it for the orders pill's
  * "you chose north-east" readout.
  *
- * WHY A CONCAVE DART AND NOT A TRIANGLE. This was `M5 1L8 7H2Z` — a
- * near-equilateral triangle (interior angles ~52/62/66 deg, apex only 4.0
- * units from the centroid against 3.61 for the base corners). Axis-aligned
- * that survives, because the flat horizontal base anchors it and the eye
- * reads "the pointy end is the one opposite the level edge". Rotated 45 deg
- * there is no level edge and no vertex sharp enough to dominate, so the eye
- * picks a corner at random — all four diagonals read roughly 180 deg WRONG in
- * side-by-side tests. The measured geometry was defensible; the perception
- * was not, and for a control whose entire job is to say WHICH WAY, perception
- * is the spec.
+ * IT IS A SHAFT AND A HEAD, AND IT TOOK THREE CUTS TO GET THERE. Both
+ * earlier attempts were single closed blobs, and both read ~180 deg WRONG on
+ * all four diagonals:
+ *   1. `M5 1L8 7H2Z` — a near-equilateral triangle. Axis-aligned it survives,
+ *      because the flat horizontal base anchors it and the eye reads "the
+ *      pointy end is the one opposite the level edge". Rotated 45 deg there
+ *      is no level edge and no vertex sharp enough to dominate.
+ *   2. `M5 0.83L7.83 8.66L5 7.71L2.17 8.66Z` — a concave dart, cut to a
+ *      measured spec: apex 1.20x farther from the area centroid than the tail
+ *      wings and 12 deg sharper. Those numbers are correct and they did not
+ *      help. On a diagonal the trailing wing lands near-horizontal and forms
+ *      a broad triangle with a flat-ish base — which IS the arrowhead
+ *      gestalt — while the true head becomes a thin sliver. Rendered beside a
+ *      plain shaft-and-head arrow at the same rotation, the two disagreed by
+ *      half a turn.
  *
- * The dart fixes it structurally rather than by degrees: the tail notch is
- * CONCAVE, and a notch can never be mistaken for a point at any rotation.
- * There is exactly one convex extreme, so "forward" is unambiguous with no
- * axis-aligned edge to lean on. The viewBox and the rotation map below are
- * unchanged, so every call site keeps its size and bearing.
+ * SO THE MEASURED-PROPORTION SPEC IS RETIRED. Do not re-derive centroid
+ * ratios or interior angles to defend a glyph here; two glyphs passed that
+ * test and failed the only test that matters. A shaft is what makes an arrow
+ * unambiguous: the head is the only WIDE part, the shaft is the only LONG
+ * part, and no rotation can swap those roles. This is the same silhouette as
+ * every navigation arrow in the world, which is the point — the player must
+ * not have to learn it.
+ *
+ * THE ACCEPTANCE TEST IS PERCEPTUAL AND IT IS CHEAP. Render the four
+ * diagonals beside a plain shaft-and-head reference arrow at the same
+ * rotation, magnified, and confirm they agree; then confirm all eight
+ * bearings still read at 24 / 16 / 14 / 9px, the four call-site sizes
+ * (rose cell, orders pill, card row, spell chip). The viewBox and the
+ * rotation map below are unchanged, so every call site keeps its size and
+ * bearing, and every vertex is inside r=4.75 of the box centre so no
+ * rotation clips.
  */
 export const CompassArrow: React.FC<{ direction: string; size?: number; className?: string }> = ({ direction, size = 10, className = '' }) => {
   const rotations: Record<string, number> = {
@@ -37,7 +53,7 @@ export const CompassArrow: React.FC<{ direction: string; size?: number; classNam
   const rotation = rotations[direction] ?? 0;
   return (
     <svg width={size} height={size} viewBox="0 0 10 10" className={className} style={{ transform: `rotate(${rotation}deg)` }}>
-      <path d="M5 0.6L8.6 8.8L5 6.6L1.4 8.8Z" fill="currentColor" />
+      <path d="M5 0.5L9 5.2L6.5 5.2L6.5 9.5L3.5 9.5L3.5 5.2L1 5.2Z" fill="currentColor" />
     </svg>
   );
 };
@@ -205,7 +221,7 @@ export const DirectionPicker: React.FC<DirectionPickerProps> = ({ entry, sprite,
         {/* CAP ROW — what is being aimed, what it is currently set to, and the
             way out. Same vocabulary as the plate's right cap: engraved label,
             a groove, then a recessed well for the control. */}
-        <div className="flex items-center gap-2 h-5 mb-2.5">
+        <div className="flex items-center gap-2 h-7 mb-2.5">
           <span className="hud-label text-arcane-300 truncate">{shownEntry.caption}</span>
           <span className="hero-cap__groove" aria-hidden="true" />
           {shownEntry.current ? (
@@ -220,10 +236,17 @@ export const DirectionPicker: React.FC<DirectionPickerProps> = ({ entry, sprite,
           ) : (
             <span className="hud-label text-copper-300 whitespace-nowrap">Not set</span>
           )}
+          {/* 44x44 of real target, not the cap rail's 44x26. `.hero-cap__well`
+              is borrowed for the LOOK only; the sheet overrides its
+              `--hit-h` cap (see index.css) because that cap exists to keep a
+              cap control off the quest rung and the hero cards, and neither
+              is anywhere near this sheet. The picker exists BECAUSE its
+              predecessor was a 17px target on a required input — shipping
+              its way out at 26px would have been the same mistake, quieter. */}
           <button
             type="button"
             onClick={onClose}
-            className="hero-cap__well hit-44 ml-auto flex items-center justify-center w-9 h-5 flex-shrink-0"
+            className="hero-cap__well hit-44 ml-auto flex items-center justify-center w-11 h-7 flex-shrink-0"
             aria-label="Close direction picker"
           >
             <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">

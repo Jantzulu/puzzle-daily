@@ -48,10 +48,21 @@ const BAR_XS = [100, 300, 500, 700, 900];
 const BAR_HALF = 15;   // bar half-width (3% of viewBox, matches the menu)
 const SPIKE_HALF = 22; // spike half-width at the root
 
+// Rivets at the rail's END CAPS instead of under every bar. Only the CONTROL
+// rail asks for this, and only because it is the one rail with DOM controls
+// on its face: at phone widths a bar rivet renders ~8x5px of lit plate with a
+// darker centre, which next to a glyph does not read as forged hardware — it
+// reads as a tofu box. Measured at 375 the 10%/30% plates landed flush
+// against the 'L' of "Lives:" and poking out from behind the third heart.
+// The end plates clear every content zone at 320-1280 because the rail's own
+// px-3 gutter is where they sit. The nav gate's rail (no controls, pure
+// lattice) keeps the bar rivets — it is the default.
+const RIVET_ENDS = [20, 980];
+
 // className is swappable: the nav's gate menu renders this same mesh as
 // its bottom rung on pages without the control rail (nav-gate-rail-mesh)
 // — the gate must bottom out with the identical spiked rail everywhere.
-export const PortcullisMesh: React.FC<{ className?: string }> = ({ className = 'control-rail-mesh' }) => (
+export const PortcullisMesh: React.FC<{ className?: string; rivets?: 'bars' | 'ends' }> = ({ className = 'control-rail-mesh', rivets = 'bars' }) => (
   <svg
     className={className}
     viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
@@ -80,7 +91,7 @@ export const PortcullisMesh: React.FC<{ className?: string }> = ({ className = '
     {/* Square forge plates bolting each bar to the rail. Non-square units
         here (viewBox squashes): ~22u wide × 7u tall renders square. Same
         11px offset from the beam top as the menu beams' plates. */}
-    {BAR_XS.map((x, i) => (
+    {(rivets === 'ends' ? RIVET_ENDS : BAR_XS).map((x, i) => (
       <g key={`rivet${i}`}>
         <rect x={x - 11} y="31" width="22" height="7" fill={IRON.lit} />
         <rect x={x - 7} y="32.2" width="14" height="4.6" fill={IRON.body} />

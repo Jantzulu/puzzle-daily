@@ -2194,6 +2194,34 @@ body.menu-gate-instant .quest-panel-sticky {
                    ratio instead of stretching between top/bottom offsets */
   pointer-events: none;
   z-index: 0;
+  /* A PORTCULLIS HANGS IN THE OPENING, NOT ON THE WALL FACE. The rail spans
+     the composition's 672px column because the CONTROLS sit on it, but the
+     spike row hangs from the same viewBox, so at 1280 two of its five teeth
+     landed around x=365 and x=905 — entirely outside a 216px board, on the
+     aperture's wall. Against the old black ground they read as cave-ceiling
+     silhouettes; against a lit wall they read as loose grey triangles.
+     This keeps the rail band itself full width (0 -> 81.25% of the svg box,
+     i.e. everything down to PortcullisMesh's RAIL_BOT) and clips only what
+     hangs BELOW it to the aperture — the opening plus its reveal, the same
+     window `.dungeon-aperture` paints. Teeth that fall outside are dropped
+     WHOLE, never sliced: at 1280 the surviving three sit over the board and
+     its jambs, and on every phone profile the window is wider than the rail
+     so nothing is clipped at all.
+     Static geometry, evaluated once per resize — nothing animates here (the
+     rail's ride is a transform on the parent, and the clip travels with it).
+     If --board-w is not yet published the whole property is invalid at
+     computed-value time and resolves to `none`: unclipped, i.e. today's
+     behaviour, which is the safe direction to fail. */
+  clip-path: polygon(
+    0% 0%,
+    100% 0%,
+    100% 81.25%,
+    calc(50% + var(--board-w) / 2 + var(--aperture-reveal)) 81.25%,
+    calc(50% + var(--board-w) / 2 + var(--aperture-reveal)) 100%,
+    calc(50% - var(--board-w) / 2 - var(--aperture-reveal)) 100%,
+    calc(50% - var(--board-w) / 2 - var(--aperture-reveal)) 81.25%,
+    0% 81.25%
+  );
 }
 
 .control-rail > *:not(.control-rail-mesh) {
@@ -2858,44 +2886,20 @@ body.menu-gate-instant .quest-panel-sticky {
   transform: translate(-50%, -50%);
 }
 
-/* The same slop, anchored to the control's BOTTOM edge and grown upward
-   instead of centred — rule 3's "cap the axis" case for a control that
-   sits on a seam.
-
-   THE SHAPE OF THE PROBLEM. The hero plate's cap band rests on the top
-   rail of the hero strip. Directly below that rail is a hero card — the
-   most common target on the page — and one of the caps is a destructive
-   clear-all; a centred 44px slop would spend its bottom half inside card 3
-   and fire "remove all placed heroes" on a tap meant for the Knight.
-
-   `bottom: 0` pins the slop's bottom edge to the control's own bottom
-   edge — which is the seam — so nothing ever crosses into the strip, while
-   the full 44px is still reached by growing UP into the banner's cloth
-   margin, which holds no controls. BOTH AXES KEEP THE FULL 44px. An
-   earlier cut capped `--hit-h` to the cap band's own 22px because the quest
-   banner's help button sat directly above the LEFT tab and the slop
-   swallowed it; the fix was to move that collision out of the way (the
-   left tab is now pure engraving and every cap control lives in the right
-   tab, ~150px clear of the banner's button at every width) rather than to
-   spend the axis. Capping below 44 fails the floor — it is only ever worth
-   it against a collision that cannot be moved.
-
-   Same three rules as `.hit-44`: put it on the CONTROL, not a wrapper; it
-   is clipped by overflow ancestors; and it still hit-tests, so check what
-   sits above the control before using it. */
-.hit-44-up {
-  position: relative;
-}
-
-.hit-44-up::after {
-  content: '';
-  position: absolute;
-  left: 50%;
-  bottom: 0;
-  width: max(100%, var(--hit-w, 44px));
-  height: max(100%, var(--hit-h, 44px));
-  transform: translateX(-50%);
-}
+/* THERE IS NO "GROW UPWARD" VARIANT ANY MORE, AND THAT IS A FIX, NOT A
+   SIMPLIFICATION. `.hit-44-up` anchored the slop to the control's BOTTOM
+   edge so a cap control could never bleed down into a hero card while
+   still reaching 44px by growing UP. That was written when the thing above
+   the hero plate's cap rail was the quest banner's cloth margin, which
+   held no controls. S8 replaced that margin with the quest RUNG — one
+   full-width "show the full quest" button — so the upward slop stopped
+   being free: measured with elementFromPoint at 393px, the cap's Help well
+   owned x287..330 / y479..520, i.e. 22px of the bare, lit, VISIBLE quest
+   rung. A control that grows into whatever is above it is only safe while
+   nothing is above it, which is not a property a layout keeps.
+   Cap controls now use plain `.hit-44` with `--hit-h: var(--hero-cap-h)`
+   (see `.hero-cap__well`), which confines the slop to the cap band in BOTH
+   directions and cannot rot when a neighbour changes. */
 
 /* ============================================
    HUD DESIGN TOKENS — type ramp, colour roles, seam, breathe
@@ -3025,29 +3029,48 @@ body.menu-gate-instant .quest-panel-sticky {
    surface the plan touches. Costs 0px and 0 paint: nothing consumes these
    yet.
 
-   THEMED PAGES MUST STAY THEMED. Three of these roles have a real theme
-   counterpart already driving the same pixels today, so they are read
-   through the variable with the palette hex as fallback — otherwise the
-   first S5 consumer would quietly unhook that text from the user's theme.
-   Measured on the shipped fixture theme: `.text-stone-400` (which reads
-   --theme-text-secondary-strong, :674) and `.text-copper-400` (which reads
-   --theme-text-heading, :655) BOTH compute to #c69c5d, so a literal
-   #9a8a6e / #d4a574 here would turn panel text khaki under a banner and
-   carved headers that are still gold. Same bargain as the stone-400 split.
+   ONLY ONE ROLE IS ROUTED THROUGH THE THEME, AND THAT IS THE RULE.
+   MEASURED FACT, not a guess: on the shipped fixture theme
+   `--theme-text-secondary`, `--theme-text-secondary-strong` AND
+   `--theme-text-heading` are ALL `#c69c5d` (probe on .theme-root:
+   {secondary:'#c69c5d', secondaryStrong:'#c69c5d', heading:'#c69c5d',
+   primary:''}). So ANY role routed through a theme TEXT variable lands on
+   the same hex as every other role routed the same way — a ramp of four
+   "different" roles collapses into one colour and the distinctions this
+   block exists to make stop existing. Do not route a further role into
+   that hole.
 
-   The other four stay literal ON PURPOSE. stone-300 has no index.css theme
-   override today, so routing --hud-ink-2 through a variable would be NEW
-   theming behaviour, not preservation. --hud-hero / --hud-foe / --hud-vital
-   are semantic identity colours (hero vs enemy vs alive) with no theme
-   variable to read — they must not drift with a palette. */
+   The first cut did exactly that and it cost the vocabulary its two most
+   load-bearing distinctions:
+     · `--hud-ink-3: var(--theme-text-secondary-strong)` computed #c69c5d,
+       so the ink ramp's third step (luminance .876 -> .399 -> .366) was a
+       1.08:1 "dim" that is really a hue jump to gold — imperceptible as
+       rank, so a three-step hierarchy rendered as two. Literal #9a8a6e
+       restores a 1.44:1 step below ink-2.
+     · `--hud-gold: var(--theme-text-heading)` computed #c69c5d — BYTE
+       IDENTICAL to --hud-ink-3. The role whose entire job is "you can
+       touch this" was the same pixel value as muted body text. Literal
+       #d4a574 against literal ink-3 #9a8a6e is a 1.51:1 luminance step
+       plus a real chroma difference; it was 1.00:1.
+   "You can touch this" is a FUNCTION colour, exactly like --hud-hero /
+   --hud-foe / --hud-vital are IDENTITY colours: it must not drift with a
+   palette. Same for the ink FLOOR, which is the contrast guarantee.
+
+   `--hud-ink` alone reads `--theme-text-primary` because that is the
+   PRIMARY READING colour of a themed page and the theme is entitled to set
+   it (it is also unset on the shipped theme, so the literal is what paints
+   today). The existing `.text-stone-400` / `.text-copper-400` theme splits
+   at :674 and :655 are untouched and MUST stay — those classes have real
+   consumers whose colour a user's theme already owns. These tokens are
+   new, and they are the HUD's own vocabulary. */
 .theme-root,
 .hero-plate {
   --hud-ink: var(--theme-text-primary, #f9efd6);           /* parchment-200 — primary reading colour */
-  --hud-ink-2: #b5a892;                                    /* stone-300 — secondary copy (no theme var) */
-  --hud-ink-3: var(--theme-text-secondary-strong, #9a8a6e);/* stone-400 — the muted FLOOR (AA on the wash) */
+  --hud-ink-2: #b5a892;    /* stone-300 — secondary copy */
+  --hud-ink-3: #9a8a6e;    /* stone-400 — the muted FLOOR (AA on the wash) */
   --hud-hero: #c9b5e6;     /* arcane-300 — hero identity (semantic, never themed) */
   --hud-foe: #f4a8a8;      /* blood-300 — enemy identity (semantic, never themed) */
-  --hud-gold: var(--theme-text-heading, #d4a574);          /* copper-400 — interactive affordance ONLY */
+  --hud-gold: #d4a574;     /* copper-400 — interactive affordance ONLY (never themed) */
   --hud-vital: #789c78;    /* moss-400 — health / alive (semantic, never themed) */
 }
 
@@ -3090,71 +3113,354 @@ body.menu-gate-instant .quest-panel-sticky {
     linear-gradient(180deg, rgba(255, 235, 200, 0.05) 0, rgba(255, 235, 200, 0) 56px),
     linear-gradient(var(--chrome-bevel-light), var(--chrome-bevel-light)),
     var(--chrome-noise);
-  border-radius: var(--theme-border-radius, 4px) var(--theme-border-radius, 4px) 0 0;
   box-shadow:
     inset 0 1px 0 var(--chrome-bevel-light),
     inset 1px 0 0 rgba(0, 0, 0, 0.35),
     inset -1px 0 0 rgba(0, 0, 0, 0.35);
 }
 
-/* ---- The plate's caps ------------------------------------------------
-   Two iron tabs standing on the plate's top rail, out of flow, 0 layout px.
+/* ---- The plate's ends (S9 — the nesting model) -----------------------
+   The quest rung and the hero panel are SIBLINGS with the replay ternary
+   between them, so they cannot share a wrapper element (`.replay-slab-flow`
+   deliberately paints past the document end with `margin-bottom: -80px` and
+   its own `--slab-h` viewport system; reparenting it would break both). They
+   instead share EDGES: the rung wears the plate's top end, the panel wears
+   its bottom end, and because they are flush the eye reads one framed object
+   with a groove across it rather than two unrelated slabs.
 
-   WHY THEY ARE FORGED AND NOT BOXED. The tabs sit in front of the quest
-   banner's hanging cloth — there is nowhere else for them to go: the cloth
-   fills the band's whole `pb-4` and only 4px separate the band's bottom
-   from the plate's top, so a cap that clears the cloth entirely does not
-   fit. The first cut drew them as near-black rectangles with a 1px stone
-   border, which sliced the cloth's torn hem and read as a z-index accident.
-   This is the same stock, bevels and forge bolts as `.nav-pill` — the
-   portcullis's own signage language, and the same iron as the rod the
-   banner hangs from — so the tab reads as mounted hardware and the dags
-   terminate INTO it instead of being cut by it. The 2px lit top edge is
-   what does most of that work; the halo shadow puts the tab in front.
+   THE GROOVE IS SPLIT ACROSS THE TWO ELEMENTS. `--top` ends in the dark half
+   (`inset 0 -1px 0`) and the base plate opens with the lit half
+   (`inset 0 1px 0 var(--chrome-bevel-light)`) — together, exactly
+   `.dungeon-seam-flush`, for zero layout pixels. An INSET shadow paints
+   inside the border box where a border would cost 2px, so the 54px S5
+   reclaimed stays reclaimed. */
+.hero-plate--top {
+  border-radius: var(--theme-border-radius, 4px) var(--theme-border-radius, 4px) 0 0;
+  box-shadow:
+    inset 0 1px 0 var(--chrome-bevel-light),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.6),
+    inset 1px 0 0 rgba(0, 0, 0, 0.35),
+    inset -1px 0 0 rgba(0, 0, 0, 0.35);
+}
 
-   `border-bottom: 0` + top-only radius is the other half: the tab's bottom
-   is the plate's top rail, so it rises OUT of the plate rather than
-   floating on the banner. */
+/* THE 6px OF INNER MARGIN IS THE FRAME, NOT SLACK. A bevelled edge with
+   content flush against it reads as a clipping bug rather than as chrome —
+   the roster's cards used to run into the plate's own side bevels. 6px top
+   and bottom, 4px at the sides: enough to see the stone the compartments are
+   set into, and the only place in this whole plan that SPENDS height on
+   purpose.
+
+   The outer drop shadow is what lifts the finished object off the page —
+   nothing else on the play page below the board casts one, which is why the
+   panel read as loose text rather than as a component. Static paint; the
+   pinned decoration rule is about animation. */
+.hero-plate--bottom {
+  border-radius: 0 0 var(--theme-border-radius, 4px) var(--theme-border-radius, 4px);
+  padding: 6px 4px;
+  box-shadow:
+    inset 0 1px 0 var(--chrome-bevel-light),
+    inset 0 -1px 0 var(--chrome-bevel-dark),
+    inset 1px 0 0 rgba(0, 0, 0, 0.35),
+    inset -1px 0 0 rgba(0, 0, 0, 0.35),
+    0 4px 10px rgba(0, 0, 0, 0.4);
+}
+
+/* WHEN NOTHING IS FLUSH ABOVE IT, THE PLATE HAS TO CLOSE ITSELF. `--bottom`
+   is deliberately open-topped: square top corners and only the lit HALF of a
+   seam, because the quest rung sits on it with the dark half. That contract
+   holds on phones. It does not hold at >=768px, where the quest band never
+   collapses — there the object above is the hanging CLOTH banner, which is
+   not plated (cloth is not stone) and stands off by a deliberate gap. An
+   open-topped box under a gap is not a frame, it is a clipping bug: measured,
+   the desktop panel showed a square-cornered plate whose top edge simply
+   stopped.
+
+   So in that state the plate takes its own top: the radius closes right
+   round, and the 1px seam-half becomes the 2px lit edge `.dungeon-panel`
+   wears (index.css:545) — the same top-left light, at the weight an object
+   that is ALONE has to carry. Nothing else changes; it is still one plate,
+   still zero layout px. */
+.hero-plate--bottom.hero-plate--standalone {
+  border-radius: var(--theme-border-radius, 4px);
+  box-shadow:
+    inset 0 2px 0 var(--chrome-bevel-light),
+    inset 0 -1px 0 var(--chrome-bevel-dark),
+    inset 1px 0 0 rgba(0, 0, 0, 0.35),
+    inset -1px 0 0 rgba(0, 0, 0, 0.35),
+    0 4px 10px rgba(0, 0, 0, 0.4);
+}
+
+/* ---- The aperture ----------------------------------------------------
+   THE BOARD IS THE OPENING IN A WALL, SO THE WALL HAS TO BE PAINTED. Two
+   earlier cuts drew only the cut itself — a 1px dark line plus a 1px lit
+   line hugging the canvas — and both were measurably invisible: sampled at
+   dpr 3 the dark line came back rgb(2,2,1) against a page ground of
+   rgb(4,4,3) (a two-LEVEL difference) and the lit line rgb(25,24,20), a
+   1.14:1 contrast. Invisible chrome is not chrome. Worse, drawing only the
+   cut left the real defect untouched: the control rail and the hero plate
+   both declare the composition's measure (`max-w-2xl`, 672px) while the
+   canvas is whatever the zoom quantizer produced, so bare page ground sat
+   between them — 9.5px per side on an iPhone SE, 18.5px on a 14 Pro and
+   228px per side at 1280. Three different unexplained insets. That gap IS
+   the user's "the way it is NESTED on the screen" complaint.
+
+   SO THIS PAINTS THE MASONRY, NOT A HAIRLINE. Each side is one strip bound
+   at BOTH ends:
+     · OUTER edge -> the composition's own measure, `max(0px, 50% - 336px)`,
+       i.e. exactly the 672px column the rail above and the plate below use.
+       (Not the board wrapper's `max-w-[900px]` — that was the first cut's
+       error and it is why the desktop version framed a void.)
+     · INNER edge -> `--board-w`, the board's measured layout width, which
+       Game.tsx publishes because there is no CSS expression for it: the
+       width moves with viewport AND dpr (324px at 393, 216px at 1280 dpr 1).
+   Between those two edges: a recessive stone wash + the shared grain, so
+   rail -> wall -> rung -> plate read as ONE continuous column with a cut in
+   it. The inner 10px of each strip thickens into an opaque JAMB
+   (`#1a1611`, ~5x the ground's luminance — visibly a different material),
+   dark-cut on its outer edge and finished with a lit lip at
+   rgba(255,235,200,.22) — the same weight `.quest-rung`'s lit edge carries
+   — on its INNER edge, which lands exactly on the canvas. No gap: the
+   strip's inner edge IS `50% ± --board-w/2`.
+
+   TWO STRIPS, NOT ONE ELEMENT WITH A HOLE. `::before`/`::after` means
+   nothing whatsoever paints over the board — no veil of grain across the
+   canvas, no stacking-context question over the sprites.
+
+   FAIL-SAFE: `--board-w` defaults to `100%`, so before Game.tsx's
+   ResizeObserver publishes a pixel value each strip resolves to zero (or
+   negative) width and paints nothing. An unbound jamb would cover the board.
+
+   BOTH ENDS ARE CLOSED BY REAL OBJECTS: the strip runs UP behind the
+   portcullis rail's iron (the sticky rail wrapper paints over the board's
+   z-10) and DOWN to the quest rung's top edge. -14px/-2px are the measured
+   gaps plus a few px of overlap so neither end can show a sliver of page
+   ground at a fractional dpr.
+
+   THE OUTER EDGE IS CLAMPED TO A REVEAL, AND THAT CLAMP IS THE POINT.
+   `max(0px, 50% - 336px, 50% - --board-w/2 - --aperture-reveal)`. The three
+   terms in order: never past the wrapper; never wider than the composition's
+   672px column; and never more than a reveal's worth of wall around the
+   opening. The third term is what stops the desktop case from painting a
+   wall INSTEAD of a page: at 1280 dpr 1 the quantizer gives a 216px board in
+   a 672px column, so the unclamped strips were 228px of wall PER SIDE — 68%
+   of the framed width, and at dpr 1 `--chrome-noise` is invisible, so it
+   rendered as a featureless brown rectangle either side of a small puzzle.
+   That is not "a board set into a wall", it is an unfinished panel; the
+   baseline's plain black ground read better. 44px is jamb (10) + reveal
+   (34), which is a masonry opening. On every phone profile the second term
+   is already negative and the first clamps to 0, so the phone composition —
+   where the board nearly fills the column anyway — is byte-identical.
+
+   ZERO LAYOUT PIXELS: out-of-flow pseudo-elements and inset shadows only.
+   Nothing here touches the board's size — ResponsiveGameBoard measures
+   container WIDTH and the zoom quantizer is an axiom; this only READS the
+   result. */
+.dungeon-aperture {
+  --board-w: 100%;
+}
+
+/* How much wall may show outside the opening. Shared with the control rail's
+   spike clip below, because the teeth and the wall have to agree on where
+   the aperture ENDS — declared on :root so both can read it. */
+:root {
+  --aperture-reveal: 44px;
+}
+
+.dungeon-aperture::before,
+.dungeon-aperture::after {
+  content: '';
+  position: absolute;
+  top: -14px;
+  bottom: -2px;
+  pointer-events: none;
+  /* The wall's own value: ~4x the page ground, so the column is legible as
+     a surface without ever competing with the dungeon inside the opening. */
+  background-color: rgba(255, 235, 200, 0.05);
+  background-image:
+    /* 1px dark cut where the jamb steps out of the wall */
+    linear-gradient(var(--chrome-bevel-dark), var(--chrome-bevel-dark)),
+    /* jamb grain */
+    var(--chrome-noise),
+    /* jamb stone — opaque, 10px */
+    linear-gradient(#1a1611, #1a1611),
+    /* wall grain */
+    var(--chrome-noise);
+  background-repeat: no-repeat, no-repeat, no-repeat, repeat;
+  background-size: 1px 100%, 10px 100%, 10px 100%, auto;
+}
+
+.dungeon-aperture::before {
+  left: max(0px, calc(50% - 336px), calc(50% - var(--board-w) / 2 - var(--aperture-reveal)));
+  right: calc(50% + var(--board-w) / 2);
+  background-position: right 10px top 0, right top 0, right top 0, 0 0;
+  box-shadow:
+    inset 1px 0 0 var(--chrome-bevel-dark),
+    inset -1px 0 0 rgba(255, 235, 200, 0.22);
+}
+
+.dungeon-aperture::after {
+  right: max(0px, calc(50% - 336px), calc(50% - var(--board-w) / 2 - var(--aperture-reveal)));
+  left: calc(50% + var(--board-w) / 2);
+  background-position: left 10px top 0, left top 0, left top 0, 0 0;
+  box-shadow:
+    inset -1px 0 0 var(--chrome-bevel-dark),
+    inset 1px 0 0 rgba(255, 235, 200, 0.22);
+}
+
+/* ---- The plate's cap rail ---------------------------------------------
+   ONE forged crossbar across the plate's head: engraved identity at the
+   left end, the roster cluster at the right, a machined rule between them.
+
+   IT USED TO BE TWO SEPARATE TABS AND THAT WAS THE BUG. Two raised iron
+   tabs at the ends of a band left the middle showing bare page ground,
+   enclosed above by the rung's dark underside and below by the plate's lit
+   top edge — measured 129.6px of it on an iPhone SE, 147.6px on a 14 Pro
+   and 458.6px at 1280. A long dark inset well with nothing in it, directly
+   under a line of text, reads as an unfilled input field, not as chrome.
+   A filled, lit rail with content at both ends is a title bar; there is no
+   well left to misread.
+
+   THE STOCK IS `.nav-pill`'s — the portcullis's own signage iron, and the
+   same metal as the rod the quest banner hangs from — with a hard-stop
+   highlight break rather than a smooth ramp, because rolled iron has an
+   edge where the light turns. The 2px lit top edge does most of the work of
+   standing it in front of whatever is above; the halo shadow does the rest.
+
+   TWO POSITIONS, ONE OBJECT:
+   · DEFAULT (phones, quest collapsed to the rung): out of flow, resting its
+     bottom edge on the plate's top rail — ZERO layout pixels, which is the
+     whole reason the 28px header row could be deleted. `border-bottom: 0`
+     plus a top-only radius makes it rise OUT of the plate.
+   · `--inline` (whenever the hanging CLOTH banner is the thing above, i.e.
+     always at >=768px): in flow at the top of the plate, negative margins
+     cancelling the plate's padding so it is flush inside the frame. This
+     exists because an out-of-flow bar there cut straight through the
+     banner's ragged hem — measured at 1280 the tabs overlapped the band's
+     bottom 13px, amputating the swallow-tails, with no shadow or notch to
+     sell it as layering. Cloth and iron now simply do not occupy the same
+     pixels. It costs ~26px, and only on the viewports that have the room. */
+
+/* THE CAP SEAM, DEFINED ONCE. Three rules have to agree about how far this
+   bar overhangs the plate — the bar's own height, the shelf the quest rung
+   reserves for it (`.quest-rung-band`, a SIBLING element that cannot see
+   it) and the slop its controls are allowed. The last consolidation pass
+   found them out of step, which is how a tap on the HEROES bar came to
+   expand the QUEST. One declaration, three consumers:
+     · `--hero-cap-h`    the forged height of the bar.
+     · `--hero-cap-seat` how deep its bottom edge seats INTO the plate's 6px
+       top padding, so no page ground shows between the hardware and the
+       stone it is bolted to (and so it never reaches a hero card: 26 - 5 =
+       21px above the plate, bar bottom 530 against a first card top of 531).
+   The overhang is `--hero-cap-h - --hero-cap-seat`, and that is exactly
+   what the rung's shelf reserves. Declared on `.theme-root` because the
+   rung and the plate are siblings with the replay ternary between them —
+   there is no closer common ancestor. */
+.theme-root {
+  --hero-cap-h: 26px;
+  --hero-cap-seat: 5px;
+}
+
 .hero-cap {
-  position: relative;
+  position: absolute;
+  top: 0;
+  /* An absolutely-positioned child resolves against the plate's PADDING box,
+     which (the plate has no border, only inset shadows) is already its full
+     border box — so 0/0 lands the rail's ends exactly on the frame's edges
+     and on the quest rung's edges above. -4px overhung all three by 4px a
+     side and put a fourth vertical in a composition that is supposed to have
+     one. */
+  left: 0;
+  right: 0;
+  z-index: 30;
+  /* -100% + --hero-cap-seat: the bar's bottom edge sits INSIDE the plate's
+     6px top padding — no hairline of page ground can show between the
+     hardware and the stone it is bolted to, and the bar still finishes 1px
+     clear of the first hero card (measured on every phone profile: bar
+     bottom 530, first card top 531), so it neither covers nor hit-tests
+     over a card. The remaining 21px hang above the plate, which is exactly
+     what the quest rung's shelf reserves — the two irons meet on a line,
+     with no lap for the bar's top edge to climb toward the objective
+     sentence. Out of flow either way, so the height costs zero layout
+     pixels. */
+  transform: translateY(calc(-100% + var(--hero-cap-seat)));
   display: flex;
   align-items: center;
-  min-height: 22px;
-  padding: 0 12px;
+  gap: 10px;
+  /* 26, not 22. At 22 the tallest cap child (a 20px control well) had 0.5px
+     of air above and below and painted straight through the bar's own 2px
+     lit top edge — the frame was broken by its own contents. 26px against
+     a 16px well is 4.5px of clearance top and bottom, and the engraved
+     label's 13px line box gets 6px. Every cap child clears the bevel. */
+  min-height: var(--hero-cap-h);
+  /* 3px + the 1px border = 4px, which is EXACTLY the plate's inner padding,
+     so the rail's first and last content edges land on the same column as
+     the hero cards and the info drawer below (20 / 373 at 393px, 308 / 972
+     at 1280). It was 12px, and three stacked rows with three different left
+     edges is the opposite of what this object is for. The end hardware
+     moved to suit the text, not the other way round — see below. */
+  padding: 0 3px;
   border: 1px solid #17130f;
   border-bottom: 0;
   border-radius: 3px 3px 0 0;
-  background: #262019;
+  background: linear-gradient(#2c2620 0 60%, #221d18 60% 100%);
   box-shadow:
     inset 0 2px 0 rgba(255, 235, 200, 0.16),
     inset 2px 0 0 rgba(255, 235, 200, 0.07),
     inset -2px 0 0 rgba(0, 0, 0, 0.35),
     0 0 7px 1px rgba(0, 0, 0, 0.55);
+  /* Inert by default; only the real controls opt back in (see CAP_BTN).
+     A static label must never be able to eat a tap on the card below or on
+     the quest rung behind. */
+  pointer-events: none;
 }
 
-/* Forge bolts through the tab's ends — square heads with a lit rim, the
-   same 5px bolt `.nav-pill` and the gate's beam plates wear (index.css
-   2342-2366). `padding: 0 12px` is what keeps the content clear of them. */
+.hero-cap--inline {
+  position: static;
+  transform: none;
+  /* Cancel the plate's `padding: 6px 4px` so the rail sits flush inside the
+     frame, then restore 6px of separation under it. */
+  margin: -6px -4px 6px;
+  min-height: var(--hero-cap-h);
+  border-bottom: 1px solid #17130f;
+  border-radius: var(--theme-border-radius, 4px) var(--theme-border-radius, 4px) 0 0;
+  box-shadow:
+    inset 0 2px 0 rgba(255, 235, 200, 0.16),
+    inset 2px 0 0 rgba(255, 235, 200, 0.07),
+    inset -2px 0 0 rgba(0, 0, 0, 0.35),
+    0 2px 6px rgba(0, 0, 0, 0.45);
+}
+
+/* END STRAPS, not bolt heads. The rail's ends used to carry a 5px square
+   forge plate 3px in from each edge, and that hardware was DICTATING a 12px
+   text inset — the bar's content sat 9px off the column every other row of
+   the plate shares. The content column won; the hardware moved.
+
+   A strap is the honest object for the job anyway: a crossbar this thin is
+   strapped at its ends, not bolted through its face, and a full-height 3px
+   strap survives at phone scale where a 5x5 plate next to a glyph read as a
+   tofu box (the same failure that pulled the per-bar rivets off the control
+   rail). It sits in the 3px of padding, so it can never touch the label.
+   Lit top / shadowed bottom, the fixed top-left light every mesh uses. */
 .hero-cap::before,
 .hero-cap::after {
   content: '';
   position: absolute;
-  top: 50%;
-  width: 5px;
-  height: 5px;
-  transform: translateY(-50%);
-  background: #2b2620;
-  border: 1px solid #4a4239;
-  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.4);
+  top: 3px;
+  bottom: 3px;
+  width: 3px;
+  background: linear-gradient(#4a4239, #2b2620);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 235, 200, 0.22),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.5);
   pointer-events: none;
 }
 
 .hero-cap::before {
-  left: 3px;
+  left: 0;
 }
 
 .hero-cap::after {
-  right: 3px;
+  right: 0;
 }
 
 /* A CONTROL on a cap, as opposed to a READOUT on a cap. The two must not
@@ -3165,6 +3471,34 @@ body.menu-gate-instant .quest-panel-sticky {
    for "you can touch this" and nothing else; the readout stays flat
    engraved ink. */
 .hero-cap__well {
+  /* NO CAP CONTROL MAY OWN A PIXEL OUTSIDE THE CAP BAND — in EITHER
+     direction. Both halves of that rule are paid for in measured bugs.
+
+     · DOWNWARD. This bar's bottom edge IS the hero strip's top edge. A
+       centred 44px slop on the clear-all spent its bottom half inside hero
+       card 3 and fired "remove all placed heroes" on a tap meant for the
+       Knight.
+     · UPWARD. The fix for that was `.hit-44-up` — anchor the slop to the
+       control's bottom and grow 44px UP into what was then the quest
+       banner's empty cloth margin. S8 turned that margin into the quest
+       RUNG, one full-width "show the full quest" button, and the upward
+       slop stopped being free: measured with elementFromPoint at 393px the
+       Help well owned x287..330 / y479..520 — 22px of it on the bare, lit,
+       VISIBLE quest rung, so a tap on what unmistakably looks like the
+       quest opened the hero help panel. Same at 375 / 412 / 440.
+
+     `--hit-h: var(--hero-cap-h)`, centred, for EVERY well on this rail: the
+     slop spans exactly the band (measured 504.5-530.5 against a 504-530 bar,
+     a rung that ends at 504 and a first hero card that starts at 531), so it
+     can reach neither the rung above nor the card below, and it stays correct
+     if the bar's height ever changes. 44x26 clears WCAG 2.5.8 (AA, 24x24) with room; it misses 2.5.5
+     (AAA, 44x44) on the vertical axis, and that is the deliberate trade —
+     the alternative is an invisible target sitting on a control that looks
+     like something else, which is merely confusing for Help and destructive
+     for the clear-all. The quest rung's own wells reuse this class for its
+     LOOK and override the slop inline (`--hit-h: 38px`), because they stand
+     on the rung, not on this bar. */
+  --hit-h: var(--hero-cap-h);
   color: var(--hud-gold);
   background: rgba(0, 0, 0, 0.45);
   border-radius: 2px;
@@ -3175,6 +3509,21 @@ body.menu-gate-instant .quest-panel-sticky {
 
 .hero-cap__well:hover {
   background: rgba(0, 0, 0, 0.25);
+}
+
+/* THE MACHINED RULE that carries the eye from the engraved end of the rail
+   to the working end. It is `.dungeon-seam-flush` laid flat — the same
+   two-tone cut used between every compartment of the plate — and it is what
+   makes the span between the two clusters read as MILLED METAL rather than
+   as a leftover gap. `flex: 1` with `min-width: 0` so it absorbs every
+   width from 320 to 1280 and the two clusters never move. */
+.hero-cap__rule {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 2px;
+  margin: 0 2px;
+  background:
+    linear-gradient(rgba(0, 0, 0, 0.55) 0 1px, rgba(255, 235, 200, 0.09) 1px 2px);
 }
 
 /* The groove that separates the readout from the control cluster — the
@@ -3356,20 +3705,22 @@ body.menu-gate-instant .quest-panel-sticky {
    `inset ±1px 0 0 rgba(0,0,0,.35)` side bevels — and reads as a slab of the
    same stone, lifted.
 
-   FLOOR CLEARANCE IS PART OF THE FRAME. 42px sits above the rose (12 pad +
-   20 cap row + 10 gap), so 42px sits below it. At 12px the bottom row of a
+   FLOOR CLEARANCE IS PART OF THE FRAME. 50px sits above the rose (12 pad +
+   28 cap row + 10 gap), so 50px sits below it. At 12px the bottom row of a
    REQUIRED control was all but touching the bottom of the content viewport,
    where Android's `env(safe-area-inset-bottom)` resolves to 0 and there is
    no system inset to save it. Free, too: the sheet is `position: fixed` and
-   portalled to <body>, so none of this reaches playableSpan. */
+   portalled to <body>, so none of this reaches playableSpan — and because
+   the phone sheet is anchored `bottom: 0`, growing the cap row grows the
+   sheet UPWARD and the rose does not move a pixel. */
 .dir-picker__sheet {
   position: fixed;
   left: 0;
   right: 0;
   bottom: 0;
   z-index: 59;
-  padding: 12px 16px 42px;
-  padding-bottom: calc(42px + env(safe-area-inset-bottom));
+  padding: 12px 16px 50px;
+  padding-bottom: calc(50px + env(safe-area-inset-bottom));
   background-color: var(--theme-bg-secondary, #2a2118);
   background-image:
     linear-gradient(180deg, rgba(255, 235, 200, 0.07) 0, rgba(255, 235, 200, 0) 72px),
@@ -3397,9 +3748,11 @@ body.menu-gate-instant .quest-panel-sticky {
 /* At lg+ the page is not thumb-driven and the panel is not the bottom of the
    screen, so the same object becomes a centred popover: a real border on all
    four sides instead of the phone sheet's bevels, and the radius closes right
-   round. The 42/42 field above and below the rose is kept — it is what makes
+   round. The 50/50 field above and below the rose is kept — it is what makes
    the rose read as the subject of the surface rather than a thing dropped in
-   the corner of it — and the 184px rose fits the 256px content width. */
+   the corner of it — and the 184px rose fits the 256px content width. This
+   copy is CENTRED rather than bottom-anchored, so the 8px the cap row gained
+   moves the rose down 4px here; on the phone sheet it moves nothing. */
 @media (min-width: 1024px) {
   .dir-picker__sheet {
     left: 50%;
@@ -3407,7 +3760,7 @@ body.menu-gate-instant .quest-panel-sticky {
     bottom: auto;
     top: 50%;
     width: 288px;
-    padding-bottom: 42px;
+    padding-bottom: 50px;
     border: 1px solid rgba(255, 235, 200, 0.22);
     border-radius: var(--theme-border-radius, 4px);
     box-shadow:
@@ -3426,6 +3779,27 @@ body.menu-gate-instant .quest-panel-sticky {
   .dir-picker__sheet {
     transition: none;
   }
+}
+
+/* THE SHEET'S CLOSE CONTROL IS NOT A CAP CONTROL. It borrows
+   `.hero-cap__well` for its LOOK — recessed well, `--hud-gold` glyph, the
+   same "you can touch this" vocabulary as the plate's right cap — but it
+   must not inherit that class's `--hit-h: var(--hero-cap-h)` slop cap. 26px
+   is not a design decision there, it is a CLEARANCE: the play page's cap
+   rail is wedged between the quest rung above and the first hero card below,
+   and 26 is the only height that reaches neither. This sheet is portalled,
+   fixed, and has 12px of its own padding above the control and 10px of gap
+   below it, so there is nothing to collide with — the cap travelled here on
+   the class and quietly shipped a 44x26 target on a REQUIRED input, which is
+   a thinner version of the 17x17 failure the whole picker exists to fix.
+
+   MEASURED CLEAR. The well paints 44x28; the 44x44 slop hangs 8px above it
+   (into the sheet's 12px pad, still 4px inside the sheet) and 8px below it,
+   finishing 2px clear of the rose's top row. On the horizontal axis
+   `max(100%, 44px)` is exactly the well's own width, so it cannot reach
+   sideways at all — no rose cell, at any viewport, is shadowed. */
+.dir-picker__sheet .hero-cap__well {
+  --hit-h: 44px;
 }
 
 /* The rose. Three 56px columns with 8px gutters = 184px, centred. 56 clears
@@ -3514,4 +3888,220 @@ body.menu-gate-instant .quest-panel-sticky {
   border-radius: var(--theme-border-radius, 3px);
   background-image: radial-gradient(circle at 50% 42%, var(--chrome-torch), rgba(0, 0, 0, 0.55) 72%);
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.65);
+}
+
+/* ============================================
+   THE HERO DRAWER (S7 — the keystone)
+
+   THE PANEL'S HEIGHT STOPS BEING CONTENT-DRIVEN. Until now the hero info
+   region was however tall its text happened to make it, and the text was
+   made tall by WRAPPING, not by wordiness: three columns across a 375px
+   phone left each text column ~104px of measure, i.e. about seventeen
+   characters, so a two-step action list wrapped into eight lines. The panel
+   was therefore both harder to read AND taller for exactly the same words.
+
+   A CEILING FIXES BOTH WITH ONE MOVE. The columns collapse to one
+   full-measure column (~327px, ~50 characters) and the region gets a
+   `max-height` above which it SCROLLS INTERNALLY instead of growing the
+   page. Body copy goes UP 12 -> 13px while the region SHRINKS.
+
+   `max-height`, NEVER `height`. A short hero yields a short drawer, so a
+   two-step hero on a desktop does not get a 140px box with 60px of void in
+   it — and desktop, which has the room, keeps its two columns and no
+   ceiling at all.
+
+   `overscroll-behavior: contain` IS MANDATORY. Without it, iOS chains a
+   drag that reaches the end of this pane straight into the page scroll —
+   which re-creates, inside the fix, the exact complaint the fix exists to
+   answer.
+
+   The bottom fade says "there is more" without spending a scrollbar; the
+   12px of padding under it is what keeps the fade off the last LINE rather
+   than on it. Both are static paint, not animation — the pinned decoration
+   rule is untouched.
+   ============================================ */
+.hero-drawer {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  /* NO SIDE PADDING — this is a compartment of the plate, not a box inside a
+     box. 8px here made a fourth left/right edge on a surface that already had
+     three (rail, plate, card strip), and the worst pair was the amber orders
+     pill stepping 8px inboard of the card strip directly above it for no
+     stated reason. The drawer's contents now share the strip's measure
+     exactly; the plate's own `padding: 6px 4px` is the only inset, and it is
+     the frame. */
+  padding: 6px 0;
+  max-height: var(--hero-drawer-max, 140px);
+  /* The seam between the roster and the drawer — the plate's one divider
+     language: dark cut, lit lip. Same two-tone as `.dungeon-seam-flush` and
+     as the strip's own slot grooves, drawn as an INSET so the compartments
+     stay flush (a 2px seam ELEMENT here would cost 2px of span, and the
+     drawer's ceiling is measured in single pixels). */
+  box-shadow:
+    inset 0 1px 0 rgba(0, 0, 0, 0.55),
+    inset 0 2px 0 rgba(255, 235, 200, 0.05);
+}
+
+/* The orders sit ABOVE the brief and are never scrolled away: they are the
+   one thing in this panel that BLOCKS the next action.
+
+   THE BOUND IS OPT-IN BY COUNT, NOT ALWAYS-ON, and that is deliberate. The
+   pills are 44px each, so one or two (44 / 92px) can never need scrolling —
+   and `overflow-y: auto` CLIPS a descendant's outer box-shadow whether or
+   not it actually scrolls, which would have cut the open pill's warm halo
+   (the whole signal that it is the loudest object in the panel) in the two
+   cases that are every case in practice. Three or more pills get the
+   96px ceiling and scroll; the halo is a fair trade there because the
+   region genuinely has to be bounded. */
+.hero-drawer__orders {
+  flex: 0 0 auto;
+}
+
+.hero-drawer__orders--scroll {
+  max-height: 96px;
+  overflow-y: auto;
+}
+
+.hero-drawer__brief {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-bottom: 12px;
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 12px), transparent);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 12px), transparent);
+}
+
+/* Desktop has the vertical room and the horizontal measure for two columns,
+   so it takes neither the ceiling nor the scroll — the drawer is simply as
+   tall as the hero is. */
+@media (min-width: 1024px) {
+  .hero-drawer {
+    max-height: none;
+  }
+
+  .hero-drawer__brief {
+    overflow: visible;
+    padding-bottom: 0;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+}
+
+/* Short viewports (the latch is set from JS by a later slice — never from a
+   CSS height query, which resolves against the large viewport and so never
+   fires on the device it was written for). */
+:root[data-hero-density="compact"] .hero-drawer {
+  --hero-drawer-max: 104px;
+}
+
+/* ============================================
+   THE QUEST RUNG (S8 — the quest band's collapsed state)
+
+   WHAT IT BUYS. The hanging banner is 52px of cloth plus a 4px margin for one
+   line of text, and it is also the mount point for three rows that only some
+   puzzles have: the side-quest list (+41px), the puzzle number (+16px) and
+   the offline "practice dungeon" notice (+16px). Those are not edge cases,
+   they are LEVEL CONTENT — which means the play page's vertical budget was a
+   property of whatever the author shipped rather than of the layout. The rung
+   takes all of them off the steady state. Every puzzle now costs the same.
+
+   The banner still shows first, unchanged, and >= 768px never collapses at
+   all: the quest has to be unmissable when the puzzle opens, and only phones
+   are short of room.
+
+   THE MATERIAL IS PORTCULLIS IRON, VERBATIM. `#3b352d` over `#2b2620` with a
+   `rgba(255,235,200,.22)` lit top edge and a `#17130f` dark underside are
+   PortcullisMesh's IRON.face / IRON.body / IRON.highlight / IRON.dark — the
+   same forging as the control rail above the board. So the rung reads as
+   another rung of the same gate, with no second SVG, no mesh and nothing
+   animating. Two hard-stop gradient bands, not a smooth ramp: rolled iron has
+   an edge where the light breaks, and a soft gradient here read as plastic.
+   ============================================ */
+.quest-rung-band {
+  --quest-rung-h: 26px;
+  /* THE SHELF IS STRUCTURAL, AND IT IS NOW EXACTLY THE CAP RAIL'S OVERHANG.
+     The hero plate's cap rail is out of flow and reaches
+     `--hero-cap-h - --hero-cap-seat` = 21px up into whatever sits above the
+     plate; this band is what sits above the plate. The shelf reserves that
+     height, transparent, so the two iron members MEET ON A LINE instead of
+     lapping.
+     IT WAS 18px, AND THE MISSING 3px WERE A REAL BUG. The cap rail then
+     covered the rung's bottom 3px, so 3px of what looks like the HEROES bar
+     was still, structurally, the quest rung — and because the shelf and the
+     rail were two numbers in two files, nothing kept them honest. They are
+     one number now: change `--hero-cap-h` and this follows. */
+  padding-bottom: calc(var(--hero-cap-h) - var(--hero-cap-seat));
+}
+
+.quest-rung {
+  position: relative;
+  height: var(--quest-rung-h);
+  background: linear-gradient(#3b352d 0 60%, #2b2620 60% 100%);
+  border-top: 1px solid rgba(255, 235, 200, 0.22);
+  border-bottom: 1px solid #17130f;
+  /* The rung is the plate's top compartment, so its corners are cut to the
+     same radius as the plate itself — the band's own radius cannot show
+     through an opaque child. Its `border-bottom` is already the dark half of
+     the seam that divides it from the roster. */
+  border-radius: var(--theme-border-radius, 4px) var(--theme-border-radius, 4px) 0 0;
+}
+
+/* THE EXPAND AFFORDANCE IS EXACTLY THE VISIBLE RUNG — NO MORE AND NO LESS.
+   It used to be `absolute inset-0`, i.e. the band's full 44px, on the theory
+   that the shelf below the rung was free height and made the control a
+   native 44px target without slop. The shelf is not free: the cap rail
+   stands in it. Measured with elementFromPoint at 393px, the button's
+   y478..522 against a rung that ENDS at y501 meant x16..287 / y501..521 —
+   the engraved HEROES bar, its milled rule, its `0/3` readout and its own
+   lit bevel — expanded the quest. 18.75% of a control's hit area belonged
+   to a different object.
+   `height: var(--quest-rung-h)` pins the target to the iron the player can
+   actually see. That is 26 x 343..408px: past WCAG 2.5.8 (AA, 24x24) and
+   short of 2.5.5 (AAA, 44x44) on the vertical axis only. The 18px it gives
+   up cannot be bought back anywhere: there are 2px between the band and the
+   board's bottom tile row above, and the cap rail owns everything below.
+   A disclosure control that is honest about its own edges beats one that
+   quietly answers for its neighbour. */
+.quest-rung-hit {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--quest-rung-h);
+}
+
+/* AND NO CONTROL ON THE RUNG MAY OWN A PIXEL OFF THE RUNG — the cap rail's
+   rule (`.hero-cap__well`), applied to the other bar for the same reason.
+   The rung's three controls (playtest exit, combat log, side-quest count)
+   each carried an inline `--hit-h: 38px`, chosen against a believed 6px of
+   clear space above the band. The measured gap between the band and the
+   BOARD is 2px, so a 38px slop on a 20px control put "leave the playtest"
+   4px inside the dungeon's bottom tile row — a stray tap on the board firing
+   a dev-app exit. Capping to the rung's own height lands the slop on exactly
+   478..504, the bar and nothing else. It is a descendant selector so it
+   beats `.hero-cap__well`'s own cap, which those two wells inherit for their
+   LOOK. */
+.quest-rung .hit-44 {
+  --hit-h: var(--quest-rung-h);
+}
+
+/* The swap between the two states is an OPACITY cross-fade with the height
+   changing in one step while the band is invisible — never a height
+   transition, which would relayout everything below it on every frame (the
+   pinned decoration rule: transform and opacity only). 90ms out, swap, 90ms
+   back in. */
+.quest-band-fade {
+  transition: opacity 90ms linear;
+}
+
+.quest-band-fade--out {
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .quest-band-fade {
+    transition: none;
+  }
 }

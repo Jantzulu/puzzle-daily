@@ -37,27 +37,35 @@ const dismissHeroHint = () => {
 // lintel's cut-into-stone shading rather than a drop shadow.
 const CAP_ENGRAVING = '0 -1px 0 rgba(0,0,0,.85), 0 1px 0 rgba(255,235,200,.10)';
 
-// Icon controls on the RIGHT cap. 36x20 of paint (`.hero-cap__well` makes
+// Icon controls on the RIGHT cap. 36x16 of paint (`.hero-cap__well` makes
 // it a recessed well in --hud-gold, which is what distinguishes a control
-// from the flat engraved `N/M` readout beside it), and `.hit-44-up` grows
-// the TARGET to a full 44x44 for zero layout pixels.
+// from the flat engraved `N/M` readout beside it) with a 44x26 TAP TARGET
+// for zero layout pixels.
 //
-// BOTH AXES RUN FREE AT 44px. `.hit-44-up` anchors the slop to the
-// control's BOTTOM edge — which is the plate's top rail — so it can never
-// bleed down into a hero card, and it grows UP into the quest banner's
-// `pb-4` cloth margin, which holds no controls. The one thing that ever
-// sat in that column was the banner's own help button, above the LEFT tab;
-// the left tab is now pure engraving and every control lives in the right
-// tab, so the collision is gone by construction rather than paid for by
-// capping the axis below the floor.
+// h-4, not h-5. The wells share a 26px bar with an engraved label, and at
+// 20px they left 0.5px of air and painted through the bar's own 2px lit top
+// edge — a control that breaks the frame it is mounted in. 16px of well in
+// a 26px bar is 4.5px of clearance top and bottom, matching the label's, so
+// the two ends of the rail have the same internal rhythm. The 14px glyph
+// inside is unchanged and the TAP TARGET is unchanged.
 //
-// `gap-2.5` between wells is not decoration: two 44px slops need their
+// ONE SLOP SHAPE FOR EVERY CONTROL ON THIS BAR, CONFINED TO THE BAR. The
+// cap band is a 26px seam with the quest rung directly above it and the
+// hero cards directly below, and both neighbours have been hit by this
+// bar's slop in turn: a centred 44px box fired the clear-all on a tap meant
+// for hero card 3, and the upward-growing fix (`.hit-44-up`) later put the
+// Help button's target 22px into the visible quest rung. `.hit-44` with
+// `--hit-h: var(--hero-cap-h)` (see `.hero-cap__well` in index.css) spans
+// exactly the band in both directions. 44x26 clears WCAG 2.5.8 AA and is
+// the deliberate trade written out at that rule.
+//
+// `gap-2.5` between wells is not decoration: two 44px-wide slops need their
 // centres >=44px apart or they clip each other, and 36 + 10 = 46.
 //
-// pointer-events-auto lives HERE and only here — the tab wrappers stay
+// pointer-events-auto lives HERE and only here — the rail itself stays
 // inert so a static label can never eat a card tap.
 const CAP_BTN =
-  'hero-cap__well pointer-events-auto flex items-center justify-center w-9 h-5 transition-colors hit-44-up';
+  'hero-cap__well pointer-events-auto flex items-center justify-center w-9 h-4 transition-colors hit-44';
 
 function getMovementInfo(behavior: CharacterAction[]) {
   const moveAction = behavior.find(a => MOVEMENT_TYPES.has(a.type));
@@ -112,6 +120,14 @@ interface CharacterSelectorProps {
    * line. Only Game.tsx opts in.
    */
   chrome?: 'inline' | 'plate';
+  /**
+   * 'plate' chrome only. TRUE when nothing is flush above the plate, i.e. the
+   * quest banner is EXPANDED (always so at >=768px) rather than collapsed to
+   * the rung that wears `hero-plate--top`. The plate then closes its own top:
+   * full radius and its own lit edge, instead of the open-topped bottom half
+   * of a two-element object. Ignored in 'inline' chrome.
+   */
+  plateStandalone?: boolean;
 }
 
 export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
@@ -131,6 +147,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
   onFacingOverride,
   pendingFacingOverrides = {},
   chrome = 'inline',
+  plateStandalone = false,
 }) => {
   const effectiveMaxPlaceable = maxPlaceable ?? availableCharacterIds.length;
   const isAtMaxPlaced = placedCharacterIds.length >= effectiveMaxPlaceable;
@@ -166,9 +183,20 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
   // rendered height of any card's name/title and applies it as min-height
   // to all of them. Ensures HP rows and everything below line up vertically
   // across cards regardless of name length (which varies with wrapping).
+  //
+  // INLINE CHROME ONLY. Plate chrome gives the name block a FIXED 26px box
+  // instead, because max-propagation is measurement-driven and therefore
+  // WIDTH-driven: at 393px a name wrapped to two lines and pushed every card
+  // in the row 16px taller, while the same roster at 412px did not — the play
+  // page's panel height varied with the phone. A fixed block kills that
+  // variance outright. The observer is kept rather than deleted because
+  // TrainingGrounds and the editor playtest mount still render the two-line
+  // name+epithet block and are held to pixel-identity; in plate chrome no ref
+  // is ever assigned, so this runs once over an empty list and then sleeps.
   const nameBlockRefs = useRef<(HTMLDivElement | null)[]>([]);
   const [maxNameBlockHeight, setMaxNameBlockHeight] = useState(0);
   useLayoutEffect(() => {
+    if (isPlate) return;
     const measure = () => {
       let max = 0;
       for (const el of nameBlockRefs.current) {
@@ -230,6 +258,18 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
   // to ONE order on ONE hero, and a stale sheet would write the new hero's
   // facing from the old hero's rose.
   useEffect(() => { setPickerKey(null); }, [renderedCharId]);
+
+  // The drawer's scrolling panes are ONE pair of DOM nodes reused across hero
+  // changes, so `scrollTop` survives the content swap: read half of one hero's
+  // brief, tap the next, and you land in the middle of THEIR text with the
+  // subhead and the first action scrolled off. Reset on every hero change, in
+  // a layout effect so it happens before the frame is painted.
+  const briefRef = useRef<HTMLDivElement | null>(null);
+  const ordersRef = useRef<HTMLDivElement | null>(null);
+  useLayoutEffect(() => {
+    if (briefRef.current) briefRef.current.scrollTop = 0;
+    if (ordersRef.current) ordersRef.current.scrollTop = 0;
+  }, [renderedCharId]);
 
   const renderedCharacter = renderedCharId ? getCharacter(renderedCharId) : null;
   const hasActionSteps = (renderedCharacter?.actionSteps?.length ?? 0) > 0;
@@ -371,82 +411,85 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
   );
   const canClearAll = !!onClearAll && placedCharacterIds.length > 0 && !disabled;
 
-  // PLATE CAPS — identity engraved on the frame instead of a 28px header row.
-  // Two iron tabs (`.hero-cap`, index.css) standing on the plate's top rail:
-  // `absolute` + translateY rests the band's BOTTOM on that rail, so the
-  // whole band costs ZERO layout pixels. It is the frame talking, not a row.
+  // THE CAP RAIL — identity engraved on the frame instead of a 28px header
+  // row. One forged crossbar (`.hero-cap`, index.css) across the plate's
+  // head: engraved `Heroes` at the left end, a machined rule, then the
+  // roster cluster at the right end.
   //
-  // THE TABS ARE FORGED, NOT BOXED, and that is the fix for the version
-  // before this one. They stand in front of the quest banner's hanging
-  // cloth because there is nowhere else: the cloth fills the banner's whole
-  // `pb-4` and only 4px separate the band's bottom edge from the plate's
-  // top, so a cap that clears the cloth does not exist. Drawn as near-black
-  // rectangles with a 1px stone border they sliced the cloth's torn hem and
-  // read as a z-index accident. Drawn in `.nav-pill`'s stock — the same
-  // iron, bevels and forge bolts as the portcullis signage, and the same
-  // metal as the rod the banner hangs from — they read as mounted hardware
-  // and the dags terminate INTO them. `border-bottom:0` plus a top-only
-  // radius makes each tab rise OUT of the plate rather than float on the
-  // banner.
+  // IT WAS TWO SEPARATE TABS AND THAT WAS THE BUG. Tabs at the two ends of
+  // an unpainted band left the middle showing bare page ground, boxed in
+  // above by the rung's dark underside and below by the plate's lit top
+  // edge: 129.6px of it at 375, 147.6px at 393 and 458.6px at 1280.
+  // Measured and screenshotted, that reads as an unfilled input field
+  // sitting under a line of text — the opposite of the "one framed object"
+  // this slice exists to produce. A filled, lit rail with content at both
+  // ends and a milled rule between them is a title bar, and there is no
+  // well left to misread.
   //
-  // WHY THE LEFT TAB HAS NO CONTROLS. It is not symmetry for its own sake.
+  // TWO POSITIONS, ONE OBJECT (see `.hero-cap--inline`):
+  //   · Quest COLLAPSED to the iron rung (phones, steady state): the rail
+  //     is out of flow with its bottom edge resting on the plate's top
+  //     rail, standing in the rung's 18px shelf. ZERO layout pixels — this
+  //     is what pays for deleting the old header row.
+  //   · Quest EXPANDED, i.e. the hanging CLOTH banner is what sits above
+  //     (always at >=768px): the rail goes IN FLOW at the top of the plate.
+  //     Out of flow there it cut through the banner's ragged hem — measured
+  //     at 1280, the tabs overlapped the band's bottom 13px and amputated
+  //     the swallow-tails, with no shadow, notch or depth cue to sell it as
+  //     layering. Cloth and iron now never occupy the same pixels. It costs
+  //     ~26px and only on the viewports that have the room.
+  //
+  // WHY THE LEFT END HAS NO CONTROLS. It is not symmetry for its own sake.
   // The quest banner's own help button rides a CENTRED flex row, so its x
   // drifts with viewport width (centre 87 at 393px, 111 at 440px) and lands
-  // inside the left tab's column on every phone. Two identical circled-'?'
+  // in the rail's left third on every phone. Two identical circled-'?'
   // glyphs 12px apart at one width and 37px apart at another is the
-  // accidental-frame tell; worse, a cap control there needs a 44px upward
-  // slop and would swallow the banner's button whole. Moving the roster's
-  // help into the RIGHT tab puts >=150px between them at every width from
-  // 320 to 1280 and buys the full 44px vertical axis for all the cap
-  // controls (see `.hit-44-up`). Left tab = who this is. Right tab = the
-  // roster cluster.
+  // accidental-frame tell; worse, a cap control there sits in the same
+  // column as the banner's button. Keeping every control at the RIGHT end
+  // puts >=150px between them at every width from 320 to 1280.
   //
-  // NOTHING IN THE BAND CAN HIT-TEST INTO THE STRIP. Three things:
-  //   1. pointer-events-none on the band AND on both tab wrappers. Only the
-  //      real controls opt back in (see CAP_BTN). An earlier cut put
-  //      `pointer-events-auto` on the wrappers, which made the static
-  //      counter block the top 14px of hero card 3 and the `Heroes` h3
-  //      block the top 8px of card 1 — non-interactive chrome eating taps
-  //      on the page's most common target.
-  //   2. `.hit-44-up` anchors each control's slop to its own bottom edge,
-  //      so the slop grows into the banner's cloth margin, never down.
+  // NOTHING ON THE RAIL CAN HIT-TEST OFF IT — UP OR DOWN. Three things:
+  //   1. `pointer-events: none` on the rail itself; only the real controls
+  //      opt back in (see CAP_BTN). An earlier cut let the wrappers take
+  //      pointer events, which made the static counter block the top 14px
+  //      of hero card 3 — non-interactive chrome eating taps on the page's
+  //      most common target.
+  //   2. Every control's slop is capped to the rail's own height
+  //      (`.hero-cap__well` sets `--hit-h: var(--hero-cap-h)`), so it can
+  //      reach neither a hero card below nor the quest rung above.
   //   3. Belt and braces: the strip below is raised to the SAME z-30 and
   //      comes later in the DOM, so it paints — and hit-tests — above this
-  //      band. Even a future cap that overhangs cannot steal a card tap.
+  //      rail.
   //
-  // z-30 also clears the quest band's z-20 so the tabs are never painted
-  // over by the banner they stand in front of.
+  // z-30 also clears the quest band's z-20 so the rail is never painted
+  // over by the band it stands in front of.
   const plateCaps = isPlate ? (
     <div
-      className="absolute inset-x-0 top-0 z-30 flex items-end justify-between gap-2 px-3 pointer-events-none"
-      // -100% + 1px: the tab's bottom edge overlaps the plate's top bevel
-      // by a hair, so there is no hairline of page ground between the
-      // hardware and the stone it is bolted to.
-      style={{ transform: 'translateY(calc(-100% + 1px))' }}
+      className={`hero-cap${plateStandalone ? ' hero-cap--inline' : ''}`}
+      style={{ textShadow: CAP_ENGRAVING }}
     >
-      <div className="hero-cap" style={{ textShadow: CAP_ENGRAVING }}>
-        {/* `carved-header`, matching EnemyDisplay's 'Enemies' h3 exactly
-            (same theme-sized step, same font, opposite identity colour).
-            An earlier cut used `hud-display`, which pinned this to 17px
-            while the sibling roster's header 200px below stayed at the
-            theme's 20px — the PRIMARY panel's identity rendering smaller
-            and dimmer than the secondary one. The band is out of flow, so
-            matching the sibling costs 0 layout px. Exactly ONE of
-            `carved-header` / `hud-display` per element (index.css ramp
-            note) — this element takes `carved-header`.
-            `lg:leading-none` is not redundant: `lg:text-xl` ships a
-            1.75rem line-height in a LATER cascade layer than plain
-            `leading-none`, so without it the left tab grew to 30px on
-            desktop while the right stayed 22px. */}
-        <h3 className="carved-header carved-header-arcane font-medieval text-lg lg:text-xl leading-none lg:leading-none">Heroes</h3>
-      </div>
-      {/* RIGHT tab = the roster cluster, and it is deliberately TWO classes
-          of thing with a groove between them: a flat engraved readout, then
-          recessed gold wells that mean "you can touch this". Before the
-          groove and the wells, `N/M` sat 4px from a destructive clear-all
-          at the same size, weight and colour, and the trash read as a
-          decorative glyph bookending a counter. */}
-      <div className="hero-cap gap-2.5" style={{ textShadow: CAP_ENGRAVING }}>
+      {/* A SECTION LABEL, IN THE SURFACE'S OWN LABEL SPEC. This was
+          `carved-header carved-header-arcane text-lg lg:text-xl`, i.e.
+          20px / 700 / lavender / mixed-case, which made a zero-information
+          chrome word the LOUDEST text on the play page: 54% larger than the
+          mission objective it sits above ("Defeat the Enemys (2)", 13px /
+          400), larger than the hero names it labels (15px / 600), the only
+          non-uppercase label on the surface, and the only one wearing the
+          hero hue instead of the stone/tan label hue. Every other section
+          label here — QUEST, FACING DIRECTION, ACTIONS, ATTRIBUTES — is
+          `hud-label text-stone-400`: 11px / 600 / uppercase / 0.66px
+          tracking. This is one of those, so it is spelled the same way.
+          It also gives the lavender back to `hero` exclusively.
+          The rail's own CAP_ENGRAVING text-shadow still carves it. */}
+      <h3 className="hud-label text-stone-400 flex-none">Heroes</h3>
+      <span className="hero-cap__rule" aria-hidden="true" />
+      {/* The working end, deliberately TWO classes of thing with a groove
+          between them: a flat engraved readout, then recessed gold wells
+          that mean "you can touch this". Before the groove and the wells,
+          `N/M` sat 4px from a destructive clear-all at the same size,
+          weight and colour, and the trash read as a decorative glyph
+          bookending a counter. */}
+      <div className="flex items-center gap-2.5 flex-none">
         <span
           className={`hud-num whitespace-nowrap ${
             isAtMaxPlaced ? 'text-copper-400' : 'text-stone-400'
@@ -456,7 +499,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
           {placedCharacterIds.length}/{effectiveMaxPlaceable}
         </span>
         <span className="hero-cap__groove" aria-hidden="true" />
-        <HelpButton sectionId="characters" hitMode="up" className={`${CAP_BTN} !p-0 hover:text-parchment-100`} />
+        <HelpButton sectionId="characters" className={`${CAP_BTN} !p-0 hover:text-parchment-100`} />
         {canClearAll && (
           <button
             onClick={onClearAll}
@@ -564,7 +607,23 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
         selectedIndex={selectedStripIndex}
         caretClass="text-copper-400"
       />
-      <div data-hud="hero-strip" className="flex divide-x divide-stone-700">
+      {/* The slot divider. In plate chrome `divide-x` (a real 1px LEFT
+          BORDER on every card but the first) becomes a two-tone inset
+          groove — the plate's own seam language, cut INTO the card instead
+          of drawn between cards, and the last flat hairline on the surface
+          goes with it. Zero layout change either way: `flex-1` is
+          `flex: 1 1 0%` over border-box children, so all slots stay exactly
+          equal in width and SlidingSelection's pure-percentage slot math
+          (`width: 100/slotCount%`) stays correct — which it is ONLY at zero
+          gap, and that component carries a four-iteration design record. */}
+      <div
+        data-hud="hero-strip"
+        className={`flex ${
+          isPlate
+            ? '[&>*+*]:shadow-[inset_1px_0_0_rgba(0,0,0,0.55),inset_2px_0_0_rgba(255,235,200,0.05)]'
+            : 'divide-x divide-stone-700'
+        }`}
+      >
         {stripCharacterIds.map((charId, charIndex) => {
           const character = getCharacter(charId);
           if (!character) return null;
@@ -578,55 +637,98 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
           const cannotSelect = disabled || (isAtMaxPlaced && !isSelected && !isPlaced);
           const moveInfo = getMovementInfo(character.behavior);
 
-          return (
-            <div
-              key={charId}
-              onClick={() => {
-                if (cannotSelect) return;
-                // First-ever tap retires the coach line for good (plate
-                // chrome only — the inline hint row is permanent by design).
-                if (isPlate && !isHeroHintDismissed()) dismissHeroHint();
-                if (showTapHint) setShowTapHint(false);
-                onSelectCharacter(isSelected ? null : charId);
-              }}
-              className={`flex-1 flex flex-col items-center px-1 pt-1 pb-1.5 relative transition-colors ${
-                cannotSelect
-                  ? 'opacity-40 cursor-not-allowed'
-                  : isPlaced && isSelected
-                  // Placed AND actively viewed: full brightness so the
-                  // sprite/name/HP match the (full-brightness) info area
-                  // below. The flat tint exactly matches the info area's
-                  // bg-copper-900/15 so card + info read as ONE surface;
-                  // transition-colors crossfades it between cards (the
-                  // tint deliberately does not slide — see the design
-                  // record in SlidingSelection).
-                  ? 'cursor-pointer bg-copper-900/15'
-                  : isPlaced
-                  // Placed but NOT viewed: dim with opacity-50 + a hover
-                  // tint. "Already placed, can't re-place" signal — the
-                  // checkmark + dimmed sprite carry that.
-                  ? 'opacity-50 cursor-pointer [@media(hover:hover)]:hover:bg-stone-700/30'
-                  : isSelected
-                  ? 'bg-copper-900/15 cursor-pointer'
-                  : '[@media(hover:hover)]:hover:bg-stone-700/30 cursor-pointer'
-              }`}
-            >
+          const handleCardActivate = () => {
+            if (cannotSelect) return;
+            // First-ever tap retires the coach line for good (plate
+            // chrome only — the inline hint row is permanent by design).
+            if (isPlate && !isHeroHintDismissed()) dismissHeroHint();
+            if (showTapHint) setShowTapHint(false);
+            onSelectCharacter(isSelected ? null : charId);
+          };
+
+          // PLATE CARD GEOMETRY IS DETERMINISTIC: 2 + 72 + 26 + 14 + 2 = 116.
+          // Every band is a fixed box, so the strip is the same height on a
+          // 393px phone as on a 412px one and the same height for a hero
+          // called 'Ru' as for one called 'Bartholomew the Unready'.
+          const cardStateClass = cannotSelect
+            ? 'opacity-40 cursor-not-allowed'
+            : isPlaced && isSelected
+            // Placed AND actively viewed: full brightness so the
+            // sprite/name/HP match the (full-brightness) info area
+            // below. The flat tint exactly matches the info area's
+            // bg-copper-900/15 so card + info read as ONE surface;
+            // transition-colors crossfades it between cards (the
+            // tint deliberately does not slide — see the design
+            // record in SlidingSelection).
+            ? 'cursor-pointer bg-copper-900/15'
+            : isPlaced
+            // Placed but NOT viewed. INLINE dims the whole card with
+            // opacity-50; PLATE dims only the ART (see the sprite
+            // wrapper below), because 'already placed' is a fact about
+            // the unit, not a reason to make its name and HP harder to
+            // read — and the corner plate now says it in words.
+            ? (isPlate
+              ? 'cursor-pointer [@media(hover:hover)]:hover:bg-stone-700/30'
+              : 'opacity-50 cursor-pointer [@media(hover:hover)]:hover:bg-stone-700/30')
+            : isSelected
+            ? 'bg-copper-900/15 cursor-pointer'
+            : '[@media(hover:hover)]:hover:bg-stone-700/30 cursor-pointer';
+
+          const cardClass = `flex-1 flex flex-col items-center relative transition-colors ${
+            // pb-2 (8px) is NOT slack: SlidingSelection's caret band is a
+            // fixed 8px riding at bottom-0 of the strip, so the card must
+            // reserve exactly that much below the stat row or the caret
+            // punctures the HP numeral. Do not shave it.
+            isPlate ? 'px-1 pt-0.5 pb-2' : 'px-1 pt-1 pb-1.5'
+          } ${cardStateClass}`;
+
+          // Input heroes have no meaningful default — the arrow live-binds to
+          // the player's compass choice (pending or placed) and has nothing
+          // to point at until one is made.
+          const isInputFacing = !!character.facingAcceptsUserInput;
+          const arrowDir = isInputFacing
+            ? (placedCharacters.find(pc => pc.characterId === character.id)?.facing
+                ?? pendingFacingOverrides[character.id])
+            : character.defaultFacing;
+
+          const cardBody = (
+            <>
               {/* Sprite — takes full card width, uniform height across the row */}
               <div className="relative w-full">
-                <SpriteThumbnail
-                  sprite={character.customSprite}
-                  size={cardSpriteHeight}
-                  fillWidth
-                  previewType="entity"
-                  noBackground
-                  pixelScale={CARD_PIXEL_SCALE}
-                  bottomAlign={!character.isFloating}
-                  cardRole="hero"
-                  cardSelected={isSelected}
-                  cardPlaced={isPlaced}
-                  canvasStyle={(isSelected && !isPlaced) ? { filter: 'drop-shadow(0 0 2px rgba(0,0,0,1)) drop-shadow(0 0 3px rgba(212,165,116,0.9)) drop-shadow(0 0 7px rgba(212,165,116,0.5))' } : undefined}
-                />
-                {isPlaced && (
+                {/* THE PLACED DIM IS OPACITY ON A WRAPPER, NEVER A FILTER ON
+                    THE CANVAS. SpriteThumbnail drives a requestAnimationFrame
+                    loop whose phases key off `cardPlaced`, so a CSS filter
+                    over that canvas would be re-evaluated every frame — the
+                    pinned page-decoration rule. Opacity is compositor-only. */}
+                <div className={isPlate && isPlaced && !isSelected ? 'opacity-50' : undefined}>
+                  <SpriteThumbnail
+                    sprite={character.customSprite}
+                    size={cardSpriteHeight}
+                    fillWidth
+                    previewType="entity"
+                    noBackground
+                    pixelScale={CARD_PIXEL_SCALE}
+                    bottomAlign={!character.isFloating}
+                    cardRole="hero"
+                    cardSelected={isSelected}
+                    cardPlaced={isPlaced}
+                    // Plate: the selection glow is ungated. A placed hero you
+                    // have tapped to re-read is still THE SELECTED CARD, and
+                    // giving it a different selection language than every
+                    // other card made the strip look like it had two kinds of
+                    // selection.
+                    canvasStyle={(isPlate ? isSelected : (isSelected && !isPlaced)) ? { filter: 'drop-shadow(0 0 2px rgba(0,0,0,1)) drop-shadow(0 0 3px rgba(212,165,116,0.9)) drop-shadow(0 0 7px rgba(212,165,116,0.5))' } : undefined}
+                  />
+                </div>
+                {isPlaced && (isPlate ? (
+                  // A stamped corner plate instead of a system-font dingbat.
+                  // The old centred ✓ was drawn by whatever glyph the device
+                  // had, sat ON the art it was describing, and said nothing a
+                  // stranger to the game could read.
+                  <span className="absolute bottom-0 left-0 hud-label px-1 py-0.5 rounded-pixel bg-copper-900/80 border border-copper-700 text-copper-300">
+                    Set
+                  </span>
+                ) : (
                   // Just the centered ✓ — no dark dim overlay. The outer
                   // card's opacity-50 already carries the "this hero is
                   // placed and can't be placed again" signal; adding a
@@ -637,48 +739,116 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                   <div className="absolute inset-0 flex items-center justify-center">
                     <span className="text-copper-400 text-base">✓</span>
                   </div>
-                )}
+                ))}
               </div>
 
-              {/* Name + Title (below sprite).
-                  Separate block divs for tight vertical spacing control.
-                  Container carries a ref + shared minHeight so all cards
-                  in the row have the same name-block height, aligning the
-                  HP/info/caret rows below across cards. */}
-              <div
-                ref={(el) => { nameBlockRefs.current[charIndex] = el; }}
-                className="text-center w-full mt-0.5 mb-0.5"
-                style={{ minHeight: maxNameBlockHeight || undefined }}
-              >
-                <div className="text-[12px] font-medium break-words text-arcane-400 leading-none">
-                  {character.name}
-                </div>
-                {character.title && (
-                  <div className="text-[10px] italic text-parchment-300 leading-none mt-0.5">
-                    {character.title}
-                  </div>
-                )}
-              </div>
+              {isPlate ? (
+                /* NAME — a FIXED 26px box holding ONE clamped line, with the
+                   full name kept in `title`.
 
-              {/* Attribute row: HP + movement */}
-              <div className="flex items-center justify-center mt-0.5 w-full">
-                <div className="flex items-center gap-0.5 pr-1.5 border-r border-stone-600">
-                  <span className="text-xs font-medium text-copper-400">HP:</span>
-                  <span className="text-xs font-bold" style={{ color: '#4ade80' }}>
-                    {character.health}
+                   ONE line, not two, and NO line-height override. At 15px
+                   Modern Antiqua the ink box is 17px (ascent 13 + descent 4),
+                   which is exactly the 17px leading `.theme-root .hud-title`
+                   already ships. Forcing a tighter 13px here bought nothing:
+                   `line-clamp-*` installs `overflow:hidden` ON THE SPAN, so
+                   the clip box IS the line box — a 13px line box amputated
+                   2px of ascender and 2px of descender from EVERY name, and
+                   stacked two of them it also overlapped the lines by 3px.
+                   Inheriting 17px makes clip box == ink box: measured 0px
+                   clipped top and bottom on 'Gorgy Jinx', 'Bartholomew' and
+                   'Aethelred Stormcaller'.
+
+                   The box stays 26px either way, so the card is still a
+                   deterministic 122px and still width-invariant; a single
+                   17px line centres at boxTop+4.5..boxTop+21.5. Nothing is
+                   lost to the clamp: the full name AND the epithet are in the
+                   drawer subhead, and in `title`. */
+                <div className="w-full h-[26px] flex items-center justify-center overflow-hidden">
+                  <span
+                    className="hud-title text-arcane-300 text-center break-words line-clamp-1"
+                    title={character.title ? `${character.name} — ${character.title}` : character.name}
+                  >
+                    {character.name}
                   </span>
                 </div>
-                <div className="flex items-center gap-1 pl-1.5 text-copper-400">
-                  {moveInfo ? (() => {
-                    // Input heroes have no meaningful default — the arrow
-                    // live-binds to the player's compass choice (pending or
-                    // placed) and shows "?" until one is made.
-                    const isInputFacing = !!character.facingAcceptsUserInput;
-                    const arrowDir = isInputFacing
-                      ? (placedCharacters.find(pc => pc.characterId === character.id)?.facing
-                          ?? pendingFacingOverrides[character.id])
-                      : character.defaultFacing;
-                    return (
+              ) : (
+                /* Name + Title (below sprite).
+                   Separate block divs for tight vertical spacing control.
+                   Container carries a ref + shared minHeight so all cards
+                   in the row have the same name-block height, aligning the
+                   HP/info/caret rows below across cards. */
+                <div
+                  ref={(el) => { nameBlockRefs.current[charIndex] = el; }}
+                  className="text-center w-full mt-0.5 mb-0.5"
+                  style={{ minHeight: maxNameBlockHeight || undefined }}
+                >
+                  <div className="text-[12px] font-medium break-words text-arcane-400 leading-none">
+                    {character.name}
+                  </div>
+                  {character.title && (
+                    <div className="text-[10px] italic text-parchment-300 leading-none mt-0.5">
+                      {character.title}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {isPlate ? (
+                /* STAT LINE — one 14px row. The `border-r` rule between HP and
+                   movement is gone (the strip now has exactly one divider
+                   language) and a real 12px gap does the separating. */
+                <div className="flex items-center justify-center gap-3 w-full h-[14px]">
+                  <div className="flex items-center gap-1">
+                    <span className="hud-label text-copper-400">HP</span>
+                    <span className="hud-num" style={{ color: 'var(--hud-vital)' }}>
+                      {character.health}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1 text-copper-400">
+                    {moveInfo ? (
+                      arrowDir ? (
+                        <>
+                          {moveInfo.tilesPerMove > 1 && (
+                            <span className="hud-num">{moveInfo.tilesPerMove}</span>
+                          )}
+                          <MovementArrow
+                            direction={arrowDir}
+                            className={isInputFacing ? 'text-arcane-300' : 'text-copper-400'}
+                            size={13}
+                            // Six-plus infinite 1.2s loops running at rest is
+                            // motion nobody asked for; only the card being
+                            // read animates.
+                            animated={isSelected}
+                          />
+                        </>
+                      ) : (
+                        /* A BLOCKING STATE MUST NEVER BE THE SMALLEST THING ON
+                           SCREEN. This was an 11px '?' at 80% opacity — the
+                           least legible mark in the panel standing in for the
+                           one input without which the hero cannot be placed. */
+                        <span
+                          className="hud-label px-1 rounded-pixel bg-black/35 whitespace-nowrap"
+                          style={{ color: 'var(--hud-gold)' }}
+                        >
+                          Pick
+                        </span>
+                      )
+                    ) : (
+                      <span className="hud-num text-stone-400">—</span>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                /* Attribute row: HP + movement */
+                <div className="flex items-center justify-center mt-0.5 w-full">
+                  <div className="flex items-center gap-0.5 pr-1.5 border-r border-stone-600">
+                    <span className="text-xs font-medium text-copper-400">HP:</span>
+                    <span className="text-xs font-bold" style={{ color: '#4ade80' }}>
+                      {character.health}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1 pl-1.5 text-copper-400">
+                    {moveInfo ? (
                       <>
                         {moveInfo.tilesPerMove > 1 && (
                           <span className="text-xs font-medium">{moveInfo.tilesPerMove}</span>
@@ -689,12 +859,12 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                           <span className="text-[11px] font-bold text-purple-300/80 leading-none">?</span>
                         )}
                       </>
-                    );
-                  })() : (
-                    <span className="text-xs text-stone-500">—</span>
-                  )}
+                    ) : (
+                      <span className="text-xs text-stone-500">—</span>
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* No per-card "more info" affordance (design decision,
                   2026-07-29): the old reserved "More Info" row cost ~22px
@@ -702,6 +872,31 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                   first tap teaches that every card opens. The words live in
                   the shared hint line below the strip; the selected amber
                   up caret rides the SlidingSelection overlay, height-free. */}
+            </>
+          );
+
+          // PLATE: a real <button>. That buys a keyboard-reachable card, a
+          // correct `aria-pressed` selection state, the global
+          // `*:focus-visible` ring for free, and a `:active` press where
+          // today there is no touch feedback at all. It is only valid because
+          // S6 evacuated the compass — until then the card contained
+          // interactive children and could not legally be a button. INLINE
+          // keeps the div: TrainingGrounds still renders the compass inside
+          // the card and is held to pixel-identity.
+          return isPlate ? (
+            <button
+              key={charId}
+              type="button"
+              aria-pressed={isSelected}
+              disabled={cannotSelect}
+              onClick={handleCardActivate}
+              className={cardClass}
+            >
+              {cardBody}
+            </button>
+          ) : (
+            <div key={charId} onClick={handleCardActivate} className={cardClass}>
+              {cardBody}
             </div>
           );
         })}
@@ -717,11 +912,120 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
         <div style={{
           display: 'grid',
           gridTemplateRows: isOpen ? '1fr' : '0fr',
-          transition: isOpen
+          // PLATE: 0.20s on a linear-out curve, no overshoot. The inline
+          // chrome's 1.56 back-ease is a BOUNCE on a LAYOUT property — the
+          // whole page below the panel visibly double-bounced on every hero
+          // tap. Inline keeps it only because TrainingGrounds is held to
+          // pixel-identity for the duration of the layout work.
+          transition: isPlate
+            ? 'grid-template-rows 0.2s cubic-bezier(0.2, 0, 0, 1)'
+            : isOpen
             ? 'grid-template-rows 0.55s cubic-bezier(0.34, 1.56, 0.64, 1)'
             : 'grid-template-rows 0.28s ease-in',
         }}>
         <div style={{ overflow: 'hidden', minHeight: 0 }}>
+        {isPlate ? (
+        /* ================= THE DRAWER (plate chrome) =================
+           A BOUNDED region, not a growing one: `max-height` on
+           `.hero-drawer` (index.css) turns "unusually long hero info" from
+           page growth into a short internal scroll, which is the trade the
+           user sanctioned. The orders stay pinned at the top — they BLOCK
+           the next action — and only the brief scrolls under them. */
+        <div
+          data-hud="hero-info"
+          className="hero-drawer bg-copper-900/15 rounded-b-pixel-md"
+          style={{
+            opacity: isOpen ? 1 : 0,
+            transition: isOpen
+              ? 'opacity 0.2s cubic-bezier(0.2, 0, 0, 1)'
+              : 'opacity 0.15s ease-in',
+          }}
+        >
+          {hasDirectionInputs && (
+            <div
+              ref={ordersRef}
+              className={`hero-drawer__orders space-y-1${
+                directionInputEntries.length > 2 ? ' hero-drawer__orders--scroll' : ''
+              }`}
+            >
+              {directionInputEntries.map(renderOrderPill)}
+            </div>
+          )}
+
+          <div ref={briefRef} className="hero-drawer__brief">
+            {/* SUBHEAD — who you are reading. The epithet lives HERE now:
+                on the card it had ~110px and was set at 10px italic, which
+                is below this panel's own type floor; at full measure it
+                reads as the hero's HUD subtitle instead of as a caption
+                squeezed under a portrait. */}
+            <div className="flex items-baseline gap-2 mb-1.5">
+              <span className="hud-title text-arcane-300">{renderedCharacter.name}</span>
+              {renderedCharacter.title && (
+                <span className="hud-label text-stone-400 truncate">{renderedCharacter.title}</span>
+              )}
+            </div>
+
+            {/* ONE FULL-MEASURE COLUMN below lg. The old three-column row left
+                each text column ~104px — about seventeen characters — so the
+                panel's height was manufactured by WRAPPING rather than by
+                content. At 375px this measures ~327px, about fifty
+                characters. At lg+ the measure is there for two columns, so
+                desktop keeps its parallel reading. */}
+            <div className="lg:grid lg:grid-cols-2 lg:gap-4 lg:items-start">
+              {hasActionSteps && (
+                <div>
+                  <p className="hud-label text-stone-400 mb-1">Actions</p>
+                  {/* No `pl-2` here and none on the traits list below: both
+                      lists hang off ONE left rail. The mismatched indents were
+                      the most visible "nobody laid this out" tell in the
+                      panel. */}
+                  <ol className="hud-body text-stone-300 space-y-1">
+                    {renderedCharacter.actionSteps!.map((step, idx) => (
+                      <li key={idx} className="flex items-baseline gap-1.5">
+                        <span className="font-semibold text-stone-400 flex-shrink-0">{idx + 1}.</span>
+                        <span>
+                          <RichTextRenderer html={step.text} />
+                          {step.subSteps && step.subSteps.length > 0 && (
+                            <ul className="mt-0.5 space-y-1 text-stone-400">
+                              {step.subSteps.map((sub, subIdx) => (
+                                <li key={subIdx} className="flex items-baseline gap-1.5">
+                                  <span className="flex-shrink-0">•</span>
+                                  <RichTextRenderer html={sub} />
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </span>
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              )}
+              {hasAttributes && (
+                <div className={hasActionSteps ? 'mt-2 lg:mt-0' : undefined}>
+                  <p className="hud-label text-stone-400 mb-1">Attributes</p>
+                  <ul className="hud-body text-stone-300 space-y-1">
+                    {renderedCharacter.attributes!.map((attr, idx) => (
+                      <li key={idx}>
+                        <div className="flex items-baseline gap-1.5">
+                          <span className="text-stone-400 flex-shrink-0">•</span>
+                          <RichTextRenderer html={attributeText(attr)} />
+                        </div>
+                        {(attributeSubItems(attr) || []).map((sub, subIdx) => (
+                          <div key={subIdx} className="flex items-baseline gap-1.5 ml-3 mt-0.5">
+                            <span className="text-stone-400 flex-shrink-0">◦</span>
+                            <RichTextRenderer html={sub} />
+                          </div>
+                        ))}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+        ) : (
         <div
           data-hud="hero-info"
           className="pt-2.5 pb-3 mt-0 bg-copper-900/15 rounded-b-pixel-md"
@@ -734,29 +1038,15 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
           }}
         >
 
-          {/* ORDERS BAR — plate chrome. Full measure, above the brief, because
-              it is the one thing in this panel that BLOCKS the next action.
-              Each pill opens the portalled 48px compass. */}
-          {isPlate && hasDirectionInputs && (
-            <div className="px-2 mb-2 space-y-1">
-              {directionInputEntries.map(renderOrderPill)}
-            </div>
-          )}
-
-          {/* Actions | Choose | Attributes — the text columns split the
-              remaining space. In PLATE chrome the compass column is gone (its
-              orders moved to the bar above) and so are the dashed rules, so
-              the two text columns take the whole measure — which is where
-              most of this slice's height actually comes from: the columns
-              stop wrapping every third word.
-
-              THE INLINE FORK IS DELIBERATE AND TEMPORARY. TrainingGrounds and
-              the editor playtest mount share this component and are held to
-              pixel-identity for the duration of the layout work, so they keep
-              the legacy 17px compass column. Everything gating that fork is
-              `showInlineDirections`; when the pixel-identity hold is lifted,
-              delete this branch and let both chromes use the picker — the
-              17px cells are a WCAG 2.5.8 failure wherever they render. */}
+          {/* Actions | Directions | Attributes — LEGACY INLINE LAYOUT, and it
+              is deliberately frozen. TrainingGrounds and the editor playtest
+              mount share this component and are held to pixel-identity for
+              the duration of the layout work, so they keep the three-column
+              row and the legacy 17px compass column. When the pixel-identity
+              hold is lifted, delete this whole branch and let both chromes
+              use the drawer above — the 17px cells are a WCAG 2.5.8 failure
+              wherever they render, and the ~104px text columns are what made
+              the panel tall in the first place. */}
           {(hasActionSteps || hasAttributes || showInlineDirections) && (
           <div className={`flex mb-2 px-2 ${[hasActionSteps, showInlineDirections, hasAttributes].filter(Boolean).length === 1 ? 'justify-center' : 'gap-0'}`}>
               {hasActionSteps && (
@@ -893,6 +1183,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
           )}
 
         </div>
+        )}
         </div>
         </div>
       )}
@@ -942,7 +1233,17 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
   // also a no-op for layout height (see index.css). With `noPanel` set there
   // is otherwise no background, border, radius or shadow on this element at
   // all, and the band read as an accident floating in black.
-  const rootClass = `${isPlate ? 'hero-plate relative ' : ''}${disabled ? 'opacity-60' : ''}`.trim();
+  // `hero-plate--bottom` closes the object: the quest rung above wears
+  // `hero-plate--top` and the two are flush, so rung + roster + drawer read as
+  // ONE framed plate with grooves between its compartments rather than as
+  // three siblings each padding itself away from its neighbours. It is the
+  // one element in this plan that spends height on purpose — 6px of inner
+  // margin, because a bevelled frame with content flush against the bevel
+  // reads as a clipping bug and not as chrome.
+  // `hero-plate--standalone` is for the state where the rung ISN'T there: an
+  // expanded cloth banner stands off above instead of a stone rung sitting on
+  // it, so an open-topped plate would be a frame missing its lid. See index.css.
+  const rootClass = `${isPlate ? `hero-plate hero-plate--bottom relative ${plateStandalone ? 'hero-plate--standalone ' : ''}` : ''}${disabled ? 'opacity-60' : ''}`.trim();
 
   if (noPanel) {
     return <div data-hud="hero-panel" className={rootClass}>{content}</div>;

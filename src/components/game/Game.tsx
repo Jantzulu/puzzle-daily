@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any */
-import React, { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef } from 'react';
 import type { GameState, PlacedCharacter, Puzzle, PlacedEnemy, PuzzleScore, ProjectileEvent, Projectile, CustomAttack } from '../../types/game';
 import { Direction, TURN_INTERVAL_MS } from '../../types/game';
 import { getTodaysPuzzle, getAllPuzzles } from '../../data/puzzles';
@@ -19,7 +19,7 @@ import { ReplayControls } from './ReplayControls';
 import { getSavedPuzzles, type SavedPuzzle } from '../../utils/puzzleStorage';
 import { loadTileType, loadCollectible, loadEnemy, loadStatusEffectAsset } from '../../utils/assetStorage';
 import { collectPuzzleAssetUrls } from '../../utils/spritePreload';
-import { HelpButton } from './HelpOverlay';
+import { HelpButton, HelpOverlay } from './HelpOverlay';
 import { playGameSound, playVictoryMusic, playDefeatMusic, playBackgroundMusic, stopMusic } from '../../utils/gameSounds';
 import { loadThemeAssets, subscribeToThemeAssets, type ThemeAssets } from '../../utils/themeAssets';
 import { WarningModal } from '../shared/WarningModal';
@@ -233,6 +233,211 @@ export const Game: React.FC<GameProps> = ({
   // Count of puzzle sprites that failed to preload. Non-zero shows a small
   // retry pill on the board instead of rendering missing art silently.
   const [failedSpriteCount, setFailedSpriteCount] = useState(0);
+
+  // ============================================================
+  // THE QUEST BAND — cloth banner first, iron rung after
+  //
+  // 52px of hanging cloth plus a 4px margin buys ONE line of text, and the
+  // same block is the mount point for three RUNTIME-CONDITIONAL rows that no
+  // fixed budget can see coming: the side-quest list (+41px), the puzzle
+  // number (+16px) and the offline "practice dungeon" notice (+16px). A
+  // puzzle carrying all three shoves the hero panel a further 73px down the
+  // page on exactly the phones this work exists to fix — so the worst case
+  // is not the one the harness measures, it is whatever content a level
+  // author happens to ship.
+  //
+  // So: UNMISSABLE FIRST, CHEAP AFTER. Until the player has actually engaged
+  // with the puzzle the banner renders exactly as it always has — same
+  // cloth, same mesh, same rows, same everything. On the first real
+  // interaction (or after six seconds of looking at it) it collapses to an
+  // iron rung that states the quest on one line and expands again on tap.
+  // Every conditional row goes with it, so the steady-state budget is the
+  // same for every puzzle in the game instead of being a property of the
+  // level.
+  //
+  // >= 768px NEVER COLLAPSES. Tablets and desktops have the vertical room,
+  // and the banner's two dev controls keep their labels there.
+  const [questSeen, setQuestSeen] = useState(false);
+  const [questReopened, setQuestReopened] = useState(false);
+  // `questRender` is the state actually PAINTED; it lags the desired state by
+  // one 90ms fade step so the height change happens while the band is
+  // invisible (see the swap effect). true = the full cloth banner.
+  const [questRender, setQuestRender] = useState(true);
+  const [questDim, setQuestDim] = useState(false);
+  const [questWide, setQuestWide] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(min-width: 768px)').matches
+  );
+  const [showSideQuestHelp, setShowSideQuestHelp] = useState(false);
+  // The rung's expand is a TOGGLE whose other half is the player's next move,
+  // not a second tap on the banner. Re-collapsing by tapping the open banner
+  // would mean either an inert click handler on a <span> (no keyboard) or a
+  // `role="button"` on a 24px-tall line of text — which is a new sub-44px tap
+  // target on the one page whose whole point is that it has none. Folding on
+  // the next board or roster touch is the same gesture economy the first
+  // collapse uses, and it needs no control at all.
+  const markQuestSeen = useCallback(() => {
+    setQuestSeen(true);
+    setQuestReopened(false);
+  }, []);
+
+  // A new puzzle is a new quest: show the cloth again.
+  useEffect(() => {
+    setQuestSeen(false);
+    setQuestReopened(false);
+    setQuestRender(true);
+    setQuestDim(false);
+  }, [currentPuzzle.id]);
+
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 768px)');
+    const sync = () => setQuestWide(mq.matches);
+    sync();
+    mq.addEventListener('change', sync);
+    return () => mq.removeEventListener('change', sync);
+  }, []);
+
+  // The no-interaction fallback. Counted from sprites-ready, not from mount,
+  // so a slow asset load never eats the reading time.
+  useEffect(() => {
+    if (!spritesReady || questSeen) return;
+    const id = setTimeout(() => setQuestSeen(true), 6000);
+    return () => clearTimeout(id);
+  }, [spritesReady, questSeen]);
+
+  const questExpanded = questWide || !questSeen || questReopened;
+
+  // Cross-fade, NOT a height animation: opacity out 90ms -> swap the markup
+  // in ONE step -> opacity in 90ms. Animating the height would relayout the
+  // whole page below it on every frame, which is the pinned decoration rule's
+  // "never geometry per frame". Reduced motion swaps instantly.
+  useEffect(() => {
+    if (questRender === questExpanded) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setQuestRender(questExpanded);
+      setQuestDim(false);
+      return;
+    }
+    setQuestDim(true);
+    const id = setTimeout(() => {
+      setQuestRender(questExpanded);
+      setQuestDim(false);
+    }, 90);
+    return () => clearTimeout(id);
+  }, [questExpanded, questRender]);
+
+  // The quest sentence as a STRING. Lifted verbatim out of the banner's JSX
+  // so the rung can state the same thing on one line — one derivation, two
+  // presentations. The expanded banner now renders this value, so its output
+  // is character-for-character what it printed inline before.
+  const questLabel = useMemo(
+    () =>
+      gameState.puzzle.winConditions
+        .map((wc) => {
+          // Quest text override (2026-07-21): authored text
+          // wins verbatim over every auto-phrased label.
+          if (wc.customLabel?.trim()) return wc.customLabel.trim();
+          switch (wc.type) {
+            case 'defeat_all_enemies': {
+              // Mirror checkVictoryConditions: ENEMY-party combatants that
+              // aren't win-exempt (summons) or designer-excluded types.
+              // Named quest text (user design 2026-07-11): group the
+              // remaining kill targets by type — "Defeat the Bats (2) and
+              // Skeleton (1)" — using the asset's pluralName when several.
+              const excludedIds = wc.params?.excludedEnemyIds ?? [];
+              // !despawned: escort-escaped enemies (alive-despawned)
+              // are excused, not remaining kill targets.
+              const counted = gameState.puzzle.enemies.filter(e =>
+                !e.dead && !e.despawned && entityParty(e, gameState) === 'enemy' &&
+                !e.excludeFromWinConditions && !excludedIds.includes(e.enemyId)
+              );
+              if (counted.length === 0) return 'Defeat all Enemies (0)';
+              const groups = new Map<string, number>();
+              counted.forEach(e => groups.set(e.enemyId, (groups.get(e.enemyId) ?? 0) + 1));
+              const parts = Array.from(groups.entries()).map(([id, n]) => {
+                const data = loadEnemy(id);
+                const base = data?.name ?? 'Enemy';
+                const label = n > 1 ? (data?.pluralName || `${base}s`) : base;
+                return `${label} (${n})`;
+              });
+              const list = parts.length === 1
+                ? parts[0]
+                : `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`;
+              return `Defeat the ${list}`;
+            }
+            case 'defeat_boss': {
+              const bossEnemies = gameState.puzzle.enemies
+                .filter(e => {
+                  if (entityParty(e, gameState) !== 'enemy' || e.excludeFromWinConditions) return false;
+                  const enemy = loadEnemy(e.enemyId);
+                  return enemy?.isBoss && !e.dead;
+                })
+                .map(e => loadEnemy(e.enemyId)!);
+              const bossCount = bossEnemies.length;
+              const bossNames = bossEnemies.map(enemy => enemy.name);
+              if (bossNames.length === 0) return 'Defeat the Boss';
+              if (bossNames.length === 1) return `Defeat ${bossNames[0]}`;
+              return `Defeat ${bossNames.slice(0, -1).join(', ')} & ${bossNames[bossNames.length - 1]} (${bossCount})`;
+            }
+            case 'collect_all': {
+              const collectibleCount = gameState.puzzle.collectibles.filter(c => !c.collected).length;
+              return `Collect all Items (${collectibleCount})`;
+            }
+            case 'collect_keys': {
+              const keyCount = gameState.puzzle.collectibles.filter(c => {
+                if (!c.collectibleId) return false;
+                const collectible = loadCollectible(c.collectibleId);
+                return collectible?.effects?.some(e => e.type === 'win_key') && !c.collected;
+              }).length;
+              return `Collect all Keys (${keyCount})`;
+            }
+            case 'reach_goal':
+              return 'Reach the Exit';
+            case 'protect_noble': {
+              const names = nobleQuestNames(gameState);
+              return names ? `Protect ${names}` : 'Protect the Noble';
+            }
+            case 'noble_survives_turns': {
+              const names = nobleQuestNames(gameState);
+              const turns = wc.params?.turns ?? 10;
+              return names ? `Keep ${names} alive for ${turns} Turns` : `Keep the Noble alive for ${turns} Turns`;
+            }
+            case 'noble_reaches_goal': {
+              const names = nobleQuestNames(gameState);
+              return names ? `Guide ${names} to the Exit` : 'Guide the Noble to the Exit';
+            }
+            case 'noble_escapes': {
+              const names = nobleQuestNames(gameState);
+              return names ? `Guide ${names} out of the Dungeon` : 'Guide the Noble out of the Dungeon';
+            }
+            case 'entity_escapes': {
+              // Escort: name the designated assets (hero or
+              // enemy/ally lookup by id). customLabel above is
+              // the pressure valve for fancier phrasing.
+              const ids = wc.params?.escortEntityIds ?? [];
+              const escortNames = ids
+                .map(id => getCharacter(id)?.name ?? loadEnemy(id)?.name)
+                .filter((n): n is string => !!n);
+              if (escortNames.length === 0) return 'Guide them out of the Dungeon';
+              const joined = escortNames.length === 1
+                ? escortNames[0]
+                : `${escortNames.slice(0, -1).join(', ')} and ${escortNames[escortNames.length - 1]}`;
+              return `Guide ${joined} out of the Dungeon`;
+            }
+            case 'survive_turns':
+              return `Survive ${wc.params?.turns ?? 10} Turns`;
+            case 'win_in_turns':
+              return `Win within ${wc.params?.turns ?? 10} Turns`;
+            case 'max_characters':
+              return `Use at most ${wc.params?.characterCount ?? 1} Hero${(wc.params?.characterCount ?? 1) > 1 ? 'es' : ''}`;
+            case 'characters_alive':
+              return `Keep ${wc.params?.characterCount ?? 1} Hero${(wc.params?.characterCount ?? 1) > 1 ? 'es' : ''} alive`;
+            default:
+              return wc.type;
+          }
+        })
+        .join(' & '),
+    [gameState]
+  );
   // The gate-settle mount animation gets exactly one showing, then its class
   // comes off. A lingering class would restart the animation whenever the
   // menu-ride rule (index.css) toggles animation:none off again — and a
@@ -259,6 +464,52 @@ export const Game: React.FC<GameProps> = ({
     );
   }, [resetFxNonce]);
 
+  // --board-w: the board's own painted width, published on the board wrapper
+  // so `.dungeon-aperture`'s jambs can hug the CANVAS instead of guessing at
+  // a text column. There is no CSS expression for it: the width is whatever
+  // the zoom quantizer produced (columns x tile, tile in {12,24,36,48}), so
+  // it moves with viewport width AND device pixel ratio — 324px at 393, 216px
+  // at 1280 dpr 1. Measured off `.animate-fade-in-board`, which is
+  // AnimatedGameBoard's LAYOUT box (the canvas itself is wider whenever a
+  // hallway overhangs, and the overhang is meant to bleed past the frame).
+  //
+  // THIS CANNOT FEED BACK INTO BOARD SIZING. ResponsiveGameBoard measures its
+  // container's WIDTH only, and the only consumers of --board-w are an
+  // out-of-flow pseudo-element and a clip-path, neither of which contributes
+  // layout. Read-only.
+  //
+  // PUBLISHED TWICE, ON PURPOSE. On the wrapper, because `.dungeon-aperture`
+  // declares its own `--board-w: 100%` fail-safe and only an inline style
+  // outranks that. AND on the shared column ancestor (gameBoardRef), because
+  // the portcullis rail is a SIBLING of the board, not a descendant, and it
+  // needs the same number to clip its hanging spikes to the opening. Both
+  // writes are the same value in the same frame, so the two can't disagree.
+  // Ref for scrolling to game board on mobile — and the shared column
+  // ancestor of the rail and the board, which is why --board-w lands on it.
+  const gameBoardRef = useRef<HTMLDivElement>(null);
+  const boardWrapRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const wrap = boardWrapRef.current;
+    if (!wrap) return;
+    let watched: Element | null = null;
+    const ro = new ResizeObserver(() => {
+      const box = wrap.querySelector('.animate-fade-in-board');
+      if (box && box !== watched) {
+        if (watched) ro.unobserve(watched);
+        watched = box;
+        ro.observe(box);
+      }
+      const w = box ? box.getBoundingClientRect().width : 0;
+      if (w > 0) {
+        const px = `${Math.round(w)}px`;
+        wrap.style.setProperty('--board-w', px);
+        gameBoardRef.current?.style.setProperty('--board-w', px);
+      }
+    });
+    ro.observe(wrap);
+    return () => ro.disconnect();
+  }, []);
+
 
   // Scoring system
   const [puzzleScore, setPuzzleScore] = useState<PuzzleScore | null>(null);
@@ -271,9 +522,6 @@ export const Game: React.FC<GameProps> = ({
     enemies: PlacedEnemy[];
     puzzle: Puzzle;
   } | null>(null);
-
-  // Ref for scrolling to game board on mobile
-  const gameBoardRef = useRef<HTMLDivElement>(null);
 
   // Theme assets for custom icons
   const [themeAssets, setThemeAssets] = useState<ThemeAssets>(() => loadThemeAssets());
@@ -2412,7 +2660,16 @@ export const Game: React.FC<GameProps> = ({
               // beam-to-beam gap is unchanged. rail-riding: once the page
               // scrolls, the rail drops 14px and the bars reveal
               // themselves (see index.css).
-              <div data-hud="control-rail" className={`control-rail relative z-0 w-full max-w-2xl grid grid-cols-3 items-center px-3 pt-1 pb-1 mt-0 mb-1 min-h-[44px]${railRiding ? ' rail-riding' : ''}${justExitedReplay ? ' animate-rail-descend' : ''}${enteringReplay ? ' animate-rail-ascend' : ''}${replayMode && !enteringReplay ? ' invisible' : ''}`}>
+              // grid-cols-[1fr_auto_1fr], not grid-cols-3. Equal thirds are a
+              // lie on a phone: the centre stone is a LOCKED 118px
+              // (w-[118px] shrink-0, so Play and the turn counter can never
+              // resize each other) while a third of the rail is 106px at 375
+              // — the stone overhung its own column by 6px each side and the
+              // third life heart was drawn UNDERNEATH it. An auto centre
+              // column gives the stone exactly its width, splits the
+              // remainder evenly so it stays centred on the rail, and makes a
+              // column overlap structurally impossible.
+              <div data-hud="control-rail" className={`control-rail relative z-0 w-full max-w-2xl grid grid-cols-[1fr_auto_1fr] items-center px-3 pt-1 pb-1 mt-0 mb-1 min-h-[44px]${railRiding ? ' rail-riding' : ''}${justExitedReplay ? ' animate-rail-descend' : ''}${enteringReplay ? ' animate-rail-ascend' : ''}${replayMode && !enteringReplay ? ' invisible' : ''}`}>
                   {/* Portcullis rail: with the mobile menu OPEN the sticky
                       wrapper rides the gate's leading edge (translated by
                       --gate-drop, see index.css), so this rail hangs
@@ -2420,12 +2677,29 @@ export const Game: React.FC<GameProps> = ({
                       is tuned so that beam-to-beam gap matches the menu's
                       own rung spacing: one equidistant lattice with this
                       rail as the spiked bottom. Spikes hang over the
-                      dungeon (wrapper z-40 > board z-10). */}
-                  <PortcullisMesh />
+                      dungeon (wrapper z-40 > board z-10).
+                      rivets="ends": this is the one rail with controls on its
+                      face, and the per-bar forge plates render ~8x5px on a
+                      phone — next to a glyph that reads as a tofu box, not as
+                      hardware. Measured, the 10%/30% plates sat flush against
+                      the 'L' of "Lives:" and behind the third heart. The end
+                      caps sit in the rail's own px-3 gutter. The nav gate's
+                      copy of this mesh has no controls and keeps its bar
+                      rivets (the default). */}
+                  <PortcullisMesh rivets="ends" />
                   {/* Left: Test (dev only) + Lives - centered in left third.
                       The dev-only Test button lands here when the hero
                       panel's header row is deleted (plate chrome). The rail
-                      is height-neutral up to 36px of content, so it is free.
+                      is height-neutral up to 36px of content, so it is free
+                      wherever the left zone can seat it — which is NOT every
+                      phone. A grid `1fr` column takes its minimum from the
+                      flex row's min-CONTENT width, and a flex row under-
+                      reports (its children are shrinkable), so the cluster
+                      silently overflowed its column and the third heart was
+                      drawn under the Play stone at 375 and 1px off it at 393.
+                      Measured, the flask + its gap is the 24px that decides
+                      it. Gate raised 360 -> 400: a dev-only shortcut is what
+                      gives way, never the player-facing `Lives:` readout.
                       It keeps the FLASK glyph rather than the old play
                       triangle — a second unlabelled play affordance 15px
                       from the green Play stone, with the opposite meaning,
@@ -2438,7 +2712,7 @@ export const Game: React.FC<GameProps> = ({
                     {!hideTestButtons && testMode === 'none' && gameState.gameStatus === 'setup' && (
                       <button
                         onClick={handleTestCharactersWithScroll}
-                        className="hit-44 hidden min-[360px]:flex items-center justify-center w-5 h-5 rounded-pixel text-stone-400 hover:text-arcane-300 transition-colors"
+                        className="hit-44 hidden min-[400px]:flex items-center justify-center w-5 h-5 rounded-pixel text-stone-400 hover:text-arcane-300 transition-colors"
                         title="Test your heroes without enemies for 5 turns"
                         aria-label="Test heroes"
                       >
@@ -2457,7 +2731,20 @@ export const Game: React.FC<GameProps> = ({
                         )}
                       </button>
                     )}
-                    <span className="text-stone-400 text-xs">Lives:</span>
+                    {/* THE WORD GOES BEFORE THE HEARTS DO. Below 360px the
+                        left column is 89px (320 - 24 gutter - 118 stone, split
+                        two ways) and `Lives:` + three hearts measures ~100px,
+                        so the cluster overflowed its column and the third
+                        heart was drawn UNDER the Play stone — measured 10.5px
+                        of overlap at 320. The stone cannot give way (its width
+                        is locked so Play and the turn counter can never resize
+                        each other) and the hearts are the readout itself, so
+                        the LABEL is what goes: three heart icons are a lives
+                        readout in any game ever made, each one still carries
+                        its own `alt`/`title`, and a clipped heart is a worse
+                        readout than an unlabelled one. Measured clear at
+                        320/360/375/393/412/440 and 1280. */}
+                    <span className="hidden min-[360px]:inline text-stone-400 text-xs">Lives:</span>
                     <div className="flex items-center gap-0.5">
                       {(() => {
                         const puzzleLives = currentPuzzle.lives ?? 3;
@@ -2660,7 +2947,34 @@ export const Game: React.FC<GameProps> = ({
                 (board-rise needs vertical clipping); in normal play only
                 the x-axis clips, so hallway corridors may bleed above and
                 below the board's layout box (intended illusion). */}
-            <div data-hud="board" className={`relative top-1.5 lg:top-[7px] z-10 w-full max-w-[900px] board-rise ${(replayMode || enteringReplay) ? 'overflow-hidden board-rise-collapsed ' : 'overflow-x-clip '}${gameState.gameStatus === 'defeat' ? 'animate-screen-shake' : ''}`}>
+            <div
+              data-hud="board"
+              ref={boardWrapRef}
+              // First touch of the dungeon = the quest has been read. Listened
+              // for on the WRAPPER in the capture phase rather than added to
+              // handleTileClick, so the collapse never becomes a term in the
+              // placement path — this is layout state, not game state.
+              // CLICK, not pointerdown: the collapse moves everything below
+              // the band up by 12px, and doing that between a finger's down
+              // and up would slide the target out from under it.
+              onClickCapture={markQuestSeen}
+              // dungeon-aperture: the board is the OPENING IN A WALL, not a
+              // picture hung on it. Two out-of-flow strips paint the masonry
+              // from the composition's own 672px measure (the same column the
+              // control rail above and the hero plate below declare) inward to
+              // the CANVAS's edge (via --board-w, published above), thickening
+              // into a lit jamb at the opening — so rail, wall, rung and plate
+              // read as one continuous column with a cut in it instead of a
+              // board floating in bare page ground.
+              // Background + inset shadows only — 0 layout px, and nothing
+              // here touches the board's size (ResponsiveGameBoard sizes from
+              // container WIDTH and the zoom quantizer is an axiom).
+              // NOT IN REPLAY: the slab there runs its own viewport-height
+              // system and the wrapper is height-collapsed and clipped, so a
+              // wall would paint two stone stubs behind it. Replay keeps its
+              // baseline look.
+              className={`relative top-1.5 lg:top-[7px] z-10 w-full max-w-[900px] board-rise ${(replayMode || enteringReplay) ? 'overflow-hidden board-rise-collapsed ' : 'dungeon-aperture overflow-x-clip '}${gameState.gameStatus === 'defeat' ? 'animate-screen-shake' : ''}`}
+            >
               <div
                 ref={boardFadeRef}
                 className={`transition-[opacity,transform] duration-700 ease-out ${spritesReady ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
@@ -3169,7 +3483,17 @@ export const Game: React.FC<GameProps> = ({
 
           {/* Unified Info Panel - combines all info displays */}
           {/* TEMP-HIDE: removed dungeon-panel class, border, background for layout testing */}
-          <div className="w-full max-w-2xl mx-auto p-1 lg:p-1.5 relative overflow-visible">
+          {/* NO PADDING — the rail and the plate are ONE COLUMN. `p-1
+              lg:p-1.5` inset everything below the board by 4px (6px at lg)
+              from the control rail directly above it, which put four visible
+              left edges on the play page: rail 16, plate 20, card strip 24,
+              drawer contents 32 at a 393px viewport. That stair read as
+              nothing while the plate was an invisible smudge; the moment the
+              plate got a lit edge, a radius and a drop shadow it read as a
+              bug. Rail and plate now share 16..377, the plate's own 4px of
+              side padding is the only inset, and the frame is the one thing
+              that steps. Costs nothing and returns 8px of card width. */}
+          <div className="w-full max-w-2xl mx-auto relative overflow-visible">
             {/* TEMP-HIDE: ornate corner decorations hidden for layout testing
             <svg className="absolute -top-[1px] -left-[1px] w-10 h-10" viewBox="0 0 40 40" overflow="visible">
               <path d="M0 0 L40 0" stroke="#c4915c" strokeWidth="2" fill="none" />
@@ -3188,10 +3512,23 @@ export const Game: React.FC<GameProps> = ({
                 where the old control panel sat. Not sticky; only the
                 portcullis rail above the board floats. */}
             {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
+              questRender ? (
               // z-20: above the board's z-10 so a bottom hallway's corridor
               // overhang slides UNDER the banner, not over it (user call,
               // 2026-07-16 — layering only, position untouched).
-              <div data-hud="quest-band" className="w-full max-w-2xl px-8 md:px-9 pt-3 pb-4 quest-banner relative z-20 overflow-visible mb-1">
+              //
+              // THE MARGIN IS LOAD-BEARING, and it is now 8px on purpose. The
+              // hero plate's cap tabs are 22px and stand on the plate's top
+              // rail, so they reach 21px UP into whatever is above them: this
+              // band's `pb-4` plus this margin. Taking it away pushes both
+              // tabs into the quest text's own line box (the right tab starts
+              // at x=255 on a 393px phone — right through the sentence).
+              // At 4px it was ALSO ambiguous: this band is cloth and the panel
+              // below is stone, they never join, and a 4px separation reads as
+              // a failed flush rather than as a deliberate stand-off. The
+              // panel closes itself in this state (`hero-plate--standalone`),
+              // so the gap is the composition, not a seam that missed.
+              <div data-hud="quest-band" className={`w-full max-w-2xl px-8 md:px-9 pt-3 pb-4 quest-banner quest-band-fade relative z-20 overflow-visible mb-2${questDim ? ' quest-band-fade--out' : ''}`}>
                 {/* Low-poly stone banner behind the quest HUD (see BannerMesh) */}
                 <BannerMesh />
                 {/* Puzzle Number & Quest Row */}
@@ -3262,109 +3599,7 @@ export const Game: React.FC<GameProps> = ({
                     <span key={shimmerKey} className="shimmer-container">
                       <span className="text-base md:text-lg lg:text-xl font-semibold text-stone-400">Quest:</span>
                       <span className="text-sm md:text-base lg:text-lg text-copper-300 font-medium">
-                      {gameState.puzzle.winConditions.map((wc) => {
-                        // Quest text override (2026-07-21): authored text
-                        // wins verbatim over every auto-phrased label.
-                        if (wc.customLabel?.trim()) return wc.customLabel.trim();
-                        switch (wc.type) {
-                          case 'defeat_all_enemies': {
-                            // Mirror checkVictoryConditions: ENEMY-party combatants that
-                            // aren't win-exempt (summons) or designer-excluded types.
-                            // Named quest text (user design 2026-07-11): group the
-                            // remaining kill targets by type — "Defeat the Bats (2) and
-                            // Skeleton (1)" — using the asset's pluralName when several.
-                            const excludedIds = wc.params?.excludedEnemyIds ?? [];
-                            // !despawned: escort-escaped enemies (alive-despawned)
-                            // are excused, not remaining kill targets.
-                            const counted = gameState.puzzle.enemies.filter(e =>
-                              !e.dead && !e.despawned && entityParty(e, gameState) === 'enemy' &&
-                              !e.excludeFromWinConditions && !excludedIds.includes(e.enemyId)
-                            );
-                            if (counted.length === 0) return 'Defeat all Enemies (0)';
-                            const groups = new Map<string, number>();
-                            counted.forEach(e => groups.set(e.enemyId, (groups.get(e.enemyId) ?? 0) + 1));
-                            const parts = Array.from(groups.entries()).map(([id, n]) => {
-                              const data = loadEnemy(id);
-                              const base = data?.name ?? 'Enemy';
-                              const label = n > 1 ? (data?.pluralName || `${base}s`) : base;
-                              return `${label} (${n})`;
-                            });
-                            const list = parts.length === 1
-                              ? parts[0]
-                              : `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`;
-                            return `Defeat the ${list}`;
-                          }
-                          case 'defeat_boss': {
-                            const bossEnemies = gameState.puzzle.enemies
-                              .filter(e => {
-                                if (entityParty(e, gameState) !== 'enemy' || e.excludeFromWinConditions) return false;
-                                const enemy = loadEnemy(e.enemyId);
-                                return enemy?.isBoss && !e.dead;
-                              })
-                              .map(e => loadEnemy(e.enemyId)!);
-                            const bossCount = bossEnemies.length;
-                            const bossNames = bossEnemies.map(enemy => enemy.name);
-                            if (bossNames.length === 0) return 'Defeat the Boss';
-                            if (bossNames.length === 1) return `Defeat ${bossNames[0]}`;
-                            return `Defeat ${bossNames.slice(0, -1).join(', ')} & ${bossNames[bossNames.length - 1]} (${bossCount})`;
-                          }
-                          case 'collect_all': {
-                            const collectibleCount = gameState.puzzle.collectibles.filter(c => !c.collected).length;
-                            return `Collect all Items (${collectibleCount})`;
-                          }
-                          case 'collect_keys': {
-                            const keyCount = gameState.puzzle.collectibles.filter(c => {
-                              if (!c.collectibleId) return false;
-                              const collectible = loadCollectible(c.collectibleId);
-                              return collectible?.effects?.some(e => e.type === 'win_key') && !c.collected;
-                            }).length;
-                            return `Collect all Keys (${keyCount})`;
-                          }
-                          case 'reach_goal':
-                            return 'Reach the Exit';
-                          case 'protect_noble': {
-                            const names = nobleQuestNames(gameState);
-                            return names ? `Protect ${names}` : 'Protect the Noble';
-                          }
-                          case 'noble_survives_turns': {
-                            const names = nobleQuestNames(gameState);
-                            const turns = wc.params?.turns ?? 10;
-                            return names ? `Keep ${names} alive for ${turns} Turns` : `Keep the Noble alive for ${turns} Turns`;
-                          }
-                          case 'noble_reaches_goal': {
-                            const names = nobleQuestNames(gameState);
-                            return names ? `Guide ${names} to the Exit` : 'Guide the Noble to the Exit';
-                          }
-                          case 'noble_escapes': {
-                            const names = nobleQuestNames(gameState);
-                            return names ? `Guide ${names} out of the Dungeon` : 'Guide the Noble out of the Dungeon';
-                          }
-                          case 'entity_escapes': {
-                            // Escort: name the designated assets (hero or
-                            // enemy/ally lookup by id). customLabel above is
-                            // the pressure valve for fancier phrasing.
-                            const ids = wc.params?.escortEntityIds ?? [];
-                            const escortNames = ids
-                              .map(id => getCharacter(id)?.name ?? loadEnemy(id)?.name)
-                              .filter((n): n is string => !!n);
-                            if (escortNames.length === 0) return 'Guide them out of the Dungeon';
-                            const joined = escortNames.length === 1
-                              ? escortNames[0]
-                              : `${escortNames.slice(0, -1).join(', ')} and ${escortNames[escortNames.length - 1]}`;
-                            return `Guide ${joined} out of the Dungeon`;
-                          }
-                          case 'survive_turns':
-                            return `Survive ${wc.params?.turns ?? 10} Turns`;
-                          case 'win_in_turns':
-                            return `Win within ${wc.params?.turns ?? 10} Turns`;
-                          case 'max_characters':
-                            return `Use at most ${wc.params?.characterCount ?? 1} Hero${(wc.params?.characterCount ?? 1) > 1 ? 'es' : ''}`;
-                          case 'characters_alive':
-                            return `Keep ${wc.params?.characterCount ?? 1} Hero${(wc.params?.characterCount ?? 1) > 1 ? 'es' : ''} alive`;
-                          default:
-                            return wc.type;
-                        }
-                      }).join(' & ')}
+                      {questLabel}
                       </span>
                     </span>
                     </span>
@@ -3399,6 +3634,148 @@ export const Game: React.FC<GameProps> = ({
                   );
                 })()}
               </div>
+              ) : (
+              /* COLLAPSED — the iron rung.
+                 One line, one height, forever: no puzzle-number row, no
+                 offline notice, no side-quest list. Whatever the level author
+                 shipped, the steady-state band is this.
+
+                 THE SHELF UNDER IT IS NOT PADDING FOR ITS OWN SAKE. The hero
+                 plate's cap rail is out of flow and reaches 21px above the
+                 plate (`--hero-cap-h - --hero-cap-seat`), so it stands in
+                 whatever sits above the plate — this band. Collapse the band
+                 flush and the rail sits across the quest sentence. The shelf
+                 reserves exactly that overhang, transparent, so the two iron
+                 members meet on a line. That shelf is the whole reason this
+                 slice reclaims 9px rather than the 30 the plan projected —
+                 the plan was written against a hero panel that had no caps
+                 yet. Whoever reconciles the caps into the plate's top
+                 compartment gets those 21px back by deleting one padding
+                 value.
+
+                 THE TAP TARGET IS THE RUNG, NOT THE BAND. The expand button
+                 used to cover the band's full 44px, which put 21px of it
+                 underneath the (pointer-events:none) cap rail: a press on
+                 the HEROES bar expanded the QUEST. See `.quest-rung-hit`. */
+              <div
+                data-hud="quest-band"
+                // THE RUNG IS THE PLATE'S TOP COMPARTMENT. It is flush with the
+                // hero panel below it (no margin between them), so wearing the
+                // plate's top end — same wash, same side bevels, same radius —
+                // makes the quest, the roster and the drawer read as one framed
+                // object instead of three stacked slabs. Costs 0 layout px:
+                // background and INSET shadows only.
+                // Gated OFF in replay: `.replay-slab-flow` replaces the panel
+                // below with a slab that paints past the document end, and a
+                // plate top with nothing under it would frame thin air.
+                className={`quest-rung-band quest-band-fade w-full max-w-2xl relative z-20${
+                  replayMode || enteringReplay ? '' : ' hero-plate hero-plate--top'
+                }${questDim ? ' quest-band-fade--out' : ''}`}
+              >
+                {/* The visible RUNG is the expand affordance, as a real
+                    button UNDER the content rather than around it: nesting
+                    the dev controls and the side-quest chip inside a button
+                    would be invalid HTML and would need a stopPropagation on
+                    each. The rung above it is pointer-events:none, so a tap
+                    on the quest sentence falls through to this.
+                    `.quest-rung-hit` (not `inset-0`) stops it at the rung's
+                    own bottom edge — the band's remaining height is the
+                    shelf the hero plate's cap rail stands in, and that rail
+                    is chrome for a different object. */}
+                <button
+                  type="button"
+                  onClick={() => setQuestReopened(true)}
+                  className="quest-rung-hit"
+                  aria-label="Show the full quest"
+                  aria-expanded={false}
+                  title="Show the full quest"
+                />
+                <div className="quest-rung flex items-center gap-1.5 px-2 pointer-events-none">
+                  <svg
+                    aria-hidden="true"
+                    className="w-3 h-3 flex-none text-copper-400"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M6 9l6 6 6-6" />
+                  </svg>
+                  {/* The playtest exit and the combat log are the only two
+                      FUNCTIONAL controls in the expanded banner, and the exit
+                      is MapEditor's single return path — losing it when the
+                      band collapses would be a dev-app regression. They are
+                      already icon-only below md, which is the only place this
+                      state exists, and they wear the plate cap's own recessed
+                      well so the rung's controls and the caps' controls 20px
+                      below speak with one voice.
+                      Their slop is capped to the rung's own height by
+                      `.quest-rung .hit-44` (index.css) — it used to be an
+                      inline 38px chosen against a 6px gap to the board, and
+                      the gap is measured 2px, so 38 put "leave the playtest"
+                      4px inside the dungeon's bottom tile row. A stray tap on
+                      the board must never fire it. */}
+                  {onExitToEditor && (
+                    <button
+                      onClick={onExitToEditor}
+                      className="hero-cap__well pointer-events-auto flex-none flex items-center justify-center w-8 h-5 transition-colors hit-44"
+                      title="Back to Editor"
+                      aria-label="Back to Editor"
+                    >
+                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M19 12H5M12 19l-7-7 7-7" />
+                      </svg>
+                    </button>
+                  )}
+                  {onShowCombatLog && (
+                    <button
+                      onClick={onShowCombatLog}
+                      className="hero-cap__well pointer-events-auto flex-none flex items-center justify-center w-8 h-5 transition-colors hit-44"
+                      title="View combat log"
+                      aria-label="View combat log"
+                    >
+                      <span className="text-[11px] leading-none">📜</span>
+                    </button>
+                  )}
+                  <span className="hud-label flex-none text-stone-400">Quest</span>
+                  {/* Side quests keep a presence — a count, not a list. The
+                      chip opens the section the expanded banner's own help
+                      button opens, so nothing is only reachable in one
+                      state.
+
+                      IT LIVES IN THE LEFT GROUP, WITH THE LABEL IT BELONGS
+                      TO. It was driven here by a bug — the cap band's Help
+                      button used to grow its slop UPWARD into this rung and
+                      stole 57% of a chip placed in the right corner
+                      (measured, elementFromPoint, at 320/375/393/440). That
+                      collision is now fixed at its source: every cap control
+                      is capped to the cap band (`.hero-cap__well`), so the
+                      right corner is clear again. The chip stays here anyway,
+                      for a better reason than dodging: it is a count OF the
+                      quest, so it reads with the `Quest` label, and the
+                      rung's right end belongs to the objective sentence,
+                      which is the one thing on this bar that truncates. */}
+                  {gameState.puzzle.sideQuests && gameState.puzzle.sideQuests.length > 0 && (
+                    <button
+                      onClick={() => setShowSideQuestHelp(true)}
+                      className="hud-label pointer-events-auto flex-none flex items-center h-5 px-1.5 rounded-pixel border border-arcane-600/70 bg-arcane-900/50 text-arcane-300 hit-44"
+                      title="Side quests"
+                      aria-label={`${gameState.puzzle.sideQuests.length} side quests`}
+                    >
+                      +{gameState.puzzle.sideQuests.length}
+                    </button>
+                  )}
+                  <span className="hud-body min-w-0 flex-1 truncate text-copper-300">{questLabel}</span>
+                </div>
+                <HelpOverlay
+                  sectionId="side_quests"
+                  isOpen={showSideQuestHelp}
+                  onClose={() => setShowSideQuestHelp(false)}
+                />
+              </div>
+              )
             )}
 
             {/* Replay slab — in-flow, exactly where the hero panel sits, so
@@ -3435,7 +3812,12 @@ export const Game: React.FC<GameProps> = ({
               </div>
             ) : (
               /* Heroes and Dungeon Details - dimmed during play/test */
-              <div className={`transition-opacity ${dimmedPanelClass} ${justExitedReplay ? 'animate-slide-up' : ''}`}>
+              <div
+                // Same one-way latch as the board: the first tap on a hero
+                // card means the player has moved on from reading the quest.
+                onClickCapture={markQuestSeen}
+                className={`transition-opacity ${dimmedPanelClass} ${justExitedReplay ? 'animate-slide-up' : ''}`}
+              >
                 {/* Character Selector - visible during setup, running, defeat, and test mode */}
                 {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
                   <CharacterSelector
@@ -3455,6 +3837,12 @@ export const Game: React.FC<GameProps> = ({
                     // line. TrainingGrounds and the editor playtest mount
                     // pass nothing and keep today's inline markup exactly.
                     chrome="plate"
+                    // The plate's top compartment is the COLLAPSED quest rung,
+                    // which is flush against it. While the banner is expanded
+                    // — always at >=768px — the thing above is hanging cloth
+                    // standing 8px off, so an open-topped plate would be a box
+                    // with no lid. Tell the panel to close itself.
+                    plateStandalone={questRender}
                     placedCharacters={gameState.placedCharacters}
                     pendingSpellDirectionOverrides={pendingSpellDirectionOverrides}
                     onSpellDirectionOverride={testMode === 'none' && gameState.gameStatus === 'setup' ? (characterId: string, spellId: string, direction: Direction) => {
