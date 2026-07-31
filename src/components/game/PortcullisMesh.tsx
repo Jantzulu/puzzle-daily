@@ -73,17 +73,44 @@ export const PortcullisMesh: React.FC<{ className?: string }> = ({ className = '
         beams' (GateMesh) at rendered-pixel scale: ~2.5px top inset, ~2.5px
         highlight, ~4.2px bottom lip — the bottom rung must not read as a
         different make of iron than the rungs above it. */}
+    {/* Layer thicknesses derived from the beam's, not estimated. The beam
+        (viewBox 52 tall, rendered at 100%) uses a 3u top inset, 3u highlight
+        and 5u bottom lip = 2.54 / 2.54 / 4.23 rendered px on a 44px rung.
+        This mesh renders at 200%, so one of its units is 1.375px there and
+        the same look needs 1.85 / 1.85 / 3.08u. The old 2.5 / 2.5 / 4.2u
+        rendered 35% thicker, which is why the bottom rung read as heavier
+        iron than the lattice above it even after the box was standardised. */}
     <rect x="0" y={RAIL_TOP} width={VIEW_W} height={RAIL_BOT - RAIL_TOP} fill={IRON.dark} />
-    <rect x="0" y={RAIL_TOP + 2.5} width={VIEW_W} height={RAIL_BOT - RAIL_TOP - 6.7} fill={IRON.face} />
-    <rect x="0" y={RAIL_TOP + 2.5} width={VIEW_W} height="2.5" fill={IRON.highlight} />
+    <rect x="0" y={RAIL_TOP + 1.85} width={VIEW_W} height={RAIL_BOT - RAIL_TOP - 4.93} fill={IRON.face} />
+    <rect x="0" y={RAIL_TOP + 1.85} width={VIEW_W} height="1.85" fill={IRON.highlight} />
 
-    {/* Square forge plates bolting each bar to the rail. Non-square units
-        here (viewBox squashes): ~22u wide × 7u tall renders square. Same
-        11px offset from the beam top as the menu beams' plates. */}
+    {/* Forge plates bolting each bar to the rail — THE SAME HARDWARE as the
+        menu beams' plates (GateMesh), derived from them rather than eyeballed.
+        The user spotted that the bottom rung's plates "don't line up with the
+        others in style or position", and all three differences were real.
+        Both meshes use preserveAspectRatio="none", so the comparison has to be
+        made in RENDERED pixels, not viewBox units:
+
+          this mesh renders at height 200% offset -62.5%, so a viewBox y maps
+          to (y/64)*2 - 0.625 of the rung's height;
+          the beam mesh renders at 100%, so its y maps to y/52.
+
+        Beam plate: y 21..30 of 52  ->  top 40.4%, height 17.3% of the rung.
+        Rail plate WAS y 31..38 of 64 -> top 34.4%, height 21.9% — sitting
+        2.6px high and rendering 26% taller on a 44px rung.
+
+        Matched values: top 32.9u ((0.404+0.625)/2*64), height 5.5u
+        (0.173/2*64), width 22.5u (2.25% — the beam's 9/400).
+
+        BEVEL ALSO MATCHED. The beam's inner rect is flush to the plate's
+        bottom-right and inset 1.5u top-left, leaving a lit top-left edge —
+        the same fixed light every mesh here uses. This one was centred, which
+        read as a different make of iron. Inset converted: 0.92u vertical,
+        3.75u horizontal. */}
     {BAR_XS.map((x, i) => (
       <g key={`rivet${i}`}>
-        <rect x={x - 11} y="31" width="22" height="7" fill={IRON.lit} />
-        <rect x={x - 7} y="32.2" width="14" height="4.6" fill={IRON.body} />
+        <rect x={x - 11.25} y="32.9" width="22.5" height="5.5" fill={IRON.lit} />
+        <rect x={x - 7.5} y="33.8" width="18.75" height="4.6" fill={IRON.body} />
       </g>
     ))}
 

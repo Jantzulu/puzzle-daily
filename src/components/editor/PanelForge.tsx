@@ -171,7 +171,7 @@ const DEFAULT_KITS: KitSpec[] = [
       { id: 'rail-face', label: 'Rail Face', w: 24, h: 16, repeat: 'tile-x', notes: 'The flat band the DOM controls sit on. Lit top edge, dark bottom lip.' },
       { id: 'rail-cap-l', label: 'Rail Cap L', w: 8, h: 16, repeat: 'fixed' },
       { id: 'rail-cap-r', label: 'Rail Cap R', w: 8, h: 16, repeat: 'fixed' },
-      { id: 'forge-plate', label: 'Forge Plate', w: 4, h: 4, repeat: 'fixed', notes: 'Square bolt plate where a gate bar meets the rail, just below its lit top edge.' },
+      { id: 'forge-plate', label: 'Forge Plate', w: 4, h: 4, repeat: 'fixed', notes: 'SAME HARDWARE as the Nav Gate kit\'s "Beam Forge Plate" — paint them identically, or the bottom rung reads as a different make of iron than the lattice above it. Bolt plate where a gate bar meets the rail, just below its lit top edge; lit on the top-left, shadowed bottom-right.' },
       { id: 'rail-spike', label: 'Rail Spike', w: 7, h: 7, repeat: 'fixed', notes: 'Hangs below the rail; anchors at its root (top edge).' },
     ],
   },
@@ -183,7 +183,7 @@ const DEFAULT_KITS: KitSpec[] = [
     pieces: [
       { id: 'beam-face', label: 'Beam Face', w: 24, h: 12, repeat: 'tile-x', notes: 'The horizontal rung a menu item rides: dark under-frame, flat face, lit top edge.' },
       { id: 'beam-bar-segment', label: 'Vertical Bar Segment', w: 5, h: 16, repeat: 'tile-y', notes: 'Bars threading the whole stack, behind the beams. Same stock as the portcullis bars — keep them matching.' },
-      { id: 'beam-plate', label: 'Beam Forge Plate', w: 4, h: 4, repeat: 'fixed', notes: 'Square bolt plate where a bar crosses a beam.' },
+      { id: 'beam-plate', label: 'Beam Forge Plate', w: 4, h: 4, repeat: 'fixed', notes: 'SAME HARDWARE as the Control Rail kit\'s "Forge Plate" — paint them identically. Bolt plate where a bar crosses a beam; lit on the top-left, shadowed bottom-right.' },
       { id: 'sign-cap-l', label: 'Sign Cap L', w: 5, h: 10, repeat: 'fixed', notes: 'Steel plate signage end — the square forge bolt lives here.' },
       { id: 'sign-mid', label: 'Sign Middle', w: 12, h: 10, repeat: 'tile-x', notes: 'Plate face behind the label text.' },
       { id: 'sign-cap-r', label: 'Sign Cap R', w: 5, h: 10, repeat: 'fixed' },
