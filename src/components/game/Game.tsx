@@ -2474,7 +2474,11 @@ export const Game: React.FC<GameProps> = ({
                       themeAssets.actionButtonPlayImage ? (
                         <button
                           onClick={handlePlay}
-                          className={`relative transition-all ${gameState.placedCharacters.length === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105 active:scale-95'}`}
+                          // hit-44: the themed Play art is h-6 (24px) and this
+                          // branch is PLAYER-FACING whenever a theme supplies
+                          // its own button image — the worst tap target in the
+                          // game. The slop costs no layout.
+                          className={`relative transition-all hit-44 ${gameState.placedCharacters.length === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105 active:scale-95'}`}
                         >
                           <img
                             src={themeAssets.actionButtonPlayImage}

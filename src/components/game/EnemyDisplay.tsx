@@ -251,7 +251,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
             themeAssets.actionButtonTestEnemiesImage ? (
               <button
                 onClick={onTest}
-                className="transition-all hover:scale-105 active:scale-95"
+                className="transition-all hover:scale-105 active:scale-95 hit-44"
                 title="Watch enemies move without heroes for 5 turns"
               >
                 <img
@@ -265,7 +265,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
             ) : (
               <button
                 onClick={onTest}
-                className="gem-btn px-2 lg:px-2.5 py-px text-xs transition-colors flex items-center gap-1"
+                className="gem-btn px-2 lg:px-2.5 py-px text-xs transition-colors flex items-center gap-1 hit-44"
                 title="Watch enemies move without heroes for 5 turns"
               >
                 {/* Ruby stone — supersedes the legacy flat theme colors

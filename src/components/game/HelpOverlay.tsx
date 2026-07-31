@@ -200,7 +200,10 @@ export const HelpButton: React.FC<HelpButtonProps> = ({ sectionId, className = '
     <>
       <button
         onClick={() => setIsOpen(true)}
-        className={`p-1 text-stone-400 hover:text-parchment-100 hover:bg-stone-700 rounded transition-colors ${className}`}
+        // hit-44: the glyph is 16px in 8px of padding = a 24px target, and
+        // this button appears on every information section in the game. The
+        // slop is invisible and costs no layout, so the floor is free here.
+        className={`p-1 text-stone-400 hover:text-parchment-100 hover:bg-stone-700 rounded transition-colors hit-44 ${className}`}
         aria-label="Help"
         title="What's this?"
       >

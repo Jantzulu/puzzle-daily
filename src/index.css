@@ -2715,6 +2715,61 @@ body.menu-gate-instant .quest-panel-sticky {
   margin: 6px 0;
 }
 
+/* ============================================
+   .hit-44 — TAP-TARGET SLOP (WCAG 2.5.8 / iOS 44pt / Android 48dp)
+   An invisible, absolutely-positioned ::after centred on the control, grown
+   to at least 44x44 WITHOUT changing the control's paint or the layout around
+   it. Zero vertical pixels spent — that is the whole point: this page's budget
+   is measured in single-digit pixels, so accessibility here has to be free.
+
+   Generalises a technique this repo already invented by hand on the hero
+   panel's trash button (`min-h-[28px] -my-1`).
+
+   `max(100%, …)` is self-sizing: a control already bigger than the floor keeps
+   its own box, so the class never needs tuning per site. Override an axis with
+   --hit-w / --hit-h where the slop must stay out of a neighbour's pixels —
+   measure first, and note that capping BELOW 44 means the control still fails
+   the floor on that axis, so a cap is only worth it against a real collision.
+
+   THREE RULES.
+   1. Put it on the CONTROL ITSELF, never a wrapper. The slop is a
+      pseudo-element, so a click on it targets the element that owns it. Owned
+      by the button, the click bubbles to the button and :hover still resolves.
+      Owned by a WRAPPER, the click targets the wrapper and the handler never
+      fires — a bigger measured box that does nothing.
+   2. The slop is CLIPPED by any ancestor with overflow hidden/auto, so it
+      cannot be relied on inside a scrolling pane; controls there need >= 44px
+      natively.
+   3. It is invisible but it DOES hit-test, so it can shadow a neighbour.
+      Overlap resolves in favour of whichever element paints last — cap the
+      axis where a destructive control sits beside a common one.
+   ============================================ */
+.hit-44 {
+  position: relative;
+}
+
+.hit-44::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: max(100%, var(--hit-w, 44px));
+  height: max(100%, var(--hit-h, 44px));
+  transform: translate(-50%, -50%);
+}
+
+/* Same slop as a real child element, for controls whose ::after is already
+   carrying something (the nav pills draw their forge bolts with both
+   pseudo-elements). Being INSIDE the control is what makes the tap land. */
+.hit-slop {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: max(100%, var(--hit-w, 44px));
+  height: max(100%, var(--hit-h, 44px));
+  transform: translate(-50%, -50%);
+}
+
 
 
 /* Entity-card movement arrow: the arrow itself travels its heading — fades

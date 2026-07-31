@@ -226,7 +226,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
             themeAssets.actionButtonTestHeroesImage ? (
               <button
                 onClick={onTest}
-                className="transition-all hover:scale-105 active:scale-95"
+                className="transition-all hover:scale-105 active:scale-95 hit-44"
                 title="Test your heroes without enemies for 5 turns"
               >
                 <img
@@ -240,7 +240,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
             ) : (
               <button
                 onClick={onTest}
-                className="gem-btn px-2 lg:px-2.5 py-px text-xs transition-colors flex items-center gap-1"
+                className="gem-btn px-2 lg:px-2.5 py-px text-xs transition-colors flex items-center gap-1 hit-44"
                 title="Test your heroes without enemies for 5 turns"
               >
                 {/* Amethyst stone — supersedes the legacy flat theme colors
@@ -273,7 +273,11 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
               // ~20px text height — negative margin keeps the touch target
               // without growing the row when the button appears (the panel
               // below must not shift on hero placement)
-              className="p-1 -my-1 text-stone-400 hover:text-blood-400 hover:bg-stone-700 rounded-pixel transition-colors min-w-[28px] min-h-[28px] flex items-center justify-center"
+              // hit-44 finishes the job the -my-1 started: 28px of paint,
+              // 44px of target, still zero layout pixels. --hit-w caps the
+              // horizontal slop so this destructive control (clear all placed
+              // heroes) cannot reach sideways into a hero card.
+              className="p-1 -my-1 text-stone-400 hover:text-blood-400 hover:bg-stone-700 rounded-pixel transition-colors min-w-[28px] min-h-[28px] flex items-center justify-center hit-44 [--hit-w:34px]"
               title="Remove all placed heroes"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
