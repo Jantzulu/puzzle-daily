@@ -252,15 +252,18 @@ function saveKits(kits: KitSpec[]): void {
 interface RefCrop { src: 'portcullis' | 'gem' | 'gatebeam'; x: number; y: number; w: number; h: number }
 
 // PortcullisMesh viewBox 1000×64: bars zone y 0–20, rail 20–52, spikes 52–64;
-// bars centered at x=100..900 (half-width 15), spikes half-width 22, plates
-// 22×7 at y=31. GemMesh viewBox 200×70.
+// SIX bars centered at x=15/209/403/597/791/985 (half-width 15, outer pair
+// flush with the edges — the 2026-07-31 edge-bar reformat), spikes half-width
+// 22, plates 13.39×6.5 at y=29.45. Crops sample an INTERIOR bar (209) — the
+// edge bars carry the viewBox clip and would give the artist a truncated
+// reference. GemMesh viewBox 200×70.
 const REF_CROPS: Record<string, RefCrop> = {
-  'bar-segment': { src: 'portcullis', x: 85, y: 0, w: 30, h: 20 },
-  'bar-top-cap': { src: 'portcullis', x: 85, y: 0, w: 30, h: 6 },
-  'rail-face': { src: 'portcullis', x: 360, y: 20, w: 80, h: 32 },
+  'bar-segment': { src: 'portcullis', x: 194, y: 0, w: 30, h: 20 },
+  'bar-top-cap': { src: 'portcullis', x: 194, y: 0, w: 30, h: 6 },
+  'rail-face': { src: 'portcullis', x: 290, y: 20, w: 80, h: 32 },
   'rail-cap-l': { src: 'portcullis', x: 0, y: 20, w: 40, h: 32 },
   'rail-cap-r': { src: 'portcullis', x: 960, y: 20, w: 40, h: 32 },
-  'forge-plate': { src: 'portcullis', x: 87, y: 30, w: 26, h: 9 },
+  'forge-plate': { src: 'portcullis', x: 196, y: 29, w: 26, h: 9 },
   'rail-spike': { src: 'portcullis', x: 78, y: 52, w: 44, h: 12 },
   'gem-normal': { src: 'gem', x: 0, y: 0, w: 200, h: 70 },
   'gem-hover': { src: 'gem', x: 0, y: 0, w: 200, h: 70 },
@@ -689,7 +692,7 @@ function assembleNavGate(kit: KitSpec): Assembly | null {
 
   // Bars first — they thread the whole stack BEHIND the beams.
   if (bar) {
-    const fracs = [0.1, 0.3, 0.5, 0.7, 0.9]; // GateMesh BAR_XS / 400
+    const fracs = [0.015, 0.209, 0.403, 0.597, 0.791, 0.985]; // GateMesh BAR_XS / 400 (edge-bar reformat)
     for (const f of fracs) {
       const bx = Math.round(f * W - bar.w / 2);
       for (let y = 0, r = 0; y < H; y += bar.h, r++) {
@@ -704,7 +707,7 @@ function assembleNavGate(kit: KitSpec): Assembly | null {
       regions.push({ pieceId: 'beam-face', x: i * beam.w, y: by, w: beam.w, h: beam.h, rep: i });
     }
     if (plate && bar) {
-      for (const f of [0.1, 0.3, 0.5, 0.7, 0.9]) {
+      for (const f of [0.015, 0.209, 0.403, 0.597, 0.791, 0.985]) {
         regions.push({
           pieceId: 'beam-plate',
           x: Math.round(f * W - plate.w / 2),

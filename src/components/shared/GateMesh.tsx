@@ -24,10 +24,13 @@ import { IRON } from '../game/PortcullisMesh';
 // (nav-gate-rail-mesh), so the gate bottoms out with the identical spiked
 // rail everywhere.
 //
-// Bar x fractions (10/30/50/70/90%) and ~3% widths MATCH PortcullisMesh —
-// both elements render at the same width at every viewport (mobile: the
-// full width; md+: the 42rem board column, .menu-gate max-width plus the
-// menu's px-4 = rail's max-w-2xl), so the columns align.
+// Bar x fractions (1.5/20.9/40.3/59.7/79.1/98.5%) and ~3% widths MATCH
+// PortcullisMesh — both elements render at the same width at every viewport
+// (mobile: the full width; md+: the 42rem board column, .menu-gate max-width
+// plus the menu's px-4 = rail's max-w-2xl), so the columns align. Six bars
+// with the outer pair FLUSH at the edges (see the edge-bar note in
+// PortcullisMesh — a portcullis frames its own lattice); change the two
+// lists only in lockstep.
 
 const VIEW_W = 400;
 const VIEW_H = 52;
@@ -43,8 +46,9 @@ const BEAM_TOP = 8;
 const BEAM_BOT = 44;
 
 // Vertical bars — same x positions on every item so segments line up into
-// continuous bars down the whole menu (all items share width and viewBox)
-const BAR_XS = [40, 120, 200, 280, 360];
+// continuous bars down the whole menu (all items share width and viewBox).
+// Outer pair flush: centre = BAR_HALF from each edge; even pitch between.
+const BAR_XS = [6, 83.6, 161.2, 238.8, 316.4, 394];
 const BAR_HALF = 6;
 
 export const GateBeamMesh: React.FC<{ first?: boolean }> = ({ first = false }) => {

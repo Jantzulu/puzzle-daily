@@ -40,11 +40,18 @@ export const IRON = {
 };
 
 // Gate bars at the SAME width fractions as the mobile menu's beams
-// (GateMesh BAR_XS [40,120,200,280,360]/400 = 10/30/50/70/90%) and the
-// same ~3% pixel width — on mobile the two elements share their rendered
-// width, so the menu's lattice flows straight into this rail and the whole
-// thing reads as ONE gate whose spiked bottom is this control rail.
-const BAR_XS = [100, 300, 500, 700, 900];
+// (GateMesh BAR_XS /400 = 1.5/20.9/40.3/59.7/79.1/98.5%) and the same ~3%
+// pixel width — on mobile the two elements share their rendered width, so
+// the menu's lattice flows straight into this rail and the whole thing
+// reads as ONE gate whose spiked bottom is this control rail.
+//
+// EDGE BARS CONTAIN THE SHAPE (user + reference photos, 2026-07-31): a real
+// portcullis has verticals at its outer edges framing the lattice; ours
+// started 10% in, leaving bare rail hanging past the first and last bars.
+// Six bars now, outer pair FLUSH with the edges (centre = BAR_HALF from
+// each end), interior spaced at the same even pitch. Change these only in
+// lockstep with GateMesh's fractions.
+const BAR_XS = [15, 209, 403, 597, 791, 985];
 const BAR_HALF = 15;   // bar half-width (3% of viewBox, matches the menu)
 const SPIKE_HALF = 22; // spike half-width at the root
 
@@ -127,7 +134,12 @@ export const PortcullisMesh: React.FC<{ className?: string }> = ({ className = '
     ))}
 
     {/* Forged spikes hanging under each bar — two facets, left lit, right
-        shadowed, tips wavering a hair (hand-forged, not machined) */}
+        shadowed, tips wavering a hair (hand-forged, not machined).
+        The EDGE bars' spikes (half-width 22 on a bar centred 15 from the
+        edge) lose their outer 7u to the viewBox clip — ~4.7px at desktop.
+        Deliberate: the cut lands on the gate's outer edge, where a spike
+        sliced by the frame reads as the frame, and pulling the bars inward
+        to fit whole spikes would reopen the bare-rail gap being fixed. */}
     {BAR_XS.map((x, i) => {
       const tip = 61.5 + hash(i) * 2.5;
       return (
