@@ -44,6 +44,16 @@ interface Slice {
   url: string;
   /** True when the cut region is entirely transparent — i.e. unpainted. */
   empty: boolean;
+  /**
+   * How many of this piece's LATER repeats in the assembled sample differ
+   * from the first one, and how many there are. A nine-slice can only use one
+   * period per tiling piece, so anything painted into repeats 2..n is thrown
+   * away. The sample looks like a whole panel and invites you to paint it as
+   * one picture, which makes the loss invisible unless it is reported —
+   * `window-panel` alone discards 15 of its 19 regions that way.
+   */
+  repeatsDiffering: number;
+  repeatsTotal: number;
 }
 
 /** Minimal shape of the File System Access API bits we use. */
@@ -174,8 +184,8 @@ export const PanelForgeImport: React.FC<Props> = ({ kit, assembly }) => {
     for (const piece of kit.pieces) {
       // First region only — later repeats exist so the artist can verify the
       // seam, not to be cut.
-      const region = assembly.regions.find(r => r.pieceId === piece.id && r.rep === 0)
-        ?? assembly.regions.find(r => r.pieceId === piece.id);
+      const allRegions = assembly.regions.filter(r => r.pieceId === piece.id);
+      const region = allRegions.find(r => r.rep === 0) ?? allRegions[0];
       if (!region) continue;
 
       const sx = Math.round(region.x * usable);
@@ -194,13 +204,60 @@ export const PanelForgeImport: React.FC<Props> = ({ kit, assembly }) => {
       // An untouched slot is fully transparent — flag it so a half-painted
       // kit is obvious here instead of as a hole in the game.
       let empty = true;
+      let firstData: Uint8ClampedArray | null = null;
       try {
-        const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
-        for (let i = 3; i < data.length; i += 4) {
-          if (data[i] > 8) { empty = false; break; }
+        firstData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+        for (let i = 3; i < firstData.length; i += 4) {
+          if (firstData[i] > 8) { empty = false; break; }
         }
       } catch {
         empty = false; // tainted canvas shouldn't masquerade as unpainted
+      }
+
+      // Compare every LATER repeat against the first. Any that differs is art
+      // the artist painted and the nine-slice will silently throw away — the
+      // assembled sample looks like a whole panel, so painting it as one
+      // picture is the natural thing to do and the loss is otherwise
+      // invisible until the render looks wrong.
+      let repeatsDiffering = 0;
+      const repeatsTotal = allRegions.length;
+      if (firstData && repeatsTotal > 1) {
+        const cmp = document.createElement('canvas');
+        cmp.width = canvas.width;
+        cmp.height = canvas.height;
+        const cctx = cmp.getContext('2d');
+        if (cctx) {
+          cctx.imageSmoothingEnabled = false;
+          for (const other of allRegions) {
+            if (other === region) continue;
+            // Only same-sized repeats are comparable; the assembler emits a
+            // clipped final tile at the panel edge, which is expected to
+            // differ and is not a mistake.
+            if (other.w !== region.w || other.h !== region.h) continue;
+            cctx.clearRect(0, 0, cmp.width, cmp.height);
+            cctx.drawImage(
+              img,
+              Math.round(other.x * usable), Math.round(other.y * usable),
+              Math.max(1, Math.round(other.w * usable)), Math.max(1, Math.round(other.h * usable)),
+              0, 0, cmp.width, cmp.height,
+            );
+            try {
+              const d = cctx.getImageData(0, 0, cmp.width, cmp.height).data;
+              let differs = false;
+              for (let i = 0; i < d.length; i += 4) {
+                // Compare RGBA with a small tolerance for export dithering.
+                if (Math.abs(d[i] - firstData[i]) > 6 || Math.abs(d[i + 1] - firstData[i + 1]) > 6
+                  || Math.abs(d[i + 2] - firstData[i + 2]) > 6 || Math.abs(d[i + 3] - firstData[i + 3]) > 6) {
+                  differs = true;
+                  break;
+                }
+              }
+              if (differs) repeatsDiffering++;
+            } catch {
+              /* unreadable — don't claim a difference we can't prove */
+            }
+          }
+        }
       }
 
       next.push({
@@ -210,6 +267,8 @@ export const PanelForgeImport: React.FC<Props> = ({ kit, assembly }) => {
         h: canvas.height,
         url: canvas.toDataURL('image/png'),
         empty,
+        repeatsDiffering,
+        repeatsTotal,
       });
     }
 
@@ -217,6 +276,7 @@ export const PanelForgeImport: React.FC<Props> = ({ kit, assembly }) => {
   }, [img, assembly, kit, expected]);
 
   const paintedCount = useMemo(() => slices.filter(s => !s.empty).length, [slices]);
+  const discarding = useMemo(() => slices.filter(s => s.repeatsDiffering > 0), [slices]);
 
   // ---- export --------------------------------------------------------------
 
@@ -317,6 +377,30 @@ export const PanelForgeImport: React.FC<Props> = ({ kit, assembly }) => {
       {sizeWarning && (
         <div className="text-xs px-2 py-1.5 rounded border border-amber-700/60 bg-amber-900/25 text-amber-200">
           {sizeWarning}
+        </div>
+      )}
+
+      {discarding.length > 0 && (
+        <div className="text-xs px-2 py-2 rounded border border-amber-700/60 bg-amber-900/25 text-amber-100 space-y-1">
+          <p className="font-bold">
+            Some of what you painted is being thrown away — this is the nine-slice, not a bug in your art.
+          </p>
+          <p className="text-amber-200/90">
+            The sample looks like a whole panel, but a tiling piece can only keep ONE period. Every
+            repeat after the first is discarded, so paint a repeating piece once and let it tile.
+          </p>
+          <ul className="pl-4 list-disc">
+            {discarding.map(s => (
+              <li key={s.pieceId}>
+                <strong>{s.label}</strong> — {s.repeatsDiffering} of {s.repeatsTotal - 1} later
+                repeat{s.repeatsTotal - 1 === 1 ? '' : 's'} differ{s.repeatsDiffering === 1 ? 's' : ''} from the first and {s.repeatsDiffering === 1 ? 'is' : 'are'} not used.
+              </li>
+            ))}
+          </ul>
+          <p className="text-amber-200/90">
+            If you want art that varies across the panel instead of repeating, that piece needs to be
+            bigger (one period covering the whole run) — tell me and I&apos;ll resize the kit.
+          </p>
         </div>
       )}
 
