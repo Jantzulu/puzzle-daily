@@ -73,16 +73,16 @@ export const PortcullisMesh: React.FC<{ className?: string }> = ({ className = '
         beams' (GateMesh) at rendered-pixel scale: ~2.5px top inset, ~2.5px
         highlight, ~4.2px bottom lip — the bottom rung must not read as a
         different make of iron than the rungs above it. */}
-    {/* Layer thicknesses derived from the beam's, not estimated. The beam
-        (viewBox 52 tall, rendered at 100%) uses a 3u top inset, 3u highlight
-        and 5u bottom lip = 2.54 / 2.54 / 4.23 rendered px on a 44px rung.
-        This mesh renders at 200%, so one of its units is 1.375px there and
-        the same look needs 1.85 / 1.85 / 3.08u. The old 2.5 / 2.5 / 4.2u
-        rendered 35% thicker, which is why the bottom rung read as heavier
-        iron than the lattice above it even after the box was standardised. */}
+    {/* Original layer proportions, RESTORED (user decision, 2026-07-31): a
+        pass that thinned these to match the menu beams' rendered lips was
+        compared live and the user preferred the portcullis as it looked on
+        the ui-mobile-fit build — this rail's band filling its 44px box with
+        its own heavier lips, the menu keeping its thinner 36px beams. The
+        rungs are deliberately NOT the same iron; only the forge plates are
+        standardized across the two meshes. */}
     <rect x="0" y={RAIL_TOP} width={VIEW_W} height={RAIL_BOT - RAIL_TOP} fill={IRON.dark} />
-    <rect x="0" y={RAIL_TOP + 1.85} width={VIEW_W} height={RAIL_BOT - RAIL_TOP - 4.93} fill={IRON.face} />
-    <rect x="0" y={RAIL_TOP + 1.85} width={VIEW_W} height="1.85" fill={IRON.highlight} />
+    <rect x="0" y={RAIL_TOP + 2.5} width={VIEW_W} height={RAIL_BOT - RAIL_TOP - 6.7} fill={IRON.face} />
+    <rect x="0" y={RAIL_TOP + 2.5} width={VIEW_W} height="2.5" fill={IRON.highlight} />
 
     {/* Forge plates bolting each bar to the rail — THE SAME HARDWARE as the
         menu beams' plates (GateMesh), derived from them rather than eyeballed.
@@ -107,19 +107,22 @@ export const PortcullisMesh: React.FC<{ className?: string }> = ({ className = '
         the same fixed light every mesh here uses. This one was centred, which
         read as a different make of iron. Inset converted: 0.92u vertical,
         3.75u horizontal. */}
-    {/* Plate width is 11.25u = 2.5x the beam's 4.5u, which is exactly the
-        ratio of the two viewBox widths (1000 vs 400). Both meshes always
-        render at the SAME element width, so that ratio makes the two plates
-        render identically at every viewport — the user's requirement — and
-        the pair is sized to land square at 672px, the shared max-width.
-        (A nested <svg preserveAspectRatio> was tried here first and does NOT
-        work: it only controls mapping inside the nested viewport, and the
-        parent's preserveAspectRatio="none" stretch is applied on top of the
-        result. It measured 3.7x7.6 against the beam's 12.7x7.6.) */}
+    {/* Forge plates — copies of the beam's reference plate (GateMesh):
+        9px square at the shared 672px width, top 13px below the iron's top,
+        inner rect inset 1.5px top-left and flush bottom-right. Converted to
+        this mesh's units (200% render on a 44px box → 1.375 px/u vertical;
+        672/1000 = 0.672 px/u horizontal at desktop): top 20 + 13/1.375 =
+        29.45u, height 9/1.375 = 6.545u, width 9/0.672 = 13.39u. That width
+        is 2.5× the beam plate's 5.36u — exactly the 1000:400 viewBox ratio —
+        so the two plates render identically at EVERY viewport, square at the
+        width they're tuned for.
+        (A nested <svg preserveAspectRatio> was tried first and does NOT
+        work: it only controls mapping inside the nested viewport; the
+        parent's preserveAspectRatio="none" stretch still applies on top.) */}
     {BAR_XS.map((x, i) => (
       <g key={`rivet${i}`}>
-        <rect x={x - 5.625} y="32.9" width="11.25" height="5.5" fill={IRON.lit} />
-        <rect x={x - 3.715} y="33.835" width="9.34" height="4.565" fill={IRON.body} />
+        <rect x={x - 6.7} y="29.45" width="13.39" height="6.545" fill={IRON.lit} />
+        <rect x={x - 4.47} y="30.54" width="11.16" height="5.45" fill={IRON.body} />
       </g>
     ))}
 
