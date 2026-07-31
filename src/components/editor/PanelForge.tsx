@@ -74,7 +74,61 @@ const buttonStates = (state: string): PieceSpec[] => [
   { id: `btn-${state}-cap-r`, label: `Button ${state} · Cap R`, w: 6, h: 16, repeat: 'fixed' },
 ];
 
+/**
+ * CAPPED EDGES — the richer frame vocabulary (2026-07-31).
+ *
+ * A plain nine-slice gives each edge ONE part, which can only repeat. That
+ * makes a whole class of ornament impossible to express: a notch at each end
+ * of the top edge either repeats every period across the whole run, or (if it
+ * was painted past the first period) is discarded outright. The user hit
+ * exactly this — "there are notches in the top and bottom edges in my drawing
+ * that do not appear in the preview" — and the instinct behind it was right:
+ * end caps SHOULD be preserved while the middle repeats. That is what corners
+ * already do; the edges just had no equivalent.
+ *
+ * So every edge becomes three parts: a fixed cap at each end that never
+ * stretches and never repeats, and a repeating middle between them. The
+ * divider gets the same treatment, since a section rule wants finished ends
+ * for the same reason a frame does.
+ */
+const nineSliceCapped = (corner: number, edge: number, cap: number, mid: number, center: number): PieceSpec[] => [
+  { id: 'corner-tl', label: 'Corner TL', w: corner, h: corner, repeat: 'fixed', notes: 'Anchors at its outer corner; ornament may overflow outward.' },
+  { id: 'corner-tr', label: 'Corner TR', w: corner, h: corner, repeat: 'fixed' },
+  { id: 'corner-bl', label: 'Corner BL', w: corner, h: corner, repeat: 'fixed' },
+  { id: 'corner-br', label: 'Corner BR', w: corner, h: corner, repeat: 'fixed' },
+
+  { id: 'edge-top-cap-l', label: 'Top Cap L', w: cap, h: edge, repeat: 'fixed', notes: 'Fixed against the corner — draw your end notch HERE and it survives every width.' },
+  { id: 'edge-top-mid', label: 'Top Middle', w: mid, h: edge, repeat: 'tile-x', notes: 'The only part that repeats. Keep it plain, or the motif recurs every period.' },
+  { id: 'edge-top-cap-r', label: 'Top Cap R', w: cap, h: edge, repeat: 'fixed' },
+
+  { id: 'edge-bottom-cap-l', label: 'Bottom Cap L', w: cap, h: edge, repeat: 'fixed' },
+  { id: 'edge-bottom-mid', label: 'Bottom Middle', w: mid, h: edge, repeat: 'tile-x' },
+  { id: 'edge-bottom-cap-r', label: 'Bottom Cap R', w: cap, h: edge, repeat: 'fixed' },
+
+  { id: 'edge-left-cap-t', label: 'Left Cap Top', w: edge, h: cap, repeat: 'fixed' },
+  { id: 'edge-left-mid', label: 'Left Middle', w: edge, h: mid, repeat: 'tile-y' },
+  { id: 'edge-left-cap-b', label: 'Left Cap Bottom', w: edge, h: cap, repeat: 'fixed' },
+
+  { id: 'edge-right-cap-t', label: 'Right Cap Top', w: edge, h: cap, repeat: 'fixed' },
+  { id: 'edge-right-mid', label: 'Right Middle', w: edge, h: mid, repeat: 'tile-y' },
+  { id: 'edge-right-cap-b', label: 'Right Cap Bottom', w: edge, h: cap, repeat: 'fixed' },
+
+  { id: 'center', label: 'Center Fill', w: center, h: center, repeat: 'tile-xy', notes: 'The panel background; keep it quiet so content reads.' },
+
+  { id: 'divider-cap-l', label: 'Divider Cap L', w: cap, h: 6, repeat: 'fixed', notes: 'Finished end for the section rule.' },
+  { id: 'divider-mid', label: 'Divider Middle', w: mid, h: 6, repeat: 'tile-x' },
+  { id: 'divider-cap-r', label: 'Divider Cap R', w: cap, h: 6, repeat: 'fixed' },
+];
+
 const DEFAULT_KITS: KitSpec[] = [
+  {
+    id: 'window-panel-capped',
+    name: 'Window Panel (capped edges)',
+    builtIn: true,
+    description:
+      'Nine-slice with FINISHED EDGE ENDS. Each edge is a fixed cap at both ends plus a repeating middle, so end notches and terminals survive any panel size — only the plain middle tiles. Use this when the frame has ornament rather than a uniform run.',
+    pieces: nineSliceCapped(12, 12, 10, 16, 24),
+  },
   {
     id: 'window-panel',
     name: 'Window Panel (base)',
@@ -400,10 +454,12 @@ export interface Assembly {
   height: number;
 }
 
-type KitFamily = 'nine-slice' | 'gate' | 'rail' | 'nav-gate' | 'gem' | 'buttons';
+type KitFamily = 'nine-slice' | 'nine-slice-capped' | 'gate' | 'rail' | 'nav-gate' | 'gem' | 'buttons';
 
 function kitFamily(kit: KitSpec): KitFamily | null {
   const ids = new Set(kit.pieces.map(p => p.id));
+  // Capped must be tested BEFORE plain nine-slice: it also has corners.
+  if (ids.has('edge-top-cap-l')) return 'nine-slice-capped';
   if (ids.has('corner-tl')) return 'nine-slice';
   if (ids.has('bar-segment')) return 'gate';
   if (ids.has('rail-face')) return 'rail';
@@ -459,6 +515,83 @@ function assembleNineSlice(kit: KitSpec): Assembly | null {
       regions.push({ pieceId: 'divider', x, y: dy, w: Math.min(dv.w, W - c.w - x), h: dv.h, rep: i });
     }
   }
+  return { regions, width: W, height: H };
+}
+
+/**
+ * The capped sample. Each edge reads cap · mid × N · cap between its corners,
+ * so the artist sees exactly what is fixed and what repeats — the caps sit
+ * hard against the corners where their notches belong, and only the middle
+ * shows a repeat count.
+ */
+function assembleNineSliceCapped(kit: KitSpec): Assembly | null {
+  const P = (id: string) => kit.pieces.find(p => p.id === id);
+  const c = P('corner-tl');
+  const tcl = P('edge-top-cap-l');
+  const tm = P('edge-top-mid');
+  const lct = P('edge-left-cap-t');
+  const lm = P('edge-left-mid');
+  const ct = P('center');
+  if (!c || !tcl || !tm || !lct || !lm || !ct) return null;
+
+  const RX = 3; // repeats of the horizontal middle
+  const RY = 2; // repeats of the vertical middle
+  const W = c.w * 2 + tcl.w * 2 + RX * tm.w;
+  const H = c.h * 2 + lct.h * 2 + RY * lm.h;
+  const regions: AssemblyRegion[] = [];
+
+  // Centre fill first — everything else draws over it.
+  for (let y = c.h, j = 0; y < H - c.h; y += ct.h, j++) {
+    for (let x = c.w, i = 0; x < W - c.w; x += ct.w, i++) {
+      regions.push({ pieceId: 'center', x, y, w: Math.min(ct.w, W - c.w - x), h: Math.min(ct.h, H - c.h - y), rep: i + j });
+    }
+  }
+
+  // Horizontal runs: cap, middles, cap — top and bottom.
+  const hRun = (capL: string, midId: string, capR: string, y: number, h: number) => {
+    const cl = P(capL); const m = P(midId); const cr = P(capR);
+    if (!cl || !m || !cr) return;
+    regions.push({ pieceId: capL, x: c.w, y, w: cl.w, h, rep: 0 });
+    for (let i = 0; i < RX; i++) {
+      regions.push({ pieceId: midId, x: c.w + cl.w + i * m.w, y, w: m.w, h, rep: i });
+    }
+    regions.push({ pieceId: capR, x: W - c.w - cr.w, y, w: cr.w, h, rep: 0 });
+  };
+  hRun('edge-top-cap-l', 'edge-top-mid', 'edge-top-cap-r', 0, tcl.h);
+  const bcl = P('edge-bottom-cap-l');
+  if (bcl) hRun('edge-bottom-cap-l', 'edge-bottom-mid', 'edge-bottom-cap-r', H - bcl.h, bcl.h);
+
+  // Vertical runs: cap, middles, cap — left and right.
+  const vRun = (capT: string, midId: string, capB: string, x: number, w: number) => {
+    const ct2 = P(capT); const m = P(midId); const cb = P(capB);
+    if (!ct2 || !m || !cb) return;
+    regions.push({ pieceId: capT, x, y: c.h, w, h: ct2.h, rep: 0 });
+    for (let j = 0; j < RY; j++) {
+      regions.push({ pieceId: midId, x, y: c.h + ct2.h + j * m.h, w, h: m.h, rep: j });
+    }
+    regions.push({ pieceId: capB, x, y: H - c.h - cb.h, w, h: cb.h, rep: 0 });
+  };
+  vRun('edge-left-cap-t', 'edge-left-mid', 'edge-left-cap-b', 0, lct.w);
+  const rct = P('edge-right-cap-t');
+  if (rct) vRun('edge-right-cap-t', 'edge-right-mid', 'edge-right-cap-b', W - rct.w, rct.w);
+
+  // Corners last so they cover the ends of both runs.
+  regions.push({ pieceId: 'corner-tl', x: 0, y: 0, w: c.w, h: c.h, rep: 0 });
+  regions.push({ pieceId: 'corner-tr', x: W - c.w, y: 0, w: c.w, h: c.h, rep: 0 });
+  regions.push({ pieceId: 'corner-bl', x: 0, y: H - c.h, w: c.w, h: c.h, rep: 0 });
+  regions.push({ pieceId: 'corner-br', x: W - c.w, y: H - c.h, w: c.w, h: c.h, rep: 0 });
+
+  // The section rule, capped the same way, laid across the field.
+  const dcl = P('divider-cap-l'); const dm = P('divider-mid'); const dcr = P('divider-cap-r');
+  if (dcl && dm && dcr) {
+    const dy = c.h + Math.floor((H - c.h * 2) * 0.45);
+    regions.push({ pieceId: 'divider-cap-l', x: c.w, y: dy, w: dcl.w, h: dcl.h, rep: 0 });
+    for (let i = 0; i < RX; i++) {
+      regions.push({ pieceId: 'divider-mid', x: c.w + dcl.w + i * dm.w, y: dy, w: dm.w, h: dm.h, rep: i });
+    }
+    regions.push({ pieceId: 'divider-cap-r', x: W - c.w - dcr.w, y: dy, w: dcr.w, h: dcr.h, rep: 0 });
+  }
+
   return { regions, width: W, height: H };
 }
 
@@ -627,6 +760,7 @@ function assembleButtons(kit: KitSpec): Assembly | null {
 export function assembleKit(kit: KitSpec): Assembly | null {
   switch (kitFamily(kit)) {
     case 'nine-slice': return assembleNineSlice(kit);
+    case 'nine-slice-capped': return assembleNineSliceCapped(kit);
     case 'gate': return assembleGate(kit);
     case 'rail': return assembleRail(kit);
     case 'nav-gate': return assembleNavGate(kit);

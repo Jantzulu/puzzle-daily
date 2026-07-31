@@ -97,10 +97,14 @@ export const PanelNineSlice: React.FC<Props> = ({ pieces, zoom, width, height, s
   const tr = p['corner-tr'];
   const bl = p['corner-bl'];
   const br = p['corner-br'];
-  const top = p['edge-top'];
-  const bottom = p['edge-bottom'];
-  const left = p['edge-left'];
-  const right = p['edge-right'];
+  // Capped kits split each edge into cap · middle · cap; plain kits have one
+  // repeating part. Detect rather than configure, so both render from the
+  // same component and a half-converted kit still previews.
+  const capped = !!p['edge-top-cap-l'] || !!p['edge-left-cap-t'];
+  const top = p['edge-top'] ?? p['edge-top-mid'];
+  const bottom = p['edge-bottom'] ?? p['edge-bottom-mid'];
+  const left = p['edge-left'] ?? p['edge-left-mid'];
+  const right = p['edge-right'] ?? p['edge-right-mid'];
   const center = p['center'];
 
   // Border thicknesses come from the ART, not from a guess: the corners define
@@ -110,28 +114,55 @@ export const PanelNineSlice: React.FC<Props> = ({ pieces, zoom, width, height, s
   const bLeft = (tl?.w ?? left?.w ?? 0) * zoom;
   const bRight = (tr?.w ?? right?.w ?? 0) * zoom;
 
+  // Cap footprints in display px. The middles start after them, which is the
+  // whole point: a cap never stretches and never repeats, so ornament painted
+  // into it survives at every panel size.
+  const capTL = (p['edge-top-cap-l']?.w ?? 0) * zoom;
+  const capTR = (p['edge-top-cap-r']?.w ?? 0) * zoom;
+  const capBL = (p['edge-bottom-cap-l']?.w ?? 0) * zoom;
+  const capBR = (p['edge-bottom-cap-r']?.w ?? 0) * zoom;
+  const capLT = (p['edge-left-cap-t']?.h ?? 0) * zoom;
+  const capLB = (p['edge-left-cap-b']?.h ?? 0) * zoom;
+  const capRT = (p['edge-right-cap-t']?.h ?? 0) * zoom;
+  const capRB = (p['edge-right-cap-b']?.h ?? 0) * zoom;
+
   const layers: Array<React.CSSProperties | null> = [
-    // Centre first, then edges, then corners — corners must cover the ends of
-    // the edge runs, which is how a nine-slice hides its partial tiles.
+    // Centre first, then edge middles, then caps, then corners — each covers
+    // the ends of the run beneath it, which is how the partial tile hides.
     layer(center, zoom, 'repeat', { left: bLeft, right: bRight, top: bt, bottom: bb }),
-    layer(top, zoom, 'repeat-x', { left: bLeft, right: bRight, top: 0, height: (top?.h ?? 0) * zoom }),
-    layer(bottom, zoom, 'repeat-x', { left: bLeft, right: bRight, bottom: 0, height: (bottom?.h ?? 0) * zoom }),
-    layer(left, zoom, 'repeat-y', { top: bt, bottom: bb, left: 0, width: (left?.w ?? 0) * zoom }),
-    layer(right, zoom, 'repeat-y', { top: bt, bottom: bb, right: 0, width: (right?.w ?? 0) * zoom }),
+    layer(top, zoom, 'repeat-x', { left: bLeft + capTL, right: bRight + capTR, top: 0, height: (top?.h ?? 0) * zoom }),
+    layer(bottom, zoom, 'repeat-x', { left: bLeft + capBL, right: bRight + capBR, bottom: 0, height: (bottom?.h ?? 0) * zoom }),
+    layer(left, zoom, 'repeat-y', { top: bt + capLT, bottom: bb + capLB, left: 0, width: (left?.w ?? 0) * zoom }),
+    layer(right, zoom, 'repeat-y', { top: bt + capRT, bottom: bb + capRB, right: 0, width: (right?.w ?? 0) * zoom }),
+
+    // The caps themselves, pinned against the corners.
+    layer(p['edge-top-cap-l'], zoom, 'no-repeat', { left: bLeft, top: 0, width: capTL, height: (p['edge-top-cap-l']?.h ?? 0) * zoom }),
+    layer(p['edge-top-cap-r'], zoom, 'no-repeat', { right: bRight, top: 0, width: capTR, height: (p['edge-top-cap-r']?.h ?? 0) * zoom }),
+    layer(p['edge-bottom-cap-l'], zoom, 'no-repeat', { left: bLeft, bottom: 0, width: capBL, height: (p['edge-bottom-cap-l']?.h ?? 0) * zoom }),
+    layer(p['edge-bottom-cap-r'], zoom, 'no-repeat', { right: bRight, bottom: 0, width: capBR, height: (p['edge-bottom-cap-r']?.h ?? 0) * zoom }),
+    layer(p['edge-left-cap-t'], zoom, 'no-repeat', { left: 0, top: bt, width: (p['edge-left-cap-t']?.w ?? 0) * zoom, height: capLT }),
+    layer(p['edge-left-cap-b'], zoom, 'no-repeat', { left: 0, bottom: bb, width: (p['edge-left-cap-b']?.w ?? 0) * zoom, height: capLB }),
+    layer(p['edge-right-cap-t'], zoom, 'no-repeat', { right: 0, top: bt, width: (p['edge-right-cap-t']?.w ?? 0) * zoom, height: capRT }),
+    layer(p['edge-right-cap-b'], zoom, 'no-repeat', { right: 0, bottom: bb, width: (p['edge-right-cap-b']?.w ?? 0) * zoom, height: capRB }),
     layer(tl, zoom, 'no-repeat', { left: 0, top: 0, width: (tl?.w ?? 0) * zoom, height: (tl?.h ?? 0) * zoom }),
     layer(tr, zoom, 'no-repeat', { right: 0, top: 0, width: (tr?.w ?? 0) * zoom, height: (tr?.h ?? 0) * zoom }),
     layer(bl, zoom, 'no-repeat', { left: 0, bottom: 0, width: (bl?.w ?? 0) * zoom, height: (bl?.h ?? 0) * zoom }),
     layer(br, zoom, 'no-repeat', { right: 0, bottom: 0, width: (br?.w ?? 0) * zoom, height: (br?.h ?? 0) * zoom }),
     // Section rules last: they run across the field, between the side edges,
     // and should sit over the centre fill.
-    ...dividerYs.map(y =>
-      layer(p['divider'], zoom, 'repeat-x', {
-        left: bLeft,
-        right: bRight,
-        top: y,
-        height: (p['divider']?.h ?? 0) * zoom,
-      }),
-    ),
+    ...dividerYs.flatMap(y => {
+      const dm = p['divider'] ?? p['divider-mid'];
+      const dl = p['divider-cap-l'];
+      const dr = p['divider-cap-r'];
+      const dlW = (dl?.w ?? 0) * zoom;
+      const drW = (dr?.w ?? 0) * zoom;
+      const h = (dm?.h ?? dl?.h ?? 0) * zoom;
+      return [
+        layer(dm, zoom, 'repeat-x', { left: bLeft + dlW, right: bRight + drW, top: y, height: h }),
+        layer(dl, zoom, 'no-repeat', { left: bLeft, top: y, width: dlW, height: (dl?.h ?? 0) * zoom }),
+        layer(dr, zoom, 'no-repeat', { right: bRight, top: y, width: drW, height: (dr?.h ?? 0) * zoom }),
+      ];
+    }),
   ];
 
   const anyArt = layers.some(Boolean);
@@ -140,8 +171,10 @@ export const PanelNineSlice: React.FC<Props> = ({ pieces, zoom, width, height, s
   // A tiling run is only honest about itself at sizes where it happens to fit
   // a whole number of periods. Everywhere else the last tile is chopped, and
   // that chop is where painted flourishes get eaten.
-  const innerW = Math.max(0, width - bLeft - bRight);
-  const innerH = Math.max(0, height - bt - bb);
+  // The tiling RUN excludes the caps — they are fixed, so they are not part
+  // of what repeats and must not be counted when working out the clip.
+  const innerW = Math.max(0, width - bLeft - bRight - capTL - capTR);
+  const innerH = Math.max(0, height - bt - bb - capLT - capLB);
   const topPeriod = (top?.w ?? 0) * zoom;
   const sidePeriod = (left?.h ?? 0) * zoom;
 
@@ -185,24 +218,24 @@ export const PanelNineSlice: React.FC<Props> = ({ pieces, zoom, width, height, s
           <>
             {/* period boundaries along the top/bottom runs */}
             {topRun && topPeriod > 0 && Array.from({ length: topRun.full + 1 }, (_, i) => i).map(i => (
-              <div key={`vx${i}`} aria-hidden style={seamLine({ left: bLeft + i * topPeriod, top: 0, width: 1, height })} />
+              <div key={`vx${i}`} aria-hidden style={seamLine({ left: bLeft + capTL + i * topPeriod, top: 0, width: 1, height })} />
             ))}
             {/* period boundaries along the side runs */}
             {sideRun && sidePeriod > 0 && Array.from({ length: sideRun.full + 1 }, (_, i) => i).map(i => (
-              <div key={`hz${i}`} aria-hidden style={seamLine({ top: bt + i * sidePeriod, left: 0, height: 1, width })} />
+              <div key={`hz${i}`} aria-hidden style={seamLine({ top: bt + capLT + i * sidePeriod, left: 0, height: 1, width })} />
             ))}
             {/* the clipped remainder of each run */}
             {topRun && topRun.remainder > 0 && (
-              <div aria-hidden style={{ ...hatch, left: bLeft + topRun.full * topPeriod, width: topRun.remainder, top: 0, height: bt }} />
+              <div aria-hidden style={{ ...hatch, left: bLeft + capTL + topRun.full * topPeriod, width: topRun.remainder, top: 0, height: bt }} />
             )}
             {topRun && topRun.remainder > 0 && (
-              <div aria-hidden style={{ ...hatch, left: bLeft + topRun.full * topPeriod, width: topRun.remainder, bottom: 0, height: bb }} />
+              <div aria-hidden style={{ ...hatch, left: bLeft + capBL + topRun.full * topPeriod, width: topRun.remainder, bottom: 0, height: bb }} />
             )}
             {sideRun && sideRun.remainder > 0 && (
-              <div aria-hidden style={{ ...hatch, top: bt + sideRun.full * sidePeriod, height: sideRun.remainder, left: 0, width: bLeft }} />
+              <div aria-hidden style={{ ...hatch, top: bt + capLT + sideRun.full * sidePeriod, height: sideRun.remainder, left: 0, width: bLeft }} />
             )}
             {sideRun && sideRun.remainder > 0 && (
-              <div aria-hidden style={{ ...hatch, top: bt + sideRun.full * sidePeriod, height: sideRun.remainder, right: 0, width: bRight }} />
+              <div aria-hidden style={{ ...hatch, top: bt + capRT + sideRun.full * sidePeriod, height: sideRun.remainder, right: 0, width: bRight }} />
             )}
           </>
         )}
