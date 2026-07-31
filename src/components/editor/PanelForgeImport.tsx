@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from '../shared/Toast';
 import type { Assembly, KitSpec } from './PanelForge';
+import { PanelNineSlice } from './PanelNineSlice';
 
 // ============================================================================
 // PANEL FORGE — PHASE 2: SLICE + LIVE PREVIEW
@@ -61,6 +62,11 @@ export const PanelForgeImport: React.FC<Props> = ({ kit, assembly }) => {
   const [watching, setWatching] = useState(false);
   const [lastLoadedAt, setLastLoadedAt] = useState<number | null>(null);
   const [sizeWarning, setSizeWarning] = useState<string | null>(null);
+  // Live-render controls. 361x274 is the real hero panel at a 393px phone —
+  // start there so the first thing you see is the size that actually matters.
+  const [panelW, setPanelW] = useState(361);
+  const [panelH, setPanelH] = useState(274);
+  const [showContent, setShowContent] = useState(true);
 
   const handleRef = useRef<FilePickerHandle | null>(null);
   const lastModifiedRef = useRef<number>(0);
@@ -340,6 +346,63 @@ export const PanelForgeImport: React.FC<Props> = ({ kit, assembly }) => {
                 <span className="text-[10px] text-stone-400 max-w-[90px] truncate">{s.label}</span>
               </div>
             ))}
+          </div>
+
+          {/* THE RIGHT-HAND SIDE OF THE LOOP. The strip above shows the pieces
+              you cut; this shows the PANEL they make. Only this can tell you
+              whether the seams work, because a nine-slice is honest only at
+              sizes other than the sample's own. */}
+          <div className="border-t border-stone-700 pt-3 space-y-2">
+            <div className="flex items-center gap-3 flex-wrap">
+              <h4 className="text-sm font-semibold text-parchment-100">Live panel</h4>
+              <label className="flex items-center gap-1.5 text-xs text-stone-300">
+                <input
+                  type="checkbox"
+                  checked={showContent}
+                  onChange={e => setShowContent(e.target.checked)}
+                  className="w-3.5 h-3.5"
+                />
+                Sample text
+              </label>
+              <button
+                onClick={() => { setPanelW(361); setPanelH(274); }}
+                className="px-2 py-0.5 text-xs rounded border border-stone-600 text-stone-300 hover:bg-stone-700"
+                title="The real hero panel on a 393px phone"
+              >
+                Hero panel @393
+              </button>
+            </div>
+
+            <div className="flex items-center gap-3 flex-wrap text-xs text-stone-400">
+              <label className="flex items-center gap-2">
+                W
+                <input
+                  type="range" min={64} max={720} value={panelW}
+                  onChange={e => setPanelW(Number(e.target.value))}
+                  className="w-40"
+                />
+                <span className="w-10 tabular-nums">{panelW}</span>
+              </label>
+              <label className="flex items-center gap-2">
+                H
+                <input
+                  type="range" min={48} max={520} value={panelH}
+                  onChange={e => setPanelH(Number(e.target.value))}
+                  className="w-40"
+                />
+                <span className="w-10 tabular-nums">{panelH}</span>
+              </label>
+              <span className="text-stone-500">drag to an awkward size — that is where seams fail</span>
+            </div>
+
+            <PanelNineSlice
+              pieces={slices}
+              zoom={zoom}
+              width={panelW}
+              height={panelH}
+              showContent={showContent}
+              ground="#040403"
+            />
           </div>
 
           <button
