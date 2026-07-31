@@ -3,6 +3,7 @@ import { toast } from '../shared/Toast';
 import { PortcullisMesh } from '../game/PortcullisMesh';
 import { GemMesh } from '../game/GemMesh';
 import { GateBeamMesh } from '../shared/GateMesh';
+import { PanelForgeImport } from './PanelForgeImport';
 
 // ============================================================================
 // PANEL FORGE — nine-slice / tiling-piece spec + template exporter (Phase 1)
@@ -27,7 +28,7 @@ import { GateBeamMesh } from '../shared/GateMesh';
 
 type RepeatMode = 'fixed' | 'tile-x' | 'tile-y' | 'tile-xy';
 
-interface PieceSpec {
+export interface PieceSpec {
   id: string;
   label: string;
   w: number; // nominal art px (editable)
@@ -36,7 +37,7 @@ interface PieceSpec {
   notes?: string;
 }
 
-interface KitSpec {
+export interface KitSpec {
   id: string;
   name: string;
   builtIn?: boolean;
@@ -384,7 +385,7 @@ function renderLegend(ctx: CanvasRenderingContext2D, layout: KitLayout, kit: Kit
 // alternating shades marking each tile repeat. Geometry uses the CURRENT
 // nominal sizes, so resizing a piece reshapes the assembly live.
 
-interface AssemblyRegion {
+export interface AssemblyRegion {
   pieceId: string;
   x: number;
   y: number;
@@ -393,7 +394,7 @@ interface AssemblyRegion {
   rep: number; // repeat index — alternates shading to show the tile period
 }
 
-interface Assembly {
+export interface Assembly {
   regions: AssemblyRegion[];
   width: number;
   height: number;
@@ -623,7 +624,7 @@ function assembleButtons(kit: KitSpec): Assembly | null {
   return regions.length ? { regions, width: W, height: y - 6 } : null;
 }
 
-function assembleKit(kit: KitSpec): Assembly | null {
+export function assembleKit(kit: KitSpec): Assembly | null {
   switch (kitFamily(kit)) {
     case 'nine-slice': return assembleNineSlice(kit);
     case 'gate': return assembleGate(kit);
@@ -966,6 +967,14 @@ export const PanelForge: React.FC = () => {
           <button onClick={exportTemplate} className="dungeon-btn text-sm px-4 py-2">⬇ Per-piece template (1×)</button>
           <button onClick={exportLegend} className="dungeon-btn text-sm px-4 py-2">⬇ Legend PNG (4×)</button>
           <button onClick={exportManifest} className="dungeon-btn text-sm px-4 py-2">⬇ Manifest JSON</button>
+        </div>
+
+        {/* PHASE 2 — the return trip. Phase 1 could only send you out to your
+            art tool; this brings the painted sheet back, cuts it here, and
+            (where the browser allows) re-reads it whenever you save, so the
+            loop is paint → ctrl+S → look, with nobody in the middle. */}
+        <div className="max-w-2xl">
+          <PanelForgeImport kit={kit} assembly={assembly} />
         </div>
 
         {/* How to paint */}
