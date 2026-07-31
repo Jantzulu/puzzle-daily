@@ -2396,7 +2396,22 @@ export const Game: React.FC<GameProps> = ({
               // beam-to-beam gap is unchanged. rail-riding: once the page
               // scrolls, the rail drops 14px and the bars reveal
               // themselves (see index.css).
-              <div className={`control-rail relative z-0 w-full max-w-2xl grid grid-cols-3 items-center px-3 pt-2 pb-1 mt-0 mb-1 min-h-[48px]${railRiding ? ' rail-riding' : ''}${justExitedReplay ? ' animate-rail-descend' : ''}${enteringReplay ? ' animate-rail-ascend' : ''}${replayMode && !enteringReplay ? ' invisible' : ''}`}>
+              // STANDARDISED RUNG (user's own observation, 2026-07-31): "the
+              // bottom portcullis rung is larger than the rest, and
+              // standardizing them would allow everything to move up on the
+              // screen slightly". Quantified: the nav gate's beams draw their
+              // face across a 44px item, while this box was 48px + pt-2, so
+              // the bottom rung's iron read markedly thicker than the lattice
+              // above it. The box is now the same 44px rung; the controls
+              // drop to 36px (h-9) inside 4+36+4, and .control-rail-mesh is
+              // untouched so the band still fills 100% of the box.
+              //
+              // grid-cols-[1fr_auto_1fr], NOT grid-cols-3. Equal thirds gave
+              // each column ~106px at 375px while the Play stone is 118px, so
+              // it overflowed its column and covered the third life heart.
+              // Sizing the centre column to its content makes that overlap
+              // structurally impossible instead of merely unlikely.
+              <div className={`control-rail relative z-0 w-full max-w-2xl grid grid-cols-[1fr_auto_1fr] items-center px-3 pt-1 pb-1 mt-0 mb-1 min-h-[44px]${railRiding ? ' rail-riding' : ''}${justExitedReplay ? ' animate-rail-descend' : ''}${enteringReplay ? ' animate-rail-ascend' : ''}${replayMode && !enteringReplay ? ' invisible' : ''}`}>
                   {/* Portcullis rail: with the mobile menu OPEN the sticky
                       wrapper rides the gate's leading edge (translated by
                       --gate-drop, see index.css), so this rail hangs
@@ -2490,7 +2505,11 @@ export const Game: React.FC<GameProps> = ({
                       ) : (
                         <button
                           onClick={handlePlay}
-                          className={`gem-btn w-[118px] lg:w-[132px] shrink-0 h-10 font-bold text-sm lg:text-base transition-all flex items-center justify-center !py-0 ${
+                          // h-9 (36px), not h-10: the rail's box is the 44px
+                          // nav rung now, so the tallest child sets the paint
+                          // at 4+36+4. hit-44 keeps the TARGET at 44px while
+                          // the stone itself shrinks.
+                          className={`gem-btn w-[118px] lg:w-[132px] shrink-0 h-9 font-bold text-sm lg:text-base transition-all flex items-center justify-center !py-0 hit-44 ${
                             gameState.placedCharacters.length === 0 ? 'opacity-50 cursor-not-allowed' : ''
                           }`}
                           style={{ minHeight: 'unset' }}
@@ -2521,7 +2540,9 @@ export const Game: React.FC<GameProps> = ({
                       // too tight) without bloating the stone. The label is
                       // ONE inline span so Turn/number/max share a baseline
                       // and can never wrap.
-                      <div className="gem-plate gem-plate-aura h-10 w-[118px] lg:w-[132px] shrink-0 px-4 flex items-center justify-center">
+                      // Same 36px stone as the Play button it replaces, so the
+                      // rung's height never changes between states.
+                      <div className="gem-plate gem-plate-aura h-9 w-[118px] lg:w-[132px] shrink-0 px-4 flex items-center justify-center">
                         <GemMesh tone="emerald" phase={0} />
                         <span className="whitespace-nowrap">
                           <span className="text-xs lg:text-sm font-medium opacity-80">Turn&nbsp;</span>
