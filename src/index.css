@@ -2194,34 +2194,13 @@ body.menu-gate-instant .quest-panel-sticky {
                    ratio instead of stretching between top/bottom offsets */
   pointer-events: none;
   z-index: 0;
-  /* A PORTCULLIS HANGS IN THE OPENING, NOT ON THE WALL FACE. The rail spans
-     the composition's 672px column because the CONTROLS sit on it, but the
-     spike row hangs from the same viewBox, so at 1280 two of its five teeth
-     landed around x=365 and x=905 — entirely outside a 216px board, on the
-     aperture's wall. Against the old black ground they read as cave-ceiling
-     silhouettes; against a lit wall they read as loose grey triangles.
-     This keeps the rail band itself full width (0 -> 81.25% of the svg box,
-     i.e. everything down to PortcullisMesh's RAIL_BOT) and clips only what
-     hangs BELOW it to the aperture — the opening plus its reveal, the same
-     window `.dungeon-aperture` paints. Teeth that fall outside are dropped
-     WHOLE, never sliced: at 1280 the surviving three sit over the board and
-     its jambs, and on every phone profile the window is wider than the rail
-     so nothing is clipped at all.
-     Static geometry, evaluated once per resize — nothing animates here (the
-     rail's ride is a transform on the parent, and the clip travels with it).
-     If --board-w is not yet published the whole property is invalid at
-     computed-value time and resolves to `none`: unclipped, i.e. today's
-     behaviour, which is the safe direction to fail. */
-  clip-path: polygon(
-    0% 0%,
-    100% 0%,
-    100% 81.25%,
-    calc(50% + var(--board-w) / 2 + var(--aperture-reveal)) 81.25%,
-    calc(50% + var(--board-w) / 2 + var(--aperture-reveal)) 100%,
-    calc(50% - var(--board-w) / 2 - var(--aperture-reveal)) 100%,
-    calc(50% - var(--board-w) / 2 - var(--aperture-reveal)) 81.25%,
-    0% 81.25%
-  );
+  /* The spike row hangs full width, as it always has. A clip-path was added
+     here during the War Table pass to trim teeth that fell outside the
+     `.dungeon-aperture` wall; that wall is gone (it replaced the dungeon's
+     black surround with a lit grey face — the user's report, and two critics
+     had already flagged it as invisible on phones and as a flat-fill
+     regression on desktop), so the teeth have their black ground back and
+     read as cave-ceiling silhouettes again. Nothing to clip to. */
 }
 
 .control-rail > *:not(.control-rail-mesh) {
@@ -2786,6 +2765,10 @@ body.menu-gate-instant .quest-panel-sticky {
   margin: 6px 0;
 }
 
+/* (The board/quest overhang was deliberately left TIGHT — the corridors
+   hanging into the quest band is intended and the user confirmed it reads
+   well. Do not add clearance there.) */
+
 
 
 /* Entity-card movement arrow: the arrow itself travels its heading — fades
@@ -3190,122 +3173,23 @@ body.menu-gate-instant .quest-panel-sticky {
     0 4px 10px rgba(0, 0, 0, 0.4);
 }
 
-/* ---- The aperture ----------------------------------------------------
-   THE BOARD IS THE OPENING IN A WALL, SO THE WALL HAS TO BE PAINTED. Two
-   earlier cuts drew only the cut itself — a 1px dark line plus a 1px lit
-   line hugging the canvas — and both were measurably invisible: sampled at
-   dpr 3 the dark line came back rgb(2,2,1) against a page ground of
-   rgb(4,4,3) (a two-LEVEL difference) and the lit line rgb(25,24,20), a
-   1.14:1 contrast. Invisible chrome is not chrome. Worse, drawing only the
-   cut left the real defect untouched: the control rail and the hero plate
-   both declare the composition's measure (`max-w-2xl`, 672px) while the
-   canvas is whatever the zoom quantizer produced, so bare page ground sat
-   between them — 9.5px per side on an iPhone SE, 18.5px on a 14 Pro and
-   228px per side at 1280. Three different unexplained insets. That gap IS
-   the user's "the way it is NESTED on the screen" complaint.
-
-   SO THIS PAINTS THE MASONRY, NOT A HAIRLINE. Each side is one strip bound
-   at BOTH ends:
-     · OUTER edge -> the composition's own measure, `max(0px, 50% - 336px)`,
-       i.e. exactly the 672px column the rail above and the plate below use.
-       (Not the board wrapper's `max-w-[900px]` — that was the first cut's
-       error and it is why the desktop version framed a void.)
-     · INNER edge -> `--board-w`, the board's measured layout width, which
-       Game.tsx publishes because there is no CSS expression for it: the
-       width moves with viewport AND dpr (324px at 393, 216px at 1280 dpr 1).
-   Between those two edges: a recessive stone wash + the shared grain, so
-   rail -> wall -> rung -> plate read as ONE continuous column with a cut in
-   it. The inner 10px of each strip thickens into an opaque JAMB
-   (`#1a1611`, ~5x the ground's luminance — visibly a different material),
-   dark-cut on its outer edge and finished with a lit lip at
-   rgba(255,235,200,.22) — the same weight `.quest-rung`'s lit edge carries
-   — on its INNER edge, which lands exactly on the canvas. No gap: the
-   strip's inner edge IS `50% ± --board-w/2`.
-
-   TWO STRIPS, NOT ONE ELEMENT WITH A HOLE. `::before`/`::after` means
-   nothing whatsoever paints over the board — no veil of grain across the
-   canvas, no stacking-context question over the sprites.
-
-   FAIL-SAFE: `--board-w` defaults to `100%`, so before Game.tsx's
-   ResizeObserver publishes a pixel value each strip resolves to zero (or
-   negative) width and paints nothing. An unbound jamb would cover the board.
-
-   BOTH ENDS ARE CLOSED BY REAL OBJECTS: the strip runs UP behind the
-   portcullis rail's iron (the sticky rail wrapper paints over the board's
-   z-10) and DOWN to the quest rung's top edge. -14px/-2px are the measured
-   gaps plus a few px of overlap so neither end can show a sliver of page
-   ground at a fractional dpr.
-
-   THE OUTER EDGE IS CLAMPED TO A REVEAL, AND THAT CLAMP IS THE POINT.
-   `max(0px, 50% - 336px, 50% - --board-w/2 - --aperture-reveal)`. The three
-   terms in order: never past the wrapper; never wider than the composition's
-   672px column; and never more than a reveal's worth of wall around the
-   opening. The third term is what stops the desktop case from painting a
-   wall INSTEAD of a page: at 1280 dpr 1 the quantizer gives a 216px board in
-   a 672px column, so the unclamped strips were 228px of wall PER SIDE — 68%
-   of the framed width, and at dpr 1 `--chrome-noise` is invisible, so it
-   rendered as a featureless brown rectangle either side of a small puzzle.
-   That is not "a board set into a wall", it is an unfinished panel; the
-   baseline's plain black ground read better. 44px is jamb (10) + reveal
-   (34), which is a masonry opening. On every phone profile the second term
-   is already negative and the first clamps to 0, so the phone composition —
-   where the board nearly fills the column anyway — is byte-identical.
-
-   ZERO LAYOUT PIXELS: out-of-flow pseudo-elements and inset shadows only.
-   Nothing here touches the board's size — ResponsiveGameBoard measures
-   container WIDTH and the zoom quantizer is an axiom; this only READS the
-   result. */
-.dungeon-aperture {
-  --board-w: 100%;
-}
-
-/* How much wall may show outside the opening. Shared with the control rail's
-   spike clip below, because the teeth and the wall have to agree on where
-   the aperture ENDS — declared on :root so both can read it. */
-:root {
-  --aperture-reveal: 44px;
-}
-
-.dungeon-aperture::before,
-.dungeon-aperture::after {
-  content: '';
-  position: absolute;
-  top: -14px;
-  bottom: -2px;
-  pointer-events: none;
-  /* The wall's own value: ~4x the page ground, so the column is legible as
-     a surface without ever competing with the dungeon inside the opening. */
-  background-color: rgba(255, 235, 200, 0.05);
-  background-image:
-    /* 1px dark cut where the jamb steps out of the wall */
-    linear-gradient(var(--chrome-bevel-dark), var(--chrome-bevel-dark)),
-    /* jamb grain */
-    var(--chrome-noise),
-    /* jamb stone — opaque, 10px */
-    linear-gradient(#1a1611, #1a1611),
-    /* wall grain */
-    var(--chrome-noise);
-  background-repeat: no-repeat, no-repeat, no-repeat, repeat;
-  background-size: 1px 100%, 10px 100%, 10px 100%, auto;
-}
-
-.dungeon-aperture::before {
-  left: max(0px, calc(50% - 336px), calc(50% - var(--board-w) / 2 - var(--aperture-reveal)));
-  right: calc(50% + var(--board-w) / 2);
-  background-position: right 10px top 0, right top 0, right top 0, 0 0;
-  box-shadow:
-    inset 1px 0 0 var(--chrome-bevel-dark),
-    inset -1px 0 0 rgba(255, 235, 200, 0.22);
-}
-
-.dungeon-aperture::after {
-  right: max(0px, calc(50% - 336px), calc(50% - var(--board-w) / 2 - var(--aperture-reveal)));
-  left: calc(50% + var(--board-w) / 2);
-  background-position: left 10px top 0, left top 0, left top 0, 0 0;
-  box-shadow:
-    inset -1px 0 0 var(--chrome-bevel-dark),
-    inset 1px 0 0 rgba(255, 235, 200, 0.22);
-}
+/* THE APERTURE WALL IS DELETED — DO NOT REINTRODUCE IT (2026-07-31).
+   S9's headline idea was to set the board into a lit stone wall: two jamb
+   columns flanking the canvas, painted with a `rgba(255,235,200,0.05)` face
+   extending 44px past the opening. It failed on every surface and the user
+   caught it immediately: "the spaces outside the walls no longer have the
+   dark shadow and contain grey boxes." That wash replaced the dungeon's black
+   surround, which is doing real work — it is what makes the lit dungeon read
+   as a lit thing in a dark place, and it is the ground the portcullis teeth
+   silhouette against.
+   Two of the pass's own critics had already reported the same thing from
+   opposite ends and neither was acted on: it measured INVISIBLE on phones
+   (a 2-level colour difference against the page ground) while on desktop it
+   was ~456px of flat fill around a 216px board. A device that cannot see it
+   pays nothing for it; a device that can see it gets a regression.
+   The board's surround stays BLACK. If the "set into a wall" idea is ever
+   revisited, it has to be done inside the canvas art, not as a CSS box
+   painted around it. */
 
 /* ---- The plate's cap rail ---------------------------------------------
    ONE forged crossbar across the plate's head: engraved identity at the

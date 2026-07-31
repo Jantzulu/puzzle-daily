@@ -341,13 +341,18 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
     ? directionInputEntries.find(e => e.key === pickerKey) ?? null
     : null;
 
-  const renderOrderPill = (entry: DirectionPickerEntry) => {
+  // `compact` is the CENTRE-COLUMN form (user call, 2026-07-31: the selector
+  // reads well but belongs in a column between Actions and Attributes, not as
+  // a full-width band above them — stacking it was eating the vertical space
+  // the whole exercise exists to save). The caption moves out to the column's
+  // own header, so the pill carries only the value and stays legible at ~136px.
+  const renderOrderPill = (entry: DirectionPickerEntry, compact = false) => {
     const isSet = !!entry.current;
     const canPick = !disabled && !!entry.onPick;
-    const className = `hero-order ${isSet ? 'hero-order--done' : 'hero-order--open'} hud-label w-full h-11 px-3 flex items-center justify-between gap-2 rounded-pixel border transition-colors`;
+    const className = `hero-order ${isSet ? 'hero-order--done' : 'hero-order--open'} hud-label w-full h-11 ${compact ? 'px-2 justify-center' : 'px-3 justify-between'} flex items-center gap-2 rounded-pixel border transition-colors`;
     const body = (
       <>
-        <span className="truncate text-left">{entry.caption}</span>
+        {!compact && <span className="truncate text-left">{entry.caption}</span>}
         <span className="flex items-center gap-1.5 flex-shrink-0">
           {isSet ? (
             <>
@@ -481,7 +486,13 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
           tracking. This is one of those, so it is spelled the same way.
           It also gives the lavender back to `hero` exclusively.
           The rail's own CAP_ENGRAVING text-shadow still carves it. */}
-      <h3 className="hud-label text-stone-400 flex-none">Heroes</h3>
+      {/* THE HUE COMES BACK (user call, 2026-07-31): "we have lost the
+          signature colour scheme for the heroes (purple)". Recasting this as a
+          stone label stripped the one cue that says WHOSE section this is —
+          heroes are lavender, the dungeon's roster is blood. The note above is
+          right that 20px mixed-case lavender was too loud, so the SIZE stays a
+          section label's (11px uppercase) and only the hue returns. */}
+      <h3 className="hud-label text-arcane-300 flex-none">Heroes</h3>
       <span className="hero-cap__rule" aria-hidden="true" />
       {/* The working end, deliberately TWO classes of thing with a groove
           between them: a flat engraved readout, then recessed gold wells
@@ -763,13 +774,25 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                    17px line centres at boxTop+4.5..boxTop+21.5. Nothing is
                    lost to the clamp: the full name AND the epithet are in the
                    drawer subhead, and in `title`. */
-                <div className="w-full h-[26px] flex items-center justify-center overflow-hidden">
+                /* Name, with the epithet UNDER it in a smaller face (user
+                   call, 2026-07-31). The epithet used to live only in the
+                   drawer subhead, which meant selecting a hero reprinted the
+                   name you had just tapped — wasted rows in the panel whose
+                   whole problem is vertical space. It belongs on the card,
+                   with the portrait it names. Fixed 38px box so every card
+                   stays the same height whether or not its hero has one. */
+                <div className="w-full h-[38px] flex flex-col items-center justify-center overflow-hidden leading-none">
                   <span
                     className="hud-title text-arcane-300 text-center break-words line-clamp-1"
                     title={character.title ? `${character.name} — ${character.title}` : character.name}
                   >
                     {character.name}
                   </span>
+                  {character.title && (
+                    <span className="mt-0.5 text-[10px] italic text-parchment-300/90 text-center line-clamp-1">
+                      {character.title}
+                    </span>
+                  )}
                 </div>
               ) : (
                 /* Name + Title (below sprite).
@@ -941,39 +964,21 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
               : 'opacity 0.15s ease-in',
           }}
         >
-          {hasDirectionInputs && (
-            <div
-              ref={ordersRef}
-              className={`hero-drawer__orders space-y-1${
-                directionInputEntries.length > 2 ? ' hero-drawer__orders--scroll' : ''
-              }`}
-            >
-              {directionInputEntries.map(renderOrderPill)}
-            </div>
-          )}
-
           <div ref={briefRef} className="hero-drawer__brief">
-            {/* SUBHEAD — who you are reading. The epithet lives HERE now:
-                on the card it had ~110px and was set at 10px italic, which
-                is below this panel's own type floor; at full measure it
-                reads as the hero's HUD subtitle instead of as a caption
-                squeezed under a portrait. */}
-            <div className="flex items-baseline gap-2 mb-1.5">
-              <span className="hud-title text-arcane-300">{renderedCharacter.name}</span>
-              {renderedCharacter.title && (
-                <span className="hud-label text-stone-400 truncate">{renderedCharacter.title}</span>
-              )}
-            </div>
+            {/* NO SUBHEAD. Reprinting the name of the hero you just tapped —
+                with its epithet — cost two rows in the panel whose entire
+                problem is vertical space (user call, 2026-07-31). The name is
+                on the card, and the epithet now sits under it there.
 
-            {/* ONE FULL-MEASURE COLUMN below lg. The old three-column row left
-                each text column ~104px — about seventeen characters — so the
-                panel's height was manufactured by WRAPPING rather than by
-                content. At 375px this measures ~327px, about fifty
-                characters. At lg+ the measure is there for two columns, so
-                desktop keeps its parallel reading. */}
-            <div className="lg:grid lg:grid-cols-2 lg:gap-4 lg:items-start">
+                THREE COLUMNS: Actions | Directions | Attributes. The stacked
+                single-column form measured better and READ worse: it pushed
+                the direction selector into a full-width band of its own above
+                the text, so the one thing that had to stay compact became the
+                tallest element in the drawer. The centre column puts the
+                selector back between the two lists it belongs between. */}
+            <div className="flex px-1">
               {hasActionSteps && (
-                <div>
+                <div className={hasDirectionInputs || hasAttributes ? 'flex-1 min-w-0 pr-2' : 'w-full'}>
                   <p className="hud-label text-stone-400 mb-1">Actions</p>
                   {/* No `pl-2` here and none on the traits list below: both
                       lists hang off ONE left rail. The mismatched indents were
@@ -1001,8 +1006,33 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                   </ol>
                 </div>
               )}
+
+              {hasActionSteps && (hasDirectionInputs || hasAttributes) && (
+                <div className="self-stretch mx-2 flex-shrink-0 border-l border-dashed border-stone-600/40" />
+              )}
+
+              {/* DIRECTIONS — the centre column. Fixed width so the two text
+                  columns keep the flex space; entries stack for the rare hero
+                  with more than one input. The caption is the column's own
+                  sub-label, so the pill itself only has to carry the value. */}
+              {hasDirectionInputs && (
+                <div ref={ordersRef} className="flex-shrink-0" style={{ width: '132px' }}>
+                  <p className="hud-label text-stone-400 mb-1 text-center">Directions</p>
+                  {directionInputEntries.map(entry => (
+                    <div key={entry.key} className="mb-1.5 last:mb-0">
+                      <p className="hud-label text-arcane-300 text-center mb-1 leading-tight">{entry.caption}</p>
+                      {renderOrderPill(entry, true)}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {hasDirectionInputs && hasAttributes && (
+                <div className="self-stretch mx-2 flex-shrink-0 border-l border-dashed border-stone-600/40" />
+              )}
+
               {hasAttributes && (
-                <div className={hasActionSteps ? 'mt-2 lg:mt-0' : undefined}>
+                <div className={hasActionSteps || hasDirectionInputs ? 'flex-1 min-w-0 pl-0' : 'w-full'}>
                   <p className="hud-label text-stone-400 mb-1">Attributes</p>
                   <ul className="hud-body text-stone-300 space-y-1">
                     {renderedCharacter.attributes!.map((attr, idx) => (

@@ -2973,7 +2973,7 @@ export const Game: React.FC<GameProps> = ({
               // system and the wrapper is height-collapsed and clipped, so a
               // wall would paint two stone stubs behind it. Replay keeps its
               // baseline look.
-              className={`relative top-1.5 lg:top-[7px] z-10 w-full max-w-[900px] board-rise ${(replayMode || enteringReplay) ? 'overflow-hidden board-rise-collapsed ' : 'dungeon-aperture overflow-x-clip '}${gameState.gameStatus === 'defeat' ? 'animate-screen-shake' : ''}`}
+              className={`relative top-1.5 lg:top-[7px] z-10 w-full max-w-[900px] board-rise ${(replayMode || enteringReplay) ? 'overflow-hidden board-rise-collapsed ' : 'overflow-x-clip '}${gameState.gameStatus === 'defeat' ? 'animate-screen-shake' : ''}`}
             >
               <div
                 ref={boardFadeRef}
@@ -3682,27 +3682,26 @@ export const Game: React.FC<GameProps> = ({
                     own bottom edge — the band's remaining height is the
                     shelf the hero plate's cap rail stands in, and that rail
                     is chrome for a different object. */}
-                <button
-                  type="button"
-                  onClick={() => setQuestReopened(true)}
-                  className="quest-rung-hit"
-                  aria-label="Show the full quest"
-                  aria-expanded={false}
-                  title="Show the full quest"
-                />
+                {/* NO EXPAND-THE-BANNER AFFORDANCE (user call, 2026-07-31):
+                    "keep the quest panel at this minimized state, and replace
+                    the caret that would expand it with the help icon for the
+                    quest." The rung IS the quest now — there is no fuller
+                    state to return to on a phone, so a control promising one
+                    was promising nothing. The help button below took the
+                    caret's place and carries the quest's own explanation,
+                    which is what the expanded banner was really for. */}
                 <div className="quest-rung flex items-center gap-1.5 px-2 pointer-events-none">
-                  <svg
-                    aria-hidden="true"
-                    className="w-3 h-3 flex-none text-copper-400"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="3"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M6 9l6 6 6-6" />
-                  </svg>
+                  {/* The caret's slot, now carrying the quest's HELP — the one
+                      thing the collapsed rung genuinely cannot say inline.
+                      `pointer-events-auto` because the rung row itself is
+                      inert. */}
+                  <HelpButton
+                    sectionId="game_general"
+                    className="pointer-events-auto flex-none hit-44"
+                    preamble={gameState.puzzle.questDescription?.trim()
+                      ? { title: 'About this Puzzle', text: gameState.puzzle.questDescription.trim() }
+                      : undefined}
+                  />
                   {/* The playtest exit and the combat log are the only two
                       FUNCTIONAL controls in the expanded banner, and the exit
                       is MapEditor's single return path — losing it when the
