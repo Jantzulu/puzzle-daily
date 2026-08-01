@@ -589,12 +589,38 @@ function assembleNineSliceCapped(kit: KitSpec): Assembly | null {
   const H = c.h * 2 + lct.h * 2 + RY * lm.h;
   const regions: AssemblyRegion[] = [];
 
-  // Centre fill first — everything else draws over it.
+  // Centre fill first — everything else draws over it. The main grid stays
+  // ANCHORED AT THE CORNER SQUARE so the rep-0 tile (the slicer's cut
+  // source) is never contaminated by corner art drawn over it.
   for (let y = c.h, j = 0; y < H - c.h; y += ct.h, j++) {
     for (let x = c.w, i = 0; x < W - c.w; x += ct.w, i++) {
       regions.push({ pieceId: 'center', x, y, w: Math.min(ct.w, W - c.w - x), h: Math.min(ct.h, H - c.h - y), rep: i + j });
     }
   }
+
+  // THIN-EDGE GUTTER RING (2026-08-01, user bug): when an edge band is
+  // thinner than the corner square, the strip between band and the
+  // corner-anchored field belongs to NOTHING — the artist painted it and
+  // the paint was silently discarded while the game rendered a hollow.
+  // The renderers now tile the centre out to the bands; these rep>=1
+  // regions make the SAMPLE show that same fill (never cut — rep 0 stays
+  // the clean anchored tile). Tiling phase in the ring approximates the
+  // renderers' continuous fill; the Live preview is the honest reference.
+  const eT = tcl.h;
+  const eB = P('edge-bottom-cap-l')?.h ?? tcl.h;
+  const eL = lct.w;
+  const eR = P('edge-right-cap-t')?.w ?? lct.w;
+  const ring = (x1: number, y1: number, x2: number, y2: number) => {
+    for (let y = y1, j = 0; y < y2; y += ct.h, j++) {
+      for (let x = x1, i = 0; x < x2; x += ct.w, i++) {
+        regions.push({ pieceId: 'center', x, y, w: Math.min(ct.w, x2 - x), h: Math.min(ct.h, y2 - y), rep: 1 + i + j });
+      }
+    }
+  };
+  if (eT < c.h) ring(c.w, eT, W - c.w, c.h);
+  if (eB < c.h) ring(c.w, H - c.h, W - c.w, H - eB);
+  if (eL < c.w) ring(eL, c.h, c.w, H - c.h);
+  if (eR < c.w) ring(W - c.w, c.h, W - eR, H - c.h);
 
   // Horizontal runs: cap, middles, cap — top and bottom.
   const hRun = (capL: string, midId: string, capR: string, y: number, h: number) => {

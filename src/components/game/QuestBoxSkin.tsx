@@ -175,10 +175,23 @@ export const QuestBoxFrame: React.FC = () => {
   const capRT = (P('edge-right-cap-t')?.h ?? 0) * Z;
   const capRB = (P('edge-right-cap-b')?.h ?? 0) * Z;
 
+  // THE CORNER SQUARE IS SACRED (user, thin-edge round, after two wrong
+  // fixes): the corner art's transparency is the box's stepped SILHOUETTE
+  // — nothing may paint inside its square, or the step reads as a filled
+  // rectangle. So: edge runs span BETWEEN the corner squares (classic
+  // nine-slice partition), and the centre is a notched CROSS — the
+  // corner-anchored main field plus four gutter strips that reach the thin
+  // bands along the runs but stop dead at the corner squares.
+  const gt = questFrameBorders.t;
+  const gb = questFrameBorders.b;
+  const gl = questFrameBorders.l;
+  const gr = questFrameBorders.r;
   const layers: Array<React.CSSProperties | null> = [
-    // Same order as the forge preview: each run covers the clipped tail of
-    // the one beneath it.
     bg(P('center'), 'repeat', { left: bl, right: br, top: bt, bottom: bb }),
+    bt > gt ? bg(P('center'), 'repeat', { left: bl, right: br, top: gt, height: bt - gt }) : null,
+    bb > gb ? bg(P('center'), 'repeat', { left: bl, right: br, bottom: gb, height: bb - gb }) : null,
+    bl > gl ? bg(P('center'), 'repeat', { top: bt, bottom: bb, left: gl, width: bl - gl }) : null,
+    br > gr ? bg(P('center'), 'repeat', { top: bt, bottom: bb, right: gr, width: br - gr }) : null,
     bg(topMid, 'repeat-x', { left: bl + capTL, right: br + capTR, top: 0, height: (topMid?.h ?? 0) * Z }),
     bg(bottomMid, 'repeat-x', { left: bl + capBL, right: br + capBR, bottom: 0, height: (bottomMid?.h ?? 0) * Z }),
     bg(leftMid, 'repeat-y', { top: bt + capLT, bottom: bb + capLB, left: 0, width: (leftMid?.w ?? 0) * Z }),

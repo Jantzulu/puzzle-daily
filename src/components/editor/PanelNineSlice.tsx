@@ -143,7 +143,16 @@ export const PanelNineSlice: React.FC<Props> = ({ pieces, zoom, width, height, s
   const layers: Array<React.CSSProperties | null> = [
     // Centre first, then edge middles, then caps, then corners — each covers
     // the ends of the run beneath it, which is how the partial tile hides.
+    // THE CORNER SQUARE IS SACRED: corner-art transparency is the panel's
+    // silhouette, so the centre is a notched CROSS (corner-anchored field
+    // + gutter strips reaching the thin bands, stopping at the corner
+    // squares) and edge runs span BETWEEN the corners. Parity with the
+    // game renderer (QuestBoxSkin).
     layer(center, zoom, 'repeat', { left: bLeft, right: bRight, top: bt, bottom: bb }),
+    bt > cbt ? layer(center, zoom, 'repeat', { left: bLeft, right: bRight, top: cbt, height: bt - cbt }) : null,
+    bb > cbb ? layer(center, zoom, 'repeat', { left: bLeft, right: bRight, bottom: cbb, height: bb - cbb }) : null,
+    bLeft > cbl ? layer(center, zoom, 'repeat', { top: bt, bottom: bb, left: cbl, width: bLeft - cbl }) : null,
+    bRight > cbr ? layer(center, zoom, 'repeat', { top: bt, bottom: bb, right: cbr, width: bRight - cbr }) : null,
     layer(top, zoom, 'repeat-x', { left: bLeft + capTL, right: bRight + capTR, top: 0, height: (top?.h ?? 0) * zoom }),
     layer(bottom, zoom, 'repeat-x', { left: bLeft + capBL, right: bRight + capBR, bottom: 0, height: (bottom?.h ?? 0) * zoom }),
     layer(left, zoom, 'repeat-y', { top: bt + capLT, bottom: bb + capLB, left: 0, width: (left?.w ?? 0) * zoom }),
