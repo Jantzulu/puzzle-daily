@@ -22,11 +22,14 @@ import skinJson from '../../assets/panels/quest-box-slices.json';
 // than their pieces; all geometry runs on NOMINAL sizes and the bitmaps
 // overhang, so overflow ornament draws where it was painted.
 //
-// INTEGER ZOOM, SMOOTHING OFF — panel art obeys the board's law. Z=1: art
-// pixels are CSS pixels (a 12px-corner frame reads ~12px thick, near the
-// menu's iron weight). One knob if the painted look wants to be chunkier.
+// INTEGER ZOOM, SMOOTHING OFF — panel art obeys the board's law. Z=2 (user
+// call, 2026-08-01, first real art): at Z=1 the game showed the frame at
+// half the scale the forge preview (~2×) had been approving art at — a
+// 12px-corner frame read as a thin 12px band and the plate was a 14px
+// sliver under the QUEST text. At Z=2 the frame carries the mock's chunky
+// pixel-border weight. Still integer — never fractional.
 
-const Z = 1;
+const Z = 2;
 
 interface SkinPiece {
   id: string;
