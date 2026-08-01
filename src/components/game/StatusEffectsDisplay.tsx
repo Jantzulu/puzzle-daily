@@ -252,8 +252,10 @@ export const StatusEffectsDisplay: React.FC<StatusEffectsDisplayProps> = ({ puzz
           </div>
           <h3 className="carved-header carved-header-mystic font-medieval text-lg lg:text-xl uppercase">Status Effects</h3>
         </div>
-        <span className="text-sm lg:text-base text-stone-400">
-          {statusEffectsWithSources.length} possible
+        {/* Counter in the ramp's registers, like the hero/enemy panels. */}
+        <span className="flex items-baseline gap-1">
+          <span className="hud-num text-stone-400">{statusEffectsWithSources.length}</span>
+          <span className="hud-label text-stone-400">possible</span>
         </span>
       </div>
 
@@ -274,10 +276,12 @@ export const StatusEffectsDisplay: React.FC<StatusEffectsDisplayProps> = ({ puzz
 
               {/* Name and description flow inline */}
               <div className="flex-1 min-w-0 leading-snug">
-                <span className="text-sm lg:text-base font-medium text-mystic-300">
+                {/* Panel copy on the HUD ramp (2026-08-01): hud-title names,
+                    hud-body detail — identity colors untouched. */}
+                <span className="hud-title text-mystic-300">
                   {effect.name}
                 </span>
-                <span className="text-xs lg:text-sm text-stone-400"> — {effect.description}</span>
+                <span className="hud-body text-stone-400"> — {effect.description}</span>
               </div>
             </div>
 
@@ -317,7 +321,7 @@ export const StatusEffectsDisplay: React.FC<StatusEffectsDisplayProps> = ({ puzz
                   {/* Innate: entity starts with the effect */}
                   {innate.length > 0 && (
                     <div className="flex items-center gap-1 flex-wrap">
-                      <span className="text-xs text-stone-500 mr-1">Starts with:</span>
+                      <span className="hud-label text-stone-500 mr-1">Starts with:</span>
                       {innate.map(s => entityBadge(s, `innate-${s.id}`))}
                     </div>
                   )}
@@ -325,7 +329,7 @@ export const StatusEffectsDisplay: React.FC<StatusEffectsDisplayProps> = ({ puzz
                   {/* Spell/attack: show which unit applies it, not the spell name */}
                   {spells.length > 0 && (
                     <div className="flex items-center gap-1 flex-wrap">
-                      <span className="text-xs text-stone-500 mr-1">Applied by:</span>
+                      <span className="hud-label text-stone-500 mr-1">Applied by:</span>
                       {spells.map(s => entityBadge(s, `spell-${s.id}`))}
                     </div>
                   )}
@@ -333,7 +337,7 @@ export const StatusEffectsDisplay: React.FC<StatusEffectsDisplayProps> = ({ puzz
                   {/* Pickup: collecting an item grants it (includes death-drop items) */}
                   {allPickups.length > 0 && (
                     <div className="flex items-center gap-1 flex-wrap">
-                      <span className="text-xs text-stone-500 mr-1">On pickup:</span>
+                      <span className="hud-label text-stone-500 mr-1">On pickup:</span>
                       {allPickups.map(s => entityBadge(s, `pickup-${s.id}`))}
                     </div>
                   )}

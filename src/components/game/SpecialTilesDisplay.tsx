@@ -249,8 +249,10 @@ export const SpecialTilesDisplay: React.FC<SpecialTilesDisplayProps> = ({ puzzle
           </div>
           <h3 className="carved-header carved-header-rust font-medieval text-lg lg:text-xl uppercase">Dungeon Tiles</h3>
         </div>
-        <span className="text-sm lg:text-base text-stone-400">
-          {specialTiles.length} type{specialTiles.length !== 1 ? 's' : ''}
+        {/* Counter in the ramp's registers, like the hero/enemy panels. */}
+        <span className="flex items-baseline gap-1">
+          <span className="hud-num text-stone-400">{specialTiles.length}</span>
+          <span className="hud-label text-stone-400">type{specialTiles.length !== 1 ? 's' : ''}</span>
         </span>
       </div>
 
@@ -286,7 +288,9 @@ export const SpecialTilesDisplay: React.FC<SpecialTilesDisplayProps> = ({ puzzle
               {/* Name and description flow inline; detail lines keep their
                   own rows (and colors) below */}
               <div className="flex-1 min-w-0 leading-snug">
-                <span className="text-sm lg:text-base font-medium text-parchment-200">
+                {/* Panel copy on the HUD ramp (2026-08-01): hud-title names,
+                    hud-body detail — identity colors untouched. */}
+                <span className="hud-title text-parchment-200">
                   {info.tileType.name}
                 </span>
                 {/* Show different icons based on trigger type */}
@@ -296,38 +300,38 @@ export const SpecialTilesDisplay: React.FC<SpecialTilesDisplayProps> = ({ puzzle
                   <span className="text-copper-400 text-xs lg:text-sm ml-1.5" title="Has on/off cadence">⟳</span>
                 ) : null}
                 {/* Use tile's description if available, otherwise generate from behaviors */}
-                <span className="text-xs lg:text-sm text-stone-400"> — {info.tileType.description || getBehaviorDescription(info.tileType.behaviors)}</span>
+                <span className="hud-body text-stone-400"> — {info.tileType.description || getBehaviorDescription(info.tileType.behaviors)}</span>
                 {/* Off-state behaviors */}
                 {info.tileType.offStateBehaviors && info.tileType.offStateBehaviors.length > 0 && (
-                  <div className="text-xs lg:text-sm text-stone-500">
+                  <div className="hud-body text-stone-500">
                     Off state: {getBehaviorDescription(info.tileType.offStateBehaviors)}
                   </div>
                 )}
                 {/* On-state blocks movement */}
                 {info.tileType.onStateBlocksMovement && (
-                  <div className="text-xs lg:text-sm text-rust-400/70">
+                  <div className="hud-body text-rust-400/70">
                     Blocks movement when active (on)
                   </div>
                 )}
                 {/* Show wall behavior info */}
                 {info.behavesLikeWall && !info.tileType.onStateBlocksMovement && (
-                  <div className="text-xs lg:text-sm text-rust-400/70">
+                  <div className="hud-body text-rust-400/70">
                     Blocks movement (behaves like wall)
                   </div>
                 )}
                 {/* Show placement restriction info */}
                 {info.preventPlacement && (
-                  <div className="text-xs lg:text-sm text-blood-400/70">
+                  <div className="hud-body text-blood-400/70">
                     Cannot place heroes on this tile
                   </div>
                 )}
                 {/* Show trigger group info OR cadence info, but not both */}
                 {info.triggerGroupId ? (
-                  <div className="text-xs lg:text-sm text-amber-400/70">
+                  <div className="hud-body text-amber-400/70">
                     Triggered by pressure plate (Group {info.triggerGroupId})
                   </div>
                 ) : info.hasCadence && info.cadence ? (
-                  <div className="text-xs lg:text-sm text-copper-400/70">
+                  <div className="hud-body text-copper-400/70">
                     {getCadenceDescription(info.cadence)}
                   </div>
                 ) : null}

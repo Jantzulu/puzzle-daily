@@ -241,8 +241,10 @@ export const ItemsDisplay: React.FC<ItemsDisplayProps> = ({ puzzle, className = 
           </div>
           <h3 className="carved-header carved-header-parchment font-medieval text-lg lg:text-xl uppercase">Items</h3>
         </div>
-        <span className="text-sm lg:text-base text-stone-400">
-          {itemsWithSources.length} type{itemsWithSources.length !== 1 ? 's' : ''}
+        {/* Counter in the ramp's registers, like the hero/enemy panels. */}
+        <span className="flex items-baseline gap-1">
+          <span className="hud-num text-stone-400">{itemsWithSources.length}</span>
+          <span className="hud-label text-stone-400">type{itemsWithSources.length !== 1 ? 's' : ''}</span>
         </span>
       </div>
 
@@ -261,7 +263,9 @@ export const ItemsDisplay: React.FC<ItemsDisplayProps> = ({ puzzle, className = 
 
               {/* Name and effects */}
               <div className="flex-1 min-w-0 leading-snug">
-                <span className="text-sm lg:text-base font-medium text-parchment-200 mr-2">
+                {/* Panel copy on the HUD ramp (2026-08-01): hud-title names,
+                    hud-body detail — identity colors untouched. */}
+                <span className="hud-title text-parchment-200 mr-2">
                   {collectible.name}
                 </span>
                 {/* On map indicator */}
@@ -274,19 +278,19 @@ export const ItemsDisplay: React.FC<ItemsDisplayProps> = ({ puzzle, className = 
                 {/* Description if available */}
                 {collectible.description && (
                   <div
-                    className="text-xs lg:text-sm text-stone-400"
+                    className="hud-body text-stone-400"
                     dangerouslySetInnerHTML={{ __html: sanitizeHtml(collectible.description) }}
                   />
                 )}
                 {/* Show placement restriction info - separate line like SpecialTilesDisplay */}
                 {collectible.preventPlacement && (
-                  <div className="text-xs lg:text-sm text-blood-400/70">
+                  <div className="hud-body text-blood-400/70">
                     Cannot place heroes on this tile
                   </div>
                 )}
                 {/* Delivery schedules (full-disclosure preview) */}
                 {deliveries.map((label) => (
-                  <div key={label} className="text-xs lg:text-sm text-copper-300">
+                  <div key={label} className="hud-body text-copper-300">
                     {label}
                   </div>
                 ))}
@@ -297,7 +301,7 @@ export const ItemsDisplay: React.FC<ItemsDisplayProps> = ({ puzzle, className = 
             {dropSources.length > 0 && (
               <div className="mt-1 pl-7">
                 <div className="flex items-center gap-1 flex-wrap">
-                  <span className="text-xs text-stone-500 mr-1">Dropped by:</span>
+                  <span className="hud-label text-stone-500 mr-1">Dropped by:</span>
                   {dropSources.map((source) => (
                     <div
                       key={source.id}
@@ -343,7 +347,7 @@ export const ItemsDisplay: React.FC<ItemsDisplayProps> = ({ puzzle, className = 
                 </div>
                 {/* Duration info */}
                 {spellSources.some(s => s.duration && s.duration > 0) && (
-                  <div className="text-xs text-stone-400 mt-0.5">
+                  <div className="hud-body text-stone-400 mt-0.5">
                     {spellSources.filter(s => s.duration && s.duration > 0).map((s, i) => (
                       <span key={i}>
                         {i > 0 && ', '}Lasts {s.duration} turn{s.duration !== 1 ? 's' : ''}
@@ -357,7 +361,7 @@ export const ItemsDisplay: React.FC<ItemsDisplayProps> = ({ puzzle, className = 
             {/* Duration info for base collectible */}
             {collectible.duration && collectible.duration > 0 && spellSources.length === 0 && (
               <div className="pl-7">
-                <span className="text-xs text-stone-400">
+                <span className="hud-body text-stone-400">
                   Lasts {collectible.duration} turn{collectible.duration !== 1 ? 's' : ''}
                 </span>
               </div>
