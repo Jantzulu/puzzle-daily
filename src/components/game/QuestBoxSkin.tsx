@@ -158,6 +158,52 @@ const bg = (
 const pmod = (v: number, m: number) => ((v % m) + m) % m;
 
 /**
+ * Snap an element to whole CSS pixels (user bug, desktop+mobile: art blur
+ * "at the bounds of the text boxes"): flex/mx-auto centering and
+ * translateX(-50%) of text-driven widths land the box and the plate on
+ * half-pixels, and bitmap art at a fractional offset is resampled at every
+ * zoom — permanent blur, worst on detailed border art. The compensating
+ * transform re-lands the element on integers; rounding in CSS px is
+ * device-integer at any whole dpr.
+ */
+export function useCrispSnap<T extends HTMLElement>(active: boolean, defer = false) {
+  const ref = React.useRef<T>(null);
+  React.useLayoutEffect(() => {
+    if (!active) return;
+    const el = ref.current;
+    if (!el) return;
+    let raf = 0;
+    const snap = () => {
+      el.style.transform = 'none';
+      const r = el.getBoundingClientRect();
+      const dx = Math.round(r.left) - r.left;
+      const dy = Math.round(r.top) - r.top;
+      el.style.transform = dx || dy ? `translate(${dx.toFixed(3)}px, ${dy.toFixed(3)}px)` : 'none';
+    };
+    // `defer`: elements INSIDE another snapped element must measure AFTER
+    // their ancestor's compensation lands (child effects and same-frame
+    // rAFs otherwise measure the pre-snap position and go stale by the
+    // ancestor's dx — seen live: the plate stuck at +0.5 after the box
+    // snapped). A double rAF puts the child a frame behind.
+    const run = () => {
+      cancelAnimationFrame(raf);
+      raf = defer
+        ? requestAnimationFrame(() => { raf = requestAnimationFrame(snap); })
+        : requestAnimationFrame(snap);
+    };
+    if (defer) run(); else snap();
+    const ro = new ResizeObserver(run);
+    ro.observe(el);
+    ro.observe(document.documentElement);
+    return () => {
+      ro.disconnect();
+      cancelAnimationFrame(raf);
+    };
+  }, [active, defer]);
+  return ref;
+}
+
+/**
  * The nine-slice frame, absolutely filling the quest box. Render it FIRST
  * inside the box and wrap the box's content in a `relative` div — absolute
  * layers otherwise paint over static text.
@@ -313,6 +359,10 @@ export const QuestDivider: React.FC = () => {
  * where they were painted.
  */
 export const QuestPlate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  // Self-snaps to whole pixels — its width is text-driven, so any centering
+  // scheme lands it fractionally; the compensating transform re-lands it.
+  // Deferred: it lives inside the box, which snaps itself first.
+  const snapRef = useCrispSnap<HTMLSpanElement>(true, true);
   const l = P('plate-cap-l');
   const m = P('plate-mid');
   const r = P('plate-cap-r');
@@ -327,7 +377,7 @@ export const QuestPlate: React.FC<{ children: React.ReactNode }> = ({ children }
   // plate art, never the page. Caps paint over the band's ends.
   const OVER = Z;
   return (
-    <span className="inline-flex relative" style={{ height: h }}>
+    <span ref={snapRef} className="inline-flex relative" style={{ height: h }}>
       <span
         aria-hidden
         style={bg(m, 'repeat-x', {

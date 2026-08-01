@@ -20,7 +20,7 @@ import { getSavedPuzzles, type SavedPuzzle } from '../../utils/puzzleStorage';
 import { loadTileType, loadCollectible, loadEnemy, loadStatusEffectAsset } from '../../utils/assetStorage';
 import { collectPuzzleAssetUrls } from '../../utils/spritePreload';
 import { HelpButton } from './HelpOverlay';
-import { QuestBoxFrame, QuestPlate, QuestDivider, questSkinFrameActive, questSkinPlateActive, questSkinDividerActive, questFrameBorders, questPlateStraddle } from './QuestBoxSkin';
+import { QuestBoxFrame, QuestPlate, QuestDivider, questSkinFrameActive, questSkinPlateActive, questSkinDividerActive, questFrameBorders, questPlateStraddle, useCrispSnap } from './QuestBoxSkin';
 import { playGameSound, playVictoryMusic, playDefeatMusic, playBackgroundMusic, stopMusic } from '../../utils/gameSounds';
 import { loadThemeAssets, subscribeToThemeAssets, type ThemeAssets } from '../../utils/themeAssets';
 import { WarningModal } from '../shared/WarningModal';
@@ -349,6 +349,10 @@ export const Game: React.FC<GameProps> = ({
   // desktop; CSS in index.css). Sticky offsets can't do this — a larger
   // sticky top pushes the element down at rest too.
   const [railRiding, setRailRiding] = useState(false);
+
+  // Pixel-snaps the skinned quest box (flex centering can land it on
+  // half-pixels, which blurs the bitmap art at any zoom — see useCrispSnap).
+  const questBoxSnapRef = useCrispSnap<HTMLDivElement>(questSkinFrameActive);
   useEffect(() => {
     const onScroll = () => setRailRiding(window.scrollY > 8);
     onScroll();
@@ -3198,6 +3202,7 @@ export const Game: React.FC<GameProps> = ({
                     glyph shadow smudged onto the skin art and read as blur).
                     In art mode the painted panel owns legibility. */}
                 <div
+                  ref={questBoxSnapRef}
                   className={`relative ${questSkinFrameActive
                     ? ''
                     : 'text-shadow-dungeon bg-stone-950/95 border-[3px] border-copper-700 rounded-pixel-md px-4 md:px-5 pt-1.5 pb-1.5'}`}
@@ -3212,7 +3217,11 @@ export const Game: React.FC<GameProps> = ({
                     With plate art committed, the DOM label rides ON TOP of
                     the painted 3-slice (user call: text over art). */}
                 {questSkinPlateActive ? (
-                  <span className="absolute left-1/2 -translate-x-1/2" style={{ top: -questPlateStraddle }}>
+                  // Flex centering, NOT translateX(-50%): the plate's width
+                  // is text-driven, so the translate landed the ART on
+                  // half-pixels (bitmap blur); QuestPlate self-snaps the
+                  // residue.
+                  <span className="absolute left-0 right-0 flex justify-center pointer-events-none" style={{ top: -questPlateStraddle }}>
                     <QuestPlate>
                       <span className="hud-label text-copper-300 whitespace-nowrap">Quest</span>
                     </QuestPlate>
@@ -3276,10 +3285,17 @@ export const Game: React.FC<GameProps> = ({
                         lines (progressive enhancement; NBSP name–count glue
                         is the everywhere-guarantee). min-w-0 lets the block
                         shrink into the row. */}
-                    <span className="min-w-0 text-center leading-snug [text-wrap:balance]">
+                    {/* INTEGER line heights (user bug, mobile blur at text
+                        bounds): leading-snug × 13px = 17.875px lines made
+                        the box's height fractional, so every art layer
+                        anchored below the text rasterized on sub-pixels —
+                        permanent blur at any zoom. align-[-4px] (not
+                        align-middle) for the same reason: middle aligns by
+                        half x-height, which is fractional. */}
+                    <span className="min-w-0 text-center leading-[18px] md:leading-[22px] lg:leading-[25px] [text-wrap:balance]">
                     <HelpButton
                       sectionId="game_general"
-                      className="inline-block align-middle mr-1"
+                      className="inline-block align-[-4px] mr-1"
                       preamble={gameState.puzzle.questDescription?.trim()
                         ? { title: 'About this Puzzle', text: gameState.puzzle.questDescription.trim() }
                         : undefined}
