@@ -459,20 +459,16 @@ export const QuestPlate: React.FC<{ children: React.ReactNode }> = ({ children }
       ctx.clearRect(-BLEED, -BLEED, w + BLEED * 2, h + BLEED * 2);
       const l = P('plate-cap-l');
       const r = P('plate-cap-r');
+      const lw = l ? nomW(l) * Z : 0;
       const rw = r ? nomW(r) * Z : 0;
-      // One continuous band under the caps (the seam-proofing shape, now
-      // trivially seam-free on a single surface), caps over its ends.
+      // The band spans EXACTLY between the caps' nominal edges — on a
+      // single surface, seams are impossible, so the DOM version's
+      // tuck-under-the-caps overlap is not carried over: it painted band
+      // pixels behind the caps' transparent rounded-end cutaways, which
+      // surfaced as stray grey corner pixels (user regression report).
+      // Cap-art transparency is silhouette, same law as the corners.
       const my = -(m.halo?.t ?? 0) * Z;
-      const bandImg = imgFor(m);
-      if (bandImg.complete && bandImg.naturalWidth) {
-        const tw = m.w * Z;
-        ctx.save();
-        ctx.beginPath();
-        ctx.rect(0, my, w, m.h * Z);
-        ctx.clip();
-        for (let x = 0; x < w; x += tw) ctx.drawImage(bandImg, 0, 0, m.w, m.h, x, my, tw, m.h * Z);
-        ctx.restore();
-      }
+      drawTiled(ctx, m, lw, my, w - lw - rw, m.h * Z, lw, my);
       if (l) drawFixed(ctx, l, -(l.halo?.l ?? 0) * Z, -(l.halo?.t ?? 0) * Z);
       if (r) drawFixed(ctx, r, w - rw - (r.halo?.l ?? 0) * Z, -(r.halo?.t ?? 0) * Z);
     };
