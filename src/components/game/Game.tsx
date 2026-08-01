@@ -3212,7 +3212,11 @@ export const Game: React.FC<GameProps> = ({
                         still can't be stranded by the outer row's flex-wrap,
                         and mr-1 keeps it tight against "Quest:" (user call).
                         min-w-0 lets the block shrink into the row. */}
-                    <span className="min-w-0 text-center leading-snug">
+                    {/* [text-wrap:balance]: a quest that must wrap splits into
+                        even lines instead of one long line + an orphaned tail
+                        (progressive enhancement; NBSP name–count glue is the
+                        everywhere-guarantee). */}
+                    <span className="min-w-0 text-center leading-snug [text-wrap:balance]">
                     <HelpButton
                       sectionId="game_general"
                       className="inline-block align-middle mr-1"
@@ -3241,19 +3245,24 @@ export const Game: React.FC<GameProps> = ({
                               !e.dead && !e.despawned && entityParty(e, gameState) === 'enemy' &&
                               !e.excludeFromWinConditions && !excludedIds.includes(e.enemyId)
                             );
-                            if (counted.length === 0) return 'Defeat all Enemies (0)';
+                            if (counted.length === 0) return 'Defeat all Enemies\u00A0(0)';
                             const groups = new Map<string, number>();
                             counted.forEach(e => groups.set(e.enemyId, (groups.get(e.enemyId) ?? 0) + 1));
+                            // Article rides PER PART, not the sentence: proper
+                            // nouns (properNoun flag) drop it, so a mixed list
+                            // reads "Defeat Billy (1) and the Goblins (2)".
+                            // The name–count space is a NO-BREAK space — a
+                            // count must never orphan onto its own line.
                             const parts = Array.from(groups.entries()).map(([id, n]) => {
                               const data = loadEnemy(id);
                               const base = data?.name ?? 'Enemy';
                               const label = n > 1 ? (data?.pluralName || `${base}s`) : base;
-                              return `${label} (${n})`;
+                              return `${data?.properNoun ? '' : 'the\u00A0'}${label}\u00A0(${n})`;
                             });
                             const list = parts.length === 1
                               ? parts[0]
                               : `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`;
-                            return `Defeat the ${list}`;
+                            return `Defeat ${list}`;
                           }
                           case 'defeat_boss': {
                             const bossEnemies = gameState.puzzle.enemies
@@ -3267,11 +3276,11 @@ export const Game: React.FC<GameProps> = ({
                             const bossNames = bossEnemies.map(enemy => enemy.name);
                             if (bossNames.length === 0) return 'Defeat the Boss';
                             if (bossNames.length === 1) return `Defeat ${bossNames[0]}`;
-                            return `Defeat ${bossNames.slice(0, -1).join(', ')} & ${bossNames[bossNames.length - 1]} (${bossCount})`;
+                            return `Defeat ${bossNames.slice(0, -1).join(', ')} & ${bossNames[bossNames.length - 1]}\u00A0(${bossCount})`;
                           }
                           case 'collect_all': {
                             const collectibleCount = gameState.puzzle.collectibles.filter(c => !c.collected).length;
-                            return `Collect all Items (${collectibleCount})`;
+                            return `Collect all Items\u00A0(${collectibleCount})`;
                           }
                           case 'collect_keys': {
                             const keyCount = gameState.puzzle.collectibles.filter(c => {
@@ -3279,7 +3288,7 @@ export const Game: React.FC<GameProps> = ({
                               const collectible = loadCollectible(c.collectibleId);
                               return collectible?.effects?.some(e => e.type === 'win_key') && !c.collected;
                             }).length;
-                            return `Collect all Keys (${keyCount})`;
+                            return `Collect all Keys\u00A0(${keyCount})`;
                           }
                           case 'reach_goal':
                             return 'Reach the Exit';

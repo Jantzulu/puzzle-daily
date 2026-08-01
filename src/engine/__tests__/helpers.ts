@@ -43,6 +43,7 @@ const testVesselToEnemy = (vessel: any) => ({
   id: vessel.id,
   name: vessel.name,
   pluralName: vessel.pluralName,
+  properNoun: vessel.properNoun,
   spriteId: vessel.id,
   health: vessel.health,
   droppedCollectibleId: vessel.droppedCollectibleId,

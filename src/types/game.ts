@@ -351,6 +351,7 @@ export interface Enemy {
   title?: string; // Optional title displayed after name in italics (e.g., "the Terrible")
   description?: string; // Description of the enemy
   pluralName?: string; // Plural form for grouped quest text ("Defeat the Bats (2)"); falls back to name + 's'
+  properNoun?: boolean; // Name is a proper noun — grouped quest text drops its article ("Defeat Billy", not "Defeat the Billy")
   spriteId: string;
   health: number;
   behavior?: EnemyBehavior;

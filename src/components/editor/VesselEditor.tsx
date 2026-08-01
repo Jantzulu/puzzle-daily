@@ -523,6 +523,12 @@ export const VesselEditor: React.FC<{ initialSelectedId?: string }> = ({ initial
                       placeholder={`e.g., ${editing.name}s`}
                       className="w-full px-3 py-2 bg-stone-700 rounded" />
                     <p className="text-xs text-stone-400 mt-1">Used in quest text when several are on the board</p>
+                    <label className="flex items-center gap-2 mt-2 text-sm cursor-pointer">
+                      <input type="checkbox" checked={!!editing.properNoun}
+                        onChange={(e) => updateVessel({ properNoun: e.target.checked || undefined })} />
+                      <span>Proper noun</span>
+                    </label>
+                    <p className="text-xs text-stone-400 ml-1 mt-0.5">Quest text drops "the" — "Defeat Billy" instead of "Defeat the Billy"</p>
                   </div>
                   <div>
                     <label className="block text-sm mb-1">Description</label>

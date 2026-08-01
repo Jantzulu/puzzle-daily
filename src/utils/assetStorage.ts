@@ -676,6 +676,7 @@ export interface CustomVessel {
   id: string;
   name: string;
   pluralName?: string;      // For grouped quest text, same as Enemy.pluralName
+  properNoun?: boolean;     // Quest text drops the article, same as Enemy.properNoun
   description?: string;
   health: number;           // Some vessels are harder to break
   customSprite?: CustomSprite; // Idle + death sheets only — no directional movement, no spawn, no spells
@@ -709,6 +710,7 @@ export const vesselToEnemyAsset = (vessel: CustomVessel): CustomEnemy => ({
   id: vessel.id,
   name: vessel.name,
   pluralName: vessel.pluralName,
+  properNoun: vessel.properNoun,
   description: vessel.description,
   spriteId: vessel.id,
   health: vessel.health,
