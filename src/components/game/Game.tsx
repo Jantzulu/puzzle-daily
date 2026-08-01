@@ -2666,7 +2666,13 @@ export const Game: React.FC<GameProps> = ({
                 const maxPlaceable = gameState.puzzle.maxPlaceableCharacters ?? gameState.puzzle.maxCharacters;
                 if (maxPlaceable != null && gameState.placedCharacters.length >= maxPlaceable) return null;
                 return (
-                  <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-20 px-3 py-1 rounded-pixel bg-stone-900/85 border border-copper-700 hud-label text-copper-300 whitespace-nowrap pointer-events-none">
+                  // bottom-5 (was 2, user call 2026-08-01): the quest box's
+                  // plate now rides up near the board's bottom edge, so the
+                  // prompt sits higher to keep clear air between them.
+                  // (LINE comments — a {/* */} before the JSX root inside
+                  // `return (` is an expression-position parse error; this
+                  // exact mistake has now broken the page twice.)
+                  <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-20 px-3 py-1 rounded-pixel bg-stone-900/85 border border-copper-700 hud-label text-copper-300 whitespace-nowrap pointer-events-none">
                     Tap the dungeon to place your hero
                   </div>
                 );
@@ -3172,14 +3178,16 @@ export const Game: React.FC<GameProps> = ({
               // border and visibly tuck behind it — the design's "portcullis
               // stops at the top of the quest box".
               <div className="w-full max-w-2xl relative z-[45] -mt-[3px] mb-1">
-                {/* pt-2.5/pb-1.5 (user call, second round): as tight as the
-                    plate allows — the plate's lower half intrudes ~8px into
-                    the box, so pt below 2.5 collides with it. */}
-                <div className="relative bg-stone-950/95 border-[3px] border-copper-700 rounded-pixel-md px-4 md:px-5 pt-2.5 pb-1.5 text-shadow-dungeon">
+                {/* pt-1.5/pb-1.5 (user call, third round): the plate now
+                    rides HIGHER on the border (-top-[15px], only ~6px of it
+                    inside the box), which is what lets the top padding drop
+                    — text clears the plate by ~3px. Tighter than this needs
+                    a shorter plate. */}
+                <div className="relative bg-stone-950/95 border-[3px] border-copper-700 rounded-pixel-md px-4 md:px-5 pt-1.5 pb-1.5 text-shadow-dungeon">
                 {/* The plate on the border line (legend-style) — the plate
                     ALONE is centered (user call: it must be true-centered;
                     the (?) rides inline before the quest text instead). */}
-                <span className="absolute -top-[13px] left-1/2 -translate-x-1/2 px-3 py-0.5 bg-stone-950 border-2 border-copper-700 rounded-pixel hud-label text-copper-300 whitespace-nowrap">Quest</span>
+                <span className="absolute -top-[15px] left-1/2 -translate-x-1/2 px-3 py-0.5 bg-stone-950 border-2 border-copper-700 rounded-pixel hud-label text-copper-300 whitespace-nowrap">Quest</span>
                 {/* Puzzle Number & Quest Row */}
                 {puzzleNumber && (
                   <div className="text-center mb-0.5">
@@ -3423,10 +3431,10 @@ export const Game: React.FC<GameProps> = ({
               </div>
             ) : (
               /* Heroes and Dungeon Details - dimmed during play/test */
-              // mt-1: the quest BOX has a hard opaque bottom edge (unlike the
-              // cloth's transparent hem the old -mt-[9px] pull-up tucked
-              // into), so the panel sits a small honest gap below it.
-              <div className={`mt-1 transition-opacity ${dimmedPanelClass} ${justExitedReplay ? 'animate-slide-up' : ''}`}>
+              // mt-2: tuned so HEROES sits the same distance under the quest
+              // box as ENEMIES sits under the Dungeon Details lintel
+              // (measured h3-top to edge: 3px both, user call 2026-08-01).
+              <div className={`mt-2 transition-opacity ${dimmedPanelClass} ${justExitedReplay ? 'animate-slide-up' : ''}`}>
                 {/* Character Selector - visible during setup, running, defeat, and test mode */}
                 {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
                   <CharacterSelector
