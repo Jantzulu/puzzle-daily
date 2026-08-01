@@ -160,11 +160,14 @@ export const PanelNineSlice: React.FC<Props> = ({ pieces, zoom, width, height, s
     // + gutter strips reaching the thin bands, stopping at the corner
     // squares) and edge runs span BETWEEN the corners. Parity with the
     // game renderer (QuestBoxSkin).
+    // Gutter strips phase-locked to the main field's anchor (bLeft, bt) and
+    // overlapped 2px into it — unmatched phase banded shaded center art at
+    // the seam and hairlined on mobile (parity with QuestBoxSkin).
     layer(center, zoom, 'repeat', { left: bLeft, right: bRight, top: bt, bottom: bb }),
-    bt > cbt ? layer(center, zoom, 'repeat', { left: bLeft, right: bRight, top: cbt, height: bt - cbt }) : null,
-    bb > cbb ? layer(center, zoom, 'repeat', { left: bLeft, right: bRight, bottom: cbb, height: bb - cbb }) : null,
-    bLeft > cbl ? layer(center, zoom, 'repeat', { top: bt, bottom: bb, left: cbl, width: bLeft - cbl }) : null,
-    bRight > cbr ? layer(center, zoom, 'repeat', { top: bt, bottom: bb, right: cbr, width: bRight - cbr }) : null,
+    bt > cbt ? layer(center, zoom, 'repeat', { left: bLeft, right: bRight, top: cbt, height: bt - cbt + 2, backgroundPosition: `0px ${(((bt - cbt) % ((center?.h ?? 1) * zoom)) + ((center?.h ?? 1) * zoom)) % ((center?.h ?? 1) * zoom)}px` }) : null,
+    bb > cbb ? layer(center, zoom, 'repeat', { left: bLeft, right: bRight, top: height - bb - 2, height: bb - cbb + 2, backgroundPosition: `0px ${(((bt - (height - bb - 2)) % ((center?.h ?? 1) * zoom)) + ((center?.h ?? 1) * zoom)) % ((center?.h ?? 1) * zoom)}px` }) : null,
+    bLeft > cbl ? layer(center, zoom, 'repeat', { top: bt, bottom: bb, left: cbl, width: bLeft - cbl + 2, backgroundPosition: `${(((bLeft - cbl) % ((center?.w ?? 1) * zoom)) + ((center?.w ?? 1) * zoom)) % ((center?.w ?? 1) * zoom)}px 0px` }) : null,
+    bRight > cbr ? layer(center, zoom, 'repeat', { top: bt, bottom: bb, left: width - bRight - 2, width: bRight - cbr + 2, backgroundPosition: `${(((bLeft - (width - bRight - 2)) % ((center?.w ?? 1) * zoom)) + ((center?.w ?? 1) * zoom)) % ((center?.w ?? 1) * zoom)}px 0px` }) : null,
     layer(top, zoom, 'repeat-x', { left: bLeft + capTL, right: bRight + capTR, top: 0, height: (top?.h ?? 0) * zoom }),
     layer(bottom, zoom, 'repeat-x', { left: bLeft + capBL, right: bRight + capBR, bottom: 0, height: (bottom?.h ?? 0) * zoom }),
     layer(left, zoom, 'repeat-y', { top: bt + capLT, bottom: bb + capLB, left: 0, width: (left?.w ?? 0) * zoom }),

@@ -3193,10 +3193,14 @@ export const Game: React.FC<GameProps> = ({
                     the art's own border thicknesses. The checked-in
                     placeholder is empty, so this is the baseline until art
                     lands — and reverting the slices file restores it. */}
+                {/* text-shadow-dungeon is BASELINE-ONLY (user spotted it:
+                    "is the blur a glow from the quest text?" — yes, the 4px
+                    glyph shadow smudged onto the skin art and read as blur).
+                    In art mode the painted panel owns legibility. */}
                 <div
-                  className={`relative text-shadow-dungeon ${questSkinFrameActive
+                  className={`relative ${questSkinFrameActive
                     ? ''
-                    : 'bg-stone-950/95 border-[3px] border-copper-700 rounded-pixel-md px-4 md:px-5 pt-1.5 pb-1.5'}`}
+                    : 'text-shadow-dungeon bg-stone-950/95 border-[3px] border-copper-700 rounded-pixel-md px-4 md:px-5 pt-1.5 pb-1.5'}`}
                   style={questSkinFrameActive ? {
                     padding: `${questFrameBorders.t + 4}px ${questFrameBorders.r + 8}px ${questFrameBorders.b + 2}px ${questFrameBorders.l + 8}px`,
                   } : undefined}

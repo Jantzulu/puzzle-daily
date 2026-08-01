@@ -2162,6 +2162,15 @@ body.menu-gate-instant .quest-panel-sticky {
   }
 }
 
+/* Pixel-crisp skin layers — a CLASS, not inline style, so the cascade can
+   serve -webkit-optimize-contrast to older iOS WebKit that ignores
+   `pixelated` on background-image (an inline value would shadow the
+   fallback). Consumed by QuestBoxSkin's art layers. */
+.quest-skin-px {
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: pixelated;
+}
+
 /* While the menu gate is lowered, the whole portcullis (gate at z-50, the
    rail riding its leading edge at z-40) must paint OVER the quest box —
    the box's z-45 exists only for the closed-gate scroll tuck, and the

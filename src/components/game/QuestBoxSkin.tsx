@@ -136,6 +136,9 @@ const plateMid = P('plate-mid');
 /** How far the plate pokes above the box's top edge (the preview's 60% rule). */
 export const questPlateStraddle = plateMid ? Math.round(nomH(plateMid) * Z * 0.6) : 0;
 
+// NOTE: no inline imageRendering — the layers carry .quest-skin-px (both
+// -webkit-optimize-contrast and pixelated, for older iOS WebKit that
+// smooths background-image; an inline value would shadow the fallback).
 const bg = (
   piece: SkinPiece | undefined,
   repeat: 'no-repeat' | 'repeat-x' | 'repeat-y' | 'repeat',
@@ -147,10 +150,12 @@ const bg = (
     backgroundImage: `url(${piece.png})`,
     backgroundRepeat: repeat,
     backgroundSize: `${piece.w * Z}px ${piece.h * Z}px`,
-    imageRendering: 'pixelated',
     ...style,
   };
 };
+
+/** Positive modulo — background-position phase alignment. */
+const pmod = (v: number, m: number) => ((v % m) + m) % m;
 
 /**
  * The nine-slice frame, absolutely filling the quest box. Render it FIRST
@@ -210,12 +215,30 @@ export const QuestBoxFrame: React.FC = () => {
   const gb = questFrameBorders.b;
   const gl = questFrameBorders.l;
   const gr = questFrameBorders.r;
+  // Gutter strips are PHASE-LOCKED to the main field's tile anchor
+  // (bl, bt) and overlap 2px into it (user bug, mobile: hairline seam
+  // lines + a "shadow" band — each strip restarted the center art's
+  // pattern at its own origin, so shaded art visibly banded at the seam).
+  // With matched phase the overlap draws identical pixels; strips that
+  // need the box size to compute their phase wait for the measure (one
+  // unpainted frame at mount).
+  const ctr = P('center');
+  const Tw = (ctr?.w ?? 1) * Z;
+  const Th = (ctr?.h ?? 1) * Z;
+  const OVR = 2;
+  const phased = (stripLeft: number | null, stripTop: number | null, style: React.CSSProperties): React.CSSProperties | null => {
+    if (!ctr) return null;
+    return bg(ctr, 'repeat', {
+      ...style,
+      backgroundPosition: `${pmod(bl - (stripLeft ?? bl), Tw)}px ${pmod(bt - (stripTop ?? bt), Th)}px`,
+    });
+  };
   const layers: Array<React.CSSProperties | null> = [
-    bg(P('center'), 'repeat', { left: bl, right: br, top: bt, bottom: bb }),
-    bt > gt ? bg(P('center'), 'repeat', { left: bl, right: br, top: gt, height: bt - gt }) : null,
-    bb > gb ? bg(P('center'), 'repeat', { left: bl, right: br, bottom: gb, height: bb - gb }) : null,
-    bl > gl ? bg(P('center'), 'repeat', { top: bt, bottom: bb, left: gl, width: bl - gl }) : null,
-    br > gr ? bg(P('center'), 'repeat', { top: bt, bottom: bb, right: gr, width: br - gr }) : null,
+    bg(ctr, 'repeat', { left: bl, right: br, top: bt, bottom: bb }),
+    bt > gt ? phased(null, gt, { left: bl, right: br, top: gt, height: bt - gt + OVR }) : null,
+    bb > gb && dims ? phased(null, dims.h - bb - OVR, { left: bl, right: br, top: dims.h - bb - OVR, height: bb - gb + OVR }) : null,
+    bl > gl ? phased(gl, null, { top: bt, bottom: bb, left: gl, width: bl - gl + OVR }) : null,
+    br > gr && dims ? phased(dims.w - br - OVR, null, { top: bt, bottom: bb, left: dims.w - br - OVR, width: br - gr + OVR }) : null,
     bg(topMid, 'repeat-x', { left: bl + capTL, right: br + capTR, top: 0, height: (topMid?.h ?? 0) * Z }),
     bg(bottomMid, 'repeat-x', { left: bl + capBL, right: br + capBR, bottom: 0, height: (bottomMid?.h ?? 0) * Z }),
     bg(leftMid, 'repeat-y', { top: bt + capLT, bottom: bb + capLB, left: 0, width: (leftMid?.w ?? 0) * Z }),
@@ -250,14 +273,14 @@ export const QuestBoxFrame: React.FC = () => {
         key={isTop ? 'orn-t' : 'orn-b'}
         style={{ position: 'absolute', left: '50%', marginLeft: -nw / 2, width: nw, height: nh, ...(isTop ? { top: edgeOffset } : { bottom: edgeOffset }) }}
       >
-        <div aria-hidden style={bg(pc, 'no-repeat', { left: -(pc.halo?.l ?? 0) * Z, top: -(pc.halo?.t ?? 0) * Z, width: pc.w * Z, height: pc.h * Z }) ?? undefined} />
+        <div aria-hidden className="quest-skin-px" style={bg(pc, 'no-repeat', { left: -(pc.halo?.l ?? 0) * Z, top: -(pc.halo?.t ?? 0) * Z, width: pc.w * Z, height: pc.h * Z }) ?? undefined} />
       </div>
     );
   };
 
   return (
     <div ref={ref} aria-hidden className="absolute inset-0">
-      {layers.map((s, i) => (s ? <div key={i} style={s} /> : null))}
+      {layers.map((s, i) => (s ? <div key={i} className="quest-skin-px" style={s} /> : null))}
       {ornament(P('edge-top-ornament'), true)}
       {ornament(P('edge-bottom-ornament'), false)}
     </div>
@@ -276,9 +299,9 @@ export const QuestDivider: React.FC = () => {
   const h = m.h * Z;
   return (
     <span aria-hidden className="flex" style={{ height: h }}>
-      {l && <span style={bg(l, 'no-repeat', { position: 'relative', width: l.w * Z, height: h, flexShrink: 0 }) ?? undefined} />}
+      {l && <span className="quest-skin-px" style={bg(l, 'no-repeat', { position: 'relative', width: l.w * Z, height: h, flexShrink: 0 }) ?? undefined} />}
       <span style={{ ...bg(m, 'repeat-x', { position: 'relative', height: h }), flex: '1 1 auto' }} />
-      {r && <span style={bg(r, 'no-repeat', { position: 'relative', width: r.w * Z, height: h, flexShrink: 0 }) ?? undefined} />}
+      {r && <span className="quest-skin-px" style={bg(r, 'no-repeat', { position: 'relative', width: r.w * Z, height: h, flexShrink: 0 }) ?? undefined} />}
     </span>
   );
 };
@@ -316,7 +339,7 @@ export const QuestPlate: React.FC<{ children: React.ReactNode }> = ({ children }
       />
       {l && (
         <span style={{ position: 'relative', width: nomW(l) * Z, height: h }}>
-          <span aria-hidden style={bg(l, 'no-repeat', { left: -(l.halo?.l ?? 0) * Z, top: -(l.halo?.t ?? 0) * Z, width: l.w * Z, height: l.h * Z }) ?? undefined} />
+          <span aria-hidden className="quest-skin-px" style={bg(l, 'no-repeat', { left: -(l.halo?.l ?? 0) * Z, top: -(l.halo?.t ?? 0) * Z, width: l.w * Z, height: l.h * Z }) ?? undefined} />
         </span>
       )}
       <span style={{ position: 'relative', minWidth: nomW(m) * Z, height: h, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -324,7 +347,7 @@ export const QuestPlate: React.FC<{ children: React.ReactNode }> = ({ children }
       </span>
       {r && (
         <span style={{ position: 'relative', width: nomW(r) * Z, height: h }}>
-          <span aria-hidden style={bg(r, 'no-repeat', { right: -(r.halo?.r ?? 0) * Z, top: -(r.halo?.t ?? 0) * Z, width: r.w * Z, height: r.h * Z }) ?? undefined} />
+          <span aria-hidden className="quest-skin-px" style={bg(r, 'no-repeat', { right: -(r.halo?.r ?? 0) * Z, top: -(r.halo?.t ?? 0) * Z, width: r.w * Z, height: r.h * Z }) ?? undefined} />
         </span>
       )}
     </span>
