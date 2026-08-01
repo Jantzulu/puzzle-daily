@@ -2162,6 +2162,15 @@ body.menu-gate-instant .quest-panel-sticky {
   }
 }
 
+/* While the menu gate is lowered, the whole portcullis (gate at z-50, the
+   rail riding its leading edge at z-40) must paint OVER the quest box —
+   the box's z-45 exists only for the closed-gate scroll tuck, and the
+   control panel vanishing behind the quest panel mid-open read as a bug
+   (user, 2026-08-01 mobile test). */
+body.menu-gate-lowered .quest-box-anchor {
+  z-index: 30;
+}
+
 .control-rail-mesh {
   position: absolute;
   left: 0;

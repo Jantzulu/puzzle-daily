@@ -480,15 +480,13 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
           boxed like the board's "Tap the dungeon" prompt, shown whenever no
           card is open. The old one-time localStorage coach line retired with
           it. Enemies side only — a twin under Allies on the same page would
-          double-announce. min-h reserves the box so the swap never moves
-          the page below. */}
-      {!isAllySide && uniqueEnemyIds.length > 0 && (
-        <div className="mt-1.5 text-center min-h-[25px]">
-          {selectedEnemyId === null && (
-            <span className="inline-block px-3 py-1 rounded-pixel bg-stone-900/85 border border-copper-700 hud-label text-copper-300 whitespace-nowrap">
-              Tap an enemy for more info
-            </span>
-          )}
+          double-announce. UNMOUNTS when hidden (second user call, mobile
+          test): the min-h reservation left a dead gap once a card opened. */}
+      {!isAllySide && uniqueEnemyIds.length > 0 && selectedEnemyId === null && (
+        <div className="mt-1.5 text-center">
+          <span className="inline-block px-3 py-1 rounded-pixel bg-stone-900/85 border border-copper-700 hud-label text-copper-300 whitespace-nowrap">
+            Tap an enemy for more info
+          </span>
         </div>
       )}
     </>

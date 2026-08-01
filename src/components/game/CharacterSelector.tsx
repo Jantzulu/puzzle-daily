@@ -186,7 +186,10 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
   const renderOrderPill = (entry: DirectionPickerEntry) => {
     const isSet = !!entry.current;
     const canPick = !disabled && !!entry.onPick;
-    const className = `hero-order ${isSet ? 'hero-order--done' : 'hero-order--open'} hud-label w-full h-11 px-2 justify-center flex items-center gap-2 rounded-pixel border transition-colors`;
+    // 10px text + px-1.5 (was 11px/px-2): pays for the caption-width column
+    // (user call, 2026-08-01). h-11 stays — the 44px tap height is the
+    // pill's whole reason for existing.
+    const className = `hero-order ${isSet ? 'hero-order--done' : 'hero-order--open'} hud-label w-full h-11 px-1.5 justify-center flex items-center gap-1.5 rounded-pixel border transition-colors`;
     const body = (
       <>
         <span className="flex items-center gap-1.5 flex-shrink-0">
@@ -214,14 +217,17 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
         </span>
       </>
     );
+    // Inline 10px — the scoped .theme-root .hud-label 11px outranks any
+    // Tailwind text utility, so the size cut must ride the style attribute.
     if (!canPick) {
-      return <div className={className}>{body}</div>;
+      return <div className={className} style={{ fontSize: '10px' }}>{body}</div>;
     }
     return (
       <button
         type="button"
         onClick={(e) => { e.stopPropagation(); setPickerKey(entry.key); }}
         className={className}
+        style={{ fontSize: '10px' }}
         aria-haspopup="dialog"
         aria-expanded={pickerKey === entry.key}
       >
@@ -566,11 +572,19 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                   whose 56px cells are why the 17px in-panel compass could
                   retire. */}
               {hasDirectionInputs && (
-                <div className="flex-shrink-0 px-1" style={{ width: '132px' }}>
+                // Sized by CONTENT, not a fixed 132px (user call, 2026-08-01
+                // mobile test: "the button only as wide as the title of the
+                // column"): the caption is the widest static child, so the
+                // w-full pill matches it. maxWidth guards against a wordy
+                // custom spell caption eating the text columns.
+                <div className="flex-shrink-0 px-1" style={{ maxWidth: '132px' }}>
                   <p className="hud-label text-stone-400 mb-1 text-center">Directions</p>
                   {directionInputEntries.map(entry => (
                     <div key={entry.key} className="mb-1.5 last:mb-0">
-                      <p className="hud-label text-arcane-300 text-center mb-1 leading-tight">{entry.caption}</p>
+                      {/* 10px (inline — .theme-root .hud-label's 11px outranks
+                          utilities): the size cut that pays for the narrower
+                          column, caption and pill text together. */}
+                      <p className="hud-label text-arcane-300 text-center mb-1 leading-tight whitespace-nowrap" style={{ fontSize: '10px' }}>{entry.caption}</p>
                       {renderOrderPill(entry)}
                     </div>
                   ))}
@@ -616,18 +630,17 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
         onClose={() => setPickerKey(null)}
       />
 
-      {/* Hint row — statically sized (min-h reserves the box height) so the
-          swap never moves the panel below. Same chip grammar as the board's
-          "Tap the dungeon" prompt (user call 2026-08-01) — one instruction
-          language everywhere — but staying in this row below the cards. The
-          PLACEMENT half still lives on the board itself (see Game.tsx). */}
-      {!disabled && (
-        <div className="mt-1.5 text-center min-h-[25px]">
-          {isAtMaxPlaced || (selectedCharacterId && !placedCharacterIds.includes(selectedCharacterId)) ? null : (
-            <span className="inline-block px-3 py-1 rounded-pixel bg-stone-900/85 border border-copper-700 hud-label text-copper-300 whitespace-nowrap">
-              Tap a hero for more info
-            </span>
-          )}
+      {/* Hint row — UNMOUNTS when the hint hides (user call, 2026-08-01
+          mobile test): the old min-h reservation left a dead gap under the
+          drawer once a hero was selected, which read worse than the small
+          layout shift it prevented. Same chip grammar as the board's "Tap
+          the dungeon" prompt; the PLACEMENT half lives on the board itself
+          (see Game.tsx). */}
+      {!disabled && !(isAtMaxPlaced || (selectedCharacterId && !placedCharacterIds.includes(selectedCharacterId))) && (
+        <div className="mt-1.5 text-center">
+          <span className="inline-block px-3 py-1 rounded-pixel bg-stone-900/85 border border-copper-700 hud-label text-copper-300 whitespace-nowrap">
+            Tap a hero for more info
+          </span>
         </div>
       )}
     </>

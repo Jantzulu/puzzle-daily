@@ -3178,7 +3178,10 @@ export const Game: React.FC<GameProps> = ({
               // bottoms out just above this box) overlap the box's 3px top
               // border and visibly tuck behind it — the design's "portcullis
               // stops at the top of the quest box".
-              <div className="w-full max-w-2xl relative z-[45] -mt-[3px] mb-1">
+              // quest-box-anchor: while the menu gate is lowered the box's
+              // z-45 DROPS below the riding rail (see index.css) — nothing
+              // may hide the open gate (user call, 2026-08-01 mobile test).
+              <div className="quest-box-anchor w-full max-w-2xl relative z-[45] -mt-[3px] mb-1">
                 {/* pt-1.5/pb-1.5 (user call, third round): the plate now
                     rides HIGHER on the border (-top-[15px], only ~6px of it
                     inside the box), which is what lets the top padding drop
