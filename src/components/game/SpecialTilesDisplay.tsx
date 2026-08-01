@@ -247,7 +247,9 @@ export const SpecialTilesDisplay: React.FC<SpecialTilesDisplayProps> = ({ puzzle
           <div className="absolute right-full mr-1">
             <HelpButton sectionId="special_tiles" />
           </div>
-          <h3 className="carved-header carved-header-rust font-medieval text-lg lg:text-xl uppercase">Dungeon Tiles</h3>
+          {/* nowrap: see StatusEffectsDisplay — the centered-title box caps
+              at half the row and this title is nearly as wide. */}
+          <h3 className="carved-header carved-header-rust font-medieval text-lg lg:text-xl uppercase whitespace-nowrap">Dungeon Tiles</h3>
         </div>
         {/* Counter in the ramp's registers, like the hero/enemy panels. */}
         <span className="flex items-baseline gap-1">

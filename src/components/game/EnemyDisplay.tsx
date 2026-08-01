@@ -194,7 +194,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
             <div className="absolute right-full mr-1">
               <HelpButton sectionId="enemies" />
             </div>
-            <h3 className="carved-header carved-header-blood font-medieval text-lg lg:text-xl uppercase">Enemies</h3>
+            <h3 className="carved-header carved-header-blood font-medieval text-lg lg:text-xl uppercase whitespace-nowrap">Enemies</h3>
           </div>
         </div>
         <p className="text-sm lg:text-base text-stone-500 text-center">No enemies remaining</p>
@@ -253,7 +253,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
           {/* Same register pass as the HEROES title (2026-08-01): uppercase
               transform on the classic carve/face/size; each side keeps its
               own identity color. */}
-          <h3 className={`carved-header ${isAllySide ? 'carved-header-parchment' : 'carved-header-blood'} font-medieval text-lg lg:text-xl uppercase`}>
+          <h3 className={`carved-header ${isAllySide ? 'carved-header-parchment' : 'carved-header-blood'} font-medieval text-lg lg:text-xl uppercase whitespace-nowrap`}>
             {isAllySide ? 'Allies' : 'Enemies'}
           </h3>
         </div>

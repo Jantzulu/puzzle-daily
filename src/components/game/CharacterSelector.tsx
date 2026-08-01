@@ -284,7 +284,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
               while it keeps its classic carve, medieval face, themed size
               and the purple hero identity. carved-header already carries
               700 weight + 0.05em tracking; the transform is what changes. */}
-          <h3 className="carved-header carved-header-arcane font-medieval text-lg lg:text-xl uppercase">Heroes</h3>
+          <h3 className="carved-header carved-header-arcane font-medieval text-lg lg:text-xl uppercase whitespace-nowrap">Heroes</h3>
         </div>
         <div className="flex items-center gap-2">
           {/* Counter in the ramp's registers (user call, 2026-07-31): the

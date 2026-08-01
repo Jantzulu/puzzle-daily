@@ -239,7 +239,7 @@ export const ItemsDisplay: React.FC<ItemsDisplayProps> = ({ puzzle, className = 
           <div className="absolute right-full mr-1">
             <HelpButton sectionId="items" />
           </div>
-          <h3 className="carved-header carved-header-parchment font-medieval text-lg lg:text-xl uppercase">Items</h3>
+          <h3 className="carved-header carved-header-parchment font-medieval text-lg lg:text-xl uppercase whitespace-nowrap">Items</h3>
         </div>
         {/* Counter in the ramp's registers, like the hero/enemy panels. */}
         <span className="flex items-baseline gap-1">

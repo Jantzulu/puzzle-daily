@@ -250,7 +250,12 @@ export const StatusEffectsDisplay: React.FC<StatusEffectsDisplayProps> = ({ puzz
           <div className="absolute right-full mr-1">
             <HelpButton sectionId="status_effects" />
           </div>
-          <h3 className="carved-header carved-header-mystic font-medieval text-lg lg:text-xl uppercase">Status Effects</h3>
+          {/* whitespace-nowrap on ALL these centered section titles: the
+              absolute wrapper's shrink-to-fit box caps at HALF the row
+              (left:50% to the row's right edge), so a title wider than that
+              wraps and overflows onto the rows below — the uppercase pass
+              pushed this one over the cap on phones. */}
+          <h3 className="carved-header carved-header-mystic font-medieval text-lg lg:text-xl uppercase whitespace-nowrap">Status Effects</h3>
         </div>
         {/* Counter in the ramp's registers, like the hero/enemy panels. */}
         <span className="flex items-baseline gap-1">
