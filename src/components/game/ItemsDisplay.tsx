@@ -239,7 +239,7 @@ export const ItemsDisplay: React.FC<ItemsDisplayProps> = ({ puzzle, className = 
           <div className="absolute right-full mr-1">
             <HelpButton sectionId="items" />
           </div>
-          <h3 className="carved-header carved-header-parchment font-medieval text-lg lg:text-xl">Items</h3>
+          <h3 className="carved-header carved-header-parchment font-medieval text-lg lg:text-xl uppercase">Items</h3>
         </div>
         <span className="text-sm lg:text-base text-stone-400">
           {itemsWithSources.length} type{itemsWithSources.length !== 1 ? 's' : ''}

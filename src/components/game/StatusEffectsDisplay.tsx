@@ -250,7 +250,7 @@ export const StatusEffectsDisplay: React.FC<StatusEffectsDisplayProps> = ({ puzz
           <div className="absolute right-full mr-1">
             <HelpButton sectionId="status_effects" />
           </div>
-          <h3 className="carved-header carved-header-mystic font-medieval text-lg lg:text-xl">Status Effects</h3>
+          <h3 className="carved-header carved-header-mystic font-medieval text-lg lg:text-xl uppercase">Status Effects</h3>
         </div>
         <span className="text-sm lg:text-base text-stone-400">
           {statusEffectsWithSources.length} possible

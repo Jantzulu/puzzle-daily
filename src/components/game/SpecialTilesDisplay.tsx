@@ -247,7 +247,7 @@ export const SpecialTilesDisplay: React.FC<SpecialTilesDisplayProps> = ({ puzzle
           <div className="absolute right-full mr-1">
             <HelpButton sectionId="special_tiles" />
           </div>
-          <h3 className="carved-header carved-header-rust font-medieval text-lg lg:text-xl">Dungeon Tiles</h3>
+          <h3 className="carved-header carved-header-rust font-medieval text-lg lg:text-xl uppercase">Dungeon Tiles</h3>
         </div>
         <span className="text-sm lg:text-base text-stone-400">
           {specialTiles.length} type{specialTiles.length !== 1 ? 's' : ''}
