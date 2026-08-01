@@ -712,6 +712,11 @@ const StyleSelector: React.FC<StyleSelectorProps> = ({ assetKey, value, onChange
       defaultHint = 'small';
       previewFallback = 'small';
       break;
+    case 'siteSubtitleFont':
+      options = FONT_OPTIONS;
+      defaultHint = 'the heading font (or Almendra when that is unset too)';
+      previewFallback = 'medieval';
+      break;
   }
 
   const effective = value ?? previewFallback;
@@ -762,7 +767,7 @@ const StyleSelector: React.FC<StyleSelectorProps> = ({ assetKey, value, onChange
       )}
 
       {/* Preview for font family */}
-      {(assetKey === 'fontFamily' || assetKey === 'fontFamilyHeading' || assetKey === 'fontFamilyMenu') && (
+      {(assetKey === 'fontFamily' || assetKey === 'fontFamilyHeading' || assetKey === 'fontFamilyMenu' || assetKey === 'siteSubtitleFont') && (
         <div className="space-y-1">
           <p className="text-xs uppercase text-stone-500">Preview</p>
           <div

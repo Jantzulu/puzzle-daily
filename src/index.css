@@ -666,6 +666,13 @@ html body.theme-font-active,
   font-family: var(--theme-font-family-heading, var(--theme-font-family, 'Almendra', serif));
 }
 
+/* Navbar subtitle: its own font knob (Branding → Subtitle Font), falling
+   through .font-medieval's exact chain when unset — the subtitle always
+   rendered in the heading font before the knob existed. */
+.nav-subtitle {
+  font-family: var(--theme-font-family-subtitle, var(--theme-font-family-heading, var(--theme-font-family, 'Almendra', serif)));
+}
+
 /* Theme-aware navigation link buttons (header nav) */
 .nav-link-btn {
   border-radius: var(--theme-border-radius, 3px) !important;

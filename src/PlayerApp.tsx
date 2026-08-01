@@ -335,7 +335,7 @@ function PlayerNavigation() {
             </h1>
             {themeAssets.siteSubtitle && (
               <span
-                className="font-medieval text-shadow-dungeon"
+                className="nav-subtitle text-shadow-dungeon"
                 style={{
                   color: themeAssets.siteSubtitleColor || 'rgba(212, 165, 116, 0.8)',
                   fontSize: (() => {
