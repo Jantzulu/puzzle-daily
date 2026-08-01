@@ -174,11 +174,20 @@ export function useCrispSnap<T extends HTMLElement>(active: boolean, defer = fal
     if (!el) return;
     let raf = 0;
     const snap = () => {
-      el.style.transform = 'none';
+      // RELATIVE left/top, NOT transform: a transform can promote the
+      // element to a composited layer rasterized at its pre-transform
+      // position and resampled at the fractional offset — the exact
+      // "discolored perfect rectangle around QUEST" the user pinpointed
+      // (the plate's old translateX(-50%) did this). Relative offsets are
+      // plain paint-time geometry; both snapped elements already carry
+      // position: relative.
+      el.style.left = '0px';
+      el.style.top = '0px';
       const r = el.getBoundingClientRect();
       const dx = Math.round(r.left) - r.left;
       const dy = Math.round(r.top) - r.top;
-      el.style.transform = dx || dy ? `translate(${dx.toFixed(3)}px, ${dy.toFixed(3)}px)` : 'none';
+      el.style.left = `${dx.toFixed(3)}px`;
+      el.style.top = `${dy.toFixed(3)}px`;
     };
     // `defer`: elements INSIDE another snapped element must measure AFTER
     // their ancestor's compensation lands (child effects and same-frame
