@@ -178,7 +178,9 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
   const divider = noPanel && !isAllySide ? (
     <div className="dungeon-lintel mt-2 mb-2">
       <LintelMesh />
-      <span className="dungeon-lintel-text font-medieval">
+      {/* uppercase: the register pass (2026-08-01) — same treatment as the
+          HEROES/ENEMIES titles. */}
+      <span className="dungeon-lintel-text font-medieval uppercase">
         <span>Dungeon</span>
         {themeAssets.iconDungeonDetails ? (
           <img
