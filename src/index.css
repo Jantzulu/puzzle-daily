@@ -3038,43 +3038,18 @@ body.menu-gate-instant .quest-panel-sticky {
 }
 
 /* ============================================
-   THE HERO DRAWER — bounded info region (ported 2026-07-31). A max-height
-   CEILING, never a floor: a wordy hero scrolls INSIDE the drawer instead of
-   growing the page — the "marginal scrolling for longer hero info" trade
-   the user sanctioned. Skin stays classic (the copper wash lives on the
-   element's own classes in CharacterSelector).
+   THE HERO DRAWER — natural height on every viewport (unbounded 2026-08-01
+   by user call: a nested scroll region is a trap when flinging past the
+   panel on a phone, and page scroll for wordy heroes is fine). The 190px
+   ceiling + internal scroll this replaced lived here briefly; don't bring
+   them back. Skin stays classic (the copper wash lives on the element's
+   own classes in CharacterSelector).
    ============================================ */
 .hero-drawer {
   display: flex;
   flex-direction: column;
   gap: 6px;
   padding: 6px 0;
-  max-height: var(--hero-drawer-max, 190px);
-}
-
-.hero-drawer__brief {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  padding-bottom: 12px;
-  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 12px), transparent);
-  mask-image: linear-gradient(to bottom, #000 calc(100% - 12px), transparent);
-}
-
-/* Desktop has the vertical room, so it takes neither the ceiling nor the
-   scroll — the drawer is simply as tall as the hero is. */
-@media (min-width: 1024px) {
-  .hero-drawer {
-    max-height: none;
-  }
-
-  .hero-drawer__brief {
-    overflow: visible;
-    padding-bottom: 0;
-    -webkit-mask-image: none;
-    mask-image: none;
-  }
 }
 
 /* ============================================

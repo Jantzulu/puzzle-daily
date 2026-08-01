@@ -509,13 +509,12 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
             : 'grid-template-rows 0.28s ease-in',
         }}>
         <div style={{ overflow: 'hidden', minHeight: 0 }}>
-        {/* THE DRAWER — bounded info region (ported 2026-07-31, classic
-            skin kept). `.hero-drawer` puts a max-height CEILING on the
-            region and `.hero-drawer__brief` scrolls internally, so a wordy
-            hero reads as a short scroll instead of page growth. Layout is
-            the classic three columns with dashed dividers; the Directions
-            column carries the new order pill, which opens the 56px picker
-            sheet ("keep the direction selector looking the same"). */}
+        {/* THE DRAWER — natural height, page grows with wordy heroes
+            (unbounded 2026-08-01 by user call: no nested scroll region on
+            a phone). Layout is the classic three columns with dashed
+            dividers; the Directions column carries the new order pill,
+            which opens the 56px picker sheet ("keep the direction
+            selector looking the same"). */}
         <div
           className="hero-drawer pt-2.5 pb-0 mt-0 bg-copper-900/15 rounded-b-pixel-md"
           style={{
@@ -526,7 +525,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
               : 'opacity 0.2s ease-in, transform 0.3s ease-in',
           }}
         >
-          <div className="hero-drawer__brief">
+          <div>
           <div className={`flex mb-2 px-2 ${[hasActionSteps, hasDirectionInputs, hasAttributes].filter(Boolean).length === 1 ? 'justify-center' : 'gap-0'}`}>
               {hasActionSteps && (
                 <div className={`${hasAttributes || hasDirectionInputs ? 'flex-1 min-w-0 pr-2' : 'w-full'}`}>
