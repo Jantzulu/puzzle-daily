@@ -20,8 +20,31 @@ import { loadImage, isImageReady } from '../../utils/imageLoader';
  * each other on a shared floor in a reference image, all magnified uniformly).
  *
  * Adjust this constant to make all card sprites bigger or smaller.
+ *
+ * 2×, BY USER DECISION (2026-07-31): tested at both scales on a real phone
+ * and chosen deliberately — the roster reads as a compact control strip and
+ * banks ~48px of card height on every device; 48px portraits are still 1.33×
+ * the same art on a 36px board tile. (An earlier session leaned 3×, judged
+ * against a dpr-1 desktop simulation whose board renders a full zoom step
+ * smaller than any real handset — the comparison was rigged, which is what
+ * the URL override below exists to prevent.)
+ *
+ * ON-DEVICE OVERRIDE: `?cardscale=3` (etc.) flips the scale with a reload
+ * instead of a rebuild, for judging on actual hardware. Integers 1-6 only;
+ * read once at module load; anything else falls back to the default.
  */
-export const CARD_PIXEL_SCALE = 3;
+function readCardScaleOverride(): number | null {
+  try {
+    const raw = new URLSearchParams(window.location.search).get('cardscale');
+    if (!raw) return null;
+    const n = Number(raw);
+    return Number.isInteger(n) && n >= 1 && n <= 6 ? n : null;
+  } catch {
+    return null; // no window (tests) or malformed URL — default wins
+  }
+}
+
+export const CARD_PIXEL_SCALE = readCardScaleOverride() ?? 2;
 
 /**
  * Fallback native-pixel height for sprites whose native dimensions cannot
