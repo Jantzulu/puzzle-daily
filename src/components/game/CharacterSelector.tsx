@@ -613,16 +613,17 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
         onClose={() => setPickerKey(null)}
       />
 
-      {/* Hint line — statically sized (min-h reserves the line) so the text
-          swap never moves the panel below. The PLACEMENT half of this line
-          moved onto the board itself ("Tap the dungeon to place your hero"
-          floats over the bottom tiles — see Game.tsx), so this row no longer
-          double-announces it; it only invites selection when nothing is
-          selected. */}
+      {/* Hint row — statically sized (min-h reserves the box height) so the
+          swap never moves the panel below. Same chip grammar as the board's
+          "Tap the dungeon" prompt (user call 2026-08-01) — one instruction
+          language everywhere — but staying in this row below the cards. The
+          PLACEMENT half still lives on the board itself (see Game.tsx). */}
       {!disabled && (
-        <div className="mt-1.5 text-sm font-medium text-center min-h-[20px]">
+        <div className="mt-1.5 text-center min-h-[25px]">
           {isAtMaxPlaced || (selectedCharacterId && !placedCharacterIds.includes(selectedCharacterId)) ? null : (
-            <span className="text-stone-500">Select a hero for details</span>
+            <span className="inline-block px-3 py-1 rounded-pixel bg-stone-900/85 border border-copper-700 hud-label text-copper-300 whitespace-nowrap">
+              Tap a hero for more info
+            </span>
           )}
         </div>
       )}
