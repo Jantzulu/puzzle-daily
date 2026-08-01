@@ -561,6 +561,18 @@ export const PanelForgeImport: React.FC<Props> = ({ kit, assembly }) => {
           >
             Export cut pieces (JSON)
           </button>
+
+          {/* The quest box is WIRED: its committed slices file IS the
+              in-game art (hardcoded by decision — core chrome is source,
+              not a theme knob; see QuestBoxSkin.tsx). */}
+          {kit.id === 'quest-box' && (
+            <p className="text-xs text-stone-400">
+              This kit is live in the game: drop the exported JSON at{' '}
+              <code className="text-copper-300">src/assets/panels/quest-box-slices.json</code>{' '}
+              (overwrite it) and the play page wears the art on the next hot reload.
+              Restore the baseline box by reverting that file to its empty-pieces placeholder.
+            </p>
+          )}
         </>
       )}
     </div>

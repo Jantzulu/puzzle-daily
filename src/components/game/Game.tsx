@@ -20,6 +20,7 @@ import { getSavedPuzzles, type SavedPuzzle } from '../../utils/puzzleStorage';
 import { loadTileType, loadCollectible, loadEnemy, loadStatusEffectAsset } from '../../utils/assetStorage';
 import { collectPuzzleAssetUrls } from '../../utils/spritePreload';
 import { HelpButton } from './HelpOverlay';
+import { QuestBoxFrame, QuestPlate, QuestDivider, questSkinFrameActive, questSkinPlateActive, questSkinDividerActive, questFrameBorders, questPlateStraddle } from './QuestBoxSkin';
 import { playGameSound, playVictoryMusic, playDefeatMusic, playBackgroundMusic, stopMusic } from '../../utils/gameSounds';
 import { loadThemeAssets, subscribeToThemeAssets, type ThemeAssets } from '../../utils/themeAssets';
 import { WarningModal } from '../shared/WarningModal';
@@ -3182,12 +3183,40 @@ export const Game: React.FC<GameProps> = ({
                     rides HIGHER on the border (-top-[15px], only ~6px of it
                     inside the box), which is what lets the top padding drop
                     — text clears the plate by ~3px. Tighter than this needs
-                    a shorter plate. */}
-                <div className="relative bg-stone-950/95 border-[3px] border-copper-700 rounded-pixel-md px-4 md:px-5 pt-1.5 pb-1.5 text-shadow-dungeon">
+                    a shorter plate.
+                    SKINNED MODE (QuestBoxSkin.tsx): when forge-cut art is
+                    committed, the CSS border/background retire and the art
+                    frame renders instead, with content padding derived from
+                    the art's own border thicknesses. The checked-in
+                    placeholder is empty, so this is the baseline until art
+                    lands — and reverting the slices file restores it. */}
+                <div
+                  className={`relative text-shadow-dungeon ${questSkinFrameActive
+                    ? ''
+                    : 'bg-stone-950/95 border-[3px] border-copper-700 rounded-pixel-md px-4 md:px-5 pt-1.5 pb-1.5'}`}
+                  style={questSkinFrameActive ? {
+                    padding: `${questFrameBorders.t + 4}px ${questFrameBorders.r + 8}px ${questFrameBorders.b + 2}px ${questFrameBorders.l + 8}px`,
+                  } : undefined}
+                >
+                {questSkinFrameActive && <QuestBoxFrame />}
                 {/* The plate on the border line (legend-style) — the plate
                     ALONE is centered (user call: it must be true-centered;
-                    the (?) rides inline before the quest text instead). */}
-                <span className="absolute -top-[15px] left-1/2 -translate-x-1/2 px-3 py-0.5 bg-stone-950 border-2 border-copper-700 rounded-pixel hud-label text-copper-300 whitespace-nowrap">Quest</span>
+                    the (?) rides inline before the quest text instead).
+                    With plate art committed, the DOM label rides ON TOP of
+                    the painted 3-slice (user call: text over art). */}
+                {questSkinPlateActive ? (
+                  <span className="absolute left-1/2 -translate-x-1/2" style={{ top: -questPlateStraddle }}>
+                    <QuestPlate>
+                      <span className="hud-label text-copper-300 whitespace-nowrap">Quest</span>
+                    </QuestPlate>
+                  </span>
+                ) : (
+                  <span className="absolute -top-[15px] left-1/2 -translate-x-1/2 px-3 py-0.5 bg-stone-950 border-2 border-copper-700 rounded-pixel hud-label text-copper-300 whitespace-nowrap">Quest</span>
+                )}
+                {/* relative: the art frame is absolutely positioned, and
+                    absolute layers paint over STATIC siblings — everything
+                    readable lives above the art. */}
+                <div className="relative">
                 {/* Puzzle Number & Quest Row */}
                 {puzzleNumber && (
                   <div className="text-center mb-0.5">
@@ -3372,7 +3401,12 @@ export const Game: React.FC<GameProps> = ({
                     : [];
 
                   return (
-                    <div className="flex items-center justify-center gap-1 md:gap-2 mt-2 pt-2 border-t border-stone-700 flex-wrap">
+                    <>
+                    {/* Painted divider replaces the CSS rule when the skin
+                        carries one — "the divider is the side-quests rule"
+                        is the kit's own contract. */}
+                    {questSkinDividerActive && <div className="mt-2"><QuestDivider /></div>}
+                    <div className={`flex items-center justify-center gap-1 md:gap-2 ${questSkinDividerActive ? 'mt-1' : 'mt-2 border-t border-stone-700'} pt-2 flex-wrap`}>
                       <HelpButton sectionId="side_quests" />
                       <span className="text-sm md:text-base font-semibold text-arcane-400">Side Quests:</span>
                       <span className="text-xs md:text-sm text-arcane-300">
@@ -3391,8 +3425,10 @@ export const Game: React.FC<GameProps> = ({
                         })}
                       </span>
                     </div>
+                    </>
                   );
                 })()}
+                </div>
                 </div>
               </div>
             )}
