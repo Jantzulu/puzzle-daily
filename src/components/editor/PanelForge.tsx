@@ -476,6 +476,18 @@ export interface AssemblyRegion {
   w: number;
   h: number;
   rep: number; // repeat index — alternates shading to show the tile period
+  /**
+   * Paintable overflow reserved AROUND this region in the assembled sample
+   * (art px per side) — the per-piece template's magenta paint box, brought
+   * into the assembled workflow. Only for pieces that are PHYSICALLY
+   * DETACHED from their neighbours (the quest plate): a frame piece's halo
+   * would overlap the piece butted against it. The slicer cuts region+halo
+   * and records the insets, so overflow art SURVIVES (unlike the per-piece
+   * template's halos, which the assembled slicer historically dropped).
+   * Set on rep-0 regions only — later repeats aren't cut, so inviting
+   * paint around them would be the exact loss this exists to prevent.
+   */
+  halo?: { l: number; t: number; r: number; b: number };
 }
 
 export interface Assembly {
@@ -645,19 +657,29 @@ function assembleQuestBox(kit: KitSpec): Assembly | null {
   const pr = P('plate-cap-r');
   if (!pl || !pm || !pr) return base;
 
-  const bandH = Math.max(pl.h, pm.h, pr.h) + 2;
+  // The plate is DETACHED from the frame, so it gets real overflow room —
+  // HALO around the whole object (user call 2026-08-01: "space around the
+  // separate QUEST box to be drawn on"). The band reserves it; the halos on
+  // the rep-0 regions make the slicer CUT it, so the overflow ships.
+  const plateH = Math.max(pl.h, pm.h, pr.h);
+  const bandH = HALO + plateH + HALO + 2;
   const regions = base.regions.map(r => ({ ...r, y: r.y + bandH }));
 
   const MIDS = 2; // sample shows one seam; only the first period is cut
   const plateW = pl.w + pm.w * MIDS + pr.w;
   let x = Math.round((base.width - plateW) / 2);
-  regions.push({ pieceId: 'plate-cap-l', x, y: 0, w: pl.w, h: pl.h, rep: 0 });
+  const py = HALO;
+  regions.push({ pieceId: 'plate-cap-l', x, y: py, w: pl.w, h: pl.h, rep: 0, halo: { l: HALO, t: HALO, r: 0, b: HALO } });
   x += pl.w;
   for (let i = 0; i < MIDS; i++) {
-    regions.push({ pieceId: 'plate-mid', x, y: 0, w: pm.w, h: pm.h, rep: i });
+    // Strict axis rule: the mid tiles in x, so no x halo — its period stays
+    // exact; overflow rides the caps and the top/bottom.
+    regions.push(i === 0
+      ? { pieceId: 'plate-mid', x, y: py, w: pm.w, h: pm.h, rep: 0, halo: { l: 0, t: HALO, r: 0, b: HALO } }
+      : { pieceId: 'plate-mid', x, y: py, w: pm.w, h: pm.h, rep: i });
     x += pm.w;
   }
-  regions.push({ pieceId: 'plate-cap-r', x, y: 0, w: pr.w, h: pr.h, rep: 0 });
+  regions.push({ pieceId: 'plate-cap-r', x, y: py, w: pr.w, h: pr.h, rep: 0, halo: { l: 0, t: HALO, r: HALO, b: HALO } });
 
   return { regions, width: base.width, height: base.height + bandH };
 }
@@ -851,6 +873,23 @@ function renderAssembly(
   ctx.fillRect(0, 0, assembly.width * zoom, assembly.height * zoom);
 
   if (underlay) drawUnderlay(ctx, assembly, underlay, zoom);
+
+  // Honored paint halos first, under everything: the per-piece template's
+  // magenta paint box, in the assembled sample. Anything painted inside is
+  // CUT with the piece (unlike the frame regions, where out-of-region paint
+  // is discarded).
+  for (const r of assembly.regions) {
+    if (!r.halo) continue;
+    const hx = (r.x - r.halo.l) * zoom;
+    const hy = (r.y - r.halo.t) * zoom;
+    const hw = (r.w + r.halo.l + r.halo.r) * zoom;
+    const hh = (r.h + r.halo.t + r.halo.b) * zoom;
+    ctx.fillStyle = 'rgba(255, 0, 255, 0.07)';
+    ctx.fillRect(hx, hy, hw, hh);
+    ctx.strokeStyle = '#ff00ff';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(hx + 0.5, hy + 0.5, hw - 1, hh - 1);
+  }
 
   for (const r of assembly.regions) {
     const idx = colorIndex.get(r.pieceId) ?? 0;

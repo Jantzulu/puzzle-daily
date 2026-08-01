@@ -30,6 +30,8 @@ export interface NineSlicePiece {
   h: number;
   url: string;
   empty: boolean;
+  /** Bitmap = nominal+halo when set; insets locate the nominal rect. */
+  halo?: { l: number; t: number; r: number; b: number };
 }
 
 interface Props {
@@ -180,13 +182,18 @@ export const PanelNineSlice: React.FC<Props> = ({ pieces, zoom, width, height, s
   const plateM = p['plate-mid'];
   const plateR = p['plate-cap-r'];
   const hasPlate = !!plateM;
-  const plateH = (plateM?.h ?? plateL?.h ?? 0) * zoom;
+  // Halo'd bitmaps are bigger than the piece; all GEOMETRY runs on nominal
+  // sizes and the bitmaps hang out past them.
+  const nomW = (pc?: NineSlicePiece) => (pc ? pc.w - (pc.halo ? pc.halo.l + pc.halo.r : 0) : 0);
+  const nomH = (pc?: NineSlicePiece) => (pc ? pc.h - (pc.halo ? pc.halo.t + pc.halo.b : 0) : 0);
+  const plateH = (nomH(plateM) || nomH(plateL)) * zoom;
   const PLATE_MIDS = 2;
-  const plateW = ((plateL?.w ?? 0) + (plateM?.w ?? 0) * PLATE_MIDS + (plateR?.w ?? 0)) * zoom;
-  // The straddle can exceed the base padding at high zoom (14 art px * 4 *
-  // 0.6 = 34px against 16) — the ground's top padding grows to hold it.
+  const plateW = (nomW(plateL) + nomW(plateM) * PLATE_MIDS + nomW(plateR)) * zoom;
+  const plateHaloT = (plateM?.halo?.t ?? plateL?.halo?.t ?? 0) * zoom;
+  // The straddle (and any halo overflow above the plate) can exceed the base
+  // padding at high zoom — the ground's top padding grows to hold both.
   const straddle = Math.round(plateH * 0.6);
-  const groundPadTop = hasPlate ? Math.max(GROUND_PAD, straddle + 2) : GROUND_PAD;
+  const groundPadTop = hasPlate ? Math.max(GROUND_PAD, straddle + plateHaloT + 2) : GROUND_PAD;
   const plateLeft = GROUND_PAD + Math.round((width - plateW) / 2);
   const plateTop = groundPadTop - straddle;
 
@@ -300,13 +307,31 @@ export const PanelNineSlice: React.FC<Props> = ({ pieces, zoom, width, height, s
       </div>
 
       {/* THE QUEST PLATE — composited over the top border, centered, poking
-          into the ground padding. Drawn after (over) the panel box. */}
+          into the ground padding. Drawn after (over) the panel box. The
+          wrapper is NOMINAL-sized (centering math); halo'd bitmaps overhang
+          it via negative offsets, so overflow art draws where it was
+          painted relative to the plate. */}
       {hasPlate && (
         <div aria-hidden style={{ position: 'absolute', left: plateLeft, top: plateTop, width: plateW, height: plateH }}>
           {[
-            layer(plateM, zoom, 'repeat-x', { left: (plateL?.w ?? 0) * zoom, right: (plateR?.w ?? 0) * zoom, top: 0, height: plateH }),
-            layer(plateL, zoom, 'no-repeat', { left: 0, top: 0, width: (plateL?.w ?? 0) * zoom, height: plateH }),
-            layer(plateR, zoom, 'no-repeat', { right: 0, top: 0, width: (plateR?.w ?? 0) * zoom, height: plateH }),
+            layer(plateM, zoom, 'repeat-x', {
+              left: nomW(plateL) * zoom,
+              right: nomW(plateR) * zoom,
+              top: -(plateM?.halo?.t ?? 0) * zoom,
+              height: (plateM?.h ?? 0) * zoom,
+            }),
+            layer(plateL, zoom, 'no-repeat', {
+              left: -(plateL?.halo?.l ?? 0) * zoom,
+              top: -(plateL?.halo?.t ?? 0) * zoom,
+              width: (plateL?.w ?? 0) * zoom,
+              height: (plateL?.h ?? 0) * zoom,
+            }),
+            layer(plateR, zoom, 'no-repeat', {
+              right: -(plateR?.halo?.r ?? 0) * zoom,
+              top: -(plateR?.halo?.t ?? 0) * zoom,
+              width: (plateR?.w ?? 0) * zoom,
+              height: (plateR?.h ?? 0) * zoom,
+            }),
           ].map((s, i) => (s ? <div key={`plate${i}`} style={s} /> : null))}
         </div>
       )}

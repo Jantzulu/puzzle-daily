@@ -42,6 +42,12 @@ interface Slice {
   w: number;
   h: number;
   url: string;
+  /**
+   * When the region carried a paint halo, the bitmap is region+halo and
+   * these insets say where the NOMINAL rect sits inside it — the renderer
+   * anchors by nominal geometry and lets the overflow hang out.
+   */
+  halo?: { l: number; t: number; r: number; b: number };
   /** True when the cut region is entirely transparent — i.e. unpainted. */
   empty: boolean;
   /**
@@ -199,6 +205,9 @@ export const PanelForgeImport: React.FC<Props> = ({ kit, assembly }) => {
       const sw = Math.max(1, Math.round(region.w * usable));
       const sh = Math.max(1, Math.round(region.h * usable));
 
+      // The NOMINAL cut — the empty-check and the repeat comparison always
+      // run on this, halo or not, so a halo'd piece's repeats stay
+      // comparable and blank-detection ignores stray halo pixels.
       const canvas = document.createElement('canvas');
       canvas.width = Math.max(1, region.w);
       canvas.height = Math.max(1, region.h);
@@ -206,6 +215,28 @@ export const PanelForgeImport: React.FC<Props> = ({ kit, assembly }) => {
       if (!ctx) continue;
       ctx.imageSmoothingEnabled = false;
       ctx.drawImage(img, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+
+      // The SHIPPED cut — region+halo when the region reserves overflow
+      // (the detached quest plate), so art painted in the magenta box
+      // survives instead of being silently discarded.
+      let shipped = canvas;
+      if (region.halo) {
+        const { l, t, r: hr, b } = region.halo;
+        const ex = document.createElement('canvas');
+        ex.width = Math.max(1, region.w + l + hr);
+        ex.height = Math.max(1, region.h + t + b);
+        const ectx = ex.getContext('2d');
+        if (ectx) {
+          ectx.imageSmoothingEnabled = false;
+          ectx.drawImage(
+            img,
+            Math.round((region.x - l) * usable), Math.round((region.y - t) * usable),
+            Math.max(1, Math.round((region.w + l + hr) * usable)), Math.max(1, Math.round((region.h + t + b) * usable)),
+            0, 0, ex.width, ex.height,
+          );
+          shipped = ex;
+        }
+      }
 
       // An untouched slot is fully transparent — flag it so a half-painted
       // kit is obvious here instead of as a hole in the game.
@@ -269,10 +300,11 @@ export const PanelForgeImport: React.FC<Props> = ({ kit, assembly }) => {
       next.push({
         pieceId: piece.id,
         label: piece.label,
-        w: canvas.width,
-        h: canvas.height,
-        url: canvas.toDataURL('image/png'),
+        w: shipped.width,
+        h: shipped.height,
+        url: shipped.toDataURL('image/png'),
         empty,
+        halo: region.halo,
         repeatsDiffering,
         repeatsTotal,
       });
@@ -295,7 +327,7 @@ export const PanelForgeImport: React.FC<Props> = ({ kit, assembly }) => {
       kitId: kit.id,
       kitName: kit.name,
       cutAt: new Date().toISOString(),
-      pieces: slices.map(s => ({ id: s.pieceId, w: s.w, h: s.h, empty: s.empty, png: s.url })),
+      pieces: slices.map(s => ({ id: s.pieceId, w: s.w, h: s.h, empty: s.empty, halo: s.halo, png: s.url })),
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
     const a = document.createElement('a');
