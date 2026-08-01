@@ -40,7 +40,6 @@ import { CommunityStats } from './CommunityStats';
 import { NextPuzzleCountdown } from './NextPuzzleCountdown';
 import { BugReportModal } from './BugReportModal';
 import type { TrackedRun } from '../../types/bugReport';
-import { BannerMesh } from './BannerMesh';
 import { GemMesh } from './GemMesh';
 import { ReplaySlabMesh } from './ReplaySlabMesh';
 
@@ -3152,16 +3151,39 @@ export const Game: React.FC<GameProps> = ({
                 where the old control panel sat. Not sticky; only the
                 portcullis rail above the board floats. */}
             {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
-              // z-20: above the board's z-10 so a bottom hallway's corridor
-              // overhang slides UNDER the banner, not over it (user call,
-              // 2026-07-16 — layering only, position untouched).
-              // px-5/6 (stepped down twice from 8/9, user calls 2026-08-01,
-              // chasing quest-wrap frequency): the cloth's ragged edge
-              // intrudes ~10-12px at phone widths, so 20px still clears it —
-              // this is the LAST safe step, don't go to px-4.
-              <div className="w-full max-w-2xl px-5 md:px-6 pt-3 pb-4 quest-banner relative z-20 overflow-visible mb-1">
-                {/* Low-poly stone banner behind the quest HUD (see BannerMesh) */}
-                <BannerMesh />
+              // THE QUEST BOX — rough shape of the user's design (2026-08-01,
+              // from their mock): a bordered plate-box replacing the hanging
+              // cloth banner; "QUEST" rides the top border fieldset-style
+              // with the (?) beside it (PROVISIONAL placement — the user
+              // hasn't decided where it lives). The box is destined to be a
+              // painted nine-slice (the parked panels-are-the-world
+              // direction); everything here is placeholder geometry.
+              // z-[45]: ABOVE the sticky rail's z-40 so the portcullis
+              // bars/spikes tuck BEHIND the box and read as stopping at its
+              // top edge on scroll (the design's point), still under the
+              // nav's z-50. Known rough edge: with the mobile menu open the
+              // riding bottom rung (z-40) can slip behind the box while the
+              // gate's z-50 beams paint over it — revisit if the design
+              // sticks. BannerMesh + .quest-banner CSS are intentionally
+              // left in the tree for an easy revert while this is explored.
+              // -mt-[3px]: tuned so the STOPPED rail's hanging spikes (the
+              // sticky range ends at the board container, so the portcullis
+              // bottoms out just above this box) overlap the box's 3px top
+              // border and visibly tuck behind it — the design's "portcullis
+              // stops at the top of the quest box".
+              <div className="w-full max-w-2xl relative z-[45] -mt-[3px] mb-1">
+                <div className="relative bg-stone-950/95 border-[3px] border-copper-700 rounded-pixel-md px-4 md:px-5 pt-3.5 pb-3 text-shadow-dungeon">
+                {/* The plate row on the border line (legend-style) */}
+                <div className="absolute -top-[13px] left-1/2 -translate-x-1/2 flex items-center gap-1.5">
+                  <span className="px-3 py-0.5 bg-stone-950 border-2 border-copper-700 rounded-pixel hud-label text-copper-300 whitespace-nowrap">Quest</span>
+                  <HelpButton
+                    sectionId="game_general"
+                    className="bg-stone-950 rounded-full"
+                    preamble={gameState.puzzle.questDescription?.trim()
+                      ? { title: 'About this Puzzle', text: gameState.puzzle.questDescription.trim() }
+                      : undefined}
+                  />
+                </div>
                 {/* Puzzle Number & Quest Row */}
                 {puzzleNumber && (
                   <div className="text-center mb-0.5">
@@ -3206,31 +3228,18 @@ export const Game: React.FC<GameProps> = ({
                         <span className="hidden md:inline">Log</span>
                       </button>
                     )}
-                    {/* The (?) and the quest are ONE inline text block
-                        (2026-08-01): the shimmer container is display:inline
-                        (see index.css), so a long quest flows on from
-                        "Quest:" and wrapped lines take the banner's full
-                        width, centered — the old flex group squeezed them
-                        into a narrow column beside the label. The inline (?)
-                        still can't be stranded by the outer row's flex-wrap,
-                        and mr-1 keeps it tight against "Quest:" (user call).
-                        min-w-0 lets the block shrink into the row. */}
-                    {/* [text-wrap:balance]: a quest that must wrap splits into
-                        even lines instead of one long line + an orphaned tail
-                        (progressive enhancement; NBSP name–count glue is the
-                        everywhere-guarantee). */}
+                    {/* The quest sentence alone — "Quest:" and the (?) both
+                        moved onto the box's border plate. The shimmer
+                        container stays inline so wrapped lines take the
+                        box's full width, centered; [text-wrap:balance]
+                        splits a wrapping quest into even lines (progressive
+                        enhancement; NBSP name–count glue is the
+                        everywhere-guarantee). min-w-0 lets the block shrink
+                        into the row. */}
                     <span className="min-w-0 text-center leading-snug [text-wrap:balance]">
-                    <HelpButton
-                      sectionId="game_general"
-                      className="inline-block align-middle mr-1"
-                      preamble={gameState.puzzle.questDescription?.trim()
-                        ? { title: 'About this Puzzle', text: gameState.puzzle.questDescription.trim() }
-                        : undefined}
-                    />
                     <span key={shimmerKey} className="shimmer-container">
                       {/* 13px on phones (was text-sm/14): the user accepted a
                           slight size cut to buy quest line capacity. */}
-                      <span className="text-base md:text-lg lg:text-xl font-semibold text-stone-400">Quest:</span>
                       <span className="text-[13px] md:text-base lg:text-lg text-copper-300 font-medium">
                       {gameState.puzzle.winConditions.map((wc) => {
                         // Quest text override (2026-07-21): authored text
@@ -3373,6 +3382,7 @@ export const Game: React.FC<GameProps> = ({
                     </div>
                   );
                 })()}
+                </div>
               </div>
             )}
 
@@ -3410,11 +3420,10 @@ export const Game: React.FC<GameProps> = ({
               </div>
             ) : (
               /* Heroes and Dungeon Details - dimmed during play/test */
-              // -mt-[9px]: pulls the HEROES row up under the banner's ragged
-              // hem, halving the quest-text-to-row gap (18px -> 9px measured;
-              // user call 2026-08-01). The overlap lands in the banner's
-              // transparent pb-4 zone; the cloth (z-20) stays on top.
-              <div className={`-mt-[9px] transition-opacity ${dimmedPanelClass} ${justExitedReplay ? 'animate-slide-up' : ''}`}>
+              // mt-1: the quest BOX has a hard opaque bottom edge (unlike the
+              // cloth's transparent hem the old -mt-[9px] pull-up tucked
+              // into), so the panel sits a small honest gap below it.
+              <div className={`mt-1 transition-opacity ${dimmedPanelClass} ${justExitedReplay ? 'animate-slide-up' : ''}`}>
                 {/* Character Selector - visible during setup, running, defeat, and test mode */}
                 {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
                   <CharacterSelector
