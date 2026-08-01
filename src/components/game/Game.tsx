@@ -67,7 +67,8 @@ function nobleQuestNames(gameState: GameState): string {
   }
   if (names.length === 0) return '';
   if (names.length === 1) return names[0];
-  return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+  // '&', not 'and' (user call 2026-08-01): banner width is scarce on phones.
+  return `${names.slice(0, -1).join(', ')} & ${names[names.length - 1]}`;
 }
 
 // Deep copy GameState while preserving Map/Set structures that JSON.stringify destroys.
@@ -3154,9 +3155,11 @@ export const Game: React.FC<GameProps> = ({
               // z-20: above the board's z-10 so a bottom hallway's corridor
               // overhang slides UNDER the banner, not over it (user call,
               // 2026-07-16 — layering only, position untouched).
-              // px-6/7 (was 8/9, user call 2026-08-01): tighter content-to-
-              // cloth-edge gap; still clear of the mesh's ragged edges.
-              <div className="w-full max-w-2xl px-6 md:px-7 pt-3 pb-4 quest-banner relative z-20 overflow-visible mb-1">
+              // px-5/6 (stepped down twice from 8/9, user calls 2026-08-01,
+              // chasing quest-wrap frequency): the cloth's ragged edge
+              // intrudes ~10-12px at phone widths, so 20px still clears it —
+              // this is the LAST safe step, don't go to px-4.
+              <div className="w-full max-w-2xl px-5 md:px-6 pt-3 pb-4 quest-banner relative z-20 overflow-visible mb-1">
                 {/* Low-poly stone banner behind the quest HUD (see BannerMesh) */}
                 <BannerMesh />
                 {/* Puzzle Number & Quest Row */}
@@ -3225,8 +3228,10 @@ export const Game: React.FC<GameProps> = ({
                         : undefined}
                     />
                     <span key={shimmerKey} className="shimmer-container">
+                      {/* 13px on phones (was text-sm/14): the user accepted a
+                          slight size cut to buy quest line capacity. */}
                       <span className="text-base md:text-lg lg:text-xl font-semibold text-stone-400">Quest:</span>
-                      <span className="text-sm md:text-base lg:text-lg text-copper-300 font-medium">
+                      <span className="text-[13px] md:text-base lg:text-lg text-copper-300 font-medium">
                       {gameState.puzzle.winConditions.map((wc) => {
                         // Quest text override (2026-07-21): authored text
                         // wins verbatim over every auto-phrased label.
@@ -3261,7 +3266,7 @@ export const Game: React.FC<GameProps> = ({
                             });
                             const list = parts.length === 1
                               ? parts[0]
-                              : `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`;
+                              : `${parts.slice(0, -1).join(', ')} & ${parts[parts.length - 1]}`;
                             return `Defeat ${list}`;
                           }
                           case 'defeat_boss': {
@@ -3320,7 +3325,7 @@ export const Game: React.FC<GameProps> = ({
                             if (escortNames.length === 0) return 'Guide them out of the Dungeon';
                             const joined = escortNames.length === 1
                               ? escortNames[0]
-                              : `${escortNames.slice(0, -1).join(', ')} and ${escortNames[escortNames.length - 1]}`;
+                              : `${escortNames.slice(0, -1).join(', ')} & ${escortNames[escortNames.length - 1]}`;
                             return `Guide ${joined} out of the Dungeon`;
                           }
                           case 'survive_turns':
