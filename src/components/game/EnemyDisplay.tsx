@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type { PlacedEnemy, EnemyBehavior, ActionStep } from '../../types/game';
 import { getEnemy } from '../../data/enemies';
 import { SpriteThumbnail } from '../editor/SpriteThumbnail';
@@ -150,30 +150,9 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- triggers intentional
   }, [uniqueEnemyIds.join(','), imageLoadTrigger]);
 
-  // Uniform name/title block height across the enemy row so HP/info/caret
-  // rows align vertically across cards. See CharacterSelector for rationale.
-  const nameBlockRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const [maxNameBlockHeight, setMaxNameBlockHeight] = useState(0);
-  useLayoutEffect(() => {
-    const measure = () => {
-      let max = 0;
-      for (const el of nameBlockRefs.current) {
-        if (!el) continue;
-        const h = el.offsetHeight;
-        if (h > max) max = h;
-      }
-      if (max > 0) {
-        setMaxNameBlockHeight(prev => (prev === max ? prev : max));
-      }
-    };
-    measure();
-    const observer = new ResizeObserver(measure);
-    for (const el of nameBlockRefs.current) {
-      if (el) observer.observe(el);
-    }
-    return () => observer.disconnect();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [uniqueEnemyIds.join(',')]);
+  // The measured name-block machinery is gone: the hero cards' fixed
+  // 38px name band (ported here 2026-08-01) keeps every card the same
+  // height by construction.
   const totalLiving = Array.from(enemyGroups.values()).reduce((sum, g) => sum + g.livingCount, 0);
 
   // Rendered enemy info
@@ -313,7 +292,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
         caretClass={isAllySide ? 'text-copper-400' : 'text-blood-400'}
       />
       <div className="flex divide-x divide-stone-700">
-        {stripEnemyIds.map((enemyId, enemyIndex) => {
+        {stripEnemyIds.map((enemyId) => {
           const enemyData = getEnemy(enemyId);
           if (!enemyData) return null;
 
@@ -330,15 +309,24 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
               : `Visits turn ${s.firstTurn}`
           )));
 
+          // Card layout matched to the hero cards (2026-08-01, user call):
+          // same fixed bands (sprite / 38px name+epithet / 14px stat line),
+          // same HUD registers, same real-<button> semantics — the two
+          // strips read as one design. Identity colors stay per side (blood
+          // names/badges/tints here, arcane on the hero strip); the stat
+          // line's furniture is the shared semantic vocabulary (copper
+          // labels, --hud-vital health).
           return (
-            <div
+            <button
               key={enemyId}
+              type="button"
+              aria-pressed={isSelected}
               onClick={() => {
                 if (!isEnemyHintDismissed()) dismissEnemyHint();
                 if (showTapHint) setShowTapHint(false);
                 setSelectedEnemyId(isSelected ? null : enemyId);
               }}
-              className={`flex-1 flex flex-col items-center px-1 pt-1 pb-1.5 relative transition-colors cursor-pointer ${
+              className={`flex-1 flex flex-col items-center px-1 pt-0.5 pb-2 relative transition-colors cursor-pointer ${
                 isSelected
                   // Flat tint matching the info panel's wash — one surface;
                   // transition-colors crossfades it between cards (the tint
@@ -367,40 +355,42 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
                 )}
               </div>
 
-              {/* Name + Title (below sprite). Shared minHeight across the
-                  row aligns HP/info/caret rows below across cards; see
-                  CharacterSelector for full rationale. */}
-              <div
-                ref={(el) => { nameBlockRefs.current[enemyIndex] = el; }}
-                className="text-center w-full mt-0.5 mb-0.5"
-                style={{ minHeight: maxNameBlockHeight || undefined }}
-              >
-                <div className="text-[12px] font-medium break-words text-blood-300 leading-none">
+              {/* NAME + epithet — the hero cards' fixed 38px box, one
+                  clamped line each, full text in `title`. */}
+              <div className="w-full h-[38px] flex flex-col items-center justify-center overflow-hidden leading-none">
+                <span
+                  className="hud-title text-blood-300 text-center break-words line-clamp-1"
+                  title={enemyData.title ? `${enemyData.name} — ${enemyData.title}` : enemyData.name}
+                >
                   {enemyData.name}
-                </div>
+                </span>
                 {enemyData.title && (
-                  <div className="text-[10px] italic text-parchment-300 leading-none mt-0.5">
+                  <span className="mt-0.5 text-[10px] italic text-parchment-300/90 text-center line-clamp-1">
                     {enemyData.title}
-                  </div>
+                  </span>
                 )}
               </div>
 
-              {/* HP + movement */}
-              <div className="flex items-center justify-center mt-0.5 w-full">
-                <div className="flex items-center gap-0.5 pr-1.5 border-r border-stone-600">
-                  <span className="text-xs font-medium text-blood-300">HP:</span>
-                  <span className="text-xs font-bold text-blood-400">{enemyData.health}</span>
+              {/* STAT LINE — the hero cards' 14px row: no divider rule, a
+                  real 12px gap; HP label + tabular value in the semantic
+                  colors. */}
+              <div className="flex items-center justify-center gap-3 w-full h-[14px]">
+                <div className="flex items-center gap-1">
+                  <span className="hud-label text-copper-400">HP</span>
+                  <span className="hud-num" style={{ color: 'var(--hud-vital)' }}>
+                    {enemyData.health}
+                  </span>
                 </div>
-                <div className="flex items-center gap-1 pl-1.5 text-blood-300">
+                <div className="flex items-center gap-1 text-copper-400">
                   {moveInfo && enemyData.behavior?.defaultFacing ? (
                     <>
                       {moveInfo.tilesPerMove > 1 && (
-                        <span className="text-xs font-medium">{moveInfo.tilesPerMove}</span>
+                        <span className="hud-num">{moveInfo.tilesPerMove}</span>
                       )}
-                      <MovementArrow direction={enemyData.behavior.defaultFacing} className="text-blood-300" size={13} />
+                      <MovementArrow direction={enemyData.behavior.defaultFacing} className="text-copper-400" size={13} />
                     </>
                   ) : (
-                    <span className="text-xs text-stone-500">—</span>
+                    <span className="hud-num text-stone-400">—</span>
                   )}
                 </div>
               </div>
@@ -415,7 +405,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
               {/* No per-card "more info" affordance — mirrors the hero
                   strip: the first tap teaches that cards open; the selected
                   amber caret rides the SlidingSelection overlay. */}
-            </div>
+            </button>
           );
         })}
       </div>
@@ -444,9 +434,11 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
             {(hasActionSteps || hasAttributes) && (
               <div className={`flex mb-2 px-2 ${hasActionSteps && hasAttributes ? 'gap-0' : 'justify-center'}`}>
                 {hasActionSteps && (
-                  <div className={`${hasAttributes ? 'flex-1 pr-2' : 'w-full'}`}>
-                    <p className="text-xs font-semibold text-stone-500 uppercase tracking-wide mb-1 text-center">Actions</p>
-                    <ol className="text-xs lg:text-sm text-stone-300 space-y-1 pl-2">
+                  <div className={`${hasAttributes ? 'flex-1 min-w-0 pr-2' : 'w-full'}`}>
+                    {/* Drawer typography = the hero drawer's HUD ramp
+                        (2026-08-01): hud-label headers, hud-body copy. */}
+                    <p className="hud-label text-stone-400 mb-1 text-center">Actions</p>
+                    <ol className="hud-body text-stone-300 space-y-1 pl-2">
                       {actionSteps.map((step, idx) => (
                         <li key={idx} className="flex items-baseline gap-1">
                           <span className="font-semibold text-stone-400 flex-shrink-0">{idx + 1}.</span>
@@ -472,9 +464,9 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
                   <div className="self-stretch mx-2 flex-shrink-0 border-l border-dashed border-stone-600/40" />
                 )}
                 {hasAttributes && (
-                  <div className={`${hasActionSteps ? 'flex-1 pl-2' : 'w-full'}`}>
-                    <p className="text-xs font-semibold text-stone-500 uppercase tracking-wide mb-1 text-center">Attributes</p>
-                    <ul className="text-xs lg:text-sm text-stone-300 space-y-1">
+                  <div className={`${hasActionSteps ? 'flex-1 min-w-0 pl-2' : 'w-full'}`}>
+                    <p className="hud-label text-stone-400 mb-1 text-center">Attributes</p>
+                    <ul className="hud-body text-stone-300 space-y-1">
                       {renderedEnemyData.attributes!.map((attr, idx) => (
                         <li key={idx}>
                           <div className="flex items-baseline gap-1">
@@ -495,7 +487,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
               </div>
             )}
             {!hasActionSteps && !hasAttributes && (
-              <p className="text-xs text-stone-500 text-center mb-3 italic">No additional info.</p>
+              <p className="hud-body text-stone-500 text-center mb-3 italic">No additional info.</p>
             )}
           </div>
         </div>
