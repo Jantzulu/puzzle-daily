@@ -153,6 +153,19 @@ const DEFAULT_KITS: KitSpec[] = [
     pieces: nineSlice(12, 12, 24),
   },
   {
+    id: 'quest-box',
+    name: 'Quest Box',
+    builtIn: true,
+    description:
+      'The quest panel under the board (the 2026-08-01 plate-box design, currently placeholder CSS in Game.tsx). Capped nine-slice — finished edge ends, so ornament survives ANY width or height — plus the QUEST title plate as its own 3-slice riding the top border. In the game the plate STRADDLES the border line (about 60% above it), so paint it as a finished object on all four sides; the sample gives it a separate band only so the cut is clean. The divider is the side-quests rule. Periods match the other kits (mid 24, cap = corner 12) so motifs transfer.',
+    pieces: [
+      ...nineSliceCapped(12, 12, 12, 24, 24),
+      { id: 'plate-cap-l', label: 'Plate Cap L', w: 6, h: 14, repeat: 'fixed', notes: 'Finished left end of the QUEST plate — it straddles the box border in-game, so give it a complete outline.' },
+      { id: 'plate-mid', label: 'Plate Middle', w: 12, h: 14, repeat: 'tile-x', notes: 'Repeats behind the plate label so the plate hugs any text length. The label itself stays DOM text.' },
+      { id: 'plate-cap-r', label: 'Plate Cap R', w: 6, h: 14, repeat: 'fixed' },
+    ],
+  },
+  {
     id: 'portcullis-gate',
     name: 'Portcullis Gate (bars)',
     builtIn: true,
@@ -218,7 +231,8 @@ const STORAGE_KEY = 'panel_forge_kits_v1';
 // plain kit's and its sample is not the smaller canvas. Without the bump the
 // stored copy of a built-in silently wins over the code, and a sizing change
 // looks like it simply did not apply.
-const DEFAULTS_VERSION = 4;
+// v5: Quest Box kit added (capped nine-slice + QUEST plate 3-slice).
+const DEFAULTS_VERSION = 5;
 
 function loadKits(): KitSpec[] {
   try {
@@ -470,11 +484,13 @@ export interface Assembly {
   height: number;
 }
 
-type KitFamily = 'nine-slice' | 'nine-slice-capped' | 'gate' | 'rail' | 'nav-gate' | 'gem' | 'buttons';
+type KitFamily = 'nine-slice' | 'nine-slice-capped' | 'quest-box' | 'gate' | 'rail' | 'nav-gate' | 'gem' | 'buttons';
 
 function kitFamily(kit: KitSpec): KitFamily | null {
   const ids = new Set(kit.pieces.map(p => p.id));
-  // Capped must be tested BEFORE plain nine-slice: it also has corners.
+  // Quest box before capped (it contains the capped anatomy plus a plate);
+  // capped before plain nine-slice (it also has corners).
+  if (ids.has('plate-mid')) return 'quest-box';
   if (ids.has('edge-top-cap-l')) return 'nine-slice-capped';
   if (ids.has('corner-tl')) return 'nine-slice';
   if (ids.has('bar-segment')) return 'gate';
@@ -611,6 +627,39 @@ function assembleNineSliceCapped(kit: KitSpec): Assembly | null {
   }
 
   return { regions, width: W, height: H };
+}
+
+/**
+ * The quest box: the capped nine-slice sample with a PLATE BAND above it.
+ * In the game the QUEST plate straddles the box's top border; in the sample
+ * the plate gets its own band with a 2px seam so the artist paints it as a
+ * separate object and the slicer cuts it cleanly — overlap is a RENDER
+ * concern (PanelNineSlice composites the straddle), not a painting one.
+ */
+function assembleQuestBox(kit: KitSpec): Assembly | null {
+  const base = assembleNineSliceCapped(kit);
+  if (!base) return null;
+  const P = (id: string) => kit.pieces.find(p => p.id === id);
+  const pl = P('plate-cap-l');
+  const pm = P('plate-mid');
+  const pr = P('plate-cap-r');
+  if (!pl || !pm || !pr) return base;
+
+  const bandH = Math.max(pl.h, pm.h, pr.h) + 2;
+  const regions = base.regions.map(r => ({ ...r, y: r.y + bandH }));
+
+  const MIDS = 2; // sample shows one seam; only the first period is cut
+  const plateW = pl.w + pm.w * MIDS + pr.w;
+  let x = Math.round((base.width - plateW) / 2);
+  regions.push({ pieceId: 'plate-cap-l', x, y: 0, w: pl.w, h: pl.h, rep: 0 });
+  x += pl.w;
+  for (let i = 0; i < MIDS; i++) {
+    regions.push({ pieceId: 'plate-mid', x, y: 0, w: pm.w, h: pm.h, rep: i });
+    x += pm.w;
+  }
+  regions.push({ pieceId: 'plate-cap-r', x, y: 0, w: pr.w, h: pr.h, rep: 0 });
+
+  return { regions, width: base.width, height: base.height + bandH };
 }
 
 function assembleGate(kit: KitSpec): Assembly | null {
@@ -779,6 +828,7 @@ export function assembleKit(kit: KitSpec): Assembly | null {
   switch (kitFamily(kit)) {
     case 'nine-slice': return assembleNineSlice(kit);
     case 'nine-slice-capped': return assembleNineSliceCapped(kit);
+    case 'quest-box': return assembleQuestBox(kit);
     case 'gate': return assembleGate(kit);
     case 'rail': return assembleRail(kit);
     case 'nav-gate': return assembleNavGate(kit);

@@ -64,6 +64,10 @@ interface Props {
   showSeams?: boolean;
 }
 
+// Ground padding around the panel — also the headroom the quest plate's
+// straddle pokes into (it must stay >= plateH * 0.6 at the largest zoom).
+const GROUND_PAD = 16;
+
 const byId = (pieces: NineSlicePiece[]) => {
   const map: Record<string, NineSlicePiece> = {};
   for (const p of pieces) if (!p.empty) map[p.pieceId] = p;
@@ -166,6 +170,26 @@ export const PanelNineSlice: React.FC<Props> = ({ pieces, zoom, width, height, s
 
   const anyArt = layers.some(Boolean);
 
+  // ---- the quest box's title plate ----------------------------------------
+  // Rides the top border, centered, straddling it ~60% above (the live CSS
+  // rough shape's geometry). Drawn OUTSIDE the overflow-clipped panel box —
+  // the straddle pokes above the top edge by design — so it lives on the
+  // ground wrapper instead. Detected per-piece like the caps: any kit
+  // without plate pieces renders exactly as before.
+  const plateL = p['plate-cap-l'];
+  const plateM = p['plate-mid'];
+  const plateR = p['plate-cap-r'];
+  const hasPlate = !!plateM;
+  const plateH = (plateM?.h ?? plateL?.h ?? 0) * zoom;
+  const PLATE_MIDS = 2;
+  const plateW = ((plateL?.w ?? 0) + (plateM?.w ?? 0) * PLATE_MIDS + (plateR?.w ?? 0)) * zoom;
+  // The straddle can exceed the base padding at high zoom (14 art px * 4 *
+  // 0.6 = 34px against 16) — the ground's top padding grows to hold it.
+  const straddle = Math.round(plateH * 0.6);
+  const groundPadTop = hasPlate ? Math.max(GROUND_PAD, straddle + 2) : GROUND_PAD;
+  const plateLeft = GROUND_PAD + Math.round((width - plateW) / 2);
+  const plateTop = groundPadTop - straddle;
+
   // ---- where the periods actually land -----------------------------------
   // A tiling run is only honest about itself at sizes where it happens to fit
   // a whole number of periods. Everywhere else the last tile is chopped, and
@@ -203,7 +227,7 @@ export const PanelNineSlice: React.FC<Props> = ({ pieces, zoom, width, height, s
   };
 
   return (
-    <div style={{ background: ground, padding: 16, borderRadius: 2 }}>
+    <div style={{ background: ground, padding: GROUND_PAD, paddingTop: groundPadTop, borderRadius: 2, position: 'relative' }}>
       <div style={{ position: 'relative', width, height, overflow: 'hidden' }}>
         {layers.map((s, i) => (s ? <div key={i} aria-hidden style={s} /> : null))}
 
@@ -239,6 +263,7 @@ export const PanelNineSlice: React.FC<Props> = ({ pieces, zoom, width, height, s
           </>
         )}
 
+        {/* (plate renders outside this clipped box — see below) */}
         {showContent && (
           // Sample content at the game's own scale. Deliberately the WORST
           // case the hero drawer produces: a numbered list and a bullet list
@@ -273,6 +298,18 @@ export const PanelNineSlice: React.FC<Props> = ({ pieces, zoom, width, height, s
           </div>
         )}
       </div>
+
+      {/* THE QUEST PLATE — composited over the top border, centered, poking
+          into the ground padding. Drawn after (over) the panel box. */}
+      {hasPlate && (
+        <div aria-hidden style={{ position: 'absolute', left: plateLeft, top: plateTop, width: plateW, height: plateH }}>
+          {[
+            layer(plateM, zoom, 'repeat-x', { left: (plateL?.w ?? 0) * zoom, right: (plateR?.w ?? 0) * zoom, top: 0, height: plateH }),
+            layer(plateL, zoom, 'no-repeat', { left: 0, top: 0, width: (plateL?.w ?? 0) * zoom, height: plateH }),
+            layer(plateR, zoom, 'no-repeat', { right: 0, top: 0, width: (plateR?.w ?? 0) * zoom, height: plateH }),
+          ].map((s, i) => (s ? <div key={`plate${i}`} style={s} /> : null))}
+        </div>
+      )}
 
       {showSeams && (
         <div className="mt-2 text-[11px] text-stone-300 space-y-0.5 font-mono">
