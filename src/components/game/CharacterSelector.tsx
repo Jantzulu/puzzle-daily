@@ -594,13 +594,15 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
         </div>
       )}
 
-      {/* Placement hint — statically sized (min-h reserves the line) so the
-          text swap never moves the panel below. */}
+      {/* Hint line — statically sized (min-h reserves the line) so the text
+          swap never moves the panel below. The PLACEMENT half of this line
+          moved onto the board itself ("Tap the dungeon to place your hero"
+          floats over the bottom tiles — see Game.tsx), so this row no longer
+          double-announces it; it only invites selection when nothing is
+          selected. */}
       {!disabled && (
         <div className="mt-1.5 text-sm font-medium text-center min-h-[20px]">
-          {isAtMaxPlaced ? null : selectedCharacterId && !placedCharacterIds.includes(selectedCharacterId) ? (
-            <span className="text-copper-400">Click on the dungeon to place your hero</span>
-          ) : (
+          {isAtMaxPlaced || (selectedCharacterId && !placedCharacterIds.includes(selectedCharacterId)) ? null : (
             <span className="text-stone-500">Select a hero for details</span>
           )}
         </div>

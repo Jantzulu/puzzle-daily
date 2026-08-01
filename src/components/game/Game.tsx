@@ -2650,6 +2650,27 @@ export const Game: React.FC<GameProps> = ({
                 </div>
               )}
 
+              {/* Placement prompt — ported from the experiment at the user's
+                  request (2026-07-31): the instruction floats over the board's
+                  bottom edge, where the player's eyes already are, instead of
+                  living in a reserved line under the hero panel (that line now
+                  only says "Select a hero for details" when nothing is
+                  selected — see CharacterSelector). Same overlay grammar as
+                  the loading rune and the sprite-failure pill.
+                  pointer-events-none is MANDATORY: it floats over the bottom
+                  rows of placement tiles and must never eat a tile tap. */}
+              {(() => {
+                if (testMode !== 'none' || gameState.gameStatus !== 'setup' || !selectedCharacterId) return null;
+                if (gameState.placedCharacters.some(c => c.characterId === selectedCharacterId)) return null;
+                const maxPlaceable = gameState.puzzle.maxPlaceableCharacters ?? gameState.puzzle.maxCharacters;
+                if (maxPlaceable != null && gameState.placedCharacters.length >= maxPlaceable) return null;
+                return (
+                  <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-20 px-3 py-1 rounded-pixel bg-stone-900/85 border border-copper-700 hud-label text-copper-300 whitespace-nowrap pointer-events-none">
+                    Tap the dungeon to place your hero
+                  </div>
+                );
+              })()}
+
 
               {/* Game Over Overlay — dismissible (matches Victory pattern) */}
               {showGameOver && !defeatDismissed && !replayMode && !enteringReplay && !outcomeOverlayHeld && (

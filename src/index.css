@@ -2716,6 +2716,49 @@ body.menu-gate-instant .quest-panel-sticky {
 }
 
 /* ============================================
+   HUD TYPE RAMP — ported from the experiment at the user's request
+   (2026-07-31): "the way the fonts look under each element", EXPLICITLY
+   MINUS the section titles — 'Heroes'/'Enemies' keep their classic
+   carved-header medieval look, so `.hud-display` (the ramp's top step) is
+   deliberately NOT ported. Four steps, used for element furniture and copy:
+
+     .hud-title  15/17 600            hero and enemy names on cards
+     .hud-body   13/18 400            action and trait copy
+     .hud-label  11/13 600 UPPERCASE  furniture: 'HP', 'ACTIONS', chips
+     .hud-num    13/13 700 tabular    stat values (no reflow when HP ticks)
+
+   Small-but-uppercase is what makes 11px legitimate for labels: tracked
+   caps never carry content. Scoped under .theme-root like the rest of the
+   type system.
+   ============================================ */
+.theme-root .hud-title {
+  font-size: 15px;
+  line-height: 17px;
+  font-weight: 600;
+}
+
+.theme-root .hud-body {
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 400;
+}
+
+.theme-root .hud-label {
+  font-size: 11px;
+  line-height: 13px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.theme-root .hud-num {
+  font-size: 13px;
+  line-height: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ============================================
    .hit-44 — TAP-TARGET SLOP (WCAG 2.5.8 / iOS 44pt / Android 48dp)
    An invisible, absolutely-positioned ::after centred on the control, grown
    to at least 44x44 WITHOUT changing the control's paint or the layout around
