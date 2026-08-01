@@ -8,7 +8,7 @@ import { RichTextRenderer } from '../editor/RichTextEditor';
 import { attributeText, attributeSubItems } from '../../utils/attributeShape';
 import { HelpButton } from './HelpOverlay';
 import { MovementArrow } from './DirectionArrow';
-import { DirectionPicker, CompassArrow, type DirectionPickerEntry } from './DirectionPicker';
+import { DirectionPicker, CompassArrow, BEARING_INITIALS, type DirectionPickerEntry } from './DirectionPicker';
 import type { ThemeAssets } from '../../utils/themeAssets';
 import { CARD_PIXEL_SCALE, computeCardSpriteAreaHeight } from './cardConstants';
 import { SlidingSelection } from './SlidingSelection';
@@ -196,20 +196,27 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
           {isSet ? (
             <>
               <CompassArrow direction={entry.current!} size={16} />
-              {/* No `capitalize`: the bearing is a HUD value and the whole
-                  ramp (.hud-label) is uppercase — the picker's readout says
-                  NORTHWEST, so the pill must not say Northwest. */}
-              <span>{entry.current}</span>
+              {/* Compass INITIALS (84px-column round): NORTHWEST cannot fit
+                  the narrow pill in a themed face at any legible size, and
+                  the arrow already carries the bearing — the letters
+                  confirm it. Full word in `title` + the picker's readout. */}
+              <span title={entry.current}>{BEARING_INITIALS[entry.current!] ?? entry.current}</span>
             </>
           ) : (
             <>
               {/* Opacity-only pulse (hud-breathe) — the pinned decoration
                   rule forbids animating filters, shadows or geometry. */}
               <span className="w-1.5 h-1.5 rounded-full bg-parchment-100 hud-breathe" aria-hidden="true" />
-              <span>Choose</span>
+              {/* "Pick", not "Choose" (84px-column round): the same word the
+                  card's blocking chip uses for the same state — and CHOOSE
+                  overflowed the narrow pill by 16px. */}
+              <span>Pick</span>
             </>
           )}
-          {canPick && (
+          {/* Chevron on the UNSET state only (84px-column round): the loud
+              CHOOSE pill keeps its tap affordance; the quiet set state
+              yields those 12px so ARROW + NORTHWEST fits the column. */}
+          {canPick && !isSet && (
             <svg width="8" height="12" viewBox="0 0 8 12" aria-hidden="true" className="opacity-60">
               <path d="M2 1L6.5 6L2 11" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="square" />
             </svg>
@@ -572,19 +579,20 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                   whose 56px cells are why the 17px in-panel compass could
                   retire. */}
               {hasDirectionInputs && (
-                // Sized by CONTENT, not a fixed 132px (user call, 2026-08-01
-                // mobile test: "the button only as wide as the title of the
-                // column"): the caption is the widest static child, so the
-                // w-full pill matches it. maxWidth guards against a wordy
-                // custom spell caption eating the text columns.
-                <div className="flex-shrink-0 px-1" style={{ maxWidth: '132px' }}>
+                // 84px HARD (user call round 2, 2026-08-01: "shrink even
+                // further, even if FACING DIRECTION wraps to two lines") —
+                // real action/attribute sentences were wrapping 6 deep while
+                // this column held one short pill. 84 = the SET pill's floor
+                // (arrow + NORTHWEST at 10px, chevron dropped in that
+                // state); captions wrap freely above it.
+                <div className="flex-shrink-0 px-1" style={{ width: '84px' }}>
                   <p className="hud-label text-stone-400 mb-1 text-center">Directions</p>
                   {directionInputEntries.map(entry => (
                     <div key={entry.key} className="mb-1.5 last:mb-0">
                       {/* 10px (inline — .theme-root .hud-label's 11px outranks
                           utilities): the size cut that pays for the narrower
                           column, caption and pill text together. */}
-                      <p className="hud-label text-arcane-300 text-center mb-1 leading-tight whitespace-nowrap" style={{ fontSize: '10px' }}>{entry.caption}</p>
+                      <p className="hud-label text-arcane-300 text-center mb-1 leading-tight" style={{ fontSize: '10px' }}>{entry.caption}</p>
                       {renderOrderPill(entry)}
                     </div>
                   ))}

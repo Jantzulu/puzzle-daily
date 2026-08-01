@@ -92,6 +92,16 @@ const SPRITE_DIR: Record<string, SpriteDirection> = {
   south: 's', southwest: 'sw', west: 'w', northwest: 'nw',
 };
 
+/**
+ * Compass initials for compact readouts (the order pill's 84px column can't
+ * hold NORTHWEST in a themed face at any legible size). The full bearing
+ * stays in this picker's cap row and in aria labels.
+ */
+export const BEARING_INITIALS: Record<string, string> = {
+  north: 'N', northeast: 'NE', east: 'E', southeast: 'SE',
+  south: 'S', southwest: 'SW', west: 'W', northwest: 'NW',
+};
+
 interface DirectionPickerProps {
   /** The entry being aimed, or null when the picker is closed. */
   entry: DirectionPickerEntry | null;
