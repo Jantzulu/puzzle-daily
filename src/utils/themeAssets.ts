@@ -40,6 +40,7 @@ export interface ThemeAssets {
   siteSubtitleColor?: string; // Subtitle text color
   siteSubtitleSize?: string; // Subtitle font size (small, medium, large)
   siteSubtitleFont?: string; // Subtitle font family (own knob — unset follows the heading font)
+  siteSubtitleBold?: boolean; // Render the subtitle bold
   browserTabTitle?: string; // Browser tab title for the dev/creator app
   playerBrowserTabTitle?: string; // Browser tab title for the player-facing app
   favicon?: string; // Favicon image URL or data URL for browser tab icon
@@ -212,6 +213,7 @@ export const THEME_ASSET_CONFIG: Record<ThemeAssetKey, { label: string; descript
   siteSubtitleColor: { label: 'Subtitle Color', description: 'Color for the subtitle text', category: 'branding', inputType: 'color' },
   siteSubtitleSize: { label: 'Subtitle Size', description: 'Font size for the subtitle (small, medium, large)', category: 'branding', inputType: 'select' },
   siteSubtitleFont: { label: 'Subtitle Font', description: 'Font for the subtitle text (unset follows the heading font)', category: 'branding', inputType: 'select' },
+  siteSubtitleBold: { label: 'Bold Subtitle', description: 'Render the subtitle in bold', category: 'branding', inputType: 'toggle' },
   browserTabTitle: { label: 'Dev App Tab Title', description: 'Browser tab name for the dev/creator app (default: "Puzzle Daily")', category: 'branding', inputType: 'text' },
   playerBrowserTabTitle: { label: 'Player App Tab Title', description: 'Browser tab name for the player-facing app (default: "Puzzle Daily")', category: 'branding', inputType: 'text' },
   favicon: { label: 'Favicon', description: 'Browser tab icon. Upload a small square image (32x32 or 64x64 recommended).', category: 'branding', inputType: 'image' },

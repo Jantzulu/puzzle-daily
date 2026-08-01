@@ -452,6 +452,9 @@ function Navigation() {
                 className="nav-subtitle text-shadow-dungeon"
                 style={{
                   color: themeAssets.siteSubtitleColor || 'rgba(212, 165, 116, 0.8)',
+                  // Stored toggles arrive as boolean or 'true' depending on
+                  // the writer (same both-forms check as bgPreviewTile).
+                  fontWeight: (themeAssets.siteSubtitleBold === true || String(themeAssets.siteSubtitleBold) === 'true') ? 700 : undefined,
                   fontSize: (() => {
                     const sizeMap: Record<string, string> = {
                       'x-small': '0.65rem',

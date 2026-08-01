@@ -338,6 +338,8 @@ function PlayerNavigation() {
                 className="nav-subtitle text-shadow-dungeon"
                 style={{
                   color: themeAssets.siteSubtitleColor || 'rgba(212, 165, 116, 0.8)',
+                  // Same both-forms toggle check as App.tsx / bgPreviewTile.
+                  fontWeight: (themeAssets.siteSubtitleBold === true || String(themeAssets.siteSubtitleBold) === 'true') ? 700 : undefined,
                   fontSize: (() => {
                     const sizeMap: Record<string, string> = {
                       'x-small': '0.65rem',
