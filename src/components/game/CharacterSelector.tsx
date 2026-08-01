@@ -8,6 +8,7 @@ import { RichTextRenderer } from '../editor/RichTextEditor';
 import { attributeText, attributeSubItems } from '../../utils/attributeShape';
 import { HelpButton } from './HelpOverlay';
 import { MovementArrow } from './DirectionArrow';
+import { DirectionPicker, CompassArrow, type DirectionPickerEntry } from './DirectionPicker';
 import type { ThemeAssets } from '../../utils/themeAssets';
 import { CARD_PIXEL_SCALE, computeCardSpriteAreaHeight } from './cardConstants';
 import { SlidingSelection } from './SlidingSelection';
@@ -23,30 +24,9 @@ function getMovementInfo(behavior: CharacterAction[]) {
   return moveAction ? { tilesPerMove: moveAction.tilesPerMove || 1 } : null;
 }
 
-// SVG arrow component for consistent rendering across platforms
-const CompassArrow: React.FC<{ direction: string; size?: number; className?: string }> = ({ direction, size = 10, className = '' }) => {
-  const rotations: Record<string, number> = {
-    north: 0, northeast: 45, east: 90, southeast: 135,
-    south: 180, southwest: 225, west: 270, northwest: 315,
-  };
-  const rotation = rotations[direction] ?? 0;
-  return (
-    <svg width={size} height={size} viewBox="0 0 10 10" className={className} style={{ transform: `rotate(${rotation}deg)` }}>
-      <path d="M5 1L8 7H2Z" fill="currentColor" />
-    </svg>
-  );
-};
-
-const COMPASS_DIRS: { value: Direction; dir: string }[] = [
-  { value: 'northwest' as Direction, dir: 'northwest' },
-  { value: 'north' as Direction, dir: 'north' },
-  { value: 'northeast' as Direction, dir: 'northeast' },
-  { value: 'west' as Direction, dir: 'west' },
-  { value: 'east' as Direction, dir: 'east' },
-  { value: 'southwest' as Direction, dir: 'southwest' },
-  { value: 'south' as Direction, dir: 'south' },
-  { value: 'southeast' as Direction, dir: 'southeast' },
-];
+// The compass glyph lives with the picker that owns the compass
+// (DirectionPicker.tsx) — the orders pill's "you chose north-east" readout
+// and the picker's cells must never drift apart, so both import one arrow.
 
 interface CharacterSelectorProps {
   availableCharacterIds: string[];
@@ -154,17 +134,21 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
 
   const placedSelectedChar = placedCharacters.find(pc => pc.characterId === renderedCharId);
 
-  // The CHOOSE column's entries — starting facing first, then each
+  // Which order the player is currently aiming, if any. Held as a KEY, not
+  // as the entry object: the entries are rebuilt on every render, so an
+  // object here would re-latch the picker's open animation on every update.
+  const [pickerKey, setPickerKey] = useState<string | null>(null);
+
+  // Changing hero (or closing the panel) closes the picker. The sheet
+  // belongs to ONE order on ONE hero, and a stale sheet would write the new
+  // hero's facing from the old hero's rose.
+  useEffect(() => { setPickerKey(null); }, [renderedCharId]);
+
+  // The Directions column's entries — starting facing first, then each
   // direction-input spell. `current` stays undefined until the player has
   // actually picked (no phantom default: the engine has no fallback to
   // display, placement is gated on every entry being chosen).
-  const directionInputEntries: Array<{
-    key: string;
-    caption: string;
-    current?: Direction;
-    allowed: Direction[];
-    onPick?: (d: Direction) => void;
-  }> = [
+  const directionInputEntries: DirectionPickerEntry[] = [
     ...(hasFacingInput && renderedCharacter ? [{
       key: '__facing',
       caption: FACING_CAPTION,
@@ -187,6 +171,61 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
         : undefined,
     })),
   ];
+
+  const activePickerEntry = pickerKey
+    ? directionInputEntries.find(e => e.key === pickerKey) ?? null
+    : null;
+
+  // The order pill: caption lives above it in the column, so the pill only
+  // carries the value. Loud when unset (the one thing blocking placement),
+  // quiet once chosen; read-only renders the same plate without the button
+  // role. States are .hero-order--open / --done in index.css.
+  const renderOrderPill = (entry: DirectionPickerEntry) => {
+    const isSet = !!entry.current;
+    const canPick = !disabled && !!entry.onPick;
+    const className = `hero-order ${isSet ? 'hero-order--done' : 'hero-order--open'} hud-label w-full h-11 px-2 justify-center flex items-center gap-2 rounded-pixel border transition-colors`;
+    const body = (
+      <>
+        <span className="flex items-center gap-1.5 flex-shrink-0">
+          {isSet ? (
+            <>
+              <CompassArrow direction={entry.current!} size={16} />
+              {/* No `capitalize`: the bearing is a HUD value and the whole
+                  ramp (.hud-label) is uppercase — the picker's readout says
+                  NORTHWEST, so the pill must not say Northwest. */}
+              <span>{entry.current}</span>
+            </>
+          ) : (
+            <>
+              {/* Opacity-only pulse (hud-breathe) — the pinned decoration
+                  rule forbids animating filters, shadows or geometry. */}
+              <span className="w-1.5 h-1.5 rounded-full bg-parchment-100 hud-breathe" aria-hidden="true" />
+              <span>Choose</span>
+            </>
+          )}
+          {canPick && (
+            <svg width="8" height="12" viewBox="0 0 8 12" aria-hidden="true" className="opacity-60">
+              <path d="M2 1L6.5 6L2 11" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="square" />
+            </svg>
+          )}
+        </span>
+      </>
+    );
+    if (!canPick) {
+      return <div className={className}>{body}</div>;
+    }
+    return (
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); setPickerKey(entry.key); }}
+        className={className}
+        aria-haspopup="dialog"
+        aria-expanded={pickerKey === entry.key}
+      >
+        {body}
+      </button>
+    );
+  };
 
   // Slot list for the strip + sliding selection overlay: only ids that
   // resolve to real characters render cards, so the overlay's slot math
@@ -457,8 +496,15 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
             : 'grid-template-rows 0.28s ease-in',
         }}>
         <div style={{ overflow: 'hidden', minHeight: 0 }}>
+        {/* THE DRAWER — bounded info region (ported 2026-07-31, classic
+            skin kept). `.hero-drawer` puts a max-height CEILING on the
+            region and `.hero-drawer__brief` scrolls internally, so a wordy
+            hero reads as a short scroll instead of page growth. Layout is
+            the classic three columns with dashed dividers; the Directions
+            column carries the new order pill, which opens the 56px picker
+            sheet ("keep the direction selector looking the same"). */}
         <div
-          className="pt-2.5 pb-3 mt-0 bg-copper-900/15 rounded-b-pixel-md"
+          className="hero-drawer pt-2.5 pb-0 mt-0 bg-copper-900/15 rounded-b-pixel-md"
           style={{
             opacity: isOpen ? 1 : 0,
             transform: isOpen ? 'translateY(0)' : 'translateY(-8px)',
@@ -467,16 +513,12 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
               : 'opacity 0.2s ease-in, transform 0.3s ease-in',
           }}
         >
-
-          {/* Actions | Choose | Attributes — the text columns split the
-              remaining space; the CHOOSE column (present only when this hero
-              has player direction input) is fixed-width and sandwiched
-              between them. A lone column renders full-width centered. */}
+          <div className="hero-drawer__brief">
           <div className={`flex mb-2 px-2 ${[hasActionSteps, hasDirectionInputs, hasAttributes].filter(Boolean).length === 1 ? 'justify-center' : 'gap-0'}`}>
               {hasActionSteps && (
-                <div className={`${hasAttributes || hasDirectionInputs ? 'flex-1 pr-2' : 'w-full'}`}>
-                  <p className="text-xs font-semibold text-stone-500 uppercase tracking-wide mb-1 text-center">Actions</p>
-                  <ol className="text-xs lg:text-sm text-stone-300 space-y-1 pl-2">
+                <div className={`${hasAttributes || hasDirectionInputs ? 'flex-1 min-w-0 pr-2' : 'w-full'}`}>
+                  <p className="hud-label text-stone-400 mb-1 text-center">Actions</p>
+                  <ol className="hud-body text-stone-300 space-y-1 pl-2">
                     {renderedCharacter.actionSteps!.map((step, idx) => (
                       <li key={idx} className="flex items-baseline gap-1">
                         <span className="font-semibold text-stone-400 flex-shrink-0">{idx + 1}.</span>
@@ -502,71 +544,21 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                 <div className="self-stretch mx-2 flex-shrink-0 border-l border-dashed border-stone-600/40" />
               )}
 
-              {/* DIRECTIONS — player direction input (starting facing and/or
-                  spell compasses). Titled as a hero-subject noun to stay
-                  parallel with Actions/Attributes. Fixed width so the text
-                  columns keep the flex space; entries stack when a hero has
-                  more than one. */}
+              {/* DIRECTIONS — the new selector in the classic column: each
+                  entry is its caption plus a compact order pill (loud brass
+                  when unset — the blocking state — quiet arcane outline once
+                  chosen). Tapping the pill opens the DirectionPicker sheet,
+                  whose 56px cells are why the 17px in-panel compass could
+                  retire. */}
               {hasDirectionInputs && (
-                <div className="flex-shrink-0 px-1" style={{ minWidth: '76px' }}>
-                  <p className="text-xs font-semibold text-stone-500 uppercase tracking-wide mb-1 text-center">Directions</p>
-                  {directionInputEntries.map(entry => {
-                    if (disabled || !entry.onPick) {
-                      return (
-                        <div key={entry.key} className="flex flex-col items-center mb-2">
-                          <span className="text-[9px] text-purple-300 font-medium text-center">{entry.caption}</span>
-                          {entry.current ? (
-                            <div className="flex items-center gap-1 mt-0.5">
-                              <CompassArrow direction={entry.current} size={14} className="text-purple-300" />
-                              <span className="text-[10px] text-purple-300 capitalize">{entry.current}</span>
-                            </div>
-                          ) : (
-                            <span className="text-[10px] text-stone-500 mt-0.5">—</span>
-                          )}
-                        </div>
-                      );
-                    }
-                    return (
-                      <div key={entry.key} className="flex flex-col items-center gap-1 mb-2">
-                        <span className="text-[9px] text-purple-300 font-medium text-center">{entry.caption}</span>
-                        <div className="grid grid-cols-3 gap-px" style={{ width: '54px' }}>
-                          {[
-                            ...COMPASS_DIRS.slice(0, 4),
-                            null,
-                            ...COMPASS_DIRS.slice(4),
-                          ].map((d, i) => d ? (
-                            entry.allowed.includes(d.value) ? (
-                              <button
-                                key={d.value}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  entry.onPick?.(d.value);
-                                }}
-                                className={`w-[17px] h-[17px] rounded-sm transition-colors flex items-center justify-center ${
-                                  entry.current === d.value
-                                    ? 'bg-purple-600 text-white border border-purple-400'
-                                    : 'bg-stone-700 text-stone-400 border border-stone-600 hover:bg-stone-600'
-                                }`}
-                              >
-                                <CompassArrow direction={d.dir} size={9} />
-                              </button>
-                            ) : (
-                              // Creator-disallowed direction — hold the grid
-                              // shape but read as inert.
-                              <div
-                                key={d.value}
-                                className="w-[17px] h-[17px] rounded-sm flex items-center justify-center bg-stone-800/60 text-stone-700 border border-stone-700/40"
-                              >
-                                <CompassArrow direction={d.dir} size={9} />
-                              </div>
-                            )
-                          ) : (
-                            <div key={`center-${i}`} className="w-[17px] h-[17px]" />
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })}
+                <div className="flex-shrink-0 px-1" style={{ width: '132px' }}>
+                  <p className="hud-label text-stone-400 mb-1 text-center">Directions</p>
+                  {directionInputEntries.map(entry => (
+                    <div key={entry.key} className="mb-1.5 last:mb-0">
+                      <p className="hud-label text-arcane-300 text-center mb-1 leading-tight">{entry.caption}</p>
+                      {renderOrderPill(entry)}
+                    </div>
+                  ))}
                 </div>
               )}
 
@@ -574,9 +566,9 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                 <div className="self-stretch mx-2 flex-shrink-0 border-l border-dashed border-stone-600/40" />
               )}
               {hasAttributes && (
-                <div className={`${hasActionSteps || hasDirectionInputs ? 'flex-1 pl-2' : 'w-full'}`}>
-                  <p className="text-xs font-semibold text-stone-500 uppercase tracking-wide mb-1 text-center">Attributes</p>
-                  <ul className="text-xs lg:text-sm text-stone-300 space-y-1">
+                <div className={`${hasActionSteps || hasDirectionInputs ? 'flex-1 min-w-0 pl-2' : 'w-full'}`}>
+                  <p className="hud-label text-stone-400 mb-1 text-center">Attributes</p>
+                  <ul className="hud-body text-stone-300 space-y-1">
                     {renderedCharacter.attributes!.map((attr, idx) => (
                       <li key={idx}>
                         <div className="flex items-baseline gap-1">
@@ -595,11 +587,19 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                 </div>
               )}
           </div>
+          </div>
 
         </div>
         </div>
         </div>
       )}
+
+      {/* The picker sheet — portalled to <body>, one entry at a time. */}
+      <DirectionPicker
+        entry={activePickerEntry}
+        sprite={renderedCharacter?.customSprite}
+        onClose={() => setPickerKey(null)}
+      />
 
       {/* Hint line — statically sized (min-h reserves the line) so the text
           swap never moves the panel below. The PLACEMENT half of this line

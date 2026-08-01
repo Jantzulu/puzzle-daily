@@ -2767,6 +2767,316 @@ body.menu-gate-instant .quest-panel-sticky {
   --hud-vital: #789c78;  /* moss-400 */
 }
 
+/* Breathe — the "this is waiting on you" pulse for a blocking input.
+   OPACITY ONLY (pinned page-decoration perf rule: never animate filters,
+   shadows or geometry per frame). */
+@keyframes hud-breathe {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.hud-breathe {
+  animation: hud-breathe 2s ease-in-out infinite;
+}
+
+/* Redefining the keyframes under reduced-motion neutralizes EVERY user of
+   the animation, including Tailwind arbitrary-value call sites, which a
+   class-scoped `animation: none` would miss. */
+@media (prefers-reduced-motion: reduce) {
+  @keyframes hud-breathe {
+    0%,
+    100% {
+      opacity: 1;
+    }
+  }
+
+  .hud-breathe {
+    animation: none;
+  }
+}
+
+/* ============================================
+   THE ORDERS PILL + THE DIRECTION PICKER — ported from the experiment at
+   the user's request (2026-07-31): "keep the direction selector looking the
+   same". The 3x3 in-panel compass it replaces was 17x17px cells on an
+   18.3px pitch — the page's only outright WCAG 2.5.8 failure, on an input
+   the player is REQUIRED to give before certain heroes can be placed.
+   Hit-slop cannot fix that (a 44px ring at an 18.3px pitch overlaps all
+   eight neighbours), so the control moved to a surface with room for it:
+   a portalled sheet with 56px cells and real separation.
+   ============================================ */
+.hero-order {
+  background-image: linear-gradient(180deg, rgba(255, 235, 200, 0.06), rgba(0, 0, 0, 0.18));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 235, 200, 0.1),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.35);
+}
+
+/* OUTSTANDING — the one thing stopping the player from placing this hero.
+   It gets FILL: a solid, lit brass plate with the --hud-gold rim, the only
+   filled object in the panel, so VALUE carries the difference rather than
+   hue (copper-on-copper sank; arcane-on-copper out-shouted it). Text is
+   parchment on the copper body: 5.3:1, clear of AA at 11px/600. The outer
+   glow is STATIC — the breathing dot (opacity only) is what moves. */
+.hero-order--open {
+  border-color: var(--hud-gold);
+  color: #fdf8eb;
+  background-color: #8c5c37;
+  background-image: linear-gradient(180deg, #a06a3f, #5e3d29);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 235, 200, 0.3),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.4),
+    0 0 10px rgba(212, 165, 116, 0.3);
+}
+
+/* SATISFIED — an item already ticked off. Unfilled, recessed, arcane (the
+   hero identity colour) at outline weight, so the eye slides past it to
+   whatever is still outstanding. */
+.hero-order--done {
+  border-color: rgba(92, 51, 139, 0.55);
+  color: #a98ad6;
+  background-color: rgba(0, 0, 0, 0.18);
+  background-image: none;
+  box-shadow: inset 0 1px 0 rgba(255, 235, 200, 0.04);
+}
+
+.hero-order:active {
+  transform: translateY(1px);
+  background-image: linear-gradient(180deg, rgba(0, 0, 0, 0.28), rgba(0, 0, 0, 0.08));
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.5);
+}
+
+/* Recessed well + hairline groove — the picker's cap-row furniture (the
+   experiment's cap-rail vocabulary, ported ONLY for the picker; main has no
+   cap rail, so the band-height hit cap that lived here is deliberately
+   absent and .hit-44's normal 44px slop applies). */
+.hero-cap__well {
+  color: var(--hud-gold);
+  background: rgba(0, 0, 0, 0.45);
+  border-radius: 2px;
+  box-shadow:
+    inset 0 1px 2px rgba(0, 0, 0, 0.8),
+    inset 0 -1px 0 rgba(255, 235, 200, 0.07);
+}
+
+.hero-cap__well:hover {
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.hero-cap__groove {
+  flex: none;
+  width: 1px;
+  height: 12px;
+  background: rgba(0, 0, 0, 0.75);
+  box-shadow: 1px 0 0 rgba(255, 235, 200, 0.07);
+}
+
+/* ---- The picker ------------------------------------------------------
+   Portalled to <body>, so `.theme-root` has to be re-applied for the font
+   and the type ramp — and that class also paints the app's opaque page
+   background, which as a full-page wrapper would black out the game behind
+   the scrim. `background: none` makes the wrapper inert explicitly. */
+.dir-picker {
+  background: none;
+}
+
+.dir-picker__scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 58;
+  background: rgba(0, 0, 0, 0.58);
+  opacity: 0;
+  transition: opacity 0.2s cubic-bezier(0.2, 0, 0, 1);
+}
+
+.dir-picker__scrim--in {
+  opacity: 1;
+}
+
+/* A bottom sheet below lg: the rose lands under the thumb. TRANSFORM AND
+   OPACITY ONLY. The ground is OPAQUE — a sheet slides OVER the page, so a
+   translucent wash would let the hero cards show through the rose. Carved
+   like every other surface here: radius, lit top edge, dark side bevels,
+   and 50px of floor clearance so the bottom row of a REQUIRED control
+   never sits against the viewport edge. */
+.dir-picker__sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 59;
+  padding: 12px 16px 50px;
+  padding-bottom: calc(50px + env(safe-area-inset-bottom));
+  background-color: var(--theme-bg-secondary, #2a2118);
+  background-image:
+    linear-gradient(180deg, rgba(255, 235, 200, 0.07) 0, rgba(255, 235, 200, 0) 72px),
+    linear-gradient(rgba(255, 235, 200, 0.06), rgba(255, 235, 200, 0.06)),
+    var(--chrome-noise);
+  border-top: 1px solid rgba(255, 235, 200, 0.22);
+  border-radius: var(--theme-border-radius, 4px) var(--theme-border-radius, 4px) 0 0;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 235, 200, 0.1),
+    inset 1px 0 0 rgba(0, 0, 0, 0.35),
+    inset -1px 0 0 rgba(0, 0, 0, 0.35),
+    0 -12px 28px rgba(0, 0, 0, 0.65);
+  transform: translateY(100%);
+  opacity: 0;
+  transition:
+    transform 0.2s cubic-bezier(0.2, 0, 0, 1),
+    opacity 0.2s cubic-bezier(0.2, 0, 0, 1);
+}
+
+.dir-picker__sheet--in {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+/* At lg+ the same object becomes a centred popover: full border, closed
+   radius, the 50/50 field above and below the rose kept. */
+@media (min-width: 1024px) {
+  .dir-picker__sheet {
+    left: 50%;
+    right: auto;
+    bottom: auto;
+    top: 50%;
+    width: 288px;
+    padding-bottom: 50px;
+    border: 1px solid rgba(255, 235, 200, 0.22);
+    border-radius: var(--theme-border-radius, 4px);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 235, 200, 0.1),
+      0 12px 34px rgba(0, 0, 0, 0.7);
+    transform: translate(-50%, -50%) translateY(10px);
+  }
+
+  .dir-picker__sheet--in {
+    transform: translate(-50%, -50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dir-picker__scrim,
+  .dir-picker__sheet {
+    transition: none;
+  }
+}
+
+.dir-rose {
+  display: grid;
+  grid-template-columns: repeat(3, 56px);
+  gap: 8px;
+  justify-content: center;
+}
+
+/* An iron plate, cut and lit like every other control on the page. Colours
+   are literal on purpose: these are not text, so they answer to SC 1.4.11
+   (3:1 non-text contrast) rather than the theme's text variables. */
+.dir-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border: 1px solid #78716c;
+  border-radius: var(--theme-border-radius, 3px);
+  background-image: linear-gradient(180deg, #4b453d, #33302a);
+  color: #e8cc8a;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 235, 200, 0.12),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.35);
+}
+
+.dir-cell:active {
+  transform: translateY(1px);
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.5);
+}
+
+@media (hover: hover) {
+  .dir-cell:hover {
+    background-image: linear-gradient(180deg, #5b544a, #3d3933);
+  }
+}
+
+/* The chosen bearing — arcane is the hero identity colour everywhere else
+   in this panel, so "this is the one you picked" needs no legend. */
+.dir-cell--on {
+  border-color: #a98ad6;
+  background-image: linear-gradient(180deg, #7040a9, #4a2a71);
+  color: #fdf8eb;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 235, 200, 0.22),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.4),
+    0 0 8px rgba(138, 95, 196, 0.45);
+}
+
+/* Creator-disallowed bearing: a socket with no plate in it — holds the
+   rose's shape (the spatial mnemonic is the point) but cannot steal a tap. */
+.dir-cell--off {
+  border-color: rgba(87, 83, 78, 0.45);
+  background-image: none;
+  background-color: rgba(0, 0, 0, 0.35);
+  color: rgba(120, 113, 108, 0.5);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.6);
+}
+
+/* The hub — the hero being aimed, sunk under a torch-warm pool of light. */
+.dir-rose__hub {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  overflow: hidden;
+  border-radius: var(--theme-border-radius, 3px);
+  background-image: radial-gradient(circle at 50% 42%, var(--chrome-torch), rgba(0, 0, 0, 0.55) 72%);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.65);
+}
+
+/* ============================================
+   THE HERO DRAWER — bounded info region (ported 2026-07-31). A max-height
+   CEILING, never a floor: a wordy hero scrolls INSIDE the drawer instead of
+   growing the page — the "marginal scrolling for longer hero info" trade
+   the user sanctioned. Skin stays classic (the copper wash lives on the
+   element's own classes in CharacterSelector).
+   ============================================ */
+.hero-drawer {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px 0;
+  max-height: var(--hero-drawer-max, 190px);
+}
+
+.hero-drawer__brief {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-bottom: 12px;
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 12px), transparent);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 12px), transparent);
+}
+
+/* Desktop has the vertical room, so it takes neither the ceiling nor the
+   scroll — the drawer is simply as tall as the hero is. */
+@media (min-width: 1024px) {
+  .hero-drawer {
+    max-height: none;
+  }
+
+  .hero-drawer__brief {
+    overflow: visible;
+    padding-bottom: 0;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+}
+
 /* ============================================
    .hit-44 — TAP-TARGET SLOP (WCAG 2.5.8 / iOS 44pt / Android 48dp)
    An invisible, absolutely-positioned ::after centred on the control, grown
