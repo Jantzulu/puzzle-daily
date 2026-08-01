@@ -8,6 +8,12 @@
       "port": 5173
     },
     {
+      "name": "dev-alt",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["node_modules/vite/bin/vite.js", "--port", "5183", "--strictPort"],
+      "port": 5183
+    },
+    {
       "name": "preview-player",
       "runtimeExecutable": "node",
       "runtimeArgs": ["node_modules/vite/bin/vite.js", "preview", "--config", "vite.config.player.ts", "--port", "5175", "--strictPort"],
