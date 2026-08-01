@@ -2166,9 +2166,28 @@ body.menu-gate-instant .quest-panel-sticky {
    rail riding its leading edge at z-40) must paint OVER the quest box —
    the box's z-45 exists only for the closed-gate scroll tuck, and the
    control panel vanishing behind the quest panel mid-open read as a bug
-   (user, 2026-08-01 mobile test). */
+   (user, 2026-08-01 mobile test).
+
+   THE CLOSE IS PART OF "LOWERED" (second user report, same day): the body
+   class comes off at close-START, so a bare rule snapped the box back to
+   z-45 while the rail was still winching up past it. z-index is
+   transitionable as an integer — a 0s-duration, 1s-delay transition on the
+   BASE state holds z-30 until the winch-up (the rail's 1s close
+   transition) has finished; the lowered state transitions with no delay so
+   opening still drops the box instantly. */
+.quest-box-anchor {
+  transition: z-index 0s 1s;
+}
+
 body.menu-gate-lowered .quest-box-anchor {
   z-index: 30;
+  transition: z-index 0s 0s;
+}
+
+/* Instant dismissal (a nav link was tapped): the gate snaps, so the box's
+   delayed restore snaps with it — same pattern as the rail's twin rule. */
+body.menu-gate-instant .quest-box-anchor {
+  transition: none;
 }
 
 .control-rail-mesh {
