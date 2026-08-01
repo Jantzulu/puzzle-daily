@@ -276,11 +276,24 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
           <div className="absolute right-full mr-1">
             <HelpButton sectionId="characters" />
           </div>
-          <h3 className="carved-header carved-header-arcane font-medieval text-lg lg:text-xl">Heroes</h3>
+          {/* UPPERCASE by user call (2026-07-31): "making titles capital and
+              more bold" — the ramp's register applied to the section title
+              while it keeps its classic carve, medieval face, themed size
+              and the purple hero identity. carved-header already carries
+              700 weight + 0.05em tracking; the transform is what changes. */}
+          <h3 className="carved-header carved-header-arcane font-medieval text-lg lg:text-xl uppercase">Heroes</h3>
         </div>
         <div className="flex items-center gap-2">
-          <span className={`text-sm lg:text-base ${isAtMaxPlaced ? 'text-copper-400' : 'text-stone-400'}`}>
-            {placedCharacterIds.length}/{effectiveMaxPlaceable} placed
+          {/* Counter in the ramp's registers (user call, 2026-07-31): the
+              count is a stat value (hud-num, tabular — no reflow as it
+              ticks), the word is furniture (hud-label, uppercase). The
+              at-max copper highlight stays on the numbers, where the state
+              actually lives. */}
+          <span className="flex items-baseline gap-1">
+            <span className={`hud-num ${isAtMaxPlaced ? 'text-copper-400' : 'text-stone-400'}`}>
+              {placedCharacterIds.length}/{effectiveMaxPlaceable}
+            </span>
+            <span className="hud-label text-stone-400">placed</span>
           </span>
           {onClearAll && placedCharacterIds.length > 0 && !disabled && (
             <button
