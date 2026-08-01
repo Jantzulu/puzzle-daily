@@ -119,6 +119,15 @@ export const PanelNineSlice: React.FC<Props> = ({ pieces, zoom, width, height, s
   const bLeft = (tl?.w ?? left?.w ?? 0) * zoom;
   const bRight = (tr?.w ?? right?.w ?? 0) * zoom;
 
+  // CONTENT insets are EDGE-keyed (corner fallback) — mirroring the game
+  // renderer's thinness lever: thin edges pull the content in close while
+  // the corners stand proud. The sample text must sit where real content
+  // will.
+  const cbt = (top?.h ?? tl?.h ?? 0) * zoom;
+  const cbb = (bottom?.h ?? bl?.h ?? 0) * zoom;
+  const cbl = (left?.w ?? tl?.w ?? 0) * zoom;
+  const cbr = (right?.w ?? tr?.w ?? 0) * zoom;
+
   // Cap footprints in display px. The middles start after them, which is the
   // whole point: a cap never stretches and never repeats, so ornament painted
   // into it survives at every panel size.
@@ -153,6 +162,27 @@ export const PanelNineSlice: React.FC<Props> = ({ pieces, zoom, width, height, s
     layer(tr, zoom, 'no-repeat', { right: 0, top: 0, width: (tr?.w ?? 0) * zoom, height: (tr?.h ?? 0) * zoom }),
     layer(bl, zoom, 'no-repeat', { left: 0, bottom: 0, width: (bl?.w ?? 0) * zoom, height: (bl?.h ?? 0) * zoom }),
     layer(br, zoom, 'no-repeat', { right: 0, bottom: 0, width: (br?.w ?? 0) * zoom, height: (br?.h ?? 0) * zoom }),
+    // Centered edge ornaments (quest-box kit) — fixed medallions, nominal
+    // centered on the edge band, halo'd bitmap overhanging. Mirrors the
+    // game renderer exactly.
+    ...[['edge-top-ornament', true], ['edge-bottom-ornament', false]].map(([id, isTop]) => {
+      const pc = p[id as string];
+      if (!pc) return null;
+      const haloL = (pc.halo?.l ?? 0) * zoom;
+      const haloT = (pc.halo?.t ?? 0) * zoom;
+      const nw = (pc.w - (pc.halo ? pc.halo.l + pc.halo.r : 0)) * zoom;
+      const nh = (pc.h - (pc.halo ? pc.halo.t + pc.halo.b : 0)) * zoom;
+      const bandH = isTop ? cbt : cbb;
+      const nominalLeft = Math.round((width - nw) / 2);
+      const edgeOffset = Math.round((bandH - nh) / 2);
+      const nominalTop = isTop ? edgeOffset : height - bandH + edgeOffset;
+      return layer(pc, zoom, 'no-repeat', {
+        left: nominalLeft - haloL,
+        top: nominalTop - haloT,
+        width: pc.w * zoom,
+        height: pc.h * zoom,
+      });
+    }),
     // Section rules last: they run across the field, between the side edges,
     // and should sit over the centre fill.
     ...dividerYs.flatMap(y => {
@@ -278,10 +308,10 @@ export const PanelNineSlice: React.FC<Props> = ({ pieces, zoom, width, height, s
           <div
             style={{
               position: 'relative',
-              paddingTop: bt + 6,
-              paddingBottom: bb + 6,
-              paddingLeft: bLeft + 8,
-              paddingRight: bRight + 8,
+              paddingTop: cbt + 6,
+              paddingBottom: cbb + 6,
+              paddingLeft: cbl + 8,
+              paddingRight: cbr + 8,
               height: '100%',
               overflow: 'hidden',
             }}

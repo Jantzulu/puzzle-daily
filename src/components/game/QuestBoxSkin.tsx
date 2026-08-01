@@ -112,8 +112,13 @@ export const questSkinPlateActive = PIECES.has('plate-mid');
  */
 export const questSkinDividerActive = PIECES.has('divider-mid');
 
-// Border thicknesses come from the ART (corners define them, edges fall
-// back) — frame pieces carry no halo, so nominal == bitmap.
+// Frame geometry (run starts, cap anchoring) keys off the CORNERS as a
+// nine-slice must; the CONTENT padding below keys off the EDGE BANDS
+// instead (thinness lever, user call 2026-08-01: "as thin as possible…
+// liked the baseline size"): thin edges + proud corners = a thin box.
+// The corners may overhang the content zone at the four flanks — the
+// quest content is centered, so nothing collides. Frame pieces carry no
+// halo, so nominal == bitmap.
 const tl = P('corner-tl');
 const tr = P('corner-tr');
 const topMid = P('edge-top-mid');
@@ -121,10 +126,10 @@ const bottomMid = P('edge-bottom-mid');
 const leftMid = P('edge-left-mid');
 const rightMid = P('edge-right-mid');
 export const questFrameBorders = {
-  t: (tl?.h ?? topMid?.h ?? 0) * Z,
-  b: (P('corner-bl')?.h ?? bottomMid?.h ?? 0) * Z,
-  l: (tl?.w ?? leftMid?.w ?? 0) * Z,
-  r: (tr?.w ?? rightMid?.w ?? 0) * Z,
+  t: (topMid?.h ?? tl?.h ?? 0) * Z,
+  b: (bottomMid?.h ?? P('corner-bl')?.h ?? 0) * Z,
+  l: (leftMid?.w ?? tl?.w ?? 0) * Z,
+  r: (rightMid?.w ?? tr?.w ?? 0) * Z,
 };
 
 const plateMid = P('plate-mid');
@@ -154,7 +159,13 @@ const bg = (
  */
 export const QuestBoxFrame: React.FC = () => {
   if (!questSkinFrameActive) return null;
-  const { t: bt, b: bb, l: bl, r: br } = questFrameBorders;
+  // GEOMETRY is corner-keyed (a nine-slice's runs start where its corners
+  // end) — deliberately NOT questFrameBorders, which is edge-keyed for the
+  // content padding's thinness lever.
+  const bt = (tl?.h ?? topMid?.h ?? 0) * Z;
+  const bb = (P('corner-bl')?.h ?? bottomMid?.h ?? 0) * Z;
+  const bl = (tl?.w ?? leftMid?.w ?? 0) * Z;
+  const br = (tr?.w ?? rightMid?.w ?? 0) * Z;
   const capTL = (P('edge-top-cap-l')?.w ?? 0) * Z;
   const capTR = (P('edge-top-cap-r')?.w ?? 0) * Z;
   const capBL = (P('edge-bottom-cap-l')?.w ?? 0) * Z;
@@ -186,9 +197,32 @@ export const QuestBoxFrame: React.FC = () => {
     bg(P('corner-br'), 'no-repeat', { right: 0, bottom: 0, width: (P('corner-br')?.w ?? 0) * Z, height: (P('corner-br')?.h ?? 0) * Z }),
   ];
 
+  // Centered edge ornaments — FIXED like corners (never stretched, never
+  // tiled), nominal box centered on the edge band, halo'd bitmap
+  // overhanging. Widths are fixed art sizes, so the centering margin is
+  // always an integer — no sub-pixel seams here by construction.
+  const ornament = (pc: SkinPiece | undefined, isTop: boolean): React.ReactNode => {
+    if (!pc) return null;
+    // Centered on the EDGE band (the thin part), not the corner height.
+    const bandH = isTop ? questFrameBorders.t : questFrameBorders.b;
+    const nw = nomW(pc) * Z;
+    const nh = nomH(pc) * Z;
+    const edgeOffset = Math.round((bandH - nh) / 2);
+    return (
+      <div
+        key={isTop ? 'orn-t' : 'orn-b'}
+        style={{ position: 'absolute', left: '50%', marginLeft: -nw / 2, width: nw, height: nh, ...(isTop ? { top: edgeOffset } : { bottom: edgeOffset }) }}
+      >
+        <div aria-hidden style={bg(pc, 'no-repeat', { left: -(pc.halo?.l ?? 0) * Z, top: -(pc.halo?.t ?? 0) * Z, width: pc.w * Z, height: pc.h * Z }) ?? undefined} />
+      </div>
+    );
+  };
+
   return (
     <div aria-hidden className="absolute inset-0">
       {layers.map((s, i) => (s ? <div key={i} style={s} /> : null))}
+      {ornament(P('edge-top-ornament'), true)}
+      {ornament(P('edge-bottom-ornament'), false)}
     </div>
   );
 };
@@ -224,15 +258,31 @@ export const QuestPlate: React.FC<{ children: React.ReactNode }> = ({ children }
   const r = P('plate-cap-r');
   if (!m) return null;
   const h = nomH(m) * Z;
+  // Seam-proofing (user bug, 2026-08-01: "two vertical dark lines either
+  // side of QUEST"): the label's width is fractional (font metrics), so
+  // the cap|mid boundaries land on sub-pixels and three separately
+  // rasterized backgrounds opened ~1px of dark page at both seams. The
+  // middle is now ONE continuous band drawn across the whole plate and
+  // tucked OVER-px under each cap — a sub-pixel seam can only expose
+  // plate art, never the page. Caps paint over the band's ends.
+  const OVER = Z;
   return (
-    <span className="inline-flex" style={{ height: h }}>
+    <span className="inline-flex relative" style={{ height: h }}>
+      <span
+        aria-hidden
+        style={bg(m, 'repeat-x', {
+          left: l ? nomW(l) * Z - OVER : 0,
+          right: r ? nomW(r) * Z - OVER : 0,
+          top: -(m.halo?.t ?? 0) * Z,
+          height: m.h * Z,
+        }) ?? undefined}
+      />
       {l && (
         <span style={{ position: 'relative', width: nomW(l) * Z, height: h }}>
           <span aria-hidden style={bg(l, 'no-repeat', { left: -(l.halo?.l ?? 0) * Z, top: -(l.halo?.t ?? 0) * Z, width: l.w * Z, height: l.h * Z }) ?? undefined} />
         </span>
       )}
       <span style={{ position: 'relative', minWidth: nomW(m) * Z, height: h, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
-        <span aria-hidden style={bg(m, 'repeat-x', { left: 0, right: 0, top: -(m.halo?.t ?? 0) * Z, height: m.h * Z }) ?? undefined} />
         <span className="relative px-1.5">{children}</span>
       </span>
       {r && (
