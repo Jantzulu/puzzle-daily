@@ -3154,7 +3154,9 @@ export const Game: React.FC<GameProps> = ({
               // z-20: above the board's z-10 so a bottom hallway's corridor
               // overhang slides UNDER the banner, not over it (user call,
               // 2026-07-16 — layering only, position untouched).
-              <div className="w-full max-w-2xl px-8 md:px-9 pt-3 pb-4 quest-banner relative z-20 overflow-visible mb-1">
+              // px-6/7 (was 8/9, user call 2026-08-01): tighter content-to-
+              // cloth-edge gap; still clear of the mesh's ragged edges.
+              <div className="w-full max-w-2xl px-6 md:px-7 pt-3 pb-4 quest-banner relative z-20 overflow-visible mb-1">
                 {/* Low-poly stone banner behind the quest HUD (see BannerMesh) */}
                 <BannerMesh />
                 {/* Puzzle Number & Quest Row */}
@@ -3201,15 +3203,19 @@ export const Game: React.FC<GameProps> = ({
                         <span className="hidden md:inline">Log</span>
                       </button>
                     )}
-                    {/* The (?) rides in one flex group with the quest: the outer
-                        row's flex-wrap breaks BETWEEN items, so a long quest used
-                        to strand the icon alone on the line above. Grouped, only
-                        the quest text itself wraps and the icon stays left of
-                        "Quest:". min-w-0 lets the group shrink into the row. */}
-                    <span className="flex items-center gap-2 min-w-0">
+                    {/* The (?) and the quest are ONE inline text block
+                        (2026-08-01): the shimmer container is display:inline
+                        (see index.css), so a long quest flows on from
+                        "Quest:" and wrapped lines take the banner's full
+                        width, centered — the old flex group squeezed them
+                        into a narrow column beside the label. The inline (?)
+                        still can't be stranded by the outer row's flex-wrap,
+                        and mr-1 keeps it tight against "Quest:" (user call).
+                        min-w-0 lets the block shrink into the row. */}
+                    <span className="min-w-0 text-center leading-snug">
                     <HelpButton
                       sectionId="game_general"
-                      className="flex-shrink-0"
+                      className="inline-block align-middle mr-1"
                       preamble={gameState.puzzle.questDescription?.trim()
                         ? { title: 'About this Puzzle', text: gameState.puzzle.questDescription.trim() }
                         : undefined}

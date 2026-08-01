@@ -698,11 +698,18 @@ html body.theme-font-active,
    Sweeping metallic highlight across entire container
    Children retain their individual colors
    ============================================ */
+/* Inline flow, not flex (2026-08-01): as a flex row, a long quest wrapped
+   into a narrow left-aligned column beside the "Quest:" label, wasting the
+   banner's width. Inline, the quest text flows on from the label and
+   wrapped lines use the full banner width, centered by the parent. The
+   label keeps a small text gap via margin. */
 .shimmer-container {
   position: relative;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
+  display: inline;
+}
+
+.shimmer-container > span:first-child {
+  margin-right: 0.375rem;
 }
 
 /* Quest-change shine: the original fuse effect — a hot band racing
