@@ -1783,13 +1783,22 @@ html body.theme-font-active,
   transition: transform 0.35s ease;
 }
 
-/* Scrolled: the rail rides 7px lower so a sliver of the gate bars shows
-   between the navbar and the rung (at rest the rung is flush under the
-   bar and the bars tuck behind it). Suppressed while the menu gate is
+/* Scrolled: only a few px of gate bar may show above the rung (user
+   call, 2026-08-01 — the old 7px ride left the rung sagging too far,
+   over-revealing the bars). Mobile: the navbar scrolls away and the
+   wrapper's 3px sticky offset already exposes that sliver, so the rail
+   doesn't ride at all. Desktop: the rung rests flush under the sticky
+   navbar, so a 3px ride provides it. Suppressed while the menu gate is
    lowered — the rail is riding the gate's leading edge then, and a sag
    would break the tuned beam-to-beam docking gap. */
 body:not(.menu-gate-lowered) .control-rail.rail-riding {
-  transform: translateY(7px);
+  transform: translateY(0);
+}
+
+@media (min-width: 768px) {
+  body:not(.menu-gate-lowered) .control-rail.rail-riding {
+    transform: translateY(3px);
+  }
 }
 
 /* The gate settles on page load: the rail (mesh + controls, applied to

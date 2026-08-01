@@ -343,9 +343,10 @@ export const Game: React.FC<GameProps> = ({
   const enteringReplayRef = useRef(false);
 
   // At rest the rung sits flush under the navbar (bars tucked away); once
-  // the page scrolls, rail-riding drops it 14px so the gate bars reveal
-  // themselves above the rung (CSS in index.css). Sticky offsets can't do
-  // this — a larger sticky top pushes the element down at rest too.
+  // the page scrolls, rail-riding lets a few px of gate bar show above the
+  // rung (0 on mobile — the 3px sticky offset is the sliver; 3px on
+  // desktop; CSS in index.css). Sticky offsets can't do this — a larger
+  // sticky top pushes the element down at rest too.
   const [railRiding, setRailRiding] = useState(false);
   useEffect(() => {
     const onScroll = () => setRailRiding(window.scrollY > 8);
@@ -2394,8 +2395,8 @@ export const Game: React.FC<GameProps> = ({
               // under the bar. The 5px moved into the menu gate's docked
               // padding (pb-[17px] in App/PlayerApp) so the tuned
               // beam-to-beam gap is unchanged. rail-riding: once the page
-              // scrolls, the rail drops 14px and the bars reveal
-              // themselves (see index.css).
+              // scrolls, a few px of gate bar show above the rung (see
+              // index.css).
               // STANDARDISED RUNG (user's own observation, 2026-07-31): "the
               // bottom portcullis rung is larger than the rest, and
               // standardizing them would allow everything to move up on the
