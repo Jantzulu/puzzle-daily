@@ -3172,18 +3172,14 @@ export const Game: React.FC<GameProps> = ({
               // border and visibly tuck behind it — the design's "portcullis
               // stops at the top of the quest box".
               <div className="w-full max-w-2xl relative z-[45] -mt-[3px] mb-1">
-                <div className="relative bg-stone-950/95 border-[3px] border-copper-700 rounded-pixel-md px-4 md:px-5 pt-3.5 pb-3 text-shadow-dungeon">
-                {/* The plate row on the border line (legend-style) */}
-                <div className="absolute -top-[13px] left-1/2 -translate-x-1/2 flex items-center gap-1.5">
-                  <span className="px-3 py-0.5 bg-stone-950 border-2 border-copper-700 rounded-pixel hud-label text-copper-300 whitespace-nowrap">Quest</span>
-                  <HelpButton
-                    sectionId="game_general"
-                    className="bg-stone-950 rounded-full"
-                    preamble={gameState.puzzle.questDescription?.trim()
-                      ? { title: 'About this Puzzle', text: gameState.puzzle.questDescription.trim() }
-                      : undefined}
-                  />
-                </div>
+                {/* pt-2.5/pb-1.5 (user call, second round): as tight as the
+                    plate allows — the plate's lower half intrudes ~8px into
+                    the box, so pt below 2.5 collides with it. */}
+                <div className="relative bg-stone-950/95 border-[3px] border-copper-700 rounded-pixel-md px-4 md:px-5 pt-2.5 pb-1.5 text-shadow-dungeon">
+                {/* The plate on the border line (legend-style) — the plate
+                    ALONE is centered (user call: it must be true-centered;
+                    the (?) rides inline before the quest text instead). */}
+                <span className="absolute -top-[13px] left-1/2 -translate-x-1/2 px-3 py-0.5 bg-stone-950 border-2 border-copper-700 rounded-pixel hud-label text-copper-300 whitespace-nowrap">Quest</span>
                 {/* Puzzle Number & Quest Row */}
                 {puzzleNumber && (
                   <div className="text-center mb-0.5">
@@ -3228,15 +3224,22 @@ export const Game: React.FC<GameProps> = ({
                         <span className="hidden md:inline">Log</span>
                       </button>
                     )}
-                    {/* The quest sentence alone — "Quest:" and the (?) both
-                        moved onto the box's border plate. The shimmer
-                        container stays inline so wrapped lines take the
-                        box's full width, centered; [text-wrap:balance]
-                        splits a wrapping quest into even lines (progressive
-                        enhancement; NBSP name–count glue is the
-                        everywhere-guarantee). min-w-0 lets the block shrink
-                        into the row. */}
+                    {/* "Quest:" lives on the border plate; the (?) rides
+                        inline just before the quest text (user call, second
+                        round). The shimmer container stays inline so wrapped
+                        lines take the box's full width, centered;
+                        [text-wrap:balance] splits a wrapping quest into even
+                        lines (progressive enhancement; NBSP name–count glue
+                        is the everywhere-guarantee). min-w-0 lets the block
+                        shrink into the row. */}
                     <span className="min-w-0 text-center leading-snug [text-wrap:balance]">
+                    <HelpButton
+                      sectionId="game_general"
+                      className="inline-block align-middle mr-1"
+                      preamble={gameState.puzzle.questDescription?.trim()
+                        ? { title: 'About this Puzzle', text: gameState.puzzle.questDescription.trim() }
+                        : undefined}
+                    />
                     <span key={shimmerKey} className="shimmer-container">
                       {/* 13px on phones (was text-sm/14): the user accepted a
                           slight size cut to buy quest line capacity. */}
