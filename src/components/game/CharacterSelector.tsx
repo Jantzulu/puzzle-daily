@@ -152,6 +152,9 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
     ...(hasFacingInput && renderedCharacter ? [{
       key: '__facing',
       caption: FACING_CAPTION,
+      // isFacing: the picker stays open on pick and turns its hub hero to
+      // the chosen bearing (see DirectionPickerEntry).
+      isFacing: true,
       current: placedSelectedChar
         ? placedSelectedChar.facing
         : (renderedCharId ? pendingFacingOverrides[renderedCharId] : undefined),

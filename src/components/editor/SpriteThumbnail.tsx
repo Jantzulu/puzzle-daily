@@ -168,9 +168,16 @@ interface SpriteThumbnailProps {
   cardSelected?: boolean;
   /** Hero card has been placed on the board (shows the south idle loop). */
   cardPlaced?: boolean;
+  /**
+   * For directional sprites, render the idle of THIS direction instead of the
+   * default. Falls back to the `default` variant (then the simple fields) when
+   * the sprite has no art for it. Non-card path only — used by the
+   * DirectionPicker hub so the hero visibly turns as bearings are picked.
+   */
+  facingDirection?: SpriteDirection;
 }
 
-export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size = 64, className = '', previewType, noBackground = false, spriteScale = 1, bottomAlign = false, canvasStyle, pixelScale, fillBox = false, fillWidth = false, cardRole, cardSelected = false, cardPlaced = false }) => {
+export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size = 64, className = '', previewType, noBackground = false, spriteScale = 1, bottomAlign = false, canvasStyle, pixelScale, fillBox = false, fillWidth = false, cardRole, cardSelected = false, cardPlaced = false, facingDirection }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [containerEl, setContainerEl] = useState<HTMLDivElement | null>(null);
   const [renderTrigger, setRenderTrigger] = useState(0);
@@ -399,18 +406,23 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
       // Anchor/offset for idle image (spritesheets have anchor+offset built-in)
       let imgAx = 0.5, imgAy = 0.5, imgOx = 0, imgOy = 0;
 
-      if (sprite.useDirectional && sprite.directionalSprites?.default) {
-        // Directional mode - use default direction
-        const defaultConfig = sprite.directionalSprites.default;
-        spriteSheet = defaultConfig.idleSpriteSheet;
+      // Directional mode — the requested facing wins when it has art,
+      // otherwise the default variant (matching the picker-hub contract:
+      // a hero with only a default look never renders blank).
+      const dirConfig =
+        sprite.useDirectional && sprite.directionalSprites
+          ? (facingDirection ? sprite.directionalSprites[facingDirection] : undefined) ?? sprite.directionalSprites.default
+          : undefined;
+      if (dirConfig) {
+        spriteSheet = dirConfig.idleSpriteSheet;
         imageSrc = resolveImageSource(
-          defaultConfig.idleImageData || defaultConfig.imageData,
-          defaultConfig.idleImageUrl || defaultConfig.imageUrl
+          dirConfig.idleImageData || dirConfig.imageData,
+          dirConfig.idleImageUrl || dirConfig.imageUrl
         );
-        imgAx = defaultConfig.idleAnchorX ?? 0.5;
-        imgAy = defaultConfig.idleAnchorY ?? 0.5;
-        imgOx = defaultConfig.idleOffsetX ?? 0;
-        imgOy = defaultConfig.idleOffsetY ?? 0;
+        imgAx = dirConfig.idleAnchorX ?? 0.5;
+        imgAy = dirConfig.idleAnchorY ?? 0.5;
+        imgOx = dirConfig.idleOffsetX ?? 0;
+        imgOy = dirConfig.idleOffsetY ?? 0;
       } else {
         // Simple mode
         spriteSheet = sprite.idleSpriteSheet;
@@ -550,7 +562,7 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
         cancelAnimationFrame(animationFrameId);
       }
     };
-  }, [sprite, size, previewType, spriteScale, bottomAlign, renderTrigger, pixelScale, fillBox, fillWidth, canvasWidthCSS, canvasHeightCSS, cardRole, cardSelected, cardPlaced]);
+  }, [sprite, size, previewType, spriteScale, bottomAlign, renderTrigger, pixelScale, fillBox, fillWidth, canvasWidthCSS, canvasHeightCSS, cardRole, cardSelected, cardPlaced, facingDirection]);
 
   if (!sprite) {
     return (

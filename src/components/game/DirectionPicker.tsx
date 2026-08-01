@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { Direction } from '../../types/game';
-import type { CustomSprite } from '../../utils/assetStorage';
+import type { CustomSprite, SpriteDirection } from '../../utils/assetStorage';
 import { SpriteThumbnail } from '../editor/SpriteThumbnail';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { lockBodyScroll } from '../../utils/scrollLock';
@@ -77,7 +77,20 @@ export interface DirectionPickerEntry {
   allowed: Direction[];
   /** Absent = read-only (a placed hero, or a disabled panel). */
   onPick?: (d: Direction) => void;
+  /**
+   * FACING entries only (user call 2026-08-01): the sheet stays open after a
+   * pick — the hub hero turns to face the chosen bearing, so the player can
+   * try directions and watch, then close deliberately (scrim / chevron /
+   * Escape). Spell-direction entries keep the pick-and-dismiss flow.
+   */
+  isFacing?: boolean;
 }
+
+// Game bearing → directional-sprite key, for the hub's turned idle.
+const SPRITE_DIR: Record<string, SpriteDirection> = {
+  north: 'n', northeast: 'ne', east: 'e', southeast: 'se',
+  south: 's', southwest: 'sw', west: 'w', northwest: 'nw',
+};
 
 interface DirectionPickerProps {
   /** The entry being aimed, or null when the picker is closed. */
@@ -191,8 +204,11 @@ export const DirectionPicker: React.FC<DirectionPickerProps> = ({ entry, sprite,
   const handlePick = (d: Direction) => {
     if (!entry?.onPick) return;
     entry.onPick(d);
-    // Let the chosen cell light before the sheet leaves — otherwise the only
-    // feedback for a required input is the sheet vanishing.
+    // Facing: the sheet stays up — the lit cell, the cap-row readout and the
+    // hub hero turning ARE the feedback, and the player closes when done.
+    if (entry.isFacing) return;
+    // Spell aims: let the chosen cell light before the sheet leaves —
+    // otherwise the only feedback for a required input is the sheet vanishing.
     if (pickRef.current) clearTimeout(pickRef.current);
     pickRef.current = setTimeout(onClose, PICK_LINGER_MS);
   };
@@ -273,6 +289,14 @@ export const DirectionPicker: React.FC<DirectionPickerProps> = ({ entry, sprite,
                       pixelScale={2}
                       previewType="entity"
                       noBackground
+                      // Facing entries: the hub hero idles in the chosen
+                      // bearing (default art until one is picked, or when
+                      // the sprite has no variant for it).
+                      facingDirection={
+                        shownEntry.isFacing && shownEntry.current
+                          ? SPRITE_DIR[shownEntry.current]
+                          : undefined
+                      }
                     />
                   )}
                 </div>
