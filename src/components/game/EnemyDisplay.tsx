@@ -18,19 +18,6 @@ const MOVEMENT_TYPES = new Set([
   'move_diagonal_ne', 'move_diagonal_nw', 'move_diagonal_se', 'move_diagonal_sw',
 ]);
 
-// One-time coach line (2026-07-29): the enemy strip has no permanent hint
-// row (heroes get one for free — it doubles as the placement instruction),
-// so "Tap an enemy for more info" shows under the strip until the player's
-// FIRST-EVER card tap, then never again on this device. Storage failure
-// degrades to never showing the hint — better than showing it forever.
-const ENEMY_HINT_KEY = 'enemy_card_hint_dismissed_v1';
-const isEnemyHintDismissed = () => {
-  try { return localStorage.getItem(ENEMY_HINT_KEY) === '1'; } catch { return true; }
-};
-const dismissEnemyHint = () => {
-  try { localStorage.setItem(ENEMY_HINT_KEY, '1'); } catch { /* ditto */ }
-};
-
 function getEnemyMovementInfo(behavior?: EnemyBehavior) {
   if (!behavior?.pattern) return null;
   const moveAction = behavior.pattern.find(a => MOVEMENT_TYPES.has(a.type));
@@ -66,9 +53,6 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
   // Info panel animation state — grid 0fr→1fr so easing applies to real content height.
   // Double rAF ensures browser paints the closed (0fr) state before opening.
   const [selectedEnemyId, setSelectedEnemyId] = useState<string | null>(null);
-  // Coach line renders only on the Enemies side (no duplicate under Allies);
-  // a tap on either side's cards writes the dismissal flag.
-  const [showTapHint, setShowTapHint] = useState(() => !isAllySide && !isEnemyHintDismissed());
   const [renderedEnemyId, setRenderedEnemyId] = useState<string | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   const prevEnemyIdRef = useRef<string | null>(null);
@@ -323,11 +307,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
               key={enemyId}
               type="button"
               aria-pressed={isSelected}
-              onClick={() => {
-                if (!isEnemyHintDismissed()) dismissEnemyHint();
-                if (showTapHint) setShowTapHint(false);
-                setSelectedEnemyId(isSelected ? null : enemyId);
-              }}
+              onClick={() => setSelectedEnemyId(isSelected ? null : enemyId)}
               className={`flex-1 flex flex-col items-center px-1 pt-0.5 pb-2 relative transition-colors cursor-pointer ${
                 isSelected
                   // Flat tint matching the info panel's wash — one surface;
@@ -496,10 +476,19 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
         </div>
       )}
 
-      {/* One-time coach line — styled like the hero strip's hint row. */}
-      {showTapHint && uniqueEnemyIds.length > 0 && (
-        <div className="mt-1.5 text-sm font-medium text-center min-h-[20px]">
-          <span className="text-stone-500">Tap an enemy for more info</span>
+      {/* Hint row — the hero strip's chip, mirrored (user call 2026-08-01):
+          boxed like the board's "Tap the dungeon" prompt, shown whenever no
+          card is open. The old one-time localStorage coach line retired with
+          it. Enemies side only — a twin under Allies on the same page would
+          double-announce. min-h reserves the box so the swap never moves
+          the page below. */}
+      {!isAllySide && uniqueEnemyIds.length > 0 && (
+        <div className="mt-1.5 text-center min-h-[25px]">
+          {selectedEnemyId === null && (
+            <span className="inline-block px-3 py-1 rounded-pixel bg-stone-900/85 border border-copper-700 hud-label text-copper-300 whitespace-nowrap">
+              Tap an enemy for more info
+            </span>
+          )}
         </div>
       )}
     </>
