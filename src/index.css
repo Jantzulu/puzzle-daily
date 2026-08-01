@@ -2758,6 +2758,15 @@ body.menu-gate-instant .quest-panel-sticky {
   font-variant-numeric: tabular-nums;
 }
 
+/* Colour roles used by the ported card layout — named by JOB, values from
+   the existing tailwind palette (a vocabulary, not a new palette).
+   --hud-gold means "you can touch this / this needs you" and nothing else;
+   --hud-vital is health/alive. Semantic, never themed. */
+.theme-root {
+  --hud-gold: #d4a574;   /* copper-400 */
+  --hud-vital: #789c78;  /* moss-400 */
+}
+
 /* ============================================
    .hit-44 — TAP-TARGET SLOP (WCAG 2.5.8 / iOS 44pt / Android 48dp)
    An invisible, absolutely-positioned ::after centred on the control, grown

@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { getCharacter } from '../../data/characters';
 import type { CharacterAction, PlacedCharacter, Direction } from '../../types/game';
 import { getDirectionInputSpells, spellDirectionCaption, FACING_CAPTION, allowedFacingDirections, allowedSpellDirections } from '../../utils/directionInput';
@@ -108,32 +108,9 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- imageLoadTrigger intentionally forces re-compute after image loads
   }, [availableCharacterIds, imageLoadTrigger]);
 
-  // Uniform name/title block height across the hero row — picks the max
-  // rendered height of any card's name/title and applies it as min-height
-  // to all of them. Ensures HP rows and everything below line up vertically
-  // across cards regardless of name length (which varies with wrapping).
-  const nameBlockRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const [maxNameBlockHeight, setMaxNameBlockHeight] = useState(0);
-  useLayoutEffect(() => {
-    const measure = () => {
-      let max = 0;
-      for (const el of nameBlockRefs.current) {
-        if (!el) continue;
-        const h = el.offsetHeight;
-        if (h > max) max = h;
-      }
-      if (max > 0) {
-        setMaxNameBlockHeight(prev => (prev === max ? prev : max));
-      }
-    };
-    measure();
-    const observer = new ResizeObserver(measure);
-    for (const el of nameBlockRefs.current) {
-      if (el) observer.observe(el);
-    }
-    return () => observer.disconnect();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [availableCharacterIds]);
+  // (The measured name-block min-height machinery is gone: the card's name
+  // band is a fixed 38px box now, so every card is the same height by
+  // construction rather than by ResizeObserver.)
 
   // Info panel animation: grid 0fr→1fr so easing applies to real content height.
   // Double rAF ensures browser paints the closed (0fr) state before opening.
@@ -300,7 +277,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
         caretClass="text-copper-400"
       />
       <div className="flex divide-x divide-stone-700">
-        {stripCharacterIds.map((charId, charIndex) => {
+        {stripCharacterIds.map((charId) => {
           const character = getCharacter(charId);
           if (!character) return null;
 
@@ -313,11 +290,32 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
           const cannotSelect = disabled || (isAtMaxPlaced && !isSelected && !isPlaced);
           const moveInfo = getMovementInfo(character.behavior);
 
+          // Input heroes have no meaningful default — the arrow live-binds to
+          // the player's compass choice (pending or placed) and has nothing
+          // to point at until one is made.
+          const isInputFacing = !!character.facingAcceptsUserInput;
+          const arrowDir = isInputFacing
+            ? (placedCharacters.find(pc => pc.characterId === character.id)?.facing
+                ?? pendingFacingOverrides[character.id])
+            : character.defaultFacing;
+
+          // Card layout ported from the experiment at the user's request
+          // (2026-07-31): fixed-height bands (sprite / 38px name+epithet /
+          // 14px stat line), the Pick chip and Set corner plate, art-only dim
+          // for placed cards — with the classic skin kept (copper tint,
+          // divide-x strip, purple hero identity).
           return (
-            <div
+            // A real <button>: keyboard-reachable card, correct aria-pressed
+            // selection state, the global *:focus-visible ring for free.
+            // Valid because the card contains no interactive children (the
+            // compass lives in the info area below, not on the card).
+            <button
               key={charId}
+              type="button"
+              aria-pressed={isSelected}
+              disabled={cannotSelect}
               onClick={() => !cannotSelect && onSelectCharacter(isSelected ? null : charId)}
-              className={`flex-1 flex flex-col items-center px-1 pt-1 pb-1.5 relative transition-colors ${
+              className={`flex-1 flex flex-col items-center px-1 pt-0.5 pb-2 relative transition-colors ${
                 cannotSelect
                   ? 'opacity-40 cursor-not-allowed'
                   : isPlaced && isSelected
@@ -330,10 +328,11 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                   // record in SlidingSelection).
                   ? 'cursor-pointer bg-copper-900/15'
                   : isPlaced
-                  // Placed but NOT viewed: dim with opacity-50 + a hover
-                  // tint. "Already placed, can't re-place" signal — the
-                  // checkmark + dimmed sprite carry that.
-                  ? 'opacity-50 cursor-pointer [@media(hover:hover)]:hover:bg-stone-700/30'
+                  // Placed but NOT viewed: dim only the ART (sprite wrapper
+                  // below) — "already placed" is a fact about the unit, not
+                  // a reason to make its name and HP harder to read; the
+                  // Set corner plate says it in words.
+                  ? 'cursor-pointer [@media(hover:hover)]:hover:bg-stone-700/30'
                   : isSelected
                   ? 'bg-copper-900/15 cursor-pointer'
                   : '[@media(hover:hover)]:hover:bg-stone-700/30 cursor-pointer'
@@ -341,96 +340,104 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
             >
               {/* Sprite — takes full card width, uniform height across the row */}
               <div className="relative w-full">
-                <SpriteThumbnail
-                  sprite={character.customSprite}
-                  size={cardSpriteHeight}
-                  fillWidth
-                  previewType="entity"
-                  noBackground
-                  pixelScale={CARD_PIXEL_SCALE}
-                  bottomAlign={!character.isFloating}
-                  cardRole="hero"
-                  cardSelected={isSelected}
-                  cardPlaced={isPlaced}
-                  canvasStyle={(isSelected && !isPlaced) ? { filter: 'drop-shadow(0 0 2px rgba(0,0,0,1)) drop-shadow(0 0 3px rgba(212,165,116,0.9)) drop-shadow(0 0 7px rgba(212,165,116,0.5))' } : undefined}
-                />
-                {isPlaced && (
-                  // Just the centered ✓ — no dark dim overlay. The outer
-                  // card's opacity-50 already carries the "this hero is
-                  // placed and can't be placed again" signal; adding a
-                  // bg-black/40 dim on top of the sprite area produced a
-                  // visible dark rectangle that read as a sprite container
-                  // boundary, especially against the copper-tinted backdrop
-                  // when a hero is selected for info re-read.
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-copper-400 text-base">✓</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Name + Title (below sprite).
-                  Separate block divs for tight vertical spacing control.
-                  Container carries a ref + shared minHeight so all cards
-                  in the row have the same name-block height, aligning the
-                  HP/info/caret rows below across cards. */}
-              <div
-                ref={(el) => { nameBlockRefs.current[charIndex] = el; }}
-                className="text-center w-full mt-0.5 mb-0.5"
-                style={{ minHeight: maxNameBlockHeight || undefined }}
-              >
-                <div className="text-[12px] font-medium break-words text-arcane-400 leading-none">
-                  {character.name}
+                {/* THE PLACED DIM IS OPACITY ON A WRAPPER, NEVER A FILTER ON
+                    THE CANVAS. SpriteThumbnail drives a requestAnimationFrame
+                    loop whose phases key off `cardPlaced`, so a CSS filter
+                    over that canvas would be re-evaluated every frame — the
+                    pinned page-decoration rule. Opacity is compositor-only. */}
+                <div className={isPlaced && !isSelected ? 'opacity-50' : undefined}>
+                  <SpriteThumbnail
+                    sprite={character.customSprite}
+                    size={cardSpriteHeight}
+                    fillWidth
+                    previewType="entity"
+                    noBackground
+                    pixelScale={CARD_PIXEL_SCALE}
+                    bottomAlign={!character.isFloating}
+                    cardRole="hero"
+                    cardSelected={isSelected}
+                    cardPlaced={isPlaced}
+                    // Selection glow is ungated: a placed hero you have
+                    // tapped to re-read is still THE SELECTED CARD, and a
+                    // different selection language for it made the strip
+                    // look like it had two kinds of selection.
+                    canvasStyle={isSelected ? { filter: 'drop-shadow(0 0 2px rgba(0,0,0,1)) drop-shadow(0 0 3px rgba(212,165,116,0.9)) drop-shadow(0 0 7px rgba(212,165,116,0.5))' } : undefined}
+                  />
                 </div>
-                {character.title && (
-                  <div className="text-[10px] italic text-parchment-300 leading-none mt-0.5">
-                    {character.title}
-                  </div>
+                {isPlaced && (
+                  // A stamped corner plate instead of a system-font dingbat:
+                  // the old centred ✓ was drawn by whatever glyph the device
+                  // had, sat ON the art it was describing, and said nothing a
+                  // stranger to the game could read.
+                  <span className="absolute bottom-0 left-0 hud-label px-1 py-0.5 rounded-pixel bg-copper-900/80 border border-copper-700 text-copper-300">
+                    Set
+                  </span>
                 )}
               </div>
 
-              {/* Attribute row: HP + movement */}
-              <div className="flex items-center justify-center mt-0.5 w-full">
-                <div className="flex items-center gap-0.5 pr-1.5 border-r border-stone-600">
-                  <span className="text-xs font-medium text-copper-400">HP:</span>
-                  <span className="text-xs font-bold" style={{ color: '#4ade80' }}>
+              {/* NAME + epithet — a FIXED 38px box, one clamped line each,
+                  full text in `title`. Fixed bands keep every card the same
+                  height whether its hero is 'Ru' or 'Bartholomew the
+                  Unready', which retires the measured-min-height machinery
+                  the old two-line block needed. */}
+              <div className="w-full h-[38px] flex flex-col items-center justify-center overflow-hidden leading-none">
+                <span
+                  className="hud-title text-arcane-300 text-center break-words line-clamp-1"
+                  title={character.title ? `${character.name} — ${character.title}` : character.name}
+                >
+                  {character.name}
+                </span>
+                {character.title && (
+                  <span className="mt-0.5 text-[10px] italic text-parchment-300/90 text-center line-clamp-1">
+                    {character.title}
+                  </span>
+                )}
+              </div>
+
+              {/* STAT LINE — one 14px row. The border-r rule between HP and
+                  movement is gone (one divider language per strip); a real
+                  12px gap does the separating. */}
+              <div className="flex items-center justify-center gap-3 w-full h-[14px]">
+                <div className="flex items-center gap-1">
+                  <span className="hud-label text-copper-400">HP</span>
+                  <span className="hud-num" style={{ color: 'var(--hud-vital)' }}>
                     {character.health}
                   </span>
                 </div>
-                <div className="flex items-center gap-1 pl-1.5 text-copper-400">
-                  {moveInfo ? (() => {
-                    // Input heroes have no meaningful default — the arrow
-                    // live-binds to the player's compass choice (pending or
-                    // placed) and shows "?" until one is made.
-                    const isInputFacing = !!character.facingAcceptsUserInput;
-                    const arrowDir = isInputFacing
-                      ? (placedCharacters.find(pc => pc.characterId === character.id)?.facing
-                          ?? pendingFacingOverrides[character.id])
-                      : character.defaultFacing;
-                    return (
+                <div className="flex items-center gap-1 text-copper-400">
+                  {moveInfo ? (
+                    arrowDir ? (
                       <>
                         {moveInfo.tilesPerMove > 1 && (
-                          <span className="text-xs font-medium">{moveInfo.tilesPerMove}</span>
+                          <span className="hud-num">{moveInfo.tilesPerMove}</span>
                         )}
-                        {arrowDir ? (
-                          <MovementArrow direction={arrowDir} className={isInputFacing ? 'text-purple-300' : 'text-copper-400'} size={13} />
-                        ) : (
-                          <span className="text-[11px] font-bold text-purple-300/80 leading-none">?</span>
-                        )}
+                        {/* Always animated — user call (2026-07-31): the
+                            travelling arrow plays on every card, as classic
+                            does, not only the selected one. */}
+                        <MovementArrow
+                          direction={arrowDir}
+                          className={isInputFacing ? 'text-arcane-300' : 'text-copper-400'}
+                          size={13}
+                        />
                       </>
-                    );
-                  })() : (
-                    <span className="text-xs text-stone-500">—</span>
+                    ) : (
+                      /* A BLOCKING STATE MUST NEVER BE THE SMALLEST THING ON
+                         SCREEN. This was an 11px '?' at 80% opacity — the
+                         least legible mark in the panel standing in for the
+                         one input without which the hero cannot be placed. */
+                      <span
+                        className="hud-label px-1 rounded-pixel bg-black/35 whitespace-nowrap"
+                        style={{ color: 'var(--hud-gold)' }}
+                      >
+                        Pick
+                      </span>
+                    )
+                  ) : (
+                    <span className="hud-num text-stone-400">—</span>
                   )}
                 </div>
               </div>
-
-              {/* No per-card "more info" affordance (design decision,
-                  2026-07-29): the old reserved "More Info" row cost ~22px
-                  per card, and even a pinned caret proved redundant — the
-                  first tap teaches that every card opens. The words live in
-                  the shared hint line below the strip; the selected amber
-                  up caret rides the SlidingSelection overlay, height-free. */}
-            </div>
+            </button>
           );
         })}
       </div>

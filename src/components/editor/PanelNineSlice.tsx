@@ -98,9 +98,8 @@ export const PanelNineSlice: React.FC<Props> = ({ pieces, zoom, width, height, s
   const bl = p['corner-bl'];
   const br = p['corner-br'];
   // Capped kits split each edge into cap · middle · cap; plain kits have one
-  // repeating part. Detect rather than configure, so both render from the
-  // same component and a half-converted kit still previews.
-  const capped = !!p['edge-top-cap-l'] || !!p['edge-left-cap-t'];
+  // repeating part. Detected per-piece rather than configured, so both render
+  // from the same component and a half-converted kit still previews.
   const top = p['edge-top'] ?? p['edge-top-mid'];
   const bottom = p['edge-bottom'] ?? p['edge-bottom-mid'];
   const left = p['edge-left'] ?? p['edge-left-mid'];
