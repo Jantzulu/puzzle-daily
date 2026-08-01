@@ -158,6 +158,19 @@ const bg = (
  * layers otherwise paint over static text.
  */
 export const QuestBoxFrame: React.FC = () => {
+  // Measured own size — the caps-drop rule below needs it. Hooks before
+  // the active-flag early return (rules of hooks).
+  const ref = React.useRef<HTMLDivElement>(null);
+  const [dims, setDims] = React.useState<{ w: number; h: number } | null>(null);
+  React.useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const update = () => setDims({ w: el.clientWidth, h: el.clientHeight });
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
   if (!questSkinFrameActive) return null;
   // GEOMETRY is corner-keyed (a nine-slice's runs start where its corners
   // end) — deliberately NOT questFrameBorders, which is edge-keyed for the
@@ -166,14 +179,25 @@ export const QuestBoxFrame: React.FC = () => {
   const bb = (P('corner-bl')?.h ?? bottomMid?.h ?? 0) * Z;
   const bl = (tl?.w ?? leftMid?.w ?? 0) * Z;
   const br = (tr?.w ?? rightMid?.w ?? 0) * Z;
-  const capTL = (P('edge-top-cap-l')?.w ?? 0) * Z;
-  const capTR = (P('edge-top-cap-r')?.w ?? 0) * Z;
-  const capBL = (P('edge-bottom-cap-l')?.w ?? 0) * Z;
-  const capBR = (P('edge-bottom-cap-r')?.w ?? 0) * Z;
-  const capLT = (P('edge-left-cap-t')?.h ?? 0) * Z;
-  const capLB = (P('edge-left-cap-b')?.h ?? 0) * Z;
-  const capRT = (P('edge-right-cap-t')?.h ?? 0) * Z;
-  const capRB = (P('edge-right-cap-b')?.h ?? 0) * Z;
+  // CAPS DROP WHEN THEY DON'T FIT (user bug, thin-box round): a run's two
+  // fixed caps need corner-to-corner room; the thin box (~54px) can't hold
+  // 24px side caps under 24px corners, so they slid into each other and
+  // poked band-end art through the silhouette. Unfit caps vanish and the
+  // middle runs corner to corner — same rule as the forge preview.
+  const sideRoom = (dims?.h ?? Number.MAX_SAFE_INTEGER) - bt - bb;
+  const topRoom = (dims?.w ?? Number.MAX_SAFE_INTEGER) - bl - br;
+  const fitL = ((P('edge-left-cap-t')?.h ?? 0) + (P('edge-left-cap-b')?.h ?? 0)) * Z <= sideRoom;
+  const fitR = ((P('edge-right-cap-t')?.h ?? 0) + (P('edge-right-cap-b')?.h ?? 0)) * Z <= sideRoom;
+  const fitT = ((P('edge-top-cap-l')?.w ?? 0) + (P('edge-top-cap-r')?.w ?? 0)) * Z <= topRoom;
+  const fitB = ((P('edge-bottom-cap-l')?.w ?? 0) + (P('edge-bottom-cap-r')?.w ?? 0)) * Z <= topRoom;
+  const capTL = fitT ? (P('edge-top-cap-l')?.w ?? 0) * Z : 0;
+  const capTR = fitT ? (P('edge-top-cap-r')?.w ?? 0) * Z : 0;
+  const capBL = fitB ? (P('edge-bottom-cap-l')?.w ?? 0) * Z : 0;
+  const capBR = fitB ? (P('edge-bottom-cap-r')?.w ?? 0) * Z : 0;
+  const capLT = fitL ? (P('edge-left-cap-t')?.h ?? 0) * Z : 0;
+  const capLB = fitL ? (P('edge-left-cap-b')?.h ?? 0) * Z : 0;
+  const capRT = fitR ? (P('edge-right-cap-t')?.h ?? 0) * Z : 0;
+  const capRB = fitR ? (P('edge-right-cap-b')?.h ?? 0) * Z : 0;
 
   // THE CORNER SQUARE IS SACRED (user, thin-edge round, after two wrong
   // fixes): the corner art's transparency is the box's stepped SILHOUETTE
@@ -232,7 +256,7 @@ export const QuestBoxFrame: React.FC = () => {
   };
 
   return (
-    <div aria-hidden className="absolute inset-0">
+    <div ref={ref} aria-hidden className="absolute inset-0">
       {layers.map((s, i) => (s ? <div key={i} style={s} /> : null))}
       {ornament(P('edge-top-ornament'), true)}
       {ornament(P('edge-bottom-ornament'), false)}

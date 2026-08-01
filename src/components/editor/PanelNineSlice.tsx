@@ -131,14 +131,26 @@ export const PanelNineSlice: React.FC<Props> = ({ pieces, zoom, width, height, s
   // Cap footprints in display px. The middles start after them, which is the
   // whole point: a cap never stretches and never repeats, so ornament painted
   // into it survives at every panel size.
-  const capTL = (p['edge-top-cap-l']?.w ?? 0) * zoom;
-  const capTR = (p['edge-top-cap-r']?.w ?? 0) * zoom;
-  const capBL = (p['edge-bottom-cap-l']?.w ?? 0) * zoom;
-  const capBR = (p['edge-bottom-cap-r']?.w ?? 0) * zoom;
-  const capLT = (p['edge-left-cap-t']?.h ?? 0) * zoom;
-  const capLB = (p['edge-left-cap-b']?.h ?? 0) * zoom;
-  const capRT = (p['edge-right-cap-t']?.h ?? 0) * zoom;
-  const capRB = (p['edge-right-cap-b']?.h ?? 0) * zoom;
+  // CAPS DROP WHEN THEY DON'T FIT (user bug, thin-box round: "corners look
+  // normal when the panel is tall, have stuff poking out when shorter"): a
+  // run's two fixed caps need corner-to-corner room; on a panel shorter
+  // than corners+caps they slid into each other and the corner rows,
+  // poking band-end art through the silhouette. Unfit caps vanish and the
+  // middle runs corner to corner instead.
+  const sideRoom = height - bt - bb;
+  const topRoom = width - bLeft - bRight;
+  const fitL = ((p['edge-left-cap-t']?.h ?? 0) + (p['edge-left-cap-b']?.h ?? 0)) * zoom <= sideRoom;
+  const fitR = ((p['edge-right-cap-t']?.h ?? 0) + (p['edge-right-cap-b']?.h ?? 0)) * zoom <= sideRoom;
+  const fitT = ((p['edge-top-cap-l']?.w ?? 0) + (p['edge-top-cap-r']?.w ?? 0)) * zoom <= topRoom;
+  const fitB = ((p['edge-bottom-cap-l']?.w ?? 0) + (p['edge-bottom-cap-r']?.w ?? 0)) * zoom <= topRoom;
+  const capTL = fitT ? (p['edge-top-cap-l']?.w ?? 0) * zoom : 0;
+  const capTR = fitT ? (p['edge-top-cap-r']?.w ?? 0) * zoom : 0;
+  const capBL = fitB ? (p['edge-bottom-cap-l']?.w ?? 0) * zoom : 0;
+  const capBR = fitB ? (p['edge-bottom-cap-r']?.w ?? 0) * zoom : 0;
+  const capLT = fitL ? (p['edge-left-cap-t']?.h ?? 0) * zoom : 0;
+  const capLB = fitL ? (p['edge-left-cap-b']?.h ?? 0) * zoom : 0;
+  const capRT = fitR ? (p['edge-right-cap-t']?.h ?? 0) * zoom : 0;
+  const capRB = fitR ? (p['edge-right-cap-b']?.h ?? 0) * zoom : 0;
 
   const layers: Array<React.CSSProperties | null> = [
     // Centre first, then edge middles, then caps, then corners — each covers
