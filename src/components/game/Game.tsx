@@ -3396,7 +3396,11 @@ export const Game: React.FC<GameProps> = ({
               </div>
             ) : (
               /* Heroes and Dungeon Details - dimmed during play/test */
-              <div className={`transition-opacity ${dimmedPanelClass} ${justExitedReplay ? 'animate-slide-up' : ''}`}>
+              // -mt-[9px]: pulls the HEROES row up under the banner's ragged
+              // hem, halving the quest-text-to-row gap (18px -> 9px measured;
+              // user call 2026-08-01). The overlap lands in the banner's
+              // transparent pb-4 zone; the cloth (z-20) stays on top.
+              <div className={`-mt-[9px] transition-opacity ${dimmedPanelClass} ${justExitedReplay ? 'animate-slide-up' : ''}`}>
                 {/* Character Selector - visible during setup, running, defeat, and test mode */}
                 {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
                   <CharacterSelector
