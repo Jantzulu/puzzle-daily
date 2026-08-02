@@ -161,7 +161,15 @@ export const DEFAULT_KITS: KitSpec[] = [
     description:
       'The quest panel under the board (the 2026-08-01 plate-box design, currently placeholder CSS in Game.tsx). Capped nine-slice — finished edge ends, so ornament survives ANY width or height — plus the QUEST title plate as its own 3-slice riding the top border. In the game the plate STRADDLES the border line (about 60% above it), so paint it as a finished object on all four sides; the sample gives it a separate band only so the cut is clean. The divider is the side-quests rule. Periods match the other kits (mid 24, cap = corner 12) so motifs transfer.',
     pieces: [
-      ...nineSliceCapped(12, 12, 12, 24, 24),
+      // THE SHIPPED ART IS THE SPEC: the overrides below mirror the committed
+      // quest skin (src/assets/panels/quest-box-slices.json — the artist's
+      // painted geometry, thin 5-art top/bottom bands). A DEFAULTS_VERSION
+      // bump resets stored built-ins, and a reset to sizes that don't match
+      // the live art desyncs the slice map from the artist's sheet mid-paint
+      // (2026-08-01: the Live panel shredded the sheet into misplaced
+      // fragments). Change these only alongside the committed art.
+      ...nineSliceCapped(12, 12, 12, 24, 24).map(p =>
+        p.id.startsWith('edge-top-') || p.id.startsWith('edge-bottom-') ? { ...p, h: 5 } : p),
       { id: 'plate-cap-l', label: 'Plate Cap L', w: 6, h: 14, repeat: 'fixed', notes: 'Finished left end of the QUEST plate — it straddles the box border in-game, so give it a complete outline.' },
       { id: 'plate-mid', label: 'Plate Middle', w: 12, h: 14, repeat: 'tile-x', notes: 'Repeats behind the plate label so the plate hugs any text length. The label itself stays DOM text.' },
       { id: 'plate-cap-r', label: 'Plate Cap R', w: 6, h: 14, repeat: 'fixed' },
@@ -256,12 +264,16 @@ const STORAGE_KEY = 'panel_forge_kits_v1';
 // v11: ornaments back to 12; the quest sheet instead grows 5 rows at the
 //      TOP (everything else anchored, shifted down) and those rows are the
 //      ornament slots' extra upward halo — "accept this new space as aura
-//      for the ornaments", verbatim. WARNING KEPT LOUD: every bump here
-//      RESETS user edits to built-in kits (loadKits replaces them with
-//      defaults; only duplicated custom kits survive) — the user resizes
-//      built-ins (the thinness lever), so bump ONLY with real cause and
-//      say so in the session notes.
-const DEFAULTS_VERSION = 11;
+//      for the ornaments", verbatim.
+// v12: THE RESET TRAP CLOSED. Tonight's bumps (v8–v11) wholesale-replaced
+//      stored built-ins, wiping the artist's thinned quest sizes and
+//      shredding their sheet's slicing (Live panel fragments). Two fixes:
+//      the quest kit's DEFAULTS now mirror the SHIPPED art (5-art
+//      top/bottom bands, from the committed slices file), and loadKits
+//      migrations from v12 on carry stored piece w/h over for matching
+//      built-in pieces — the artist's sizes are sacred. Size corrections
+//      must ship as new piece ids or as re-apply notes.
+const DEFAULTS_VERSION = 12;
 
 function loadKits(): KitSpec[] {
   try {
@@ -272,7 +284,29 @@ function loadKits(): KitSpec[] {
     const version = Array.isArray(parsed) ? 1 : parsed.v;
     if (version < DEFAULTS_VERSION) {
       const customs = stored.filter(k => !k.builtIn);
-      return [...DEFAULT_KITS, ...customs];
+      // Pre-v12 stored built-ins may carry the 2026-08-01 accidental resets
+      // (four bumps in one night wiped the artist's thinned quest sizes and
+      // desynced the slice map from their painted sheet) — replace them
+      // wholesale one last time; v12's defaults mirror the shipped art.
+      if (version < 12) return [...DEFAULT_KITS, ...customs];
+      // From v12 on, THE ARTIST'S PIECE SIZES ARE SACRED: built-ins refresh
+      // to the new defaults (descriptions, notes, new pieces), but stored
+      // w/h win for matching pieces — the user resizes built-ins (the
+      // thinness lever), and a bump must never desync their sheet again.
+      // Genuine size corrections must ship as NEW piece ids or be called
+      // out for manual re-apply in the kit description.
+      const merged = DEFAULT_KITS.map(d => {
+        const prev = stored.find(s => s.builtIn && s.id === d.id);
+        if (!prev) return d;
+        return {
+          ...d,
+          pieces: d.pieces.map(p => {
+            const old = prev.pieces.find(q => q.id === p.id);
+            return old ? { ...p, w: old.w, h: old.h } : p;
+          }),
+        };
+      });
+      return [...merged, ...customs];
     }
     const missing = DEFAULT_KITS.filter(d => !stored.some(s => s.id === d.id));
     return [...stored, ...missing];
