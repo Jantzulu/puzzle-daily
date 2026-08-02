@@ -1,7 +1,7 @@
 import React from 'react';
 import { IRON } from '../game/PortcullisMesh';
 import navJson from '../../assets/panels/nav-gate-slices.json';
-import { Z, buildSkin, BAR_FRACS, drawFixed, drawTiled, prepCanvas, whenDecoded, useCrispSnap, type SkinPiece } from '../game/panelSkins';
+import { Z, buildSkin, barCenters, drawFixed, drawTiled, prepCanvas, whenDecoded, useCrispSnap, type SkinPiece } from '../game/panelSkins';
 
 // ============================================================================
 // GATE BEAM — one horizontal portcullis beam per nav menu item (all widths)
@@ -87,7 +87,9 @@ const GateBeamSkin: React.FC<{ first?: boolean }> = ({ first = false }) => {
       const plate = NAV.get('beam-plate');
       const beamH = (beam?.h ?? 18) * Z;
       const beamTop = Math.round((h - beamH) / 2);
-      const barXs = BAR_FRACS.map(f => Math.round(f * w));
+      // Outer pair FLUSH at the edges, same rule as PortcullisSkin — the
+      // menu and the rail share their width, so the columns stay one gate.
+      const barXs = barCenters(w, (bar?.w ?? 6) * Z);
 
       // Bars first (behind the beam): from the navbar (first item reaches
       // up 26px) down past the box's bottom edge into the next item.
@@ -102,11 +104,13 @@ const GateBeamSkin: React.FC<{ first?: boolean }> = ({ first = false }) => {
       // The beam, edge to edge.
       drawTiled(ctx, beam, 0, beamTop, w, beamH, 0, beamTop);
 
-      // Plates where each bar crosses the beam, 13px below the iron's top
-      // (the shared hardware position).
+      // Plates where each bar crosses the beam, 14px below the iron's top:
+      // the svg's 13 rounded to EVEN so the plate's art pixels stay on the
+      // 2px art grid, matching the forge sample's centered plate line (art
+      // y 7). Keep in lockstep with PortcullisSkin's plate line.
       if (plate) {
         const pw = plate.w * Z;
-        for (const bx of barXs) drawFixed(ctx, plate, Math.round(bx - pw / 2), beamTop + 13);
+        for (const bx of barXs) drawFixed(ctx, plate, Math.round(bx - pw / 2), beamTop + 14);
       }
     };
     // SYNCHRONOUS draw, not rAF: hidden/background tabs freeze rAF and the

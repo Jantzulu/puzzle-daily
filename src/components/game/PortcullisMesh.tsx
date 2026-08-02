@@ -1,7 +1,7 @@
 import React from 'react';
 import railJson from '../../assets/panels/control-rail-slices.json';
 import barsJson from '../../assets/panels/portcullis-gate-slices.json';
-import { Z, buildSkin, BAR_FRACS, drawFixed, drawTiled, prepCanvas, whenDecoded, type SkinPiece } from './panelSkins';
+import { Z, buildSkin, barCenters, drawFixed, drawTiled, prepCanvas, whenDecoded, type SkinPiece } from './panelSkins';
 
 // ============================================================================
 // PORTCULLIS RAIL — the control panel's iron
@@ -103,7 +103,9 @@ const PortcullisSkin: React.FC<{ className: string }> = ({ className }) => {
       const spikeH = (spike?.h ?? 0) * Z;
       const bandTop = Math.round(h * 0.3125);
 
-      const barXs = BAR_FRACS.map(f => Math.round(f * w));
+      // Outer pair FLUSH at the edges (edge bars contain the shape); the
+      // plates and spikes ride the same centers.
+      const barXs = barCenters(w, (bar?.w ?? 6) * Z);
 
       // Bars rise from the band's top edge to the box top (they tuck
       // behind the band: draw them first, band over).
@@ -123,11 +125,14 @@ const PortcullisSkin: React.FC<{ className: string }> = ({ className }) => {
       if (capL) drawFixed(ctx, capL, 0, bandTop);
       if (capR) drawFixed(ctx, capR, w - crW, bandTop);
 
-      // Plates where each bar meets the band (13px below its top, the
-      // meshes' shared hardware position).
+      // Plates where each bar meets the band, 14px below its top: the svg
+      // put its plates at 13, but 14 is EVEN — the plate's art pixels stay
+      // on the band's 2px art grid — and equals the forge sample's plate
+      // line (art y 7), so sample, preview and live agree exactly. Keep in
+      // lockstep with GateBeamSkin's plate line.
       if (plate) {
         const pw = plate.w * Z;
-        for (const bx of barXs) drawFixed(ctx, plate, Math.round(bx - pw / 2), bandTop + 13);
+        for (const bx of barXs) drawFixed(ctx, plate, Math.round(bx - pw / 2), bandTop + 14);
       }
 
       // Spikes hanging below the band at each bar; the outer pair clips at

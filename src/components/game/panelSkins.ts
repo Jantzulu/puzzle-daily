@@ -207,3 +207,21 @@ export const BLEED = 8 * Z;
  * elements' columns aligned exactly as the meshes did.
  */
 export const BAR_FRACS = [0.015, 0.209, 0.403, 0.597, 0.791, 0.985];
+
+/**
+ * Bar CENTER positions across a surface `w` wide, with the OUTER PAIR
+ * CLAMPED FLUSH to the edges. Edge bars contain the shape (the 2026-07-31
+ * edge-bar reformat): a real portcullis frames its own lattice. The svg
+ * meshes got flushness free — bar half-width and center were the SAME
+ * viewBox fraction (15/1000, 6/400) — but fixed-size art centered at a
+ * fraction drifts inward as the surface widens (~4px of bare edge at the
+ * 672px shared width). Plates and spikes center on these same values so
+ * the hardware rides its bar. Works in CSS px (renderers) and in art px
+ * (forge assemblers) alike — pass `barW` in the same unit as `w`.
+ */
+export const barCenters = (w: number, barW: number): number[] => {
+  const cs = BAR_FRACS.map(f => Math.round(f * w));
+  cs[0] = Math.round(barW / 2);
+  cs[cs.length - 1] = w - Math.round(barW / 2);
+  return cs;
+};

@@ -3,6 +3,7 @@ import { toast } from '../shared/Toast';
 import { PortcullisMesh } from '../game/PortcullisMesh';
 import { GemMesh } from '../game/GemMesh';
 import { GateBeamMesh } from '../shared/GateMesh';
+import { barCenters } from '../game/panelSkins';
 import { PanelForgeImport } from './PanelForgeImport';
 
 // ============================================================================
@@ -120,7 +121,8 @@ const nineSliceCapped = (corner: number, edge: number, cap: number, mid: number,
   { id: 'divider-cap-r', label: 'Divider Cap R', w: cap, h: 6, repeat: 'fixed' },
 ];
 
-const DEFAULT_KITS: KitSpec[] = [
+// Exported for the assembly-invariant test (cut sources must stay valid).
+export const DEFAULT_KITS: KitSpec[] = [
   {
     id: 'window-panel-capped',
     name: 'Window Panel (capped edges)',
@@ -171,7 +173,7 @@ const DEFAULT_KITS: KitSpec[] = [
     id: 'portcullis-gate',
     name: 'Portcullis Gate (bars)',
     builtIn: true,
-    description: 'The gate bars rising above the control rail (the top zone of PortcullisMesh). WIRED: drop the export at src/assets/panels/portcullis-gate-slices.json. Sizes audited against the LIVE geometry at Z=2 (2 CSS px per art px), 2026-08-02: bars render 12 CSS px wide at the six shared x-fractions. NOTE the meshes STRETCHED with the viewport (desktop bars ~21px, mobile ~11px); painted art is fixed-size — 6 art px is the mobile-true width.',
+    description: 'The gate bars rising above the control rail (the top zone of PortcullisMesh). WIRED: drop the export at src/assets/panels/portcullis-gate-slices.json. Sizes audited against the LIVE geometry at Z=2 (2 CSS px per art px), 2026-08-02: bars render 12 CSS px wide at the six shared x-fractions with the OUTER PAIR FLUSH at the screen edges (edge bars contain the shape — the renderer clamps them flush at every width). NOTE the meshes STRETCHED with the viewport (desktop bars ~21px, mobile ~11px); painted art is fixed-size — 6 art px is the mobile-true width. PAINT ORDER: once EITHER this file or the Control Rail file is painted, the canvas replaces the whole rail svg — paint this bar kit first (one piece, shared stock), or the rising bars vanish while the rail wears art.',
     pieces: [
       { id: 'bar-segment', label: 'Gate Bar Segment', w: 6, h: 24, repeat: 'tile-y', notes: 'One bar: lit left edge, shaded right. Repeats vertically behind the board and up the open menu. SAME STOCK as the Nav Gate kit\'s Vertical Bar Segment — paint them identically.' },
       { id: 'bar-top-cap', label: 'Bar Top Cap', w: 6, h: 4, repeat: 'fixed', notes: 'Optional finial where a bar ends.' },
@@ -181,24 +183,24 @@ const DEFAULT_KITS: KitSpec[] = [
     id: 'control-rail',
     name: 'Control Rail',
     builtIn: true,
-    description: 'The iron rail the game controls sit on, with its forge plates and hanging spikes. WIRED: drop the export at src/assets/panels/control-rail-slices.json. Sizes audited against the LIVE geometry at Z=2, 2026-08-02: the band fills its 44 CSS px box (22 art), spikes hang ~16 CSS (8 art), plates rendered 9 CSS in the mesh — art quantizes to 8 CSS (4 art).',
+    description: 'The iron rail the game controls sit on, with its forge plates and hanging spikes. WIRED: drop the export at src/assets/panels/control-rail-slices.json. Sizes audited against the LIVE geometry at Z=2, 2026-08-02: the band fills its 44 CSS px box (22 art), spikes hang ~16 CSS (8 art), plates rendered 9 CSS in the mesh — art quantizes to 8 CSS (4 art). Plates + spikes sit at ALL SIX bar fractions, outer pair flush at the screen edges — the sample shows the outer spikes CLIPPED by the sheet edge because that is exactly how the live pair clips at the screen edge. Shares the drop-path canvas with the Portcullis Gate kit — see its PAINT ORDER note.',
     pieces: [
       { id: 'rail-face', label: 'Rail Face', w: 24, h: 22, repeat: 'tile-x', notes: 'The flat band the DOM controls sit on — fills the full 44px rung box at Z=2. Lit top edge, dark bottom lip.' },
       { id: 'rail-cap-l', label: 'Rail Cap L', w: 8, h: 22, repeat: 'fixed', notes: 'Optional screen-edge finisher — the live mesh runs edge to edge with no caps; leave unpainted to keep that.' },
       { id: 'rail-cap-r', label: 'Rail Cap R', w: 8, h: 22, repeat: 'fixed' },
-      { id: 'forge-plate', label: 'Forge Plate', w: 4, h: 4, repeat: 'fixed', notes: 'SAME HARDWARE as the Nav Gate kit\'s "Beam Forge Plate" — paint them identically, or the bottom rung reads as a different make of iron than the lattice above it. Renders 8 CSS px (the mesh\'s standardized plate was 9 — art must quantize to even; resize to 5 for 10px if 8 reads too fine). Placed where each bar meets the rail.' },
-      { id: 'rail-spike', label: 'Rail Spike', w: 8, h: 8, repeat: 'fixed', notes: 'Hangs below the rail at each bar; anchors at its root (top edge). The outer pair clips at the screen edge like the mesh\'s.' },
+      { id: 'forge-plate', label: 'Forge Plate', w: 4, h: 4, repeat: 'fixed', notes: 'SAME HARDWARE as the Nav Gate kit\'s "Beam Forge Plate" — paint them identically, or the bottom rung reads as a different make of iron than the lattice above it. Renders 8 CSS px (the mesh\'s standardized plate was 9 — art must quantize to even; resize to 5 for 10px if 8 reads too fine). PAINT IT IN THE DETACHED SLOT above the band; the dashed in-band boxes only preview the live placement (each bar crossing) — paint there lands inside the band/cap cuts and ships baked into them.' },
+      { id: 'rail-spike', label: 'Rail Spike', w: 8, h: 8, repeat: 'fixed', notes: 'Hangs below the rail at each bar; anchors at its root (top edge). The four interior slots are real (the first is the cut); the dashed outer pair previews how the live edge spikes clip at the screen edge.' },
     ],
   },
   {
     id: 'nav-gate',
     name: 'Nav Gate Menu',
     builtIn: true,
-    description: 'The hamburger menu\'s lattice: each page item rides a horizontal iron beam (GateBeamMesh) with the vertical bars threading the stack, and its label sits on a steel plate sign. WIRED: drop the export at src/assets/panels/nav-gate-slices.json. Sizes audited against the LIVE geometry at Z=2, 2026-08-02 — the old draft was wrong three ways: beams are the THIN 36px iron (18 art, settled decision — not 12), signs ~26px tall (13 art, not 10), bars 12px wide (6 art, not 5).',
+    description: 'The hamburger menu\'s lattice: each page item rides a horizontal iron beam (GateBeamMesh) with the vertical bars threading the stack, and its label sits on a steel plate sign. WIRED: drop the export at src/assets/panels/nav-gate-slices.json. Sizes audited against the LIVE geometry at Z=2, 2026-08-02 — the old draft was wrong three ways: beams are the THIN 36px iron (18 art, settled decision — not 12), signs ~26px tall (13 art, not 10), bars 12px wide (6 art, not 5). Bars sit at the six shared fractions with the OUTER PAIR FLUSH at the menu edges, matching the rail below so the columns read as one gate.',
     pieces: [
       { id: 'beam-face', label: 'Beam Face', w: 24, h: 18, repeat: 'tile-x', notes: 'The horizontal rung a menu item rides — the settled THIN 36px iron (18 art at Z=2): dark under-frame, flat face, lit top edge.' },
-      { id: 'beam-bar-segment', label: 'Vertical Bar Segment', w: 6, h: 24, repeat: 'tile-y', notes: 'Bars threading the whole stack, behind the beams. SAME STOCK as the Portcullis Gate kit\'s bar — paint them identically.' },
-      { id: 'beam-plate', label: 'Beam Forge Plate', w: 4, h: 4, repeat: 'fixed', notes: 'SAME HARDWARE as the Control Rail kit\'s "Forge Plate" — paint them identically. Bolted where a bar crosses a beam, 13px below the iron\'s top.' },
+      { id: 'beam-bar-segment', label: 'Vertical Bar Segment', w: 6, h: 24, repeat: 'tile-y', notes: 'Bars threading the whole stack, behind the beams. SAME STOCK as the Portcullis Gate kit\'s bar — paint them identically. CUT FROM THE DETACHED SLOT above the lattice: in the lattice the beams paint over the bars, so the dashed columns are look-only (paint them for the picture if you like — they ship nothing).' },
+      { id: 'beam-plate', label: 'Beam Forge Plate', w: 4, h: 4, repeat: 'fixed', notes: 'SAME HARDWARE as the Control Rail kit\'s "Forge Plate" — paint them identically. Bolted where a bar crosses a beam. PAINT IT IN THE DETACHED SLOT above the lattice; the dashed on-beam boxes only preview placement — paint there ships inside the beam iron and tiles across every menu item.' },
       { id: 'sign-cap-l', label: 'Sign Cap L', w: 6, h: 13, repeat: 'fixed', notes: 'Steel plate signage end — the square forge bolt lives here (the CSS plate\'s bolt is 5px at 4px inset; renders 26px tall).' },
       { id: 'sign-mid', label: 'Sign Middle', w: 12, h: 13, repeat: 'tile-x', notes: 'Plate face behind the label text — the DOM label rides ON TOP, like the quest plate.' },
       { id: 'sign-cap-r', label: 'Sign Cap R', w: 6, h: 13, repeat: 'fixed' },
@@ -238,7 +240,18 @@ const STORAGE_KEY = 'panel_forge_kits_v1';
 // v7: portcullis-gate / control-rail / nav-gate audited against LIVE
 //     geometry at Z=2 (beams 18 not 12, rail band 22 not 16, signs 13 not
 //     10, bars 6 wide, spikes 8) before the artist paints them.
-const DEFAULTS_VERSION = 7;
+// v8: the edge-bar reformat reaches the guides — outer bar pair FLUSH in
+//     the nav sample (was x=-1 off-sheet, corrupting the bar's rep-0 cut),
+//     rail sample hardware at all SIX fractions with live-style clipped
+//     edge spikes (was 3 anchors at wrong fractions), kit descriptions
+//     state the flush rule.
+// v9: hardware cut slots DETACHED (the quest-plate pattern) after
+//     adversarial review proved one flat sheet cannot ship the same pixels
+//     in two pieces: plates/bars painted in place bake into the band, cap
+//     and beam cuts (worst case: an unpainted cap exports "painted" and
+//     punches a hole in the live band). In-place hardware and under-beam
+//     bars are now dashed GUIDE regions the slicer ignores.
+const DEFAULTS_VERSION = 9;
 
 function loadKits(): KitSpec[] {
   try {
@@ -494,6 +507,17 @@ export interface AssemblyRegion {
    * paint around them would be the exact loss this exists to prevent.
    */
   halo?: { l: number; t: number; r: number; b: number };
+  /**
+   * PLACEMENT PREVIEW ONLY: shown in the sample and the reference underlay
+   * (dashed in the guides), but invisible to the slicer — never cut, never
+   * repeat-compared, never counted. For hardware whose live position sits ON
+   * another piece's paint (plates on the iron, bars under the beams): the
+   * sheet is FLAT, so paint inside such a box would land inside whatever cut
+   * region is underneath it and ship baked into that piece. Guide-flagged
+   * pieces get a real cut slot on clean ground instead (the quest-plate
+   * detachment pattern).
+   */
+  guide?: boolean;
 }
 
 export interface Assembly {
@@ -777,17 +801,46 @@ function assembleRail(kit: KitSpec): Assembly | null {
   const clW = cl?.w ?? 0;
   const crW = cr?.w ?? 0;
   const W = clW + REPS * rf.w + crW;
-  const H = rf.h + (rs?.h ?? 0);
+  // The plate is CUT from a detached slot above the band (the quest-plate
+  // pattern): live it sits ON the painted iron, and one flat sheet cannot
+  // ship the same pixels in two pieces — a plate painted in-band would bake
+  // into the face/cap cuts (and an unpainted cap would export "painted",
+  // carrying only a floating plate, then punch a transparent hole in the
+  // live band). Caught by adversarial review, 2026-08-02.
+  const slotH = fp ? fp.h + 2 : 0;
+  const H = slotH + rf.h + (rs?.h ?? 0);
   const regions: AssemblyRegion[] = [];
 
+  if (fp) regions.push({ pieceId: 'forge-plate', x: 2, y: 0, w: fp.w, h: fp.h, rep: 0 });
+
   for (let i = 0; i < REPS; i++) {
-    regions.push({ pieceId: 'rail-face', x: clW + i * rf.w, y: 0, w: rf.w, h: rf.h, rep: i });
+    regions.push({ pieceId: 'rail-face', x: clW + i * rf.w, y: slotH, w: rf.w, h: rf.h, rep: i });
   }
-  if (cl) regions.push({ pieceId: 'rail-cap-l', x: 0, y: 0, w: cl.w, h: cl.h, rep: 0 });
-  if (cr) regions.push({ pieceId: 'rail-cap-r', x: W - cr.w, y: 0, w: cr.w, h: cr.h, rep: 0 });
-  const anchors = [0.2, 0.5, 0.8].map(f => clW + (W - clW - crW) * f);
-  if (fp) anchors.forEach((ax, i) => regions.push({ pieceId: 'forge-plate', x: ax - fp.w / 2, y: 2, w: fp.w, h: fp.h, rep: i }));
-  if (rs) anchors.forEach((ax, i) => regions.push({ pieceId: 'rail-spike', x: ax - rs.w / 2, y: rf.h, w: rs.w, h: rs.h, rep: i }));
+  if (cl) regions.push({ pieceId: 'rail-cap-l', x: 0, y: slotH, w: cl.w, h: cl.h, rep: 0 });
+  if (cr) regions.push({ pieceId: 'rail-cap-r', x: W - cr.w, y: slotH, w: cr.w, h: cr.h, rep: 0 });
+
+  // Hardware where each gate bar meets the rail: the SIX shared fractions,
+  // outer pair flush (the gate kit's bar stock is 6 art wide — plates and
+  // spikes center where those bars land). The in-band plates are dashed
+  // GUIDES (live placement preview — leave them unpainted; the cut is the
+  // detached slot). Spikes sit on clean ground below the band: the four
+  // interior ones are real regions (rep 0 = the cut), the outer pair render
+  // CLIPPED at the sheet edge exactly as the live pair clips at the screen
+  // edge — guides too.
+  const anchors = barCenters(W, 6);
+  const last = anchors.length - 1;
+  if (fp) anchors.forEach((ax, i) => regions.push({ pieceId: 'forge-plate', x: ax - fp.w / 2, y: slotH + 7, w: fp.w, h: fp.h, rep: i + 1, guide: true }));
+  if (rs) {
+    anchors.forEach((ax, i) => {
+      if (i === 0 || i === last) return;
+      regions.push({ pieceId: 'rail-spike', x: ax - rs.w / 2, y: slotH + rf.h, w: rs.w, h: rs.h, rep: i - 1 });
+    });
+    [anchors[0], anchors[last]].forEach((ax, k) => {
+      const x = Math.max(0, ax - rs.w / 2);
+      const wClip = Math.min(ax + rs.w / 2, W) - x;
+      regions.push({ pieceId: 'rail-spike', x, y: slotH + rf.h, w: wClip, h: rs.h, rep: 4 + k, guide: true });
+    });
+  }
   return { regions, width: W, height: H };
 }
 
@@ -805,49 +858,76 @@ function assembleNavGate(kit: KitSpec): Assembly | null {
   const ROWS = 2; // two stacked menu items read as "the lattice"
   const rowPitch = beam.h + 6;
   const W = BEAM_REPS * beam.w;
-  const H = ROWS * rowPitch;
+  // Detached cut slots above the lattice (the quest-plate pattern): in the
+  // sample the bars thread BEHIND the beams — 18 of the bar's 24 rows sit
+  // under beam paint, and there is no clean bar span anywhere in the stack
+  // (rowPitch 24 = 18 beam + 6 gap) — and the plate sits ON the beam iron.
+  // Neither can be cut from the lattice without shipping the wrong paint
+  // (caught by adversarial review, 2026-08-02). The lattice shows both as
+  // dashed guides instead.
+  const slotH = bar ? Math.max(bar.h, plate?.h ?? 0) + 2 : 0;
+  const H = slotH + ROWS * rowPitch;
   const regions: AssemblyRegion[] = [];
 
-  // Bars first — they thread the whole stack BEHIND the beams.
   if (bar) {
-    const fracs = [0.015, 0.209, 0.403, 0.597, 0.791, 0.985]; // GateMesh BAR_XS / 400 (edge-bar reformat)
-    for (const f of fracs) {
-      const bx = Math.round(f * W - bar.w / 2);
-      for (let y = 0, r = 0; y < H; y += bar.h, r++) {
-        regions.push({ pieceId: 'beam-bar-segment', x: bx, y, w: bar.w, h: Math.min(bar.h, H - y), rep: r });
+    regions.push({ pieceId: 'beam-bar-segment', x: 2, y: 0, w: bar.w, h: bar.h, rep: 0 });
+    if (plate) regions.push({ pieceId: 'beam-plate', x: 2 + bar.w + 4, y: 0, w: plate.w, h: plate.h, rep: 0 });
+  }
+
+  // Bar centers at the six shared fractions, OUTER PAIR FLUSH at the sheet
+  // edges — the same rule the live renderers use (edge bars contain the
+  // shape; a plain round(frac·W) put the left bar at x=-1, off the sheet).
+  // Plates ride the same centers.
+  const centers = bar ? barCenters(W, bar.w) : [];
+
+  // Bars first — they thread the whole stack BEHIND the beams. Guides:
+  // paint bar art here freely for the look of the lattice, but the shipped
+  // bar is the detached slot's.
+  if (bar) {
+    for (const c of centers) {
+      const bx = c - Math.round(bar.w / 2);
+      for (let y = slotH, r = 1; y < H; y += bar.h, r++) {
+        regions.push({ pieceId: 'beam-bar-segment', x: bx, y, w: bar.w, h: Math.min(bar.h, H - y), rep: r, guide: true });
       }
     }
   }
 
+  let plateRep = 1;
   for (let row = 0; row < ROWS; row++) {
-    const by = row * rowPitch;
+    const by = slotH + row * rowPitch;
     for (let i = 0; i < BEAM_REPS; i++) {
       regions.push({ pieceId: 'beam-face', x: i * beam.w, y: by, w: beam.w, h: beam.h, rep: i });
     }
     if (plate && bar) {
-      for (const f of [0.015, 0.209, 0.403, 0.597, 0.791, 0.985]) {
+      // Dashed guides ON the beams — leave unpainted (the leftmost sits
+      // inside the beam's own cut period; paint there ships inside the
+      // beam and tiles across every menu item).
+      for (const c of centers) {
         regions.push({
           pieceId: 'beam-plate',
-          x: Math.round(f * W - plate.w / 2),
+          x: c - Math.round(plate.w / 2),
           y: by + Math.round((beam.h - plate.h) / 2),
           w: plate.w,
           h: plate.h,
-          rep: 0,
+          rep: plateRep++,
+          guide: true,
         });
       }
     }
-    // Steel plate sign centered on the beam, above the ironwork.
+    // Steel plate sign centered on the beam, above the ironwork. Painted
+    // for real HERE (opaque plate over iron, exactly the live layering) —
+    // it sits on beam REPEATS, never on the beam's rep-0 cut period.
     if (capL && mid && capR) {
       const signW = capL.w + mid.w * 2 + capR.w;
       let sx = Math.round((W - signW) / 2);
       const sy = by + Math.round((beam.h - mid.h) / 2);
-      regions.push({ pieceId: 'sign-cap-l', x: sx, y: sy, w: capL.w, h: capL.h, rep: 0 });
+      regions.push({ pieceId: 'sign-cap-l', x: sx, y: sy, w: capL.w, h: capL.h, rep: row });
       sx += capL.w;
       for (let i = 0; i < 2; i++) {
-        regions.push({ pieceId: 'sign-mid', x: sx, y: sy, w: mid.w, h: mid.h, rep: i });
+        regions.push({ pieceId: 'sign-mid', x: sx, y: sy, w: mid.w, h: mid.h, rep: row * 2 + i });
         sx += mid.w;
       }
-      regions.push({ pieceId: 'sign-cap-r', x: sx, y: sy, w: capR.w, h: capR.h, rep: 0 });
+      regions.push({ pieceId: 'sign-cap-r', x: sx, y: sy, w: capR.w, h: capR.h, rep: row });
     }
   }
   return { regions, width: W, height: H };
@@ -949,11 +1029,15 @@ function renderAssembly(
       ? (r.rep % 2 === 0 ? 0.16 : 0.08)
       : (r.rep % 2 === 0 ? 0.72 : 0.45);
     const alpha = highlighted ? (underlay ? 0.45 : 0.95) : dimmed ? baseAlpha * 0.25 : baseAlpha;
-    ctx.fillStyle = pieceColor(idx, alpha);
+    // Guide regions read as ghosts: dashed outline, faint fill — they show
+    // where the live renderer puts the piece, not where to paint it.
+    ctx.fillStyle = pieceColor(idx, r.guide ? alpha * 0.35 : alpha);
     ctx.fillRect(r.x * zoom, r.y * zoom, r.w * zoom, r.h * zoom);
     ctx.strokeStyle = highlighted ? '#ffffff' : underlay ? pieceColor(idx, 0.8) : 'rgba(0,0,0,0.55)';
     ctx.lineWidth = highlighted ? 2 : 1;
+    ctx.setLineDash(r.guide ? [3, 3] : []);
     ctx.strokeRect(r.x * zoom + 0.5, r.y * zoom + 0.5, r.w * zoom - 1, r.h * zoom - 1);
+    ctx.setLineDash([]);
   }
 
   // Name the hovered piece next to its first region.
@@ -1176,10 +1260,13 @@ export const PanelForge: React.FC = () => {
       ctx.strokeStyle = '#ff00ff';
       ctx.lineWidth = 1;
       ctx.strokeRect(0.5, 0.5, assembly.width - 1, assembly.height - 1);
-      ctx.strokeStyle = 'rgba(0, 255, 255, 0.55)';
       for (const r of assembly.regions) {
+        // Guides dashed + dimmer: placement previews, not paint slots.
+        ctx.strokeStyle = r.guide ? 'rgba(0, 255, 255, 0.28)' : 'rgba(0, 255, 255, 0.55)';
+        ctx.setLineDash(r.guide ? [2, 2] : []);
         ctx.strokeRect(r.x + 0.5, r.y + 0.5, r.w - 1, r.h - 1);
       }
+      ctx.setLineDash([]);
     }, assembly.width, assembly.height, `panel-forge-${kit.id}-assembled-template.png`);
   };
 

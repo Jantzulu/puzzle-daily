@@ -195,8 +195,10 @@ export const PanelForgeImport: React.FC<Props> = ({ kit, assembly }) => {
 
     for (const piece of kit.pieces) {
       // First region only — later repeats exist so the artist can verify the
-      // seam, not to be cut.
-      const allRegions = assembly.regions.filter(r => r.pieceId === piece.id);
+      // seam, not to be cut. GUIDE regions (dashed placement previews — the
+      // in-band hardware, the under-beam bars) are invisible here entirely:
+      // never the cut, never compared, never counted in the repeat report.
+      const allRegions = assembly.regions.filter(r => r.pieceId === piece.id && !r.guide);
       const region = allRegions.find(r => r.rep === 0) ?? allRegions[0];
       if (!region) continue;
 
