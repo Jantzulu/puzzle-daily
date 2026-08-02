@@ -20,7 +20,7 @@ import { getSavedPuzzles, type SavedPuzzle } from '../../utils/puzzleStorage';
 import { loadTileType, loadCollectible, loadEnemy, loadStatusEffectAsset } from '../../utils/assetStorage';
 import { collectPuzzleAssetUrls } from '../../utils/spritePreload';
 import { HelpButton } from './HelpOverlay';
-import { QuestBoxFrame, QuestPlate, QuestDivider, questSkinFrameActive, questSkinPlateActive, questSkinDividerActive, questFrameBorders, questPlateStraddle, useCrispSnap } from './QuestBoxSkin';
+import { QuestBoxFrame, QuestOrnaments, QuestPlate, QuestDivider, questSkinFrameActive, questSkinOrnamentsActive, questSkinPlateActive, questSkinDividerActive, questFrameBorders, questPlateStraddle, useCrispSnap } from './QuestBoxSkin';
 import { playGameSound, playVictoryMusic, playDefeatMusic, playBackgroundMusic, stopMusic } from '../../utils/gameSounds';
 import { loadThemeAssets, subscribeToThemeAssets, type ThemeAssets } from '../../utils/themeAssets';
 import { WarningModal } from '../shared/WarningModal';
@@ -3229,6 +3229,11 @@ export const Game: React.FC<GameProps> = ({
                 ) : (
                   <span className="absolute -top-[15px] left-1/2 -translate-x-1/2 px-3 py-0.5 bg-stone-950 border-2 border-copper-700 rounded-pixel hud-label text-copper-300 whitespace-nowrap">Quest</span>
                 )}
+                {/* Edge medallions ride over ALL the art — frame AND plate
+                    (user call: on top of the panel, not below it) — hence
+                    after the plate in the DOM. Text still wins: the content
+                    wrapper is a later sibling, the plate label carries z-1. */}
+                {questSkinOrnamentsActive && <QuestOrnaments />}
                 {/* relative: the art frame is absolutely positioned, and
                     absolute layers paint over STATIC siblings — everything
                     readable lives above the art. */}

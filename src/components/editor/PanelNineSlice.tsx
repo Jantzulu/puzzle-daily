@@ -186,27 +186,10 @@ export const PanelNineSlice: React.FC<Props> = ({ pieces, zoom, width, height, s
     layer(tr, zoom, 'no-repeat', { right: 0, top: 0, width: (tr?.w ?? 0) * zoom, height: (tr?.h ?? 0) * zoom }),
     layer(bl, zoom, 'no-repeat', { left: 0, bottom: 0, width: (bl?.w ?? 0) * zoom, height: (bl?.h ?? 0) * zoom }),
     layer(br, zoom, 'no-repeat', { right: 0, bottom: 0, width: (br?.w ?? 0) * zoom, height: (br?.h ?? 0) * zoom }),
-    // Centered edge ornaments (quest-box kit) — fixed medallions, nominal
-    // centered on the edge band, halo'd bitmap overhanging. Mirrors the
-    // game renderer exactly.
-    ...[['edge-top-ornament', true], ['edge-bottom-ornament', false]].map(([id, isTop]) => {
-      const pc = p[id as string];
-      if (!pc) return null;
-      const haloL = (pc.halo?.l ?? 0) * zoom;
-      const haloT = (pc.halo?.t ?? 0) * zoom;
-      const nw = (pc.w - (pc.halo ? pc.halo.l + pc.halo.r : 0)) * zoom;
-      const nh = (pc.h - (pc.halo ? pc.halo.t + pc.halo.b : 0)) * zoom;
-      const bandH = isTop ? cbt : cbb;
-      const nominalLeft = Math.round((width - nw) / 2);
-      const edgeOffset = Math.round((bandH - nh) / 2);
-      const nominalTop = isTop ? edgeOffset : height - bandH + edgeOffset;
-      return layer(pc, zoom, 'no-repeat', {
-        left: nominalLeft - haloL,
-        top: nominalTop - haloT,
-        width: pc.w * zoom,
-        height: pc.h * zoom,
-      });
-    }),
+    // Edge ornaments render OUTSIDE this box, on the ground wrapper after
+    // the plate (user call: on top of the panel, not below it) — in here
+    // the box's overflow:hidden clipped their halo overhang at the panel
+    // bounds and the plate covered their centers. See below.
     // Section rules last: they run across the field, between the side edges,
     // and should sit over the centre fill.
     ...dividerYs.flatMap(y => {
@@ -332,6 +315,9 @@ export const PanelNineSlice: React.FC<Props> = ({ pieces, zoom, width, height, s
           <div
             style={{
               position: 'relative',
+              // z-1: the sample text must ride above the ground-level
+              // ornament layers, matching the game's text-above-art rule.
+              zIndex: 1,
               paddingTop: cbt + 6,
               paddingBottom: cbb + 6,
               paddingLeft: cbl + 8,
@@ -389,6 +375,30 @@ export const PanelNineSlice: React.FC<Props> = ({ pieces, zoom, width, height, s
           ].map((s, i) => (s ? <div key={`plate${i}`} style={s} /> : null))}
         </div>
       )}
+
+      {/* EDGE ORNAMENTS — the TOPMOST art layer (user call, 2026-08-01:
+          "layered on top of the quest panel, not below it"). On the ground
+          wrapper, after the plate, so they ride over the frame AND the
+          plate with their halo overhang unclipped; the sample text lifts
+          above them via z-1. Mirrors the game's QuestOrnaments exactly. */}
+      {[['edge-top-ornament', true] as const, ['edge-bottom-ornament', false] as const].map(([id, isTop]) => {
+        const pc = p[id];
+        if (!pc) return null;
+        const haloL = (pc.halo?.l ?? 0) * zoom;
+        const haloT = (pc.halo?.t ?? 0) * zoom;
+        const onw = (pc.w - (pc.halo ? pc.halo.l + pc.halo.r : 0)) * zoom;
+        const onh = (pc.h - (pc.halo ? pc.halo.t + pc.halo.b : 0)) * zoom;
+        const bandH = isTop ? cbt : cbb;
+        const edgeOffset = Math.round((bandH - onh) / 2);
+        const nominalTop = isTop ? edgeOffset : height - bandH + edgeOffset;
+        const s = layer(pc, zoom, 'no-repeat', {
+          left: GROUND_PAD + Math.round((width - onw) / 2) - haloL,
+          top: groundPadTop + nominalTop - haloT,
+          width: pc.w * zoom,
+          height: pc.h * zoom,
+        });
+        return s ? <div key={id} aria-hidden style={s} /> : null;
+      })}
 
       {showSeams && (
         <div className="mt-2 text-[11px] text-stone-300 space-y-0.5 font-mono">

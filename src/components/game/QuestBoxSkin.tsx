@@ -152,21 +152,9 @@ export const QuestBoxFrame: React.FC = () => {
       drawFixed(ctx, tr, w - (tr?.w ?? 0) * Z, 0);
       drawFixed(ctx, P('corner-bl'), 0, h - (P('corner-bl')?.h ?? 0) * Z);
       drawFixed(ctx, P('corner-br'), w - (P('corner-br')?.w ?? 0) * Z, h - (P('corner-br')?.h ?? 0) * Z);
-
-      // Centered edge ornaments — fixed medallions, nominal centered on the
-      // edge band, halo overhanging (the bleed margin holds it).
-      const ornament = (pc: SkinPiece | undefined, isTop: boolean) => {
-        if (!pc) return;
-        const bandH = isTop ? gt : gb;
-        const nw = nomW(pc) * Z;
-        const nh = nomH(pc) * Z;
-        const x = Math.round((w - nw) / 2) - (pc.halo?.l ?? 0) * Z;
-        const edgeOffset = Math.round((bandH - nh) / 2);
-        const y = (isTop ? edgeOffset : h - bandH + edgeOffset) - (pc.halo?.t ?? 0) * Z;
-        drawFixed(ctx, pc, x, y);
-      };
-      ornament(P('edge-top-ornament'), true);
-      ornament(P('edge-bottom-ornament'), false);
+      // Edge ornaments moved OUT of this canvas (QuestOrnaments below):
+      // painted here they sat UNDER the QUEST plate, and the user wants the
+      // medallions riding over the whole panel.
     };
 
     // SYNCHRONOUS draw, not rAF: hidden/background tabs freeze rAF and the
@@ -185,6 +173,69 @@ export const QuestBoxFrame: React.FC = () => {
   if (!questSkinFrameActive) return null;
   return (
     <div ref={hostRef} aria-hidden className="absolute inset-0">
+      <canvas ref={canvasRef} style={{ position: 'absolute' }} />
+    </div>
+  );
+};
+
+// ─── The ornaments ──────────────────────────────────────────────────────────
+
+/** Ornaments render only alongside the frame they decorate. */
+export const questSkinOrnamentsActive =
+  questSkinFrameActive && (PIECES.has('edge-top-ornament') || PIECES.has('edge-bottom-ornament'));
+
+/**
+ * Centered edge medallions on their OWN canvas, rendered as the TOPMOST art
+ * layer (user call, 2026-08-01: "the edge ornaments should be layered on
+ * top of the quest panel, not below it"). Inside the frame canvas they sat
+ * under the QUEST plate — a top medallion is centered exactly where the
+ * plate is, so it vanished behind it. Mount this AFTER the plate and BEFORE
+ * the content wrapper: later positioned siblings paint over the plate's
+ * art, while the DOM text (content wrapper; the plate label carries z-1)
+ * still rides above everything. Same geometry as the old in-frame draw —
+ * nominal centered on the edge band, halo overhanging into the bleed.
+ */
+export const QuestOrnaments: React.FC = () => {
+  const hostRef = React.useRef<HTMLDivElement>(null);
+  const canvasRef = React.useRef<HTMLCanvasElement>(null);
+  React.useLayoutEffect(() => {
+    if (!questSkinOrnamentsActive) return;
+    const host = hostRef.current;
+    const canvas = canvasRef.current;
+    if (!host || !canvas) return;
+    let cancelled = false;
+    const draw = () => {
+      const w = host.clientWidth;
+      const h = host.clientHeight;
+      if (!w || !h) return;
+      const ctx = prepCanvas(canvas, w, h, BLEED);
+      if (!ctx) return;
+      ctx.clearRect(-BLEED, -BLEED, w + BLEED * 2, h + BLEED * 2);
+      const ornament = (pc: SkinPiece | undefined, isTop: boolean) => {
+        if (!pc) return;
+        const bandH = isTop ? questFrameBorders.t : questFrameBorders.b;
+        const nw = nomW(pc) * Z;
+        const nh = nomH(pc) * Z;
+        const x = Math.round((w - nw) / 2) - (pc.halo?.l ?? 0) * Z;
+        const edgeOffset = Math.round((bandH - nh) / 2);
+        const y = (isTop ? edgeOffset : h - bandH + edgeOffset) - (pc.halo?.t ?? 0) * Z;
+        drawFixed(ctx, pc, x, y);
+      };
+      ornament(P('edge-top-ornament'), true);
+      ornament(P('edge-bottom-ornament'), false);
+    };
+    // SYNCHRONOUS draw, not rAF: hidden/background tabs freeze rAF and the
+    // canvas stays blank until the tab fronts. RO callbacks batch already.
+    const schedule = draw;
+    whenDecoded([P('edge-top-ornament'), P('edge-bottom-ornament')].filter(Boolean) as SkinPiece[]).then(() => { if (!cancelled) schedule(); });
+    const ro = new ResizeObserver(schedule);
+    ro.observe(host);
+    ro.observe(document.documentElement);
+    return () => { cancelled = true; ro.disconnect(); };
+  }, []);
+  if (!questSkinOrnamentsActive) return null;
+  return (
+    <div ref={hostRef} aria-hidden className="absolute inset-0 pointer-events-none">
       <canvas ref={canvasRef} style={{ position: 'absolute' }} />
     </div>
   );
@@ -295,7 +346,10 @@ export const QuestPlate: React.FC<{ children: React.ReactNode }> = ({ children }
       <canvas ref={canvasRef} aria-hidden style={{ position: 'absolute' }} />
       {l && <span style={{ width: nomW(l) * Z, height: h, flexShrink: 0 }} />}
       <span style={{ position: 'relative', minWidth: nomW(m) * Z, height: h, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
-        <span className="relative px-1.5">{children}</span>
+        {/* z-1 lifts the label above the QuestOrnaments canvas (a LATER
+            sibling of the plate anchor, so it paints over z-auto content
+            here) — DOM text always rides above art, ornaments included. */}
+        <span className="relative z-[1] px-1.5">{children}</span>
       </span>
       {r && <span style={{ width: nomW(r) * Z, height: h, flexShrink: 0 }} />}
     </span>
