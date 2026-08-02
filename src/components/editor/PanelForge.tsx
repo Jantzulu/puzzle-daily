@@ -171,37 +171,37 @@ const DEFAULT_KITS: KitSpec[] = [
     id: 'portcullis-gate',
     name: 'Portcullis Gate (bars)',
     builtIn: true,
-    description: 'The gate bars rising above the control rail (currently the top zone of PortcullisMesh). Proportions derived from the live mesh: bars are narrow — about 5 art px on a 144 art px rail.',
+    description: 'The gate bars rising above the control rail (the top zone of PortcullisMesh). WIRED: drop the export at src/assets/panels/portcullis-gate-slices.json. Sizes audited against the LIVE geometry at Z=2 (2 CSS px per art px), 2026-08-02: bars render 12 CSS px wide at the six shared x-fractions. NOTE the meshes STRETCHED with the viewport (desktop bars ~21px, mobile ~11px); painted art is fixed-size — 6 art px is the mobile-true width.',
     pieces: [
-      { id: 'bar-segment', label: 'Gate Bar Segment', w: 5, h: 16, repeat: 'tile-y', notes: 'One bar: lit left edge, shaded right. Repeats upward behind the board.' },
-      { id: 'bar-top-cap', label: 'Bar Top Cap', w: 5, h: 4, repeat: 'fixed', notes: 'Optional finial where a bar ends.' },
+      { id: 'bar-segment', label: 'Gate Bar Segment', w: 6, h: 24, repeat: 'tile-y', notes: 'One bar: lit left edge, shaded right. Repeats vertically behind the board and up the open menu. SAME STOCK as the Nav Gate kit\'s Vertical Bar Segment — paint them identically.' },
+      { id: 'bar-top-cap', label: 'Bar Top Cap', w: 6, h: 4, repeat: 'fixed', notes: 'Optional finial where a bar ends.' },
     ],
   },
   {
     id: 'control-rail',
     name: 'Control Rail',
     builtIn: true,
-    description: 'The iron rail the game controls sit on, with its forge plates and hanging spikes — independent from the gate bars so it can be forged differently. Proportions derived from the live mesh.',
+    description: 'The iron rail the game controls sit on, with its forge plates and hanging spikes. WIRED: drop the export at src/assets/panels/control-rail-slices.json. Sizes audited against the LIVE geometry at Z=2, 2026-08-02: the band fills its 44 CSS px box (22 art), spikes hang ~16 CSS (8 art), plates rendered 9 CSS in the mesh — art quantizes to 8 CSS (4 art).',
     pieces: [
-      { id: 'rail-face', label: 'Rail Face', w: 24, h: 16, repeat: 'tile-x', notes: 'The flat band the DOM controls sit on. Lit top edge, dark bottom lip.' },
-      { id: 'rail-cap-l', label: 'Rail Cap L', w: 8, h: 16, repeat: 'fixed' },
-      { id: 'rail-cap-r', label: 'Rail Cap R', w: 8, h: 16, repeat: 'fixed' },
-      { id: 'forge-plate', label: 'Forge Plate', w: 4, h: 4, repeat: 'fixed', notes: 'SAME HARDWARE as the Nav Gate kit\'s "Beam Forge Plate" — paint them identically, or the bottom rung reads as a different make of iron than the lattice above it. Bolt plate where a gate bar meets the rail, just below its lit top edge; lit on the top-left, shadowed bottom-right.' },
-      { id: 'rail-spike', label: 'Rail Spike', w: 7, h: 7, repeat: 'fixed', notes: 'Hangs below the rail; anchors at its root (top edge).' },
+      { id: 'rail-face', label: 'Rail Face', w: 24, h: 22, repeat: 'tile-x', notes: 'The flat band the DOM controls sit on — fills the full 44px rung box at Z=2. Lit top edge, dark bottom lip.' },
+      { id: 'rail-cap-l', label: 'Rail Cap L', w: 8, h: 22, repeat: 'fixed', notes: 'Optional screen-edge finisher — the live mesh runs edge to edge with no caps; leave unpainted to keep that.' },
+      { id: 'rail-cap-r', label: 'Rail Cap R', w: 8, h: 22, repeat: 'fixed' },
+      { id: 'forge-plate', label: 'Forge Plate', w: 4, h: 4, repeat: 'fixed', notes: 'SAME HARDWARE as the Nav Gate kit\'s "Beam Forge Plate" — paint them identically, or the bottom rung reads as a different make of iron than the lattice above it. Renders 8 CSS px (the mesh\'s standardized plate was 9 — art must quantize to even; resize to 5 for 10px if 8 reads too fine). Placed where each bar meets the rail.' },
+      { id: 'rail-spike', label: 'Rail Spike', w: 8, h: 8, repeat: 'fixed', notes: 'Hangs below the rail at each bar; anchors at its root (top edge). The outer pair clips at the screen edge like the mesh\'s.' },
     ],
   },
   {
     id: 'nav-gate',
     name: 'Nav Gate Menu',
     builtIn: true,
-    description: 'The hamburger menu\'s lattice: each page item rides a horizontal iron beam (GateBeamMesh) with the vertical bars threading the stack, and its label sits on a steel plate sign (.nav-pill CSS — a 3-slice with square forge bolts in the end caps). Distinct from the generic Buttons kit.',
+    description: 'The hamburger menu\'s lattice: each page item rides a horizontal iron beam (GateBeamMesh) with the vertical bars threading the stack, and its label sits on a steel plate sign. WIRED: drop the export at src/assets/panels/nav-gate-slices.json. Sizes audited against the LIVE geometry at Z=2, 2026-08-02 — the old draft was wrong three ways: beams are the THIN 36px iron (18 art, settled decision — not 12), signs ~26px tall (13 art, not 10), bars 12px wide (6 art, not 5).',
     pieces: [
-      { id: 'beam-face', label: 'Beam Face', w: 24, h: 12, repeat: 'tile-x', notes: 'The horizontal rung a menu item rides: dark under-frame, flat face, lit top edge.' },
-      { id: 'beam-bar-segment', label: 'Vertical Bar Segment', w: 5, h: 16, repeat: 'tile-y', notes: 'Bars threading the whole stack, behind the beams. Same stock as the portcullis bars — keep them matching.' },
-      { id: 'beam-plate', label: 'Beam Forge Plate', w: 4, h: 4, repeat: 'fixed', notes: 'SAME HARDWARE as the Control Rail kit\'s "Forge Plate" — paint them identically. Bolt plate where a bar crosses a beam; lit on the top-left, shadowed bottom-right.' },
-      { id: 'sign-cap-l', label: 'Sign Cap L', w: 5, h: 10, repeat: 'fixed', notes: 'Steel plate signage end — the square forge bolt lives here.' },
-      { id: 'sign-mid', label: 'Sign Middle', w: 12, h: 10, repeat: 'tile-x', notes: 'Plate face behind the label text.' },
-      { id: 'sign-cap-r', label: 'Sign Cap R', w: 5, h: 10, repeat: 'fixed' },
+      { id: 'beam-face', label: 'Beam Face', w: 24, h: 18, repeat: 'tile-x', notes: 'The horizontal rung a menu item rides — the settled THIN 36px iron (18 art at Z=2): dark under-frame, flat face, lit top edge.' },
+      { id: 'beam-bar-segment', label: 'Vertical Bar Segment', w: 6, h: 24, repeat: 'tile-y', notes: 'Bars threading the whole stack, behind the beams. SAME STOCK as the Portcullis Gate kit\'s bar — paint them identically.' },
+      { id: 'beam-plate', label: 'Beam Forge Plate', w: 4, h: 4, repeat: 'fixed', notes: 'SAME HARDWARE as the Control Rail kit\'s "Forge Plate" — paint them identically. Bolted where a bar crosses a beam, 13px below the iron\'s top.' },
+      { id: 'sign-cap-l', label: 'Sign Cap L', w: 6, h: 13, repeat: 'fixed', notes: 'Steel plate signage end — the square forge bolt lives here (the CSS plate\'s bolt is 5px at 4px inset; renders 26px tall).' },
+      { id: 'sign-mid', label: 'Sign Middle', w: 12, h: 13, repeat: 'tile-x', notes: 'Plate face behind the label text — the DOM label rides ON TOP, like the quest plate.' },
+      { id: 'sign-cap-r', label: 'Sign Cap R', w: 6, h: 13, repeat: 'fixed' },
     ],
   },
   {
@@ -235,7 +235,10 @@ const STORAGE_KEY = 'panel_forge_kits_v1';
 // looks like it simply did not apply.
 // v5: Quest Box kit added (capped nine-slice + QUEST plate 3-slice).
 // v6: Quest Box gains centered edge ornaments (fixed halo'd medallions).
-const DEFAULTS_VERSION = 6;
+// v7: portcullis-gate / control-rail / nav-gate audited against LIVE
+//     geometry at Z=2 (beams 18 not 12, rail band 22 not 16, signs 13 not
+//     10, bars 6 wide, spikes 8) before the artist paints them.
+const DEFAULTS_VERSION = 7;
 
 function loadKits(): KitSpec[] {
   try {

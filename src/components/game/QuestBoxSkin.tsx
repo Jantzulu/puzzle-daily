@@ -42,93 +42,25 @@ import skinJson from '../../assets/panels/quest-box-slices.json';
 // INTEGER ZOOM, SMOOTHING OFF — Z=2: the forge preview approves art at ~2×,
 // and the renderer's scale must match the artist's reference.
 
-const Z = 2;
+import { Z, buildSkin, nomW, nomH, useCrispSnap, whenDecoded, drawFixed, drawTiled, prepCanvas, BLEED, type SkinPiece } from './panelSkins';
 
-interface SkinPiece {
-  id: string;
-  w: number;
-  h: number;
-  halo?: { l: number; t: number; r: number; b: number };
-  png: string;
-}
+// Game.tsx imports the snap hook from here — keep the path stable.
+export { useCrispSnap };
 
-interface SkinJsonPiece {
-  id?: unknown;
-  w?: unknown;
-  h?: unknown;
-  empty?: unknown;
-  halo?: unknown;
-  png?: unknown;
-}
-
-const nomW = (p: SkinPiece) => p.w - (p.halo ? p.halo.l + p.halo.r : 0);
-const nomH = (p: SkinPiece) => p.h - (p.halo ? p.halo.t + p.halo.b : 0);
-
-// The slices file is OVERWRITTEN BY HAND (that is its workflow), so this
-// validates like user input, not like build output: every reject falls back
-// to the baseline CSS box or to a smaller safe rendering, never to NaN
-// geometry. Review-hardened 2026-08-01 (adversarial pass found the holes).
-const MAX_PIECE_PX = 512;
-
-function buildSkin(): Map<string, SkinPiece> {
-  const map = new Map<string, SkinPiece>();
-  // `| null`: a file containing bare `null` is valid JSON — without the
-  // optional chain it would throw at module evaluation and white-screen
-  // BOTH apps (Game.tsx is imported by App and PlayerApp).
-  const payload = skinJson as { kitId?: unknown; pieces?: SkinJsonPiece[] } | null;
-  const raw = payload?.pieces;
-  if (!Array.isArray(raw)) return map;
-  // Wrong kit's export (four other kits share these piece ids, and plain
-  // nine-slice kits would render naked edge runs): baseline, loudly.
-  if (payload?.kitId !== 'quest-box') {
-    console.warn(`quest-box-slices.json carries kitId "${String(payload?.kitId)}" — expected "quest-box"; rendering the baseline box.`);
-    return map;
-  }
-  for (const p of raw) {
-    // Unpainted slots ship in the export flagged empty — they must not
-    // produce blank layers that cover the art beneath them. Strict ===:
-    // a hand-edited string "false" is truthy and silently dropped art.
-    if (p.empty === true) continue;
-    if (typeof p.id !== 'string' || typeof p.png !== 'string' || !p.png.startsWith('data:image/')) continue;
-    if (typeof p.w !== 'number' || typeof p.h !== 'number') continue;
-    if (!Number.isFinite(p.w) || !Number.isFinite(p.h) || p.w < 1 || p.h < 1 || p.w > MAX_PIECE_PX || p.h > MAX_PIECE_PX) continue;
-    // Halo only in the exporter's shape: four finite non-negative insets
-    // strictly inside the bitmap. Anything else drops the halo (the piece
-    // still renders at bitmap size) — a partial/garbage halo otherwise
-    // cascades NaN into nominal sizes, the straddle, and the box padding.
-    let halo: SkinPiece['halo'];
-    const h = p.halo as { l?: unknown; t?: unknown; r?: unknown; b?: unknown } | undefined;
-    if (h && typeof h === 'object') {
-      const vals = [h.l, h.t, h.r, h.b];
-      const ok = vals.every(v => typeof v === 'number' && Number.isFinite(v) && v >= 0)
-        && (h.l as number) + (h.r as number) < p.w
-        && (h.t as number) + (h.b as number) < p.h;
-      if (ok) halo = { l: h.l as number, t: h.t as number, r: h.r as number, b: h.b as number };
-    }
-    map.set(p.id, { id: p.id, w: p.w, h: p.h, halo, png: p.png });
-  }
-  return map;
-}
-
-const PIECES = buildSkin();
+const PIECES = buildSkin(skinJson, 'quest-box');
 const P = (id: string) => PIECES.get(id);
 
 /** The frame renders only when the minimum readable box exists. */
 export const questSkinFrameActive = PIECES.has('corner-tl') && PIECES.has('center');
 /** The plate art renders when its middle exists (caps optional). */
 export const questSkinPlateActive = PIECES.has('plate-mid');
-/**
- * The divider ("the side-quests rule", per the kit) renders when its middle
- * exists — it replaces the side-quests row's CSS border-t.
- */
+/** The divider ("the side-quests rule") renders when its middle exists. */
 export const questSkinDividerActive = PIECES.has('divider-mid');
 
 // Frame geometry (run starts, cap anchoring) keys off the CORNERS as a
-// nine-slice must; the CONTENT padding below keys off the EDGE BANDS
-// instead (thinness lever): thin edges + proud corners = a thin box. The
-// corners may overhang the content zone at the four flanks — the quest
-// content is centered, so nothing collides. Frame pieces carry no halo, so
-// nominal == bitmap.
+// nine-slice must; the CONTENT padding keys off the EDGE BANDS instead
+// (thinness lever): thin edges + proud corners = a thin box. Frame pieces
+// carry no halo, so nominal == bitmap.
 const tl = P('corner-tl');
 const tr = P('corner-tr');
 const topMid = P('edge-top-mid');
@@ -146,131 +78,6 @@ const plateMid = P('plate-mid');
 /** How far the plate pokes above the box's top edge (the preview's 60% rule). */
 export const questPlateStraddle = plateMid ? Math.round(nomH(plateMid) * Z * 0.6) : 0;
 
-/** Positive modulo — tile phase alignment. */
-const pmod = (v: number, m: number) => ((v % m) + m) % m;
-
-/**
- * Snap an element to whole CSS pixels: flex/mx-auto centering and
- * text-driven widths land elements on half-pixels, and bitmap art at a
- * fractional offset is resampled at every zoom. Compensation uses
- * POSITION:RELATIVE left/top — never transform, which can promote the
- * subtree to a composited layer resampled at the fractional offset (the
- * "discolored perfect rectangle around QUEST"). Both snapped elements
- * already carry position: relative.
- */
-export function useCrispSnap<T extends HTMLElement>(active: boolean, defer = false) {
-  const ref = React.useRef<T>(null);
-  React.useLayoutEffect(() => {
-    if (!active) return;
-    const el = ref.current;
-    if (!el) return;
-    let raf = 0;
-    const snap = () => {
-      el.style.left = '0px';
-      el.style.top = '0px';
-      const r = el.getBoundingClientRect();
-      const dx = Math.round(r.left) - r.left;
-      const dy = Math.round(r.top) - r.top;
-      el.style.left = `${dx.toFixed(3)}px`;
-      el.style.top = `${dy.toFixed(3)}px`;
-    };
-    // `defer`: elements INSIDE another snapped element must measure AFTER
-    // their ancestor's compensation lands (child effects and same-frame
-    // rAFs otherwise measure the pre-snap position and go stale by the
-    // ancestor's dx). A double rAF puts the child a frame behind.
-    const run = () => {
-      cancelAnimationFrame(raf);
-      raf = defer
-        ? requestAnimationFrame(() => { raf = requestAnimationFrame(snap); })
-        : requestAnimationFrame(snap);
-    };
-    if (defer) run(); else snap();
-    const ro = new ResizeObserver(run);
-    ro.observe(el);
-    ro.observe(document.documentElement);
-    return () => {
-      ro.disconnect();
-      cancelAnimationFrame(raf);
-    };
-  }, [active, defer]);
-  return ref;
-}
-
-// ─── Canvas plumbing ────────────────────────────────────────────────────────
-
-const IMG_CACHE = new Map<string, HTMLImageElement>();
-const imgFor = (p: SkinPiece): HTMLImageElement => {
-  let img = IMG_CACHE.get(p.id);
-  if (!img) {
-    img = new Image();
-    img.src = p.png;
-    IMG_CACHE.set(p.id, img);
-  }
-  return img;
-};
-const whenDecoded = (pieces: SkinPiece[]): Promise<unknown> =>
-  Promise.all(pieces.map(p => {
-    const img = imgFor(p);
-    return img.complete ? Promise.resolve() : img.decode().catch(() => { /* draw skips broken images */ });
-  }));
-
-/** Draw a fixed piece at (x, y) in CSS-px canvas coordinates. */
-const drawFixed = (ctx: CanvasRenderingContext2D, p: SkinPiece | undefined, x: number, y: number) => {
-  if (!p) return;
-  const img = imgFor(p);
-  if (!img.complete || !img.naturalWidth) return;
-  ctx.drawImage(img, 0, 0, p.w, p.h, x, y, p.w * Z, p.h * Z);
-};
-
-/** Tile a piece across a rect, phase-anchored at (ax, ay). */
-const drawTiled = (
-  ctx: CanvasRenderingContext2D,
-  p: SkinPiece | undefined,
-  dx: number, dy: number, dw: number, dh: number,
-  ax: number, ay: number,
-) => {
-  if (!p || dw <= 0 || dh <= 0) return;
-  const img = imgFor(p);
-  if (!img.complete || !img.naturalWidth) return;
-  const tw = p.w * Z;
-  const th = p.h * Z;
-  const startX = dx - pmod(dx - ax, tw);
-  const startY = dy - pmod(dy - ay, th);
-  ctx.save();
-  ctx.beginPath();
-  ctx.rect(dx, dy, dw, dh);
-  ctx.clip();
-  for (let y = startY; y < dy + dh; y += th) {
-    for (let x = startX; x < dx + dw; x += tw) {
-      ctx.drawImage(img, 0, 0, p.w, p.h, x, y, tw, th);
-    }
-  }
-  ctx.restore();
-};
-
-/**
- * Prepare a canvas at device resolution for a CSS-px box, with BLEED margins
- * for halo overhang. Returns the 2D context pre-scaled so all drawing uses
- * CSS-px coordinates with (0,0) at the box's top-left.
- */
-const prepCanvas = (canvas: HTMLCanvasElement, w: number, h: number, bleed: number): CanvasRenderingContext2D | null => {
-  const dpr = Math.max(1, Math.round(window.devicePixelRatio || 1));
-  canvas.width = (w + bleed * 2) * dpr;
-  canvas.height = (h + bleed * 2) * dpr;
-  canvas.style.width = `${w + bleed * 2}px`;
-  canvas.style.height = `${h + bleed * 2}px`;
-  canvas.style.left = `${-bleed}px`;
-  canvas.style.top = `${-bleed}px`;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return null;
-  ctx.setTransform(dpr, 0, 0, dpr, bleed * dpr, bleed * dpr);
-  ctx.imageSmoothingEnabled = false;
-  return ctx;
-};
-
-// Max halo overhang in CSS px (8 art px each side).
-const BLEED = 8 * Z;
-
 // ─── The frame ──────────────────────────────────────────────────────────────
 
 /**
@@ -287,7 +94,6 @@ export const QuestBoxFrame: React.FC = () => {
     const canvas = canvasRef.current;
     if (!host || !canvas) return;
     let cancelled = false;
-    let raf = 0;
 
     const draw = () => {
       const w = host.clientWidth;
@@ -363,10 +169,10 @@ export const QuestBoxFrame: React.FC = () => {
       ornament(P('edge-bottom-ornament'), false);
     };
 
-    const schedule = () => {
-      cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(draw);
-    };
+    // SYNCHRONOUS draw, not rAF: hidden/background tabs freeze rAF and the
+    // canvas stays blank until the tab fronts (hit live in the hidden
+    // preview pane). RO callbacks batch already; the draws are tiny.
+    const schedule = draw;
     whenDecoded([...PIECES.values()]).then(() => { if (!cancelled) schedule(); });
     const ro = new ResizeObserver(schedule);
     ro.observe(host);
@@ -374,7 +180,6 @@ export const QuestBoxFrame: React.FC = () => {
     return () => {
       cancelled = true;
       ro.disconnect();
-      cancelAnimationFrame(raf);
     };
   }, []);
   if (!questSkinFrameActive) return null;
@@ -402,7 +207,6 @@ export const QuestDivider: React.FC = () => {
     const canvas = canvasRef.current;
     if (!host || !canvas) return;
     let cancelled = false;
-    let raf = 0;
     const draw = () => {
       const w = host.clientWidth;
       if (!w) return;
@@ -417,11 +221,14 @@ export const QuestDivider: React.FC = () => {
       drawFixed(ctx, l, 0, 0);
       drawFixed(ctx, r, w - rw, 0);
     };
-    const schedule = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(draw); };
+    // SYNCHRONOUS draw, not rAF: hidden/background tabs freeze rAF and the
+    // canvas stays blank until the tab fronts (hit live in the hidden
+    // preview pane). RO callbacks batch already; the draws are tiny.
+    const schedule = draw;
     whenDecoded([m, P('divider-cap-l'), P('divider-cap-r')].filter(Boolean) as SkinPiece[]).then(() => { if (!cancelled) schedule(); });
     const ro = new ResizeObserver(schedule);
     ro.observe(host);
-    return () => { cancelled = true; ro.disconnect(); cancelAnimationFrame(raf); };
+    return () => { cancelled = true; ro.disconnect(); };
   }, [m, h]);
   if (!m) return null;
   return (
@@ -450,7 +257,6 @@ export const QuestPlate: React.FC<{ children: React.ReactNode }> = ({ children }
     const canvas = canvasRef.current;
     if (!host || !canvas) return;
     let cancelled = false;
-    let raf = 0;
     const draw = () => {
       const w = host.clientWidth;
       if (!w) return;
@@ -472,11 +278,14 @@ export const QuestPlate: React.FC<{ children: React.ReactNode }> = ({ children }
       if (l) drawFixed(ctx, l, -(l.halo?.l ?? 0) * Z, -(l.halo?.t ?? 0) * Z);
       if (r) drawFixed(ctx, r, w - rw - (r.halo?.l ?? 0) * Z, -(r.halo?.t ?? 0) * Z);
     };
-    const schedule = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(draw); };
+    // SYNCHRONOUS draw, not rAF: hidden/background tabs freeze rAF and the
+    // canvas stays blank until the tab fronts (hit live in the hidden
+    // preview pane). RO callbacks batch already; the draws are tiny.
+    const schedule = draw;
     whenDecoded([m, P('plate-cap-l'), P('plate-cap-r')].filter(Boolean) as SkinPiece[]).then(() => { if (!cancelled) schedule(); });
     const ro = new ResizeObserver(schedule);
     ro.observe(host);
-    return () => { cancelled = true; ro.disconnect(); cancelAnimationFrame(raf); };
+    return () => { cancelled = true; ro.disconnect(); };
   }, [m, h, snapRef]);
   if (!m) return null;
   const l = P('plate-cap-l');

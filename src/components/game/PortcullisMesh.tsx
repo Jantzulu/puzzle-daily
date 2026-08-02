@@ -1,4 +1,7 @@
 import React from 'react';
+import railJson from '../../assets/panels/control-rail-slices.json';
+import barsJson from '../../assets/panels/portcullis-gate-slices.json';
+import { Z, buildSkin, BAR_FRACS, drawFixed, drawTiled, prepCanvas, whenDecoded, type SkinPiece } from './panelSkins';
 
 // ============================================================================
 // PORTCULLIS RAIL — the control panel's iron
@@ -55,10 +58,109 @@ const BAR_XS = [15, 209, 403, 597, 791, 985];
 const BAR_HALF = 15;   // bar half-width (3% of viewBox, matches the menu)
 const SPIKE_HALF = 22; // spike half-width at the root
 
+// ─── Painted skin (forge-cut art) ───────────────────────────────────────────
+// Two kits feed this one surface: 'control-rail' (band, plates, spikes) and
+// 'portcullis-gate' (the rising bars). Empty placeholders = the procedural
+// SVG below renders untouched. The skin draws into a device-resolution
+// canvas occupying the SAME box the svg would (the className's CSS places
+// both identically), with the art at FIXED pixel sizes instead of the
+// mesh's viewport stretch: band = 22 art (fills the 44px rung box), spikes
+// 8 art below, bars 6 art wide at the six shared fractions, rising through
+// whatever space the box gives above the band.
+const RAIL = buildSkin(railJson, 'control-rail');
+const BARS = buildSkin(barsJson, 'portcullis-gate');
+export const portcullisSkinActive = RAIL.has('rail-face') || BARS.has('bar-segment');
+
+const PortcullisSkin: React.FC<{ className: string }> = ({ className }) => {
+  const hostRef = React.useRef<HTMLDivElement>(null);
+  const canvasRef = React.useRef<HTMLCanvasElement>(null);
+  React.useLayoutEffect(() => {
+    const host = hostRef.current;
+    const canvas = canvasRef.current;
+    if (!host || !canvas) return;
+    let cancelled = false;
+    const draw = () => {
+      const w = host.clientWidth;
+      const h = host.clientHeight;
+      if (!w || !h) return;
+      const ctx = prepCanvas(canvas, w, h, 0);
+      if (!ctx) return;
+      ctx.clearRect(0, 0, w, h);
+
+      const face = RAIL.get('rail-face');
+      const spike = RAIL.get('rail-spike');
+      const plate = RAIL.get('forge-plate');
+      const capL = RAIL.get('rail-cap-l');
+      const capR = RAIL.get('rail-cap-r');
+      const bar = BARS.get('bar-segment');
+
+      // The host box = the mesh's box (200% of the rung, band zone in the
+      // middle per .control-rail-mesh's ratios). The art band is a FIXED 22
+      // art px (44 CSS) centered on the box's band zone: band top =
+      // 31.25% of the box (the mesh's bars/rail boundary), rounded to a
+      // whole pixel so every art row lands crisp.
+      const bandH = (face?.h ?? 22) * Z;
+      const spikeH = (spike?.h ?? 0) * Z;
+      const bandTop = Math.round(h * 0.3125);
+
+      const barXs = BAR_FRACS.map(f => Math.round(f * w));
+
+      // Bars rise from the band's top edge to the box top (they tuck
+      // behind the band: draw them first, band over).
+      if (bar) {
+        const bw = bar.w * Z;
+        for (const bx of barXs) {
+          drawTiled(ctx, bar, Math.round(bx - bw / 2), 0, bw, bandTop + 2, Math.round(bx - bw / 2), 0);
+        }
+        const cap = BARS.get('bar-top-cap');
+        if (cap) for (const bx of barXs) drawFixed(ctx, cap, Math.round(bx - (cap.w * Z) / 2), 0);
+      }
+
+      // The band: tiled face between optional caps.
+      const clW = capL ? capL.w * Z : 0;
+      const crW = capR ? capR.w * Z : 0;
+      drawTiled(ctx, face, clW, bandTop, w - clW - crW, bandH, clW, bandTop);
+      if (capL) drawFixed(ctx, capL, 0, bandTop);
+      if (capR) drawFixed(ctx, capR, w - crW, bandTop);
+
+      // Plates where each bar meets the band (13px below its top, the
+      // meshes' shared hardware position).
+      if (plate) {
+        const pw = plate.w * Z;
+        for (const bx of barXs) drawFixed(ctx, plate, Math.round(bx - pw / 2), bandTop + 13);
+      }
+
+      // Spikes hanging below the band at each bar; the outer pair clips at
+      // the canvas edge exactly as the mesh's spikes clipped at the
+      // viewBox.
+      if (spike && spikeH) {
+        const sw = spike.w * Z;
+        for (const bx of barXs) drawFixed(ctx, spike, Math.round(bx - sw / 2), bandTop + bandH);
+      }
+    };
+    // SYNCHRONOUS draw, not rAF: hidden/background tabs freeze rAF and the
+    // canvas stays blank until the tab fronts (hit live in the hidden
+    // preview pane). RO callbacks batch already; the draws are tiny.
+    const schedule = draw;
+    whenDecoded([...RAIL.values(), ...BARS.values()] as SkinPiece[]).then(() => { if (!cancelled) schedule(); });
+    const ro = new ResizeObserver(schedule);
+    ro.observe(host);
+    ro.observe(document.documentElement);
+    return () => { cancelled = true; ro.disconnect(); };
+  }, []);
+  // The div takes the mesh's className so the CSS (.control-rail-mesh /
+  // .nav-gate-rail-mesh) positions the skin exactly where the svg sat.
+  return (
+    <div className={className} aria-hidden style={{ overflow: 'visible' }} ref={hostRef}>
+      <canvas ref={canvasRef} style={{ position: 'absolute' }} />
+    </div>
+  );
+};
+
 // className is swappable: the nav's gate menu renders this same mesh as
 // its bottom rung on pages without the control rail (nav-gate-rail-mesh)
 // — the gate must bottom out with the identical spiked rail everywhere.
-export const PortcullisMesh: React.FC<{ className?: string }> = ({ className = 'control-rail-mesh' }) => (
+export const PortcullisMesh: React.FC<{ className?: string }> = ({ className = 'control-rail-mesh' }) => portcullisSkinActive ? <PortcullisSkin className={className} /> : (
   <svg
     className={className}
     viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}

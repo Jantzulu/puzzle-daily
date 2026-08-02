@@ -11,7 +11,7 @@ import { ErrorBoundary } from './components/shared/ErrorBoundary';
 import { applyThemeAssets, subscribeToThemeAssets, loadThemeAssets, fetchThemeAssetsFromCloud, type ThemeAssets } from './utils/themeAssets';
 import { applyNavTorchLight } from './components/shared/navTorchLight';
 import { satellitesPaused } from './components/game/frameProfiler';
-import { GateBeamMesh } from './components/shared/GateMesh';
+import { GateBeamMesh, GateSign } from './components/shared/GateMesh';
 import { PortcullisMesh } from './components/game/PortcullisMesh';
 import { getLatestPostTimestamp } from './services/newsService';
 import { ToastContainer } from './components/shared/Toast';
@@ -539,10 +539,10 @@ function Navigation() {
                 className={`nav-gate-item block px-8 py-2.5 text-center ${isActive(item.to) ? 'nav-gate-item-active' : ''}`}
               >
                 <GateBeamMesh first={i === 0} />
-                <span>
+                <GateSign>
                   {item.label}
                   {item.unread && <span className="ml-1 w-2 h-2 bg-red-500 rounded-full inline-block animate-pulse" />}
-                </span>
+                </GateSign>
               </Link>
             ))}
             {/* Utility row: when the control rail is riding the gate below

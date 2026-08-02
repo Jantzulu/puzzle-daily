@@ -1,5 +1,7 @@
 import React from 'react';
 import { IRON } from '../game/PortcullisMesh';
+import navJson from '../../assets/panels/nav-gate-slices.json';
+import { Z, buildSkin, BAR_FRACS, drawFixed, drawTiled, prepCanvas, whenDecoded, useCrispSnap, type SkinPiece } from '../game/panelSkins';
 
 // ============================================================================
 // GATE BEAM — one horizontal portcullis beam per nav menu item (all widths)
@@ -51,7 +53,135 @@ const BEAM_BOT = 44;
 const BAR_XS = [6, 83.6, 161.2, 238.8, 316.4, 394];
 const BAR_HALF = 6;
 
-export const GateBeamMesh: React.FC<{ first?: boolean }> = ({ first = false }) => {
+// ─── Painted skin (forge-cut art, 'nav-gate' kit) ───────────────────────────
+// Empty placeholder = the procedural svg below renders untouched. The skin
+// canvas draws the beam at the settled THIN 36px iron centered in the item
+// box, bars at the six shared fractions bridging the stack (the same
+// overflow trick: the canvas bleeds past the item box; later siblings paint
+// over incoming bar tips), and plates at the crossings. Sign plates render
+// separately (GateSign) with the DOM label on top.
+const NAV = buildSkin(navJson, 'nav-gate');
+export const navGateSkinActive = NAV.has('beam-face');
+export const navSignSkinActive = NAV.has('sign-mid');
+
+const GateBeamSkin: React.FC<{ first?: boolean }> = ({ first = false }) => {
+  const hostRef = React.useRef<HTMLDivElement>(null);
+  const canvasRef = React.useRef<HTMLCanvasElement>(null);
+  React.useLayoutEffect(() => {
+    const host = hostRef.current;
+    const canvas = canvasRef.current;
+    if (!host || !canvas) return;
+    let cancelled = false;
+    const draw = () => {
+      const w = host.clientWidth;
+      const h = host.clientHeight;
+      if (!w || !h) return;
+      // Bleed 32 covers the mesh's overhangs (first: 26 up; every beam: 12
+      // down) so the bars bridge item gaps exactly as the svg's did.
+      const ctx = prepCanvas(canvas, w, h, 32);
+      if (!ctx) return;
+      ctx.clearRect(-32, -32, w + 64, h + 64);
+
+      const beam = NAV.get('beam-face');
+      const bar = NAV.get('beam-bar-segment');
+      const plate = NAV.get('beam-plate');
+      const beamH = (beam?.h ?? 18) * Z;
+      const beamTop = Math.round((h - beamH) / 2);
+      const barXs = BAR_FRACS.map(f => Math.round(f * w));
+
+      // Bars first (behind the beam): from the navbar (first item reaches
+      // up 26px) down past the box's bottom edge into the next item.
+      if (bar) {
+        const bw = bar.w * Z;
+        const yTop = first ? -26 : 0;
+        for (const bx of barXs) {
+          drawTiled(ctx, bar, Math.round(bx - bw / 2), yTop, bw, h + 12 - yTop, Math.round(bx - bw / 2), 0);
+        }
+      }
+
+      // The beam, edge to edge.
+      drawTiled(ctx, beam, 0, beamTop, w, beamH, 0, beamTop);
+
+      // Plates where each bar crosses the beam, 13px below the iron's top
+      // (the shared hardware position).
+      if (plate) {
+        const pw = plate.w * Z;
+        for (const bx of barXs) drawFixed(ctx, plate, Math.round(bx - pw / 2), beamTop + 13);
+      }
+    };
+    // SYNCHRONOUS draw, not rAF: hidden/background tabs freeze rAF and the
+    // canvas stays blank until the tab fronts (hit live in the hidden
+    // preview pane). RO callbacks batch already; the draws are tiny.
+    const schedule = draw;
+    whenDecoded([...NAV.values()] as SkinPiece[]).then(() => { if (!cancelled) schedule(); });
+    const ro = new ResizeObserver(schedule);
+    ro.observe(host);
+    ro.observe(document.documentElement);
+    return () => { cancelled = true; ro.disconnect(); };
+  }, [first]);
+  return (
+    <div ref={hostRef} className="nav-gate-beam-skin" aria-hidden style={{ overflow: 'visible' }}>
+      <canvas ref={canvasRef} style={{ position: 'absolute' }} />
+    </div>
+  );
+};
+
+/**
+ * A menu item's label on its steel plate sign. Baseline: the plain span the
+ * CSS plates (.nav-gate-item > span). Skinned: the CSS stock switches off
+ * (span.nav-gate-sign-skinned) and a 3-slice canvas paints the plate behind
+ * the DOM text — the quest plate's pattern. Self-snaps to whole pixels.
+ */
+export const GateSign: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const snapRef = useCrispSnap<HTMLSpanElement>(navSignSkinActive, true);
+  const canvasRef = React.useRef<HTMLCanvasElement>(null);
+  React.useLayoutEffect(() => {
+    if (!navSignSkinActive) return;
+    const host = snapRef.current;
+    const canvas = canvasRef.current;
+    if (!host || !canvas) return;
+    let cancelled = false;
+    const draw = () => {
+      const w = host.clientWidth;
+      const h = host.clientHeight;
+      if (!w || !h) return;
+      const ctx = prepCanvas(canvas, w, h, 0);
+      if (!ctx) return;
+      ctx.clearRect(0, 0, w, h);
+      const mid = NAV.get('sign-mid');
+      const cl = NAV.get('sign-cap-l');
+      const cr = NAV.get('sign-cap-r');
+      const signH = (mid?.h ?? 13) * Z;
+      const y = Math.round((h - signH) / 2);
+      const clW = cl ? cl.w * Z : 0;
+      const crW = cr ? cr.w * Z : 0;
+      drawTiled(ctx, mid, clW, y, w - clW - crW, signH, clW, y);
+      if (cl) drawFixed(ctx, cl, 0, y);
+      if (cr) drawFixed(ctx, cr, w - crW, y);
+    };
+    // SYNCHRONOUS draw, not rAF: hidden/background tabs freeze rAF and the
+    // canvas stays blank until the tab fronts (hit live in the hidden
+    // preview pane). RO callbacks batch already; the draws are tiny.
+    const schedule = draw;
+    whenDecoded([NAV.get('sign-mid'), NAV.get('sign-cap-l'), NAV.get('sign-cap-r')].filter(Boolean) as SkinPiece[]).then(() => { if (!cancelled) schedule(); });
+    const ro = new ResizeObserver(schedule);
+    ro.observe(host);
+    return () => { cancelled = true; ro.disconnect(); };
+  }, [snapRef]);
+  if (!navSignSkinActive) return <span>{children}</span>;
+  return (
+    <span ref={snapRef} className="nav-gate-sign-skinned" style={{ position: 'relative' }}>
+      {/* No negative z anywhere in the gate (pinned WebKit rule): the
+          canvas paints first, the positioned text sibling above it. */}
+      <canvas ref={canvasRef} aria-hidden style={{ position: 'absolute' }} />
+      <span style={{ position: 'relative' }}>{children}</span>
+    </span>
+  );
+};
+
+export const GateBeamMesh: React.FC<{ first?: boolean }> = (props) => navGateSkinActive ? <GateBeamSkin {...props} /> : <GateBeamMeshSvg {...props} />;
+
+const GateBeamMeshSvg: React.FC<{ first?: boolean }> = ({ first = false }) => {
   // First: reach up through the menu's top padding to the navbar. Every
   // beam (including the last) extends the same +12 below — the control
   // rail's own rising bars bridge the remaining gap from underneath, and

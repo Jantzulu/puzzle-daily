@@ -2301,7 +2301,8 @@ body.menu-gate-instant .quest-box-anchor {
   position: relative;
 }
 
-.nav-gate-item > svg {
+.nav-gate-item > svg,
+.nav-gate-item > .nav-gate-beam-skin {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -2325,7 +2326,12 @@ body.menu-gate-instant .quest-box-anchor {
    the beams' z:1 tucks the rising bars behind the beam above, mirroring
    the play page where the rail's tips tuck behind the menu (wrapper
    z-40 < nav z-50). No drop-shadow: the control rail casts none. */
-.nav-gate-item > svg.nav-gate-rail-mesh {
+.nav-gate-item > svg.nav-gate-rail-mesh,
+.nav-gate-item > div.nav-gate-rail-mesh {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  pointer-events: none;
   top: -62.5%;
   bottom: auto;
   height: 200%;
@@ -2383,10 +2389,27 @@ body.menu-gate-instant .quest-box-anchor {
   filter: brightness(1.18);
 }
 
-/* Everything riding a beam sits above its iron (beams z:1, rail z:0) */
-.nav-gate-item > :not(svg) {
+/* Everything riding a beam sits above its iron (beams z:1, rail z:0) —
+   the SKIN divs are iron, not contents, hence the exclusions. */
+.nav-gate-item > :not(svg):not(.nav-gate-beam-skin):not(.nav-gate-rail-mesh) {
   position: relative;
   z-index: 2;
+}
+
+/* Painted sign plates: the canvas art replaces the CSS plate stock —
+   background/bevels/bolts off, and the fractional -1.8px optical nudge
+   goes with them (a fractional transform blurs bitmap art; the skinned
+   sign self-snaps to whole pixels instead). Text keeps its styling. */
+.nav-gate-item > span.nav-gate-sign-skinned {
+  background: none;
+  border-color: transparent;
+  box-shadow: none;
+  transform: none;
+}
+
+.nav-gate-item > span.nav-gate-sign-skinned::before,
+.nav-gate-item > span.nav-gate-sign-skinned::after {
+  display: none;
 }
 
 /* Labels ride the gate beams on steel plates bolted to the iron — the
