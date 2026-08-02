@@ -165,8 +165,8 @@ export const DEFAULT_KITS: KitSpec[] = [
       { id: 'plate-cap-l', label: 'Plate Cap L', w: 6, h: 14, repeat: 'fixed', notes: 'Finished left end of the QUEST plate — it straddles the box border in-game, so give it a complete outline.' },
       { id: 'plate-mid', label: 'Plate Middle', w: 12, h: 14, repeat: 'tile-x', notes: 'Repeats behind the plate label so the plate hugs any text length. The label itself stays DOM text.' },
       { id: 'plate-cap-r', label: 'Plate Cap R', w: 6, h: 14, repeat: 'fixed' },
-      { id: 'edge-top-ornament', label: 'Top Edge Ornament', w: 24, h: 12, repeat: 'fixed', notes: 'OPTIONAL centerpiece medallion, rendered CENTERED on the top edge — fixed like a corner: never stretched, never tiled, survives every panel width. Halo\'d, so it may be painted larger than the edge band. Leave unpainted to skip it.' },
-      { id: 'edge-bottom-ornament', label: 'Bottom Edge Ornament', w: 24, h: 12, repeat: 'fixed', notes: 'Same as the top ornament, centered on the bottom edge.' },
+      { id: 'edge-top-ornament', label: 'Top Edge Ornament', w: 24, h: 17, repeat: 'fixed', notes: 'OPTIONAL centerpiece medallion, rendered CENTERED on the top edge, layered over ALL the panel art (frame and plate — only the DOM text rides higher) — fixed like a corner: never stretched, never tiled, survives every panel width. Halo\'d, so it may be painted larger than the edge band; resize taller here and the template band grows with it. Leave unpainted to skip it.' },
+      { id: 'edge-bottom-ornament', label: 'Bottom Edge Ornament', w: 24, h: 17, repeat: 'fixed', notes: 'Same as the top ornament, centered on the bottom edge.' },
     ],
   },
   {
@@ -251,7 +251,11 @@ const STORAGE_KEY = 'panel_forge_kits_v1';
 //     and beam cuts (worst case: an unpainted cap exports "painted" and
 //     punches a hole in the live band). In-place hardware and under-beam
 //     bars are now dashed GUIDE regions the slicer ignores.
-const DEFAULTS_VERSION = 9;
+// v10: quest-box edge ornaments 12->17 art tall (user ask: ~5px more room
+//      to draw taller medallions); the plate band now sizes to the tallest
+//      paint box in it, so ornament resizes grow the sheet instead of
+//      pushing their halo off it.
+const DEFAULTS_VERSION = 10;
 
 function loadKits(): KitSpec[] {
   try {
@@ -718,7 +722,13 @@ function assembleQuestBox(kit: KitSpec): Assembly | null {
   // separate QUEST box to be drawn on"). The band reserves it; the halos on
   // the rep-0 regions make the slicer CUT it, so the overflow ships.
   const plateH = Math.max(pl.h, pm.h, pr.h);
-  const bandH = HALO + plateH + HALO + 2;
+  // The band holds the TALLEST paint box in it — the plate's or an
+  // ornament's — so resizing the ornament pieces grows the sheet instead
+  // of pushing their halo off it (the user sizes ornaments to taste).
+  const ot = P('edge-top-ornament');
+  const ob = P('edge-bottom-ornament');
+  const ornH = Math.max(ot?.h ?? 0, ob?.h ?? 0);
+  const bandH = HALO + Math.max(plateH, ornH) + HALO + 2;
   const regions = base.regions.map(r => ({ ...r, y: r.y + bandH }));
 
   const MIDS = 2; // sample shows one seam; only the first period is cut
@@ -740,16 +750,15 @@ function assembleQuestBox(kit: KitSpec): Assembly | null {
   // Centered edge ornaments (optional medallions) — cut from the plate
   // band's spare flanks so nothing overlaps: left slot = top ornament,
   // right slot = bottom ornament. They RENDER centered on their edges;
-  // the labels say so, the band is just where the paint lives.
-  const ot = P('edge-top-ornament');
-  const ob = P('edge-bottom-ornament');
+  // the labels say so, the band is just where the paint lives. Each slot's
+  // paint box (nominal + halo) centers in the band so it always stays
+  // on-sheet, whatever height the pieces are sized to.
+  const ornY = (h: number) => Math.round((bandH - 2 - (h + HALO * 2)) / 2) + HALO;
   if (ot) {
-    const oy = py + Math.round((plateH - ot.h) / 2);
-    regions.push({ pieceId: 'edge-top-ornament', x: HALO + 2, y: oy, w: ot.w, h: ot.h, rep: 0, halo: { l: HALO, t: HALO, r: HALO, b: HALO } });
+    regions.push({ pieceId: 'edge-top-ornament', x: HALO + 2, y: ornY(ot.h), w: ot.w, h: ot.h, rep: 0, halo: { l: HALO, t: HALO, r: HALO, b: HALO } });
   }
   if (ob) {
-    const oy = py + Math.round((plateH - ob.h) / 2);
-    regions.push({ pieceId: 'edge-bottom-ornament', x: base.width - HALO - 2 - ob.w, y: oy, w: ob.w, h: ob.h, rep: 0, halo: { l: HALO, t: HALO, r: HALO, b: HALO } });
+    regions.push({ pieceId: 'edge-bottom-ornament', x: base.width - HALO - 2 - ob.w, y: ornY(ob.h), w: ob.w, h: ob.h, rep: 0, halo: { l: HALO, t: HALO, r: HALO, b: HALO } });
   }
 
   return { regions, width: base.width, height: base.height + bandH };
