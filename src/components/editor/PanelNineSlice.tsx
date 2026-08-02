@@ -229,8 +229,19 @@ export const PanelNineSlice: React.FC<Props> = ({ pieces, zoom, width, height, s
   const plateHaloT = (plateM?.halo?.t ?? plateL?.halo?.t ?? 0) * zoom;
   // The straddle (and any halo overflow above the plate) can exceed the base
   // padding at high zoom — the ground's top padding grows to hold both.
+  // The TOP ornament's aura reaches higher still (upward halo 13 art plus
+  // its negative centering offset on a thin band) — reserve that too.
   const straddle = Math.round(plateH * 0.6);
-  const groundPadTop = hasPlate ? Math.max(GROUND_PAD, straddle + plateHaloT + 2) : GROUND_PAD;
+  const topOrn = p['edge-top-ornament'];
+  const topOrnReach = topOrn
+    ? (topOrn.halo?.t ?? 0) * zoom
+      - Math.round(((cbt - (topOrn.h - (topOrn.halo ? topOrn.halo.t + topOrn.halo.b : 0)) * zoom)) / 2)
+    : 0;
+  const groundPadTop = Math.max(
+    GROUND_PAD,
+    hasPlate ? straddle + plateHaloT + 2 : 0,
+    topOrnReach + 2,
+  );
   const plateLeft = GROUND_PAD + Math.round((width - plateW) / 2);
   const plateTop = groundPadTop - straddle;
 

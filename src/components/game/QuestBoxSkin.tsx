@@ -208,9 +208,14 @@ export const QuestOrnaments: React.FC = () => {
       const w = host.clientWidth;
       const h = host.clientHeight;
       if (!w || !h) return;
-      const ctx = prepCanvas(canvas, w, h, BLEED);
+      // Deeper bleed than the frame's: an ornament's aura (top halo 13 art
+      // = 26 CSS) plus its negative centering offset on a thin band can
+      // reach ~38 CSS past the box — BLEED 16 was silently clipping tall
+      // medallion overhang.
+      const ORN_BLEED = 48;
+      const ctx = prepCanvas(canvas, w, h, ORN_BLEED);
       if (!ctx) return;
-      ctx.clearRect(-BLEED, -BLEED, w + BLEED * 2, h + BLEED * 2);
+      ctx.clearRect(-ORN_BLEED, -ORN_BLEED, w + ORN_BLEED * 2, h + ORN_BLEED * 2);
       const ornament = (pc: SkinPiece | undefined, isTop: boolean) => {
         if (!pc) return;
         const bandH = isTop ? questFrameBorders.t : questFrameBorders.b;
