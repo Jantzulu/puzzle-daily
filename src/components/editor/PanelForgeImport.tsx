@@ -633,7 +633,7 @@ export const PanelForgeImport: React.FC<Props> = ({ kit, assembly }) => {
           {/* WIRED kits: their committed slices files ARE the in-game art
               (hardcoded by decision — core chrome is source, not a theme
               knob; see panelSkins.ts). */}
-          {['quest-box', 'portcullis-gate', 'control-rail', 'nav-gate'].includes(kit.id) && (
+          {['quest-box', 'portcullis-gate', 'control-rail', 'nav-gate', 'play-gem'].includes(kit.id) && (
             <p className="text-xs text-stone-400">
               This kit is live in the game: drop the exported JSON at{' '}
               <code className="text-copper-300">src/assets/panels/{kit.id}-slices.json</code>{' '}

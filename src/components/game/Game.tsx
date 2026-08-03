@@ -42,6 +42,7 @@ import { NextPuzzleCountdown } from './NextPuzzleCountdown';
 import { BugReportModal } from './BugReportModal';
 import type { TrackedRun } from '../../types/bugReport';
 import { GemMesh } from './GemMesh';
+import { PlayStoneSkin, playStoneSkinActive } from './PlayStoneSkin';
 import { ReplaySlabMesh } from './ReplaySlabMesh';
 
 // Test mode types
@@ -2515,15 +2516,28 @@ export const Game: React.FC<GameProps> = ({
                           // nav rung now, so the tallest child sets the paint
                           // at 4+36+4. hit-44 keeps the TARGET at 44px while
                           // the stone itself shrinks.
-                          className={`gem-btn w-[118px] lg:w-[132px] shrink-0 h-9 font-bold text-sm lg:text-base transition-all flex items-center justify-center !py-0 hit-44 ${
-                            gameState.placedCharacters.length === 0 ? 'opacity-50 cursor-not-allowed' : ''
+                          // ONE unified width (120px = 60 art at every
+                          // viewport — user call 2026-08-03, superseding the
+                          // 118/132 split) so the Play Stone kit paints a
+                          // single fixed piece. Keep in lockstep with the
+                          // turn-counter plate below and the kit's 60×18.
+                          // With the skin active the disabled dim moves INTO
+                          // the skin (face only) — a whole-button opacity
+                          // would dim the never-dimming frame too.
+                          className={`gem-btn relative w-[120px] shrink-0 h-9 font-bold text-sm lg:text-base transition-all flex items-center justify-center !py-0 hit-44 ${
+                            gameState.placedCharacters.length === 0
+                              ? playStoneSkinActive ? 'cursor-not-allowed' : 'opacity-50 cursor-not-allowed'
+                              : ''
                           }`}
                           style={{ minHeight: 'unset' }}
                         >
                           {/* Emerald stone — supersedes the legacy flat theme
                               colors for this button (custom theme IMAGES still
-                              win via the branch above) */}
-                          <GemMesh tone="emerald" phase={0} />
+                              win via the branch above); the painted Play
+                              Stone supersedes the mesh in turn. */}
+                          {playStoneSkinActive
+                            ? <PlayStoneSkin dimmed={gameState.placedCharacters.length === 0} />
+                            : <GemMesh tone="emerald" phase={0} />}
                           <span>Play</span>
                         </button>
                       )
@@ -2534,10 +2548,10 @@ export const Game: React.FC<GameProps> = ({
                       // engraving and breathes (gem-plate-aura). Text
                       // inherits the plate's Play-label ivory; the
                       // near-limit warning colors still take over.
-                      // Width is LOCKED (w-[118px] lg:w-[132px]) and matches
-                      // the Play button exactly, so the stone never resizes
-                      // across setup→running or as the turn count gains
-                      // digits. shrink-0 is essential: without it the
+                      // Width is LOCKED (w-[120px], the unified single size)
+                      // and matches the Play button exactly, so the stone
+                      // never resizes across setup→running or as the turn
+                      // count gains digits. shrink-0 is essential: without it the
                       // center grid cell shrinks the fixed width back to
                       // content size. Just clears the widest label
                       // ("Turn 100 / 100" ≈ 83px text); games never exceed
@@ -2548,8 +2562,10 @@ export const Game: React.FC<GameProps> = ({
                       // and can never wrap.
                       // Same 36px stone as the Play button it replaces, so the
                       // rung's height never changes between states.
-                      <div className="gem-plate gem-plate-aura h-9 w-[118px] lg:w-[132px] shrink-0 px-4 flex items-center justify-center">
-                        <GemMesh tone="emerald" phase={0} />
+                      <div className="gem-plate gem-plate-aura relative h-9 w-[120px] shrink-0 px-4 flex items-center justify-center">
+                        {playStoneSkinActive
+                          ? <PlayStoneSkin />
+                          : <GemMesh tone="emerald" phase={0} />}
                         <span className="whitespace-nowrap">
                           <span className="text-xs lg:text-sm font-medium opacity-80">Turn&nbsp;</span>
                           {(() => {

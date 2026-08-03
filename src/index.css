@@ -2462,6 +2462,23 @@ body.menu-gate-instant .quest-box-anchor {
   align-items: center;
 }
 
+/* Play Stone optional state faces (painted hover/pressed pieces) swap by
+   CSS opacity — no JS state, and they only mount while playable, so a
+   dimmed stone never glints. */
+.play-stone-hover,
+.play-stone-pressed {
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.gem-btn:hover .play-stone-hover {
+  opacity: 1;
+}
+
+.gem-btn:active .play-stone-pressed {
+  opacity: 1;
+}
+
 /* Everything riding a beam sits above its iron (beams z:1, rail z:0) —
    the SKIN divs are iron, not contents, hence the exclusions. */
 .nav-gate-item > :not(svg):not(.nav-gate-beam-skin):not(.nav-gate-rail-mesh):not(.nav-gate-bars-skin) {

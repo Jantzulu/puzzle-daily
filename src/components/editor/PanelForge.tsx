@@ -219,13 +219,15 @@ export const DEFAULT_KITS: KitSpec[] = [
   },
   {
     id: 'play-gem',
-    name: 'Play Gem',
+    name: 'Play Stone',
     builtIn: true,
-    description: 'The action-button gem — a WIDE table-cut stone (the live mesh is 200×70, ≈2.9:1), not a square. One slot per interaction state; anchors CENTER, so painting larger keeps it centered.',
+    description:
+      'The action button on the control rail, at its REAL unified size: 120×36px at Z=2 on EVERY viewport (60×18 art — the user unified the old 118/132 split, 2026-08-03). Split by design: the BUTTON FACE auto-dims until a hero is placed, the FRAME never dims and stays constant through every state. No gem assumptions — transparency is silhouette, paint any shape (an opaque painting makes an opaque button). WIRED: drop the export at src/assets/panels/play-gem-slices.json. NOTE: after a run starts the same stone carries the Turn counter as DOM text, so the face doubles as that plate.',
     pieces: [
-      { id: 'gem-normal', label: 'Gem · Normal', w: 64, h: 22, repeat: 'fixed' },
-      { id: 'gem-hover', label: 'Gem · Hover', w: 64, h: 22, repeat: 'fixed' },
-      { id: 'gem-pressed', label: 'Gem · Pressed', w: 64, h: 22, repeat: 'fixed' },
+      { id: 'play-button', label: 'Button Face', w: 60, h: 18, repeat: 'fixed', notes: 'The stone itself — AUTO-DIMMED by the game until a hero is placed, so paint the LIT state. The DOM label (Play, then the running Turn counter) rides on top. Any silhouette works.' },
+      { id: 'play-button-hover', label: 'Button · Hover', w: 60, h: 18, repeat: 'fixed', notes: 'OPTIONAL — swaps in under the pointer (only while playable). Leave unpainted to keep the base face.' },
+      { id: 'play-button-pressed', label: 'Button · Pressed', w: 60, h: 18, repeat: 'fixed', notes: 'OPTIONAL — swaps in while pressed. Leave unpainted to skip.' },
+      { id: 'play-frame', label: 'Button Frame', w: 60, h: 18, repeat: 'fixed', notes: 'The ornate frame AROUND the stone — NEVER dimmed, constant in every state, drawn OVER the face so it can overlap its edges. 8 art of AURA on every side (the magenta box): overhang the rail, get ornate. Leave unpainted for a frameless stone.' },
     ],
   },
   {
@@ -292,7 +294,13 @@ const STORAGE_KEY = 'panel_forge_kits_v1';
 //      as a finished object that deliberately overhangs it (user design;
 //      the smooth CSS circle broke the gate's square-hardware language).
 //      Detached slot in the existing row; sheet size unchanged.
-const DEFAULTS_VERSION = 16;
+// v17: play-gem kit rebuilt as "Play Stone" at the REAL unified size
+//      (60×18 art = 120×36px, all viewports — user unified the 118/132
+//      split): play-button face (auto-dims until a hero is placed) +
+//      optional hover/pressed + play-frame (never dims, 8-art aura,
+//      drawn OVER the face). Old draft gem-normal/hover/pressed (64×22)
+//      replaced.
+const DEFAULTS_VERSION = 17;
 
 function loadKits(): KitSpec[] {
   try {
@@ -361,9 +369,9 @@ const REF_CROPS: Record<string, RefCrop> = {
   'rail-cap-r': { src: 'portcullis', x: 960, y: 20, w: 40, h: 32 },
   'forge-plate': { src: 'portcullis', x: 196, y: 29, w: 26, h: 9 },
   'rail-spike': { src: 'portcullis', x: 78, y: 52, w: 44, h: 12 },
-  'gem-normal': { src: 'gem', x: 0, y: 0, w: 200, h: 70 },
-  'gem-hover': { src: 'gem', x: 0, y: 0, w: 200, h: 70 },
-  'gem-pressed': { src: 'gem', x: 0, y: 0, w: 200, h: 70 },
+  'play-button': { src: 'gem', x: 0, y: 0, w: 200, h: 70 },
+  'play-button-hover': { src: 'gem', x: 0, y: 0, w: 200, h: 70 },
+  'play-button-pressed': { src: 'gem', x: 0, y: 0, w: 200, h: 70 },
   // GateBeamMesh viewBox 400×52: beam band y 8–44, bars at x 40..360
   // (half-width 6), forge plates 9×9 at y=21. The sign pieces are DOM CSS
   // (.nav-pill) — no mesh crop; the upload path covers them.
@@ -601,7 +609,7 @@ function kitFamily(kit: KitSpec): KitFamily | null {
   if (ids.has('bar-segment')) return 'gate';
   if (ids.has('rail-face')) return 'rail';
   if (ids.has('beam-face')) return 'nav-gate';
-  if (ids.has('gem-normal')) return 'gem';
+  if (ids.has('play-button')) return 'gem';
   if (ids.has('btn-normal-mid')) return 'buttons';
   return null;
 }
@@ -1067,13 +1075,22 @@ function assembleGem(kit: KitSpec): Assembly | null {
   const states = kit.pieces.filter(p => p.repeat === 'fixed');
   if (states.length === 0) return null;
   const gap = 10;
+  // Halo-aware slots: the frame ships with 8 art of aura on every side
+  // (paint an ornate overhang; the slicer cuts region + halo), the face
+  // states cut exact. Slots reserve nominal + halo so auras never
+  // collide.
+  const haloFor = (id: string) => (id === 'play-frame' ? 8 : 0);
   let x = 0;
   const regions: AssemblyRegion[] = [];
   let maxH = 0;
   for (const s of states) {
-    regions.push({ pieceId: s.id, x, y: 0, w: s.w, h: s.h, rep: 0 });
-    x += s.w + gap;
-    maxH = Math.max(maxH, s.h);
+    const halo = haloFor(s.id);
+    regions.push({
+      pieceId: s.id, x: x + halo, y: halo, w: s.w, h: s.h, rep: 0,
+      ...(halo ? { halo: { l: halo, t: halo, r: halo, b: halo } } : {}),
+    });
+    x += s.w + halo * 2 + gap;
+    maxH = Math.max(maxH, s.h + halo * 2);
   }
   return { regions, width: x - gap, height: maxH };
 }
