@@ -187,17 +187,26 @@ export const PanelForgeImport: React.FC<Props> = ({ kit, assembly }) => {
       return;
     }
 
-    // The painted sheet should be the assembled sample's own size. A mismatch
-    // is usually an export at the wrong zoom — say so rather than silently
-    // cutting from the wrong coordinates, which would look like bad art.
+    // The painted sheet should be the assembled sample's own size. An exact
+    // N× sheet is a wrong-zoom export (sliceable, downsampled, warned).
+    // Anything else is a LAYOUT MISMATCH and slicing it would cut from the
+    // wrong coordinates — garbage that reads as bad art or renderer bugs
+    // (it cost two confused rounds on 2026-08-02: the quest aura rows and
+    // the detached cap slot both grew their sheets). HARD STOP, with the
+    // exact migration move.
     if (img.width !== assembly.width || img.height !== assembly.height) {
       const scale = img.width / assembly.width;
-      const clean = scale === Math.round(scale) && img.height === assembly.height * scale;
-      setSizeWarning(
-        clean
-          ? `Sheet is ${img.width}×${img.height} — exactly ${scale}× the ${expected} sample. Export at 1× (art pixels), not ${scale}×.`
-          : `Sheet is ${img.width}×${img.height} but this kit assembles to ${expected}. Slicing will be misaligned.`,
-      );
+      const clean = scale === Math.round(scale) && scale >= 1 && img.height === assembly.height * scale;
+      if (!clean) {
+        const dh = assembly.height - img.height;
+        const hint = img.width === assembly.width && dh > 0
+          ? ` The template has grown ${dh}px taller since this sheet was exported: Sprite → Canvas Size, height +${dh}, ANCHOR BOTTOM (your paint stays put), then re-slice.`
+          : ' Re-export the assembled template and carry your paint onto it.';
+        setSizeWarning(`Sheet is ${img.width}×${img.height} but this kit assembles to ${expected} — NOT sliced: the cuts would land in the wrong places.${hint}`);
+        setSlices([]);
+        return;
+      }
+      setSizeWarning(`Sheet is ${img.width}×${img.height} — exactly ${scale}× the ${expected} sample. Export at 1× (art pixels), not ${scale}×.`);
     } else {
       setSizeWarning(null);
     }
