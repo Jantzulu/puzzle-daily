@@ -477,9 +477,20 @@ export const PanelForgeImport: React.FC<Props> = ({ kit, assembly }) => {
                 }`}
                 title={`${s.label} — ${s.w}×${s.h}${s.empty ? ' (unpainted)' : ''}`}
               >
+                {/* Transparency checker scaled to the ART GRID (one cell =
+                    2 art px, Aseprite's own convention). The old fixed 8px
+                    cells were bigger than a tiny piece's corner notch, so a
+                    single lighter cell behind a transparent rounded corner
+                    read as a stray grey PIXEL in the art — the user chased
+                    it as a slicer bug (2026-08-02, "extra corner grey
+                    pixels" on the 6×4 bar cap). */}
                 <div
-                  className="bg-[repeating-conic-gradient(#2a2a2a_0%_25%,#1c1c1c_0%_50%)] bg-[length:8px_8px]"
-                  style={{ width: s.w * zoom, height: s.h * zoom }}
+                  style={{
+                    width: s.w * zoom,
+                    height: s.h * zoom,
+                    backgroundImage: 'repeating-conic-gradient(#2a2a2a 0% 25%, #1c1c1c 0% 50%)',
+                    backgroundSize: `${zoom * 2}px ${zoom * 2}px`,
+                  }}
                 >
                   <img
                     src={s.url}
