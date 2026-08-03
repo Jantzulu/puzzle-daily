@@ -125,14 +125,16 @@ export const drawRailSkin = (
   if (capL) drawFixed(ctx, capL, -(capL.halo?.l ?? 0) * Z, capY(capL));
   if (capR) drawFixed(ctx, capR, w - crW - (capR.halo?.l ?? 0) * Z, capY(capR));
 
-  // Plates where each bar meets the band, 14px below its top: the svg
-  // put its plates at 13, but 14 is EVEN — the plate's art pixels stay
-  // on the band's 2px art grid — and equals the forge sample's plate
-  // line (art y 7), so sample, preview and live agree exactly. Keep in
-  // lockstep with GateBeamSkin's plate line.
+  // Plates where each bar meets the band, VERTICALLY CENTERED on it (user
+  // call, 2026-08-02): the earlier +14 line was the svg's bar-crossing
+  // height — 2 art above the 22-art band's centre, and the user saw it.
+  // The centred offset stays even for even piece sizes, so the plate's
+  // art pixels keep the band's 2px grid. Same RULE as GateBeamSkin's
+  // plate line (there centre and crossing height coincide).
   if (plate) {
     const pw = nomW(plate) * Z;
-    for (const bx of barXs) drawFixed(ctx, plate, Math.round(bx - pw / 2) - (plate.halo?.l ?? 0) * Z, bandTop + 14 - (plate.halo?.t ?? 0) * Z);
+    const py = bandTop + Math.round((bandH - nomH(plate) * Z) / 2) - (plate.halo?.t ?? 0) * Z;
+    for (const bx of barXs) drawFixed(ctx, plate, Math.round(bx - pw / 2) - (plate.halo?.l ?? 0) * Z, py);
   }
 
   // Spikes hanging below the band at each bar; the outer pair clips at

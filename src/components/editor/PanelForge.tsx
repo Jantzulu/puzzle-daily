@@ -892,7 +892,10 @@ function assembleRail(kit: KitSpec): Assembly | null {
   const anchors = barCenters(W, 6);
   const last = anchors.length - 1;
   const spikeY = faceY + rf.h + capOver;
-  if (fp) anchors.forEach((ax, i) => regions.push({ pieceId: 'forge-plate', x: ax - fp.w / 2, y: faceY + 7, w: fp.w, h: fp.h, rep: i + 1, guide: true }));
+  // Plate guides VERTICALLY CENTERED on the band (user call, 2026-08-02 —
+  // the old art-y-7 line was the svg's bar-crossing height, 2 art above
+  // the 22-art band's centre; the nav kit's guides were already centered).
+  if (fp) anchors.forEach((ax, i) => regions.push({ pieceId: 'forge-plate', x: ax - fp.w / 2, y: faceY + Math.round((rf.h - fp.h) / 2), w: fp.w, h: fp.h, rep: i + 1, guide: true }));
   if (rs) {
     // SIDE AURA (user ask, 2026-08-02): the spike's cut carries ±HALO art
     // of horizontal overflow — tips may curl wide of the nominal box. No

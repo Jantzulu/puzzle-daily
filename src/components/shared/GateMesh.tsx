@@ -1,7 +1,7 @@
 import React from 'react';
 import { IRON } from '../game/PortcullisMesh';
 import navJson from '../../assets/panels/nav-gate-slices.json';
-import { Z, buildSkin, barCenters, drawFixed, drawTiled, prepCanvas, whenDecoded, useCrispSnap, type SkinPiece } from '../game/panelSkins';
+import { Z, buildSkin, barCenters, nomW, nomH, drawFixed, drawTiled, prepCanvas, whenDecoded, useCrispSnap, type SkinPiece } from '../game/panelSkins';
 
 // ============================================================================
 // GATE BEAM — one horizontal portcullis beam per nav menu item (all widths)
@@ -94,13 +94,14 @@ export const drawGateBeamSkin = (ctx: CanvasRenderingContext2D, w: number, h: nu
   // The beam, edge to edge.
   drawTiled(ctx, beam, 0, beamTop, w, beamH, 0, beamTop);
 
-  // Plates where each bar crosses the beam, 14px below the iron's top:
-  // the svg's 13 rounded to EVEN so the plate's art pixels stay on the
-  // 2px art grid, matching the forge sample's centered plate line (art
-  // y 7). Keep in lockstep with PortcullisSkin's plate line.
+  // Plates where each bar crosses the beam, VERTICALLY CENTERED on the
+  // iron — for the default 18-art beam this equals the old +14 crossing
+  // line, but the RULE is centred (lockstep with drawRailSkin, where the
+  // user caught the two heights disagreeing on the taller band).
   if (plate) {
-    const pw = plate.w * Z;
-    for (const bx of barXs) drawFixed(ctx, plate, Math.round(bx - pw / 2), beamTop + 14);
+    const pw = nomW(plate) * Z;
+    const py = beamTop + Math.round((beamH - nomH(plate) * Z) / 2) - (plate.halo?.t ?? 0) * Z;
+    for (const bx of barXs) drawFixed(ctx, plate, Math.round(bx - pw / 2) - (plate.halo?.l ?? 0) * Z, py);
   }
 };
 
