@@ -1,7 +1,7 @@
 import React from 'react';
 import railJson from '../../assets/panels/control-rail-slices.json';
 import barsJson from '../../assets/panels/portcullis-gate-slices.json';
-import { Z, buildSkin, barCenters, drawFixed, drawTiled, prepCanvas, whenDecoded, type SkinPiece } from './panelSkins';
+import { Z, buildSkin, barCenters, nomW, nomH, drawFixed, drawTiled, prepCanvas, whenDecoded, type SkinPiece } from './panelSkins';
 
 // ============================================================================
 // PORTCULLIS RAIL — the control panel's iron
@@ -118,12 +118,18 @@ const PortcullisSkin: React.FC<{ className: string }> = ({ className }) => {
         if (cap) for (const bx of barXs) drawFixed(ctx, cap, Math.round(bx - (cap.w * Z) / 2), 0);
       }
 
-      // The band: tiled face between optional caps.
-      const clW = capL ? capL.w * Z : 0;
-      const crW = capR ? capR.w * Z : 0;
+      // The band: tiled face between optional caps. All hardware anchors by
+      // NOMINAL size (bitmap minus halo) so aura'd pieces keep their
+      // geometry and the overflow just paints further.
+      const clW = capL ? nomW(capL) * Z : 0;
+      const crW = capR ? nomW(capR) * Z : 0;
       drawTiled(ctx, face, clW, bandTop, w - clW - crW, bandH, clW, bandTop);
-      if (capL) drawFixed(ctx, capL, 0, bandTop);
-      if (capR) drawFixed(ctx, capR, w - crW, bandTop);
+      // Caps VERTICALLY CENTERED on the band (user call, 2026-08-02): a cap
+      // taller than the 22-art band overhangs the rung's top and bottom
+      // EQUALLY instead of hanging off its foot.
+      const capY = (pc: SkinPiece) => bandTop + Math.round((bandH - nomH(pc) * Z) / 2) - (pc.halo?.t ?? 0) * Z;
+      if (capL) drawFixed(ctx, capL, -(capL.halo?.l ?? 0) * Z, capY(capL));
+      if (capR) drawFixed(ctx, capR, w - crW - (capR.halo?.l ?? 0) * Z, capY(capR));
 
       // Plates where each bar meets the band, 14px below its top: the svg
       // put its plates at 13, but 14 is EVEN — the plate's art pixels stay
@@ -131,16 +137,17 @@ const PortcullisSkin: React.FC<{ className: string }> = ({ className }) => {
       // line (art y 7), so sample, preview and live agree exactly. Keep in
       // lockstep with GateBeamSkin's plate line.
       if (plate) {
-        const pw = plate.w * Z;
-        for (const bx of barXs) drawFixed(ctx, plate, Math.round(bx - pw / 2), bandTop + 14);
+        const pw = nomW(plate) * Z;
+        for (const bx of barXs) drawFixed(ctx, plate, Math.round(bx - pw / 2) - (plate.halo?.l ?? 0) * Z, bandTop + 14 - (plate.halo?.t ?? 0) * Z);
       }
 
       // Spikes hanging below the band at each bar; the outer pair clips at
       // the canvas edge exactly as the mesh's spikes clipped at the
-      // viewBox.
+      // viewBox. Spikes carry ±8 art of SIDE AURA (user ask, 2026-08-02) —
+      // nominal stays on the bar center, tips may curl wide of it.
       if (spike && spikeH) {
-        const sw = spike.w * Z;
-        for (const bx of barXs) drawFixed(ctx, spike, Math.round(bx - sw / 2), bandTop + bandH);
+        const sw = nomW(spike) * Z;
+        for (const bx of barXs) drawFixed(ctx, spike, Math.round(bx - sw / 2) - (spike.halo?.l ?? 0) * Z, bandTop + bandH - (spike.halo?.t ?? 0) * Z);
       }
     };
     // SYNCHRONOUS draw, not rAF: hidden/background tabs freeze rAF and the

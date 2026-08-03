@@ -194,10 +194,10 @@ export const DEFAULT_KITS: KitSpec[] = [
     description: 'The iron rail the game controls sit on, with its forge plates and hanging spikes. WIRED: drop the export at src/assets/panels/control-rail-slices.json. Sizes audited against the LIVE geometry at Z=2, 2026-08-02: the band fills its 44 CSS px box (22 art), spikes hang ~16 CSS (8 art), plates rendered 9 CSS in the mesh — art quantizes to 8 CSS (4 art). Plates + spikes sit at ALL SIX bar fractions, outer pair flush at the screen edges — the sample shows the outer spikes CLIPPED by the sheet edge because that is exactly how the live pair clips at the screen edge. Shares the drop-path canvas with the Portcullis Gate kit — see its PAINT ORDER note.',
     pieces: [
       { id: 'rail-face', label: 'Rail Face', w: 24, h: 22, repeat: 'tile-x', notes: 'The flat band the DOM controls sit on — fills the full 44px rung box at Z=2. Lit top edge, dark bottom lip.' },
-      { id: 'rail-cap-l', label: 'Rail Cap L', w: 8, h: 22, repeat: 'fixed', notes: 'Optional screen-edge finisher — the live mesh runs edge to edge with no caps; leave unpainted to keep that.' },
-      { id: 'rail-cap-r', label: 'Rail Cap R', w: 8, h: 22, repeat: 'fixed' },
+      { id: 'rail-cap-l', label: 'Rail Cap L', w: 8, h: 22, repeat: 'fixed', notes: 'Optional screen-edge finisher — the live mesh runs edge to edge with no caps; leave unpainted to keep that. VERTICALLY CENTERED on the band: size it taller than 22 and it overhangs the rung top and bottom equally.' },
+      { id: 'rail-cap-r', label: 'Rail Cap R', w: 8, h: 22, repeat: 'fixed', notes: 'Centered on the band like the left cap.' },
       { id: 'forge-plate', label: 'Forge Plate', w: 4, h: 4, repeat: 'fixed', notes: 'SAME HARDWARE as the Nav Gate kit\'s "Beam Forge Plate" — paint them identically, or the bottom rung reads as a different make of iron than the lattice above it. Renders 8 CSS px (the mesh\'s standardized plate was 9 — art must quantize to even; resize to 5 for 10px if 8 reads too fine). PAINT IT IN THE DETACHED SLOT above the band; the dashed in-band boxes only preview the live placement (each bar crossing) — paint there lands inside the band/cap cuts and ships baked into them.' },
-      { id: 'rail-spike', label: 'Rail Spike', w: 8, h: 8, repeat: 'fixed', notes: 'Hangs below the rail at each bar; anchors at its root (top edge). The four interior slots are real (the first is the cut); the dashed outer pair previews how the live edge spikes clip at the screen edge.' },
+      { id: 'rail-spike', label: 'Rail Spike', w: 8, h: 8, repeat: 'fixed', notes: 'Hangs below the rail at each bar; anchors at its root (top edge). The four interior slots are real (the first is the cut); the dashed outer pair previews how the live edge spikes clip at the screen edge. The cut carries 8 art of SIDE AURA each way — tips may curl wide of the nominal box (magenta shows the paint room); height stays exact, no vertical aura.' },
     ],
   },
   {
@@ -273,7 +273,10 @@ const STORAGE_KEY = 'panel_forge_kits_v1';
 //      migrations from v12 on carry stored piece w/h over for matching
 //      built-in pieces — the artist's sizes are sacred. Size corrections
 //      must ship as new piece ids or as re-apply notes.
-const DEFAULTS_VERSION = 12;
+// v13: rail-spike cut gains ±8 side aura; rail caps vertically centered
+//      on the band (template + live renderer). Notes-only refresh — the
+//      v12 migration carries the artist's sizes through untouched.
+const DEFAULTS_VERSION = 13;
 
 function loadKits(): KitSpec[] {
   try {
@@ -861,16 +864,22 @@ function assembleRail(kit: KitSpec): Assembly | null {
   // carrying only a floating plate, then punch a transparent hole in the
   // live band). Caught by adversarial review, 2026-08-02.
   const slotH = fp ? fp.h + 2 : 0;
-  const H = slotH + rf.h + (rs?.h ?? 0);
+  // Caps are VERTICALLY CENTERED on the band (matching the live renderer):
+  // a cap taller than the face overhangs the band top and bottom equally,
+  // so the face row drops by the overhang and the sheet grows both ways.
+  const maxCap = Math.max(cl?.h ?? 0, cr?.h ?? 0, rf.h);
+  const capOver = Math.max(0, Math.ceil((maxCap - rf.h) / 2));
+  const faceY = slotH + capOver;
+  const H = slotH + rf.h + capOver * 2 + (rs?.h ?? 0);
   const regions: AssemblyRegion[] = [];
 
   if (fp) regions.push({ pieceId: 'forge-plate', x: 2, y: 0, w: fp.w, h: fp.h, rep: 0 });
 
   for (let i = 0; i < REPS; i++) {
-    regions.push({ pieceId: 'rail-face', x: clW + i * rf.w, y: slotH, w: rf.w, h: rf.h, rep: i });
+    regions.push({ pieceId: 'rail-face', x: clW + i * rf.w, y: faceY, w: rf.w, h: rf.h, rep: i });
   }
-  if (cl) regions.push({ pieceId: 'rail-cap-l', x: 0, y: slotH, w: cl.w, h: cl.h, rep: 0 });
-  if (cr) regions.push({ pieceId: 'rail-cap-r', x: W - cr.w, y: slotH, w: cr.w, h: cr.h, rep: 0 });
+  if (cl) regions.push({ pieceId: 'rail-cap-l', x: 0, y: faceY + Math.round((rf.h - cl.h) / 2), w: cl.w, h: cl.h, rep: 0 });
+  if (cr) regions.push({ pieceId: 'rail-cap-r', x: W - cr.w, y: faceY + Math.round((rf.h - cr.h) / 2), w: cr.w, h: cr.h, rep: 0 });
 
   // Hardware where each gate bar meets the rail: the SIX shared fractions,
   // outer pair flush (the gate kit's bar stock is 6 art wide — plates and
@@ -882,16 +891,26 @@ function assembleRail(kit: KitSpec): Assembly | null {
   // edge — guides too.
   const anchors = barCenters(W, 6);
   const last = anchors.length - 1;
-  if (fp) anchors.forEach((ax, i) => regions.push({ pieceId: 'forge-plate', x: ax - fp.w / 2, y: slotH + 7, w: fp.w, h: fp.h, rep: i + 1, guide: true }));
+  const spikeY = faceY + rf.h + capOver;
+  if (fp) anchors.forEach((ax, i) => regions.push({ pieceId: 'forge-plate', x: ax - fp.w / 2, y: faceY + 7, w: fp.w, h: fp.h, rep: i + 1, guide: true }));
   if (rs) {
+    // SIDE AURA (user ask, 2026-08-02): the spike's cut carries ±HALO art
+    // of horizontal overflow — tips may curl wide of the nominal box. No
+    // vertical aura (height stays exact by the user's call), so the rows
+    // above and below stay untouched. The cut is the FIRST interior spike
+    // (rep 0); its aura clears the neighbours (anchor pitch ~31 art vs a
+    // 24-art paint box).
     anchors.forEach((ax, i) => {
       if (i === 0 || i === last) return;
-      regions.push({ pieceId: 'rail-spike', x: ax - rs.w / 2, y: slotH + rf.h, w: rs.w, h: rs.h, rep: i - 1 });
+      regions.push({
+        pieceId: 'rail-spike', x: ax - rs.w / 2, y: spikeY, w: rs.w, h: rs.h, rep: i - 1,
+        ...(i === 1 ? { halo: { l: HALO, t: 0, r: HALO, b: 0 } } : {}),
+      });
     });
     [anchors[0], anchors[last]].forEach((ax, k) => {
       const x = Math.max(0, ax - rs.w / 2);
       const wClip = Math.min(ax + rs.w / 2, W) - x;
-      regions.push({ pieceId: 'rail-spike', x, y: slotH + rf.h, w: wClip, h: rs.h, rep: 4 + k, guide: true });
+      regions.push({ pieceId: 'rail-spike', x, y: spikeY, w: wClip, h: rs.h, rep: 4 + k, guide: true });
     });
   }
   return { regions, width: W, height: H };
