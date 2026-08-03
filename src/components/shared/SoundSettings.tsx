@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { soundManager } from '../../utils/soundManager';
 import { isHapticsSupported, isHapticsEnabledByPlayer, setHapticsEnabledByPlayer, vibratePreview } from '../../utils/haptics';
 import { NavSheet } from './NavSheet';
+import { NavPillSign, navSignSkinActive } from './GateMesh';
 import type { SoundSettings as SoundSettingsType } from '../../types/game';
 
 const Toggle: React.FC<{ on: boolean; onClick: () => void; label: string }> = ({ on, onClick, label }) => (
@@ -99,21 +100,23 @@ export const SoundSettings: React.FC = () => {
     <>
       <button
         onClick={() => setIsOpen(true)}
-        className={`nav-pill flex items-center gap-2 px-3 py-2 transition-colors ${
+        className={`nav-pill${navSignSkinActive ? ' nav-pill-skinned' : ''} flex items-center gap-2 px-3 py-2 transition-colors ${
           settings.enabled ? 'text-parchment-300' : 'text-stone-500'
         }`}
         title="Sound & Haptics"
       >
-        {settings.enabled ? (
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072M12 6.253v11.494m0 0A5.001 5.001 0 0112 12m0 5.747V6.253m0 0A5.001 5.001 0 0012 12m0-5.747L8 9H5a1 1 0 00-1 1v4a1 1 0 001 1h3l4 2.747" />
-          </svg>
-        ) : (
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
-          </svg>
-        )}
+        <NavPillSign>
+          {settings.enabled ? (
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072M12 6.253v11.494m0 0A5.001 5.001 0 0112 12m0 5.747V6.253m0 0A5.001 5.001 0 0012 12m0-5.747L8 9H5a1 1 0 00-1 1v4a1 1 0 001 1h3l4 2.747" />
+            </svg>
+          ) : (
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+            </svg>
+          )}
+        </NavPillSign>
       </button>
 
       <NavSheet open={isOpen} onClose={() => setIsOpen(false)} label="Sound and haptics settings">

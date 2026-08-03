@@ -2428,6 +2428,32 @@ body.menu-gate-instant .quest-box-anchor {
   filter: brightness(1.18);
 }
 
+/* Utility pills in sign-plate ART (user ask, 2026-08-03): the sound and
+   Sign In buttons wear the same painted 3-slice as the menu labels, at
+   the SAME 26px height. The CSS plate stock, bevels and bolts switch
+   off; the GateSign canvas inside paints the plate. */
+.nav-pill-skinned {
+  background: none;
+  border-color: transparent;
+  box-shadow: none;
+  height: 26px;
+  padding: 0;
+}
+
+.nav-pill-skinned::before,
+.nav-pill-skinned::after {
+  display: none;
+}
+
+.nav-pill-skinned > .nav-gate-sign-skinned {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: 0 12px; /* content clears the 6-art sign caps */
+}
+
 /* Everything riding a beam sits above its iron (beams z:1, rail z:0) —
    the SKIN divs are iron, not contents, hence the exclusions. */
 .nav-gate-item > :not(svg):not(.nav-gate-beam-skin):not(.nav-gate-rail-mesh):not(.nav-gate-bars-skin) {

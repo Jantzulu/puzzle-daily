@@ -234,6 +234,17 @@ export const GateSign: React.FC<{ children: React.ReactNode }> = ({ children }) 
   );
 };
 
+/**
+ * Utility-pill contents on the sign plate (user ask, 2026-08-03: the
+ * sound and Sign In buttons wear the same plates as the menu labels, at
+ * the same height). Wrap the pill's CONTENT in this and add
+ * `nav-pill-skinned` to the button when navSignSkinActive — the pill's
+ * CSS stock switches off and the 3-slice canvas paints behind. Baseline
+ * (no sign art): renders the children untouched, no extra wrapper.
+ */
+export const NavPillSign: React.FC<{ children: React.ReactNode }> = ({ children }) =>
+  navSignSkinActive ? <GateSign>{children}</GateSign> : <>{children}</>;
+
 export const GateBeamMesh: React.FC<{ first?: boolean }> = (props) => navGateSkinActive ? <GateBeamSkin {...props} /> : <GateBeamMeshSvg {...props} />;
 
 const GateBeamMeshSvg: React.FC<{ first?: boolean }> = ({ first = false }) => {
