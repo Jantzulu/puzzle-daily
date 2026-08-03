@@ -184,7 +184,7 @@ export const DEFAULT_KITS: KitSpec[] = [
     description: 'The gate bars rising above the control rail (the top zone of PortcullisMesh). WIRED: drop the export at src/assets/panels/portcullis-gate-slices.json. Sizes audited against the LIVE geometry at Z=2 (2 CSS px per art px), 2026-08-02: bars render 12 CSS px wide at the six shared x-fractions with the OUTER PAIR FLUSH at the screen edges (edge bars contain the shape — the renderer clamps them flush at every width). NOTE the meshes STRETCHED with the viewport (desktop bars ~21px, mobile ~11px); painted art is fixed-size — 6 art px is the mobile-true width. PAINT ORDER: once EITHER this file or the Control Rail file is painted, the canvas replaces the whole rail svg — paint this bar kit first (one piece, shared stock), or the rising bars vanish while the rail wears art.',
     pieces: [
       { id: 'bar-segment', label: 'Gate Bar Segment', w: 6, h: 24, repeat: 'tile-y', notes: 'One bar: lit left edge, shaded right. Repeats vertically behind the board and up the open menu. SAME STOCK as the Nav Gate kit\'s Vertical Bar Segment — paint them identically.' },
-      { id: 'bar-top-cap', label: 'Bar Top Cap', w: 6, h: 4, repeat: 'fixed', notes: 'Optional finial where a bar ends.' },
+      { id: 'bar-top-cap', label: 'Bar Top Cap', w: 6, h: 4, repeat: 'fixed', notes: 'Optional finial where a bar ends. PAINT IT IN THE DETACHED SLOT at the sheet\'s top-left — the dashed boxes at each bar top only preview placement, and shaft paint through them is discarded (it used to leak into this piece\'s cut). Leave the slot unpainted to skip caps.' },
     ],
   },
   {
@@ -276,7 +276,11 @@ const STORAGE_KEY = 'panel_forge_kits_v1';
 // v13: rail-spike cut gains ±8 side aura; rail caps vertically centered
 //      on the band (template + live renderer). Notes-only refresh — the
 //      v12 migration carries the artist's sizes through untouched.
-const DEFAULTS_VERSION = 13;
+// v14: bar-top-cap cut DETACHED to clean ground (top-left slot + on-bar
+//      guides — a full-length painted shaft was leaking its top rows into
+//      the cap cut, the plate law's exact disease). Gate sheet grows by
+//      the slot row; artist migration = canvas +6 anchored bottom.
+const DEFAULTS_VERSION = 14;
 
 function loadKits(): KitSpec[] {
   try {
@@ -824,19 +828,29 @@ function assembleGate(kit: KitSpec): Assembly | null {
   const spacing = bs.w * 4;
   const W = spacing * (BARS - 1) + bs.w * 3;
   const capH = cap?.h ?? 0;
-  const H = capH + REPS * bs.h + (sp?.h ?? 0);
+  // DETACHED CAP SLOT (the plate law: hardware that lives ON another
+  // piece's paint gets a detached cut + guide regions, ALWAYS). The cap's
+  // cut used to be the top rows of the first bar column, so a naturally
+  // painted full-length shaft leaked its top rows into the cap piece —
+  // the user's "top cap has extra pixels", 2026-08-02. The cut now lives
+  // on clean ground at the sheet's top-left; the on-bar boxes are dashed
+  // placement guides the shaft may paint straight through.
+  const slotH = cap ? capH + 2 : 0;
+  const H = slotH + capH + REPS * bs.h + (sp?.h ?? 0);
   const regions: AssemblyRegion[] = [];
+
+  if (cap) regions.push({ pieceId: 'bar-top-cap', x: 2, y: 0, w: cap.w, h: cap.h, rep: 0 });
 
   for (let b = 0; b < BARS; b++) {
     const x = bs.w + b * spacing;
-    if (cap) regions.push({ pieceId: 'bar-top-cap', x: x + (bs.w - cap.w) / 2, y: 0, w: cap.w, h: cap.h, rep: b });
+    if (cap) regions.push({ pieceId: 'bar-top-cap', x: x + (bs.w - cap.w) / 2, y: slotH, w: cap.w, h: cap.h, rep: b + 1, guide: true });
     for (let r = 0; r < REPS; r++) {
-      regions.push({ pieceId: 'bar-segment', x, y: capH + r * bs.h, w: bs.w, h: bs.h, rep: r });
+      regions.push({ pieceId: 'bar-segment', x, y: slotH + capH + r * bs.h, w: bs.w, h: bs.h, rep: r });
     }
-    if (sp) regions.push({ pieceId: 'gate-spike', x: x + (bs.w - sp.w) / 2, y: capH + REPS * bs.h, w: sp.w, h: sp.h, rep: b });
+    if (sp) regions.push({ pieceId: 'gate-spike', x: x + (bs.w - sp.w) / 2, y: slotH + capH + REPS * bs.h, w: sp.w, h: sp.h, rep: b });
   }
   if (cs) {
-    const cy = capH + bs.h;
+    const cy = slotH + capH + bs.h;
     for (let x = 0, i = 0; x < W; x += cs.w, i++) {
       regions.push({ pieceId: 'cross-slat', x, y: cy, w: Math.min(cs.w, W - x), h: cs.h, rep: i });
     }
