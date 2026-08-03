@@ -71,6 +71,80 @@ const RAIL = buildSkin(railJson, 'control-rail');
 const BARS = buildSkin(barsJson, 'portcullis-gate');
 export const portcullisSkinActive = RAIL.has('rail-face') || BARS.has('bar-segment');
 
+/**
+ * The rail surface's draw, parameterized on the two skin maps so the
+ * forge's live preview (PortcullisLive) renders with THIS routine fed its
+ * fresh slices — preview divergence is structurally impossible. Callers
+ * prep/clear the canvas.
+ */
+export const drawRailSkin = (
+  ctx: CanvasRenderingContext2D, w: number, h: number,
+  rail: Map<string, SkinPiece>, bars: Map<string, SkinPiece>,
+) => {
+  const face = rail.get('rail-face');
+  const spike = rail.get('rail-spike');
+  const plate = rail.get('forge-plate');
+  const capL = rail.get('rail-cap-l');
+  const capR = rail.get('rail-cap-r');
+  const bar = bars.get('bar-segment');
+
+  // The host box = the mesh's box (200% of the rung, band zone in the
+  // middle per .control-rail-mesh's ratios). The art band is a FIXED 22
+  // art px (44 CSS) centered on the box's band zone: band top =
+  // 31.25% of the box (the mesh's bars/rail boundary), rounded to a
+  // whole pixel so every art row lands crisp.
+  const bandH = (face?.h ?? 22) * Z;
+  const spikeH = (spike?.h ?? 0) * Z;
+  const bandTop = Math.round(h * 0.3125);
+
+  // Outer pair FLUSH at the edges (edge bars contain the shape); the
+  // plates and spikes ride the same centers.
+  const barXs = barCenters(w, (bar?.w ?? 6) * Z);
+
+  // Bars rise from the band's top edge to the box top (they tuck
+  // behind the band: draw them first, band over).
+  if (bar) {
+    const bw = bar.w * Z;
+    for (const bx of barXs) {
+      drawTiled(ctx, bar, Math.round(bx - bw / 2), 0, bw, bandTop + 2, Math.round(bx - bw / 2), 0);
+    }
+    const cap = bars.get('bar-top-cap');
+    if (cap) for (const bx of barXs) drawFixed(ctx, cap, Math.round(bx - (nomW(cap) * Z) / 2) - (cap.halo?.l ?? 0) * Z, 0);
+  }
+
+  // The band: tiled face between optional caps. All hardware anchors by
+  // NOMINAL size (bitmap minus halo) so aura'd pieces keep their
+  // geometry and the overflow just paints further.
+  const clW = capL ? nomW(capL) * Z : 0;
+  const crW = capR ? nomW(capR) * Z : 0;
+  drawTiled(ctx, face, clW, bandTop, w - clW - crW, bandH, clW, bandTop);
+  // Caps VERTICALLY CENTERED on the band (user call, 2026-08-02): a cap
+  // taller than the 22-art band overhangs the rung's top and bottom
+  // EQUALLY instead of hanging off its foot.
+  const capY = (pc: SkinPiece) => bandTop + Math.round((bandH - nomH(pc) * Z) / 2) - (pc.halo?.t ?? 0) * Z;
+  if (capL) drawFixed(ctx, capL, -(capL.halo?.l ?? 0) * Z, capY(capL));
+  if (capR) drawFixed(ctx, capR, w - crW - (capR.halo?.l ?? 0) * Z, capY(capR));
+
+  // Plates where each bar meets the band, 14px below its top: the svg
+  // put its plates at 13, but 14 is EVEN — the plate's art pixels stay
+  // on the band's 2px art grid — and equals the forge sample's plate
+  // line (art y 7), so sample, preview and live agree exactly. Keep in
+  // lockstep with GateBeamSkin's plate line.
+  if (plate) {
+    const pw = nomW(plate) * Z;
+    for (const bx of barXs) drawFixed(ctx, plate, Math.round(bx - pw / 2) - (plate.halo?.l ?? 0) * Z, bandTop + 14 - (plate.halo?.t ?? 0) * Z);
+  }
+
+  // Spikes hanging below the band at each bar; the outer pair clips at
+  // the canvas edge exactly as the mesh's spikes clipped at the
+  // viewBox. Spikes carry ±8 art of SIDE AURA (user ask, 2026-08-02) —
+  // nominal stays on the bar center, tips may curl wide of it.
+  if (spike && spikeH) {
+    const sw = nomW(spike) * Z;
+    for (const bx of barXs) drawFixed(ctx, spike, Math.round(bx - sw / 2) - (spike.halo?.l ?? 0) * Z, bandTop + bandH - (spike.halo?.t ?? 0) * Z);
+  }
+};
+
 const PortcullisSkin: React.FC<{ className: string }> = ({ className }) => {
   const hostRef = React.useRef<HTMLDivElement>(null);
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
@@ -86,69 +160,7 @@ const PortcullisSkin: React.FC<{ className: string }> = ({ className }) => {
       const ctx = prepCanvas(canvas, w, h, 0);
       if (!ctx) return;
       ctx.clearRect(0, 0, w, h);
-
-      const face = RAIL.get('rail-face');
-      const spike = RAIL.get('rail-spike');
-      const plate = RAIL.get('forge-plate');
-      const capL = RAIL.get('rail-cap-l');
-      const capR = RAIL.get('rail-cap-r');
-      const bar = BARS.get('bar-segment');
-
-      // The host box = the mesh's box (200% of the rung, band zone in the
-      // middle per .control-rail-mesh's ratios). The art band is a FIXED 22
-      // art px (44 CSS) centered on the box's band zone: band top =
-      // 31.25% of the box (the mesh's bars/rail boundary), rounded to a
-      // whole pixel so every art row lands crisp.
-      const bandH = (face?.h ?? 22) * Z;
-      const spikeH = (spike?.h ?? 0) * Z;
-      const bandTop = Math.round(h * 0.3125);
-
-      // Outer pair FLUSH at the edges (edge bars contain the shape); the
-      // plates and spikes ride the same centers.
-      const barXs = barCenters(w, (bar?.w ?? 6) * Z);
-
-      // Bars rise from the band's top edge to the box top (they tuck
-      // behind the band: draw them first, band over).
-      if (bar) {
-        const bw = bar.w * Z;
-        for (const bx of barXs) {
-          drawTiled(ctx, bar, Math.round(bx - bw / 2), 0, bw, bandTop + 2, Math.round(bx - bw / 2), 0);
-        }
-        const cap = BARS.get('bar-top-cap');
-        if (cap) for (const bx of barXs) drawFixed(ctx, cap, Math.round(bx - (cap.w * Z) / 2), 0);
-      }
-
-      // The band: tiled face between optional caps. All hardware anchors by
-      // NOMINAL size (bitmap minus halo) so aura'd pieces keep their
-      // geometry and the overflow just paints further.
-      const clW = capL ? nomW(capL) * Z : 0;
-      const crW = capR ? nomW(capR) * Z : 0;
-      drawTiled(ctx, face, clW, bandTop, w - clW - crW, bandH, clW, bandTop);
-      // Caps VERTICALLY CENTERED on the band (user call, 2026-08-02): a cap
-      // taller than the 22-art band overhangs the rung's top and bottom
-      // EQUALLY instead of hanging off its foot.
-      const capY = (pc: SkinPiece) => bandTop + Math.round((bandH - nomH(pc) * Z) / 2) - (pc.halo?.t ?? 0) * Z;
-      if (capL) drawFixed(ctx, capL, -(capL.halo?.l ?? 0) * Z, capY(capL));
-      if (capR) drawFixed(ctx, capR, w - crW - (capR.halo?.l ?? 0) * Z, capY(capR));
-
-      // Plates where each bar meets the band, 14px below its top: the svg
-      // put its plates at 13, but 14 is EVEN — the plate's art pixels stay
-      // on the band's 2px art grid — and equals the forge sample's plate
-      // line (art y 7), so sample, preview and live agree exactly. Keep in
-      // lockstep with GateBeamSkin's plate line.
-      if (plate) {
-        const pw = nomW(plate) * Z;
-        for (const bx of barXs) drawFixed(ctx, plate, Math.round(bx - pw / 2) - (plate.halo?.l ?? 0) * Z, bandTop + 14 - (plate.halo?.t ?? 0) * Z);
-      }
-
-      // Spikes hanging below the band at each bar; the outer pair clips at
-      // the canvas edge exactly as the mesh's spikes clipped at the
-      // viewBox. Spikes carry ±8 art of SIDE AURA (user ask, 2026-08-02) —
-      // nominal stays on the bar center, tips may curl wide of it.
-      if (spike && spikeH) {
-        const sw = nomW(spike) * Z;
-        for (const bx of barXs) drawFixed(ctx, spike, Math.round(bx - sw / 2) - (spike.halo?.l ?? 0) * Z, bandTop + bandH - (spike.halo?.t ?? 0) * Z);
-      }
+      drawRailSkin(ctx, w, h, RAIL, BARS);
     };
     // SYNCHRONOUS draw, not rAF: hidden/background tabs freeze rAF and the
     // canvas stays blank until the tab fronts (hit live in the hidden

@@ -80,6 +80,28 @@ export function buildSkin(skinJson: unknown, expectedKitId: string): Map<string,
   return map;
 }
 
+/** The forge's freshly-cut slice shape (PanelForgeImport's Slice, minimally). */
+export interface ForgeSlice {
+  pieceId: string;
+  w: number;
+  h: number;
+  url: string;
+  empty?: boolean;
+  halo?: { l: number; t: number; r: number; b: number };
+}
+
+/**
+ * Build a skin map from forge slices — the live-preview path. Same
+ * validation and image plumbing as the committed-JSON path, so the forge
+ * preview and the game renderer literally share their draw code.
+ */
+export const skinFromSlices = (kitId: string, slices: ForgeSlice[]): Map<string, SkinPiece> =>
+  buildSkin({
+    version: 1,
+    kitId,
+    pieces: slices.map(s => ({ id: s.pieceId, w: s.w, h: s.h, empty: !!s.empty, halo: s.halo, png: s.url })),
+  }, kitId);
+
 /** Positive modulo — tile phase alignment. */
 export const pmod = (v: number, m: number) => ((v % m) + m) % m;
 

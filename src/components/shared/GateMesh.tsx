@@ -64,6 +64,60 @@ const NAV = buildSkin(navJson, 'nav-gate');
 export const navGateSkinActive = NAV.has('beam-face');
 export const navSignSkinActive = NAV.has('sign-mid');
 
+/**
+ * The beam item's draw, parameterized on the skin map so the forge's live
+ * preview (PortcullisLive) renders with THIS routine fed its fresh slices
+ * — preview divergence is structurally impossible. Callers prep/clear the
+ * canvas (bleed 32 covers the overhangs: first item 26 up, every beam 12
+ * down).
+ */
+export const drawGateBeamSkin = (ctx: CanvasRenderingContext2D, w: number, h: number, nav: Map<string, SkinPiece>, first: boolean) => {
+  const beam = nav.get('beam-face');
+  const bar = nav.get('beam-bar-segment');
+  const plate = nav.get('beam-plate');
+  const beamH = (beam?.h ?? 18) * Z;
+  const beamTop = Math.round((h - beamH) / 2);
+  // Outer pair FLUSH at the edges, same rule as PortcullisSkin — the
+  // menu and the rail share their width, so the columns stay one gate.
+  const barXs = barCenters(w, (bar?.w ?? 6) * Z);
+
+  // Bars first (behind the beam): from the navbar (first item reaches
+  // up 26px) down past the box's bottom edge into the next item.
+  if (bar) {
+    const bw = bar.w * Z;
+    const yTop = first ? -26 : 0;
+    for (const bx of barXs) {
+      drawTiled(ctx, bar, Math.round(bx - bw / 2), yTop, bw, h + 12 - yTop, Math.round(bx - bw / 2), 0);
+    }
+  }
+
+  // The beam, edge to edge.
+  drawTiled(ctx, beam, 0, beamTop, w, beamH, 0, beamTop);
+
+  // Plates where each bar crosses the beam, 14px below the iron's top:
+  // the svg's 13 rounded to EVEN so the plate's art pixels stay on the
+  // 2px art grid, matching the forge sample's centered plate line (art
+  // y 7). Keep in lockstep with PortcullisSkin's plate line.
+  if (plate) {
+    const pw = plate.w * Z;
+    for (const bx of barXs) drawFixed(ctx, plate, Math.round(bx - pw / 2), beamTop + 14);
+  }
+};
+
+/** The sign plate's 3-slice draw — shared with the forge preview like the beam's. */
+export const drawGateSignSkin = (ctx: CanvasRenderingContext2D, w: number, h: number, nav: Map<string, SkinPiece>) => {
+  const mid = nav.get('sign-mid');
+  const cl = nav.get('sign-cap-l');
+  const cr = nav.get('sign-cap-r');
+  const signH = (mid?.h ?? 13) * Z;
+  const y = Math.round((h - signH) / 2);
+  const clW = cl ? cl.w * Z : 0;
+  const crW = cr ? cr.w * Z : 0;
+  drawTiled(ctx, mid, clW, y, w - clW - crW, signH, clW, y);
+  if (cl) drawFixed(ctx, cl, 0, y);
+  if (cr) drawFixed(ctx, cr, w - crW, y);
+};
+
 const GateBeamSkin: React.FC<{ first?: boolean }> = ({ first = false }) => {
   const hostRef = React.useRef<HTMLDivElement>(null);
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
@@ -76,42 +130,10 @@ const GateBeamSkin: React.FC<{ first?: boolean }> = ({ first = false }) => {
       const w = host.clientWidth;
       const h = host.clientHeight;
       if (!w || !h) return;
-      // Bleed 32 covers the mesh's overhangs (first: 26 up; every beam: 12
-      // down) so the bars bridge item gaps exactly as the svg's did.
       const ctx = prepCanvas(canvas, w, h, 32);
       if (!ctx) return;
       ctx.clearRect(-32, -32, w + 64, h + 64);
-
-      const beam = NAV.get('beam-face');
-      const bar = NAV.get('beam-bar-segment');
-      const plate = NAV.get('beam-plate');
-      const beamH = (beam?.h ?? 18) * Z;
-      const beamTop = Math.round((h - beamH) / 2);
-      // Outer pair FLUSH at the edges, same rule as PortcullisSkin — the
-      // menu and the rail share their width, so the columns stay one gate.
-      const barXs = barCenters(w, (bar?.w ?? 6) * Z);
-
-      // Bars first (behind the beam): from the navbar (first item reaches
-      // up 26px) down past the box's bottom edge into the next item.
-      if (bar) {
-        const bw = bar.w * Z;
-        const yTop = first ? -26 : 0;
-        for (const bx of barXs) {
-          drawTiled(ctx, bar, Math.round(bx - bw / 2), yTop, bw, h + 12 - yTop, Math.round(bx - bw / 2), 0);
-        }
-      }
-
-      // The beam, edge to edge.
-      drawTiled(ctx, beam, 0, beamTop, w, beamH, 0, beamTop);
-
-      // Plates where each bar crosses the beam, 14px below the iron's top:
-      // the svg's 13 rounded to EVEN so the plate's art pixels stay on the
-      // 2px art grid, matching the forge sample's centered plate line (art
-      // y 7). Keep in lockstep with PortcullisSkin's plate line.
-      if (plate) {
-        const pw = plate.w * Z;
-        for (const bx of barXs) drawFixed(ctx, plate, Math.round(bx - pw / 2), beamTop + 14);
-      }
+      drawGateBeamSkin(ctx, w, h, NAV, first);
     };
     // SYNCHRONOUS draw, not rAF: hidden/background tabs freeze rAF and the
     // canvas stays blank until the tab fronts (hit live in the hidden
@@ -152,16 +174,7 @@ export const GateSign: React.FC<{ children: React.ReactNode }> = ({ children }) 
       const ctx = prepCanvas(canvas, w, h, 0);
       if (!ctx) return;
       ctx.clearRect(0, 0, w, h);
-      const mid = NAV.get('sign-mid');
-      const cl = NAV.get('sign-cap-l');
-      const cr = NAV.get('sign-cap-r');
-      const signH = (mid?.h ?? 13) * Z;
-      const y = Math.round((h - signH) / 2);
-      const clW = cl ? cl.w * Z : 0;
-      const crW = cr ? cr.w * Z : 0;
-      drawTiled(ctx, mid, clW, y, w - clW - crW, signH, clW, y);
-      if (cl) drawFixed(ctx, cl, 0, y);
-      if (cr) drawFixed(ctx, cr, w - crW, y);
+      drawGateSignSkin(ctx, w, h, NAV);
     };
     // SYNCHRONOUS draw, not rAF: hidden/background tabs freeze rAF and the
     // canvas stays blank until the tab fronts (hit live in the hidden

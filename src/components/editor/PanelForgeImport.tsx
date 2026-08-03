@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from '../shared/Toast';
 import type { Assembly, KitSpec } from './PanelForge';
 import { PanelNineSlice } from './PanelNineSlice';
+import { PortcullisLive } from './PortcullisLive';
 
 // ============================================================================
 // PANEL FORGE — PHASE 2: SLICE + LIVE PREVIEW
@@ -73,6 +74,18 @@ const ZOOMS = [1, 2, 3, 4, 6, 8];
 export const PanelForgeImport: React.FC<Props> = ({ kit, assembly }) => {
   const [img, setImg] = useState<HTMLImageElement | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
+  // The portcullis families get their own Live panel (PortcullisLive, the
+  // game's own draw routines) — PanelNineSlice knows nine-slice anatomy
+  // only. Detection mirrors PanelForge's kitFamily precedence: nine-slice
+  // ids win, so quest/window kits never land here.
+  const portFamily = useMemo<null | 'rail' | 'gate' | 'nav-gate'>(() => {
+    const ids = new Set(kit.pieces.map(p => p.id));
+    if (ids.has('corner-tl') || ids.has('plate-mid')) return null;
+    if (ids.has('rail-face')) return 'rail';
+    if (ids.has('bar-segment')) return 'gate';
+    if (ids.has('beam-face')) return 'nav-gate';
+    return null;
+  }, [kit]);
   const [slices, setSlices] = useState<Slice[]>([]);
   const [zoom, setZoom] = useState(4);
   const [watching, setWatching] = useState(false);
@@ -473,9 +486,41 @@ export const PanelForgeImport: React.FC<Props> = ({ kit, assembly }) => {
           </div>
 
           {/* THE RIGHT-HAND SIDE OF THE LOOP. The strip above shows the pieces
-              you cut; this shows the PANEL they make. Only this can tell you
-              whether the seams work, because a nine-slice is honest only at
-              sizes other than the sample's own. */}
+              you cut; this shows the SURFACE they make. The portcullis
+              families render with the game's own draw routines
+              (PortcullisLive) — PanelNineSlice knows nine-slice anatomy
+              only and left their Live panel blank (user bug, 2026-08-02). */}
+          {portFamily ? (
+            <div className="border-t border-stone-700 pt-3 space-y-2">
+              <div className="flex items-center gap-3 flex-wrap">
+                <h4 className="text-sm font-semibold text-parchment-100">Live panel</h4>
+                <label className="flex items-center gap-2 text-xs text-stone-400">
+                  W
+                  <input
+                    type="range" min={320} max={720} value={panelW}
+                    onChange={e => setPanelW(Number(e.target.value))}
+                    className="w-40"
+                  />
+                  <span className="w-10 tabular-nums">{panelW}</span>
+                </label>
+                <button
+                  onClick={() => setPanelW(393)}
+                  className="px-2 py-0.5 text-xs rounded border border-stone-600 text-stone-300 hover:bg-stone-700"
+                  title="A real phone width — where the menu and rail share the gate's width"
+                >
+                  Phone @393
+                </button>
+                <button
+                  onClick={() => setPanelW(672)}
+                  className="px-2 py-0.5 text-xs rounded border border-stone-600 text-stone-300 hover:bg-stone-700"
+                  title="The desktop rail (max-w-2xl) — more bare band, art stays fixed-size"
+                >
+                  Desktop @672
+                </button>
+              </div>
+              <PortcullisLive kitId={kit.id} family={portFamily} slices={slices} width={panelW} />
+            </div>
+          ) : (
           <div className="border-t border-stone-700 pt-3 space-y-2">
             <div className="flex items-center gap-3 flex-wrap">
               <h4 className="text-sm font-semibold text-parchment-100">Live panel</h4>
@@ -556,6 +601,7 @@ export const PanelForgeImport: React.FC<Props> = ({ kit, assembly }) => {
               showSeams={showSeams}
             />
           </div>
+          )}
 
           <button
             onClick={downloadSlices}
