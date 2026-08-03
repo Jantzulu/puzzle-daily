@@ -34,10 +34,11 @@ const BEAM_BLEED = 32;
 export const PortcullisLive: React.FC<Props> = ({ kitId, family, slices, width }) => {
   const skin = React.useMemo(() => skinFromSlices(kitId, slices), [kitId, slices]);
   // The rung guide is an OVERLAY and it shows through transparent art —
-  // its corner dashes read as stray pixels wherever cap art has cutaways
-  // (user report, 2026-08-02: "odd single extra corner pixels"). Keep it
-  // toggleable so edges can be judged clean.
-  const [showGuide, setShowGuide] = React.useState(true);
+  // its corner dashes read as stray pixels wherever cap art has cutaways.
+  // It fooled the user TWICE (2026-08-02, both "corner pixel" reports —
+  // pixel probes proved the renderer clean at every cutaway), so it
+  // defaults OFF; tick it only when placing the band.
+  const [showGuide, setShowGuide] = React.useState(false);
   const railRef = React.useRef<HTMLCanvasElement>(null);
   const beamRefA = React.useRef<HTMLCanvasElement>(null);
   const beamRefB = React.useRef<HTMLCanvasElement>(null);
