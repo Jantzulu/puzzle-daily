@@ -3,7 +3,7 @@ import { toast } from '../shared/Toast';
 import { PortcullisMesh } from '../game/PortcullisMesh';
 import { GemMesh } from '../game/GemMesh';
 import { GateBeamMesh } from '../shared/GateMesh';
-import { barCenters } from '../game/panelSkins';
+import { barCenters, EDGE_BAR_INSET } from '../game/panelSkins';
 import { PanelForgeImport } from './PanelForgeImport';
 
 // ============================================================================
@@ -889,7 +889,7 @@ function assembleRail(kit: KitSpec): Assembly | null {
   // interior ones are real regions (rep 0 = the cut), the outer pair render
   // CLIPPED at the sheet edge exactly as the live pair clips at the screen
   // edge — guides too.
-  const anchors = barCenters(W, 6);
+  const anchors = barCenters(W, 6, EDGE_BAR_INSET);
   const last = anchors.length - 1;
   const spikeY = faceY + rf.h + capOver;
   // Plate guides VERTICALLY CENTERED on the band (user call, 2026-08-02 —
@@ -953,7 +953,7 @@ function assembleNavGate(kit: KitSpec): Assembly | null {
   // edges — the same rule the live renderers use (edge bars contain the
   // shape; a plain round(frac·W) put the left bar at x=-1, off the sheet).
   // Plates ride the same centers.
-  const centers = bar ? barCenters(W, bar.w) : [];
+  const centers = bar ? barCenters(W, bar.w, EDGE_BAR_INSET) : [];
 
   // Bars first — they thread the whole stack BEHIND the beams. Guides:
   // paint bar art here freely for the look of the lattice, but the shipped

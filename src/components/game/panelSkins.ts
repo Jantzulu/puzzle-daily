@@ -224,26 +224,35 @@ export const prepCanvas = (canvas: HTMLCanvasElement, w: number, h: number, blee
 export const BLEED = 8 * Z;
 
 /**
- * The six shared bar x-fractions — PortcullisMesh's BAR_XS/1000 and
- * GateMesh's BAR_XS/400 are the same list; the skins must keep the two
- * elements' columns aligned exactly as the meshes did.
+ * The six bar x-fractions of the SVG MESHES (PortcullisMesh's BAR_XS/1000
+ * = GateMesh's BAR_XS/400) — kept as the reference for the procedural
+ * baselines. The skins no longer place bars by fraction: see barCenters.
  */
 export const BAR_FRACS = [0.015, 0.209, 0.403, 0.597, 0.791, 0.985];
 
 /**
- * Bar CENTER positions across a surface `w` wide, with the OUTER PAIR
- * CLAMPED FLUSH to the edges. Edge bars contain the shape (the 2026-07-31
- * edge-bar reformat): a real portcullis frames its own lattice. The svg
- * meshes got flushness free — bar half-width and center were the SAME
- * viewBox fraction (15/1000, 6/400) — but fixed-size art centered at a
- * fraction drifts inward as the surface widens (~4px of bare edge at the
- * 672px shared width). Plates and spikes center on these same values so
- * the hardware rides its bar. Works in CSS px (renderers) and in art px
- * (forge assemblers) alike — pass `barW` in the same unit as `w`.
+ * Outer-bar inset from flush, in ART px (user call, 2026-08-02: "move the
+ * true position of the end spikes inwards 2 pixels" — and with plates and
+ * bars anchored on the same centers, the whole lattice column moves).
+ * Renderers pass EDGE_BAR_INSET * Z; assemblers work in art px and pass
+ * it raw.
  */
-export const barCenters = (w: number, barW: number): number[] => {
-  const cs = BAR_FRACS.map(f => Math.round(f * w));
-  cs[0] = Math.round(barW / 2);
-  cs[cs.length - 1] = w - Math.round(barW / 2);
-  return cs;
+export const EDGE_BAR_INSET = 2;
+
+/**
+ * Bar CENTER positions across a surface `w` wide: the outer pair sits
+ * `edgeInset` in from flush (edge bars contain the shape — the 2026-07-31
+ * edge-bar reformat — pulled 2 art inward by the 2026-08-02 user call),
+ * and the interior four are EVENLY SPACED between them (the old
+ * fraction-based interior drifted off-pitch once the outer pair was
+ * clamped). Plates and spikes center on these same values so the hardware
+ * rides its bar, and BOTH renderers and BOTH assemblers use this one
+ * helper — the menu's and the rail's columns stay one gate. Works in CSS
+ * px (renderers) and art px (assemblers) alike: pass `barW` and
+ * `edgeInset` in the same unit as `w`.
+ */
+export const barCenters = (w: number, barW: number, edgeInset = 0): number[] => {
+  const first = Math.round(barW / 2) + edgeInset;
+  const last = w - Math.round(barW / 2) - edgeInset;
+  return Array.from({ length: 6 }, (_, i) => Math.round(first + (i * (last - first)) / 5));
 };

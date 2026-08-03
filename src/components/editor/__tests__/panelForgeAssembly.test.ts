@@ -78,24 +78,25 @@ describe('panel forge assemblies', () => {
     }
   });
 
-  it('barCenters keeps the outer pair flush and the interior on the shared fractions', () => {
+  it('barCenters: outer pair edgeInset in from flush, interior evenly spaced', () => {
     for (const w of [393, 487, 672]) {
-      const cs = barCenters(w, 12);
-      expect(cs[0]).toBe(6); // left bar spans 0..12 — flush
-      expect(cs[5]).toBe(w - 6); // right bar spans w-12..w — flush
-      for (let i = 1; i < 5; i++) expect(cs[i]).toBe(Math.round(BAR_FRACS[i] * w));
-      expect(cs.length).toBe(BAR_FRACS.length);
+      const cs = barCenters(w, 12, 4); // renderer units: 2 art inset × Z
+      expect(cs[0]).toBe(6 + 4);
+      expect(cs[5]).toBe(w - 6 - 4);
+      const pitch = (cs[5] - cs[0]) / 5;
+      for (let i = 1; i < 5; i++) expect(Math.abs(cs[i] - (cs[0] + i * pitch))).toBeLessThanOrEqual(0.5);
+      expect(cs.length).toBe(6);
     }
   });
 
-  it('the nav-gate lattice shows its gate bars flush at the sheet edges, as guides', () => {
+  it('the nav-gate lattice shows its gate bars 2 art in from the sheet edges, as guides', () => {
     const { kit, assembly } = assemblies.find(a => a.kit.id === 'nav-gate')!;
     const bar = kit.pieces.find(p => p.id === 'beam-bar-segment')!;
     const lattice = assembly!.regions.filter(r => r.pieceId === 'beam-bar-segment' && r.guide);
     const xs = [...new Set(lattice.map(r => r.x))].sort((a, b) => a - b);
     expect(xs.length).toBe(BAR_FRACS.length);
-    expect(xs[0]).toBe(0);
-    expect(xs[xs.length - 1]).toBe(assembly!.width - bar.w);
+    expect(xs[0]).toBe(2); // EDGE_BAR_INSET in from flush (user call, 2026-08-02)
+    expect(xs[xs.length - 1]).toBe(assembly!.width - bar.w - 2);
     // The shipped bar comes from the detached slot on clean ground.
     const cut = cutRegionOf(assembly!, 'beam-bar-segment')!;
     expect(cut.guide).toBeUndefined();
@@ -109,9 +110,13 @@ describe('panel forge assemblies', () => {
     const spikes = assembly!.regions.filter(r => r.pieceId === 'rail-spike');
     expect(plateGuides.length).toBe(BAR_FRACS.length);
     expect(spikes.length).toBe(BAR_FRACS.length);
+    // With the 2-art edge inset the default 8-art spikes FIT (anchor sits
+    // 5 from the edge, half-width 4) — the clip machinery stays for wider
+    // pieces, and the outer pair remains guide-only either way.
     const clipped = spikes.filter(s => s.w < spike.w);
-    expect(clipped.length).toBe(2); // the live outer pair clips at the screen edge
-    for (const s of clipped) expect(s.guide, 'clipped spikes are guides, never cut or compared').toBe(true);
+    expect(clipped.length).toBe(0);
+    const outerGuides = spikes.filter(s => s.guide);
+    expect(outerGuides.length).toBe(2);
     // The plate cut is the detached slot, not an in-band guide.
     const plateCut = cutRegionOf(assembly!, 'forge-plate')!;
     expect(plateCut.guide).toBeUndefined();

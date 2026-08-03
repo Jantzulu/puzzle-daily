@@ -1,7 +1,7 @@
 import React from 'react';
 import { IRON } from '../game/PortcullisMesh';
 import navJson from '../../assets/panels/nav-gate-slices.json';
-import { Z, buildSkin, barCenters, nomW, nomH, drawFixed, drawTiled, prepCanvas, whenDecoded, useCrispSnap, type SkinPiece } from '../game/panelSkins';
+import { Z, buildSkin, barCenters, EDGE_BAR_INSET, nomW, nomH, drawFixed, drawTiled, prepCanvas, whenDecoded, useCrispSnap, type SkinPiece } from '../game/panelSkins';
 
 // ============================================================================
 // GATE BEAM — one horizontal portcullis beam per nav menu item (all widths)
@@ -77,9 +77,10 @@ export const drawGateBeamSkin = (ctx: CanvasRenderingContext2D, w: number, h: nu
   const plate = nav.get('beam-plate');
   const beamH = (beam?.h ?? 18) * Z;
   const beamTop = Math.round((h - beamH) / 2);
-  // Outer pair FLUSH at the edges, same rule as PortcullisSkin — the
-  // menu and the rail share their width, so the columns stay one gate.
-  const barXs = barCenters(w, (bar?.w ?? 6) * Z);
+  // Outer pair 2 art in from flush, interior evenly spaced — same rule
+  // as PortcullisSkin: the menu and the rail share their width, so the
+  // columns stay one gate.
+  const barXs = barCenters(w, (bar?.w ?? 6) * Z, EDGE_BAR_INSET * Z);
 
   // Bars first (behind the beam): from the navbar (first item reaches
   // up 26px) down past the box's bottom edge into the next item.

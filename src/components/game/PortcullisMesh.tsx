@@ -1,7 +1,7 @@
 import React from 'react';
 import railJson from '../../assets/panels/control-rail-slices.json';
 import barsJson from '../../assets/panels/portcullis-gate-slices.json';
-import { Z, buildSkin, barCenters, nomW, nomH, drawFixed, drawTiled, prepCanvas, whenDecoded, type SkinPiece } from './panelSkins';
+import { Z, buildSkin, barCenters, EDGE_BAR_INSET, nomW, nomH, drawFixed, drawTiled, prepCanvas, whenDecoded, type SkinPiece } from './panelSkins';
 
 // ============================================================================
 // PORTCULLIS RAIL — the control panel's iron
@@ -97,9 +97,9 @@ export const drawRailSkin = (
   const spikeH = (spike?.h ?? 0) * Z;
   const bandTop = Math.round(h * 0.3125);
 
-  // Outer pair FLUSH at the edges (edge bars contain the shape); the
-  // plates and spikes ride the same centers.
-  const barXs = barCenters(w, (bar?.w ?? 6) * Z);
+  // Outer pair 2 art in from flush (user call, 2026-08-02), interior
+  // evenly spaced; the plates and spikes ride the same centers.
+  const barXs = barCenters(w, (bar?.w ?? 6) * Z, EDGE_BAR_INSET * Z);
 
   // Bars rise from the band's top edge to the box top (they tuck
   // behind the band: draw them first, band over).

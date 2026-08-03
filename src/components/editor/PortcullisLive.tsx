@@ -33,6 +33,11 @@ const BEAM_BLEED = 32;
 
 export const PortcullisLive: React.FC<Props> = ({ kitId, family, slices, width }) => {
   const skin = React.useMemo(() => skinFromSlices(kitId, slices), [kitId, slices]);
+  // The rung guide is an OVERLAY and it shows through transparent art —
+  // its corner dashes read as stray pixels wherever cap art has cutaways
+  // (user report, 2026-08-02: "odd single extra corner pixels"). Keep it
+  // toggleable so edges can be judged clean.
+  const [showGuide, setShowGuide] = React.useState(true);
   const railRef = React.useRef<HTMLCanvasElement>(null);
   const beamRefA = React.useRef<HTMLCanvasElement>(null);
   const beamRefB = React.useRef<HTMLCanvasElement>(null);
@@ -94,15 +99,23 @@ export const PortcullisLive: React.FC<Props> = ({ kitId, family, slices, width }
     return (
       <div className="rounded" style={{ background: '#040403', padding: 16, overflow: 'hidden' }}>
         <div style={{ position: 'relative', width, height: RAIL_BOX_H, margin: '0 auto' }}>
-          {/* The 44px rung box the DOM controls sit on — orientation guide. */}
-          <div
-            aria-hidden
-            style={{ position: 'absolute', left: 0, right: 0, top: RAIL_BOX_H * 0.3125, height: 44, border: '1px dashed rgba(120,113,108,0.35)' }}
-          />
+          {/* The 44px rung box the DOM controls sit on — orientation
+              OVERLAY (integer position; it shows through transparent art,
+              so it is toggleable). */}
+          {showGuide && (
+            <div
+              aria-hidden
+              style={{ position: 'absolute', left: 0, right: 0, top: Math.round(RAIL_BOX_H * 0.3125), height: 44, border: '1px dashed rgba(120,113,108,0.35)' }}
+            />
+          )}
           <canvas ref={railRef} style={{ position: 'absolute' }} />
         </div>
         <p className="mt-2 text-[11px] text-stone-500">
-          The live rail box (controls ride the dashed rung).{' '}
+          <label className="inline-flex items-center gap-1.5 mr-2 text-stone-400">
+            <input type="checkbox" checked={showGuide} onChange={e => setShowGuide(e.target.checked)} className="w-3 h-3" />
+            Rung guide
+          </label>
+          The dashed rung is an overlay, not art — it peeks through transparent pixels (untoggle to judge edges).{' '}
           {family === 'rail'
             ? 'Rising bars come from the Portcullis Gate kit — paint that kit to see them here.'
             : 'The band, plates and spikes come from the Control Rail kit — this kit supplies the rising bars.'}
