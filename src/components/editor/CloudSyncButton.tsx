@@ -13,6 +13,7 @@ import {
 } from '../../utils/cloudSync';
 import { ConflictResolutionModal } from './ConflictResolutionModal';
 import { NavSheet } from '../shared/NavSheet';
+import { NavPillSign, navSignSkinActive } from '../shared/GateMesh';
 
 interface CloudSyncButtonProps {
   onSyncComplete?: () => void;
@@ -108,28 +109,32 @@ export const CloudSyncButton: React.FC<CloudSyncButtonProps> = ({ onSyncComplete
     <>
       <button
         onClick={() => setShowDropdown(!showDropdown)}
-        className={`nav-pill flex items-center gap-2 px-3 py-2 transition-colors ${statusColor}`}
+        className={`nav-pill${navSignSkinActive ? ' nav-pill-skinned' : ''} flex items-center gap-2 px-3 py-2 transition-colors ${statusColor}`}
         title={`Cloud Sync - ${formatLastSync(lastSync)}`}
       >
-        {isLoading ? (
-          <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-          </svg>
-        ) : (
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" />
-          </svg>
-        )}
-        <span className="text-sm text-parchment-300">Cloud</span>
-        {conflicts.length > 0 && (
-          <span className="w-4 h-4 bg-amber-600 rounded-full text-[10px] font-bold flex items-center justify-center text-white">
-            {conflicts.length}
+        <NavPillSign>
+          <span className="inline-flex items-center gap-2">
+            {isLoading ? (
+              <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+              </svg>
+            ) : (
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" />
+              </svg>
+            )}
+            <span className="text-sm text-parchment-300">Cloud</span>
+            {conflicts.length > 0 && (
+              <span className="w-4 h-4 bg-amber-600 rounded-full text-[10px] font-bold inline-flex items-center justify-center text-white">
+                {conflicts.length}
+              </span>
+            )}
+            <svg className={`w-3 h-3 text-stone-400 transition-transform ${showDropdown ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
           </span>
-        )}
-        <svg className={`w-3 h-3 text-stone-400 transition-transform ${showDropdown ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-        </svg>
+        </NavPillSign>
       </button>
 
       <NavSheet open={showDropdown} onClose={closeDropdown} label="Cloud sync">
