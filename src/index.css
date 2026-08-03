@@ -61,6 +61,13 @@ body {
   min-width: 320px;
   min-height: 100vh;
   min-height: 100dvh; /* iOS Safari: exclude the collapsing address bar */
+  /* Horizontal-scroll ban, SECOND anchor: iOS Safari has historically
+     honored overflow on BODY while ignoring it on html, so the html rule
+     alone left phones able to pan right into skin-canvas bleed (quest
+     ornament aura mounts 48px wide of its box on first load). Same
+     clip-with-hidden-fallback pair as html's. */
+  overflow-x: hidden;
+  overflow-x: clip;
   background-color: var(--color-bg-primary);
   color: var(--color-text-primary);
   /* Notched devices, installed PWA (viewport-fit=cover + translucent
