@@ -75,6 +75,8 @@ export const drawGateBeamSkin = (ctx: CanvasRenderingContext2D, w: number, h: nu
   const beam = nav.get('beam-face');
   const bar = nav.get('beam-bar-segment');
   const plate = nav.get('beam-plate');
+  const capL = nav.get('beam-cap-l');
+  const capR = nav.get('beam-cap-r');
   const beamH = (beam?.h ?? 18) * Z;
   const beamTop = Math.round((h - beamH) / 2);
   // Outer pair 2 art in from flush, interior evenly spaced — same rule
@@ -92,8 +94,16 @@ export const drawGateBeamSkin = (ctx: CanvasRenderingContext2D, w: number, h: nu
     }
   }
 
-  // The beam, edge to edge.
-  drawTiled(ctx, beam, 0, beamTop, w, beamH, 0, beamTop);
+  // The beam: tiled face between optional FIXED end caps (user catch,
+  // 2026-08-03: the tiling face repeated its painted outer outline
+  // internally — finished ends must be fixed pieces, the rail's rule).
+  // Caps center vertically on the iron and anchor by nominal.
+  const clW = capL ? nomW(capL) * Z : 0;
+  const crW = capR ? nomW(capR) * Z : 0;
+  drawTiled(ctx, beam, clW, beamTop, w - clW - crW, beamH, clW, beamTop);
+  const capY = (pc: SkinPiece) => beamTop + Math.round((beamH - nomH(pc) * Z) / 2) - (pc.halo?.t ?? 0) * Z;
+  if (capL) drawFixed(ctx, capL, -(capL.halo?.l ?? 0) * Z, capY(capL));
+  if (capR) drawFixed(ctx, capR, w - crW - (capR.halo?.l ?? 0) * Z, capY(capR));
 
   // Plates where each bar crosses the beam, VERTICALLY CENTERED on the
   // iron — for the default 18-art beam this equals the old +14 crossing

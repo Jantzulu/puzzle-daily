@@ -206,7 +206,9 @@ export const DEFAULT_KITS: KitSpec[] = [
     builtIn: true,
     description: 'The hamburger menu\'s lattice: each page item rides a horizontal iron beam (GateBeamMesh) with the vertical bars threading the stack, and its label sits on a steel plate sign. WIRED: drop the export at src/assets/panels/nav-gate-slices.json. Sizes audited against the LIVE geometry at Z=2, 2026-08-02 — the old draft was wrong three ways: beams are the THIN 36px iron (18 art, settled decision — not 12), signs ~26px tall (13 art, not 10), bars 12px wide (6 art, not 5). Bars sit at the six shared fractions with the OUTER PAIR FLUSH at the menu edges, matching the rail below so the columns read as one gate.',
     pieces: [
-      { id: 'beam-face', label: 'Beam Face', w: 24, h: 18, repeat: 'tile-x', notes: 'The horizontal rung a menu item rides — the settled THIN 36px iron (18 art at Z=2): dark under-frame, flat face, lit top edge.' },
+      { id: 'beam-face', label: 'Beam Face', w: 24, h: 18, repeat: 'tile-x', notes: 'The horizontal rung a menu item rides — the settled THIN 36px iron (18 art at Z=2): dark under-frame, flat face, lit top edge. KEEP IT SEAMLESS: it tiles, so end outlines painted here repeat internally — finished ends belong in the Beam Cap pieces.' },
+      { id: 'beam-cap-l', label: 'Beam Cap L', w: 8, h: 18, repeat: 'fixed', notes: 'FIXED finished left end of every rung — outline art here never tiles (the face repeated its outer outline internally without caps; user catch 2026-08-03). PAINT IT IN THE DETACHED SLOT above the lattice; the dashed boxes at the row ends only preview placement. Vertically centered on the beam iron, like the rail caps. Leave unpainted for edge-to-edge tiling.' },
+      { id: 'beam-cap-r', label: 'Beam Cap R', w: 8, h: 18, repeat: 'fixed', notes: 'Right end — same rules as the left cap.' },
       { id: 'beam-bar-segment', label: 'Vertical Bar Segment', w: 6, h: 24, repeat: 'tile-y', notes: 'Bars threading the whole stack, behind the beams. SAME STOCK as the Portcullis Gate kit\'s bar — paint them identically. CUT FROM THE DETACHED SLOT above the lattice: in the lattice the beams paint over the bars, so the dashed columns are look-only (paint them for the picture if you like — they ship nothing).' },
       { id: 'beam-plate', label: 'Beam Forge Plate', w: 4, h: 4, repeat: 'fixed', notes: 'SAME HARDWARE as the Control Rail kit\'s "Forge Plate" — paint them identically. Bolted where a bar crosses a beam. PAINT IT IN THE DETACHED SLOT above the lattice; the dashed on-beam boxes only preview placement — paint there ships inside the beam iron and tiles across every menu item.' },
       { id: 'sign-cap-l', label: 'Sign Cap L', w: 6, h: 13, repeat: 'fixed', notes: 'Steel plate signage end — the square forge bolt lives here (the CSS plate\'s bolt is 5px at 4px inset; renders 26px tall).' },
@@ -280,7 +282,11 @@ const STORAGE_KEY = 'panel_forge_kits_v1';
 //      guides — a full-length painted shaft was leaking its top rows into
 //      the cap cut, the plate law's exact disease). Gate sheet grows by
 //      the slot row; artist migration = canvas +6 anchored bottom.
-const DEFAULTS_VERSION = 14;
+// v15: nav-gate gains beam-cap-l/r (8×18 fixed finished rung ends — the
+//      tiling face repeated its painted outer outline internally; user
+//      catch). Cuts live in the EXISTING detached slot row, guides at the
+//      row ends: sheet size and all existing paint positions UNCHANGED.
+const DEFAULTS_VERSION = 15;
 
 function loadKits(): KitSpec[] {
   try {
@@ -954,14 +960,26 @@ function assembleNavGate(kit: KitSpec): Assembly | null {
   // Neither can be cut from the lattice without shipping the wrong paint
   // (caught by adversarial review, 2026-08-02). The lattice shows both as
   // dashed guides instead.
-  const slotH = bar ? Math.max(bar.h, plate?.h ?? 0) + 2 : 0;
+  const bcl = P('beam-cap-l');
+  const bcr = P('beam-cap-r');
+  const slotPieces = [bar, plate, bcl, bcr].filter(Boolean) as PieceSpec[];
+  const slotH = slotPieces.length ? Math.max(...slotPieces.map(p => p.h)) + 2 : 0;
   const H = slotH + ROWS * rowPitch;
   const regions: AssemblyRegion[] = [];
 
-  if (bar) {
-    regions.push({ pieceId: 'beam-bar-segment', x: 2, y: 0, w: bar.w, h: bar.h, rep: 0 });
-    if (plate) regions.push({ pieceId: 'beam-plate', x: 2 + bar.w + 4, y: 0, w: plate.w, h: plate.h, rep: 0 });
-  }
+  // Detached slot row: bar, plate, then the BEAM END CAPS (fixed finished
+  // ends — the tiling face repeated its outer outline internally without
+  // them; user catch 2026-08-03). All on clean ground, laid left to right.
+  let slotX = 2;
+  const slot = (pieceId: string, p: PieceSpec | undefined) => {
+    if (!p) return;
+    regions.push({ pieceId, x: slotX, y: 0, w: p.w, h: p.h, rep: 0 });
+    slotX += p.w + 4;
+  };
+  slot('beam-bar-segment', bar);
+  slot('beam-plate', bar ? plate : undefined);
+  slot('beam-cap-l', bcl);
+  slot('beam-cap-r', bcr);
 
   // Bar centers at the six shared fractions, OUTER PAIR FLUSH at the sheet
   // edges — the same rule the live renderers use (edge bars contain the
@@ -987,6 +1005,12 @@ function assembleNavGate(kit: KitSpec): Assembly | null {
     for (let i = 0; i < BEAM_REPS; i++) {
       regions.push({ pieceId: 'beam-face', x: i * beam.w, y: by, w: beam.w, h: beam.h, rep: i });
     }
+    // Beam end-cap placement guides (dashed, over the row's ends — the
+    // left one sits on the face's own rep-0 cut period, so paint belongs
+    // in the detached slots only). Vertically centered on the iron, the
+    // renderer's rule.
+    if (bcl) regions.push({ pieceId: 'beam-cap-l', x: 0, y: by + Math.round((beam.h - bcl.h) / 2), w: bcl.w, h: bcl.h, rep: row + 1, guide: true });
+    if (bcr) regions.push({ pieceId: 'beam-cap-r', x: W - bcr.w, y: by + Math.round((beam.h - bcr.h) / 2), w: bcr.w, h: bcr.h, rep: row + 1, guide: true });
     if (plate && bar) {
       // Dashed guides ON the beams — leave unpainted (the leftmost sits
       // inside the beam's own cut period; paint there ships inside the
