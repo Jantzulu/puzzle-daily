@@ -1382,7 +1382,15 @@ export const PanelForge: React.FC = () => {
 
       {/* Kit list */}
       <div className="w-64 flex-shrink-0 border-r border-stone-700 p-3 space-y-2 overflow-y-auto">
-        <h2 className="text-lg font-bold font-medieval text-copper-400">Panel Forge</h2>
+        <h2 className="text-lg font-bold font-medieval text-copper-400">
+          Panel Forge{' '}
+          {/* The defaults version doubles as a STALE-TAB detector: an open
+              tab keeps its loaded bundle, and a stale slicer cuts from old
+              coordinates while sheet + template are current (cost the user
+              a baffling wrong-cap round, 2026-08-02). If this number is
+              behind the repo's DEFAULTS_VERSION, hard-refresh. */}
+          <span className="text-[10px] font-mono font-normal text-stone-500 align-middle" title="Kit defaults version — if a session note says the kits changed and this number hasn't, hard-refresh the tab.">v{DEFAULTS_VERSION}</span>
+        </h2>
         <p className="text-xs text-stone-400">
           Piece specs + paint-over templates for the pixel-art UI surfaces. Sizes are art pixels
           (a board tile is 24).
