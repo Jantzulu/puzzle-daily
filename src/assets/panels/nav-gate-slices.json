@@ -1,1 +1,22 @@
-{"version":1,"kitId":"nav-gate","kitName":"Nav Gate Menu","cutAt":"","pieces":[]}
+{
+  "version": 1,
+  "kitId": "portcullis-gate",
+  "kitName": "Portcullis Gate (bars)",
+  "cutAt": "2026-08-03T03:53:37.049Z",
+  "pieces": [
+    {
+      "id": "bar-segment",
+      "w": 6,
+      "h": 24,
+      "empty": false,
+      "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAYAAAAYCAYAAADZEIyjAAAAMUlEQVR4AeyQsQkAMBACJVPYOoP7z2byaV3hQRG87g6A2I6kX5KZb8DbzoJyskpKyQUAAP//0ZKUSwAAAAZJREFUAwC5rQfSICSBcgAAAABJRU5ErkJggg=="
+    },
+    {
+      "id": "bar-top-cap",
+      "w": 6,
+      "h": 4,
+      "empty": false,
+      "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAYAAAAECAYAAACtBE5DAAAAMUlEQVR4AXSKwQkAMAwCpVPk6wzuP5uN7adQIhwK58KNu14QYUkgeaiq/sARGR+j2AAAAP//GClOMwAAAAZJREFUAwA8oweqruMTfwAAAABJRU5ErkJggg=="
+    }
+  ]
+}

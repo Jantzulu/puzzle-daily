@@ -44,6 +44,16 @@ html {
   -webkit-tap-highlight-color: transparent;
   /* No rubber-band bounce or accidental pull-to-refresh mid-game */
   overscroll-behavior-y: none;
+  /* The page NEVER scrolls horizontally. The skin canvases carry side
+     bleed for art overhang (menu beams ±32, quest ornaments ±48), and a
+     mounted-but-closed menu gate's canvases were widening the document —
+     on phones the page could shift right and lock there (user report,
+     2026-08-03). `clip` forbids the scroll without creating a scroll
+     container; the `hidden` line is the older-Safari fallback. Wide dev
+     tables scroll inside their own overflow-x-auto wraps, never the
+     document. */
+  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 body {
