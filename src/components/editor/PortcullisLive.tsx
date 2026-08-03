@@ -1,7 +1,7 @@
 import React from 'react';
 import { skinFromSlices, prepCanvas, whenDecoded, type ForgeSlice } from '../game/panelSkins';
 import { drawRailSkin } from '../game/PortcullisMesh';
-import { drawGateBeamSkin, drawGateSignSkin } from '../shared/GateMesh';
+import { drawGateBars, drawGateBeamSkin, drawGateSignSkin } from '../shared/GateMesh';
 
 // ============================================================================
 // PORTCULLIS LIVE — the Live panel for the non-nine-slice kits
@@ -66,7 +66,10 @@ export const PortcullisLive: React.FC<Props> = ({ kitId, family, slices, width }
           const ctx = prepCanvas(canvas, width, ITEM_H, BEAM_BLEED);
           if (!ctx) return;
           ctx.clearRect(-BEAM_BLEED, -BEAM_BLEED, width + BEAM_BLEED * 2, ITEM_H + BEAM_BLEED * 2);
-          drawGateBeamSkin(ctx, width, ITEM_H, skin, i === 0);
+          // Live splits bars (unfiltered) from iron (drop-shadowed); the
+          // preview has no filter, so composing both here matches it.
+          drawGateBars(ctx, width, ITEM_H, skin, i === 0);
+          drawGateBeamSkin(ctx, width, ITEM_H, skin);
         });
         const sign = signRef.current;
         const box = signBoxRef.current;

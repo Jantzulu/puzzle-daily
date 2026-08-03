@@ -102,14 +102,18 @@ export const drawRailSkin = (
   const barXs = barCenters(w, (bar?.w ?? 6) * Z, EDGE_BAR_INSET * Z);
 
   // Bars rise from the band's top edge to the box top (they tuck
-  // behind the band: draw them first, band over).
+  // behind the band: draw them first, band over). NO bar-top-cap here:
+  // these bars never terminate visibly — they continue behind the board
+  // (gate closed) or up into the menu's beams (gate lowered) — and the
+  // cap's finial shading drawn at the box top read as "darker first
+  // pixels with a stark line" on every bar (user hunt, 2026-08-03; the
+  // scrims were exonerated pixel by pixel). The cap piece stays in the
+  // kit for surfaces where a bar genuinely ends.
   if (bar) {
     const bw = bar.w * Z;
     for (const bx of barXs) {
       drawTiled(ctx, bar, Math.round(bx - bw / 2), 0, bw, bandTop + 2, Math.round(bx - bw / 2), 0);
     }
-    const cap = bars.get('bar-top-cap');
-    if (cap) for (const bx of barXs) drawFixed(ctx, cap, Math.round(bx - (nomW(cap) * Z) / 2) - (cap.halo?.l ?? 0) * Z, 0);
   }
 
   // The band: tiled face between optional caps. All hardware anchors by
@@ -164,10 +168,31 @@ const PortcullisSkin: React.FC<{ className: string }> = ({ className }) => {
       ctx.clearRect(0, 0, w, h);
       drawRailSkin(ctx, w, h, RAIL, BARS);
     };
+    // INTEGER-PX SNAP (the quest box's law, root cause of the 2026-08-03
+    // "darker first pixels on the rising bars" saga): the class anchors
+    // this box at top -62.5% of the 44px rung = -27.5px — a built-in
+    // HALF-PIXEL that made the compositor resample every horizontal art
+    // boundary (the band's dark top edge smeared up into the bars; the
+    // svg suffered it too). Re-measure from the stylesheet's own anchor
+    // and pull the box onto whole screen pixels on both axes.
+    const snap = () => {
+      host.style.top = '';
+      host.style.left = '';
+      const cs = getComputedStyle(host);
+      const baseTop = parseFloat(cs.top);
+      const baseLeft = parseFloat(cs.left);
+      // FLOOR, not round: the anchor's fraction is a constant .5 (62.5% of
+      // 44), and rounding it away from the rung would seat the painted
+      // band 1px below the DOM rung box; flooring pulls the art up onto
+      // it exactly.
+      const r = host.getBoundingClientRect();
+      if (Number.isFinite(baseTop)) host.style.top = `${baseTop - (r.top - Math.floor(r.top))}px`;
+      if (Number.isFinite(baseLeft)) host.style.left = `${baseLeft - (r.left - Math.floor(r.left))}px`;
+    };
     // SYNCHRONOUS draw, not rAF: hidden/background tabs freeze rAF and the
     // canvas stays blank until the tab fronts (hit live in the hidden
     // preview pane). RO callbacks batch already; the draws are tiny.
-    const schedule = draw;
+    const schedule = () => { snap(); draw(); };
     whenDecoded([...RAIL.values(), ...BARS.values()] as SkinPiece[]).then(() => { if (!cancelled) schedule(); });
     const ro = new ResizeObserver(schedule);
     ro.observe(host);

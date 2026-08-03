@@ -65,13 +65,35 @@ export const navGateSkinActive = NAV.has('beam-face');
 export const navSignSkinActive = NAV.has('sign-mid');
 
 /**
- * The beam item's draw, parameterized on the skin map so the forge's live
- * preview (PortcullisLive) renders with THIS routine fed its fresh slices
- * — preview divergence is structurally impossible. Callers prep/clear the
- * canvas (bleed 32 covers the overhangs: first item 26 up, every beam 12
- * down).
+ * The threading BARS, alone — drawn on their own UNFILTERED canvas. The
+ * beam layer's CSS drop-shadow applies per-pixel, so bars drawn on it
+ * stamped their descending tips' shadows onto whatever continued the
+ * column below — the control rail's rising bars wore a stark dark band
+ * just above the rung (2026-08-03 hunt; the svg had the identical flaw
+ * for the same reason). Iron casts a shadow; the lattice must not.
+ * Callers prep/clear (bleed 32 covers the overhangs: first item 26 up,
+ * every item 12 down).
  */
-export const drawGateBeamSkin = (ctx: CanvasRenderingContext2D, w: number, h: number, nav: Map<string, SkinPiece>, first: boolean) => {
+export const drawGateBars = (ctx: CanvasRenderingContext2D, w: number, h: number, nav: Map<string, SkinPiece>, first: boolean) => {
+  const bar = nav.get('beam-bar-segment');
+  if (!bar) return;
+  // Outer pair 2 art in from flush, interior evenly spaced — same rule
+  // as PortcullisSkin: the menu and the rail share their width, so the
+  // columns stay one gate.
+  const barXs = barCenters(w, bar.w * Z, EDGE_BAR_INSET * Z);
+  const bw = bar.w * Z;
+  const yTop = first ? -26 : 0;
+  for (const bx of barXs) {
+    drawTiled(ctx, bar, Math.round(bx - bw / 2), yTop, bw, h + 12 - yTop, Math.round(bx - bw / 2), 0);
+  }
+};
+
+/**
+ * The beam IRON (face, end caps, plates) — the drop-shadowed layer. The
+ * forge's live preview (PortcullisLive) composes drawGateBars + this on
+ * one canvas, so preview divergence stays structurally impossible.
+ */
+export const drawGateBeamSkin = (ctx: CanvasRenderingContext2D, w: number, h: number, nav: Map<string, SkinPiece>) => {
   const beam = nav.get('beam-face');
   const bar = nav.get('beam-bar-segment');
   const plate = nav.get('beam-plate');
@@ -79,20 +101,7 @@ export const drawGateBeamSkin = (ctx: CanvasRenderingContext2D, w: number, h: nu
   const capR = nav.get('beam-cap-r');
   const beamH = (beam?.h ?? 18) * Z;
   const beamTop = Math.round((h - beamH) / 2);
-  // Outer pair 2 art in from flush, interior evenly spaced — same rule
-  // as PortcullisSkin: the menu and the rail share their width, so the
-  // columns stay one gate.
   const barXs = barCenters(w, (bar?.w ?? 6) * Z, EDGE_BAR_INSET * Z);
-
-  // Bars first (behind the beam): from the navbar (first item reaches
-  // up 26px) down past the box's bottom edge into the next item.
-  if (bar) {
-    const bw = bar.w * Z;
-    const yTop = first ? -26 : 0;
-    for (const bx of barXs) {
-      drawTiled(ctx, bar, Math.round(bx - bw / 2), yTop, bw, h + 12 - yTop, Math.round(bx - bw / 2), 0);
-    }
-  }
 
   // The beam: tiled face between optional FIXED end caps (user catch,
   // 2026-08-03: the tiling face repeated its painted outer outline
@@ -133,19 +142,31 @@ export const drawGateSignSkin = (ctx: CanvasRenderingContext2D, w: number, h: nu
 const GateBeamSkin: React.FC<{ first?: boolean }> = ({ first = false }) => {
   const hostRef = React.useRef<HTMLDivElement>(null);
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
+  const barsHostRef = React.useRef<HTMLDivElement>(null);
+  const barsCanvasRef = React.useRef<HTMLCanvasElement>(null);
   React.useLayoutEffect(() => {
     const host = hostRef.current;
     const canvas = canvasRef.current;
-    if (!host || !canvas) return;
+    const barsHost = barsHostRef.current;
+    const barsCanvas = barsCanvasRef.current;
+    if (!host || !canvas || !barsHost || !barsCanvas) return;
     let cancelled = false;
     const draw = () => {
       const w = host.clientWidth;
       const h = host.clientHeight;
       if (!w || !h) return;
+      // Two layers, one geometry: bars on the UNFILTERED canvas (their
+      // shadow stamped the rail's bars — see drawGateBars), iron + its
+      // drop-shadow on this one.
+      const bctx = prepCanvas(barsCanvas, w, h, 32);
+      if (bctx) {
+        bctx.clearRect(-32, -32, w + 64, h + 64);
+        drawGateBars(bctx, w, h, NAV, first);
+      }
       const ctx = prepCanvas(canvas, w, h, 32);
       if (!ctx) return;
       ctx.clearRect(-32, -32, w + 64, h + 64);
-      drawGateBeamSkin(ctx, w, h, NAV, first);
+      drawGateBeamSkin(ctx, w, h, NAV);
     };
     // SYNCHRONOUS draw, not rAF: hidden/background tabs freeze rAF and the
     // canvas stays blank until the tab fronts (hit live in the hidden
@@ -158,9 +179,14 @@ const GateBeamSkin: React.FC<{ first?: boolean }> = ({ first = false }) => {
     return () => { cancelled = true; ro.disconnect(); };
   }, [first]);
   return (
-    <div ref={hostRef} className="nav-gate-beam-skin" aria-hidden style={{ overflow: 'visible' }}>
-      <canvas ref={canvasRef} style={{ position: 'absolute' }} />
-    </div>
+    <>
+      <div ref={barsHostRef} className="nav-gate-bars-skin" aria-hidden style={{ overflow: 'visible' }}>
+        <canvas ref={barsCanvasRef} style={{ position: 'absolute' }} />
+      </div>
+      <div ref={hostRef} className="nav-gate-beam-skin" aria-hidden style={{ overflow: 'visible' }}>
+        <canvas ref={canvasRef} style={{ position: 'absolute' }} />
+      </div>
+    </>
   );
 };
 
