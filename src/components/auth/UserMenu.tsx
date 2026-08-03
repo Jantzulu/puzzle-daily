@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useOptionalAuth } from '../../contexts/AuthContext';
 import { toast } from '../shared/Toast';
 import { NavSheet } from '../shared/NavSheet';
-import { NavPillSign, navSignSkinActive } from '../shared/GateMesh';
+import { NavPillSign, AvatarCrest, navSignSkinActive } from '../shared/GateMesh';
 
 const AVATAR_ICONS = ['⚔️', '🛡️', '🧙', '🏹', '💀', '🐉', '👑', '🔮', '🗡️', '🧝', '🦊', '🐺', '🏰', '⭐', '🔥', '💎'];
 const AVATAR_COLORS = [
@@ -125,9 +125,13 @@ export const UserMenu: React.FC = () => {
           {/* Skinned plate is 26px tall — the avatar steps down from 28
               to 24 to sit inside it; baseline keeps the classic size. */}
           <span className="inline-flex items-center gap-2">
-            <span className={`${navSignSkinActive ? 'w-6 h-6' : 'w-7 h-7'} rounded-full ${avatar.color} inline-flex items-center justify-center text-xs font-bold text-white`}>
-              {avatar.icon}
-            </span>
+            {/* The crest (forge-cut frame) paints behind the avatar and may
+                overhang the plate — designed into the slices by the user. */}
+            <AvatarCrest>
+              <span className={`${navSignSkinActive ? 'w-6 h-6' : 'w-7 h-7'} rounded-full ${avatar.color} inline-flex items-center justify-center text-xs font-bold text-white`}>
+                {avatar.icon}
+              </span>
+            </AvatarCrest>
             <span className="text-xs text-stone-300 hidden md:inline max-w-[100px] truncate">
               {auth.profile.display_name}
             </span>

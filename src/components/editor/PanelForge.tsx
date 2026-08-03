@@ -211,6 +211,7 @@ export const DEFAULT_KITS: KitSpec[] = [
       { id: 'beam-cap-r', label: 'Beam Cap R', w: 8, h: 18, repeat: 'fixed', notes: 'Right end — same rules as the left cap.' },
       { id: 'beam-bar-segment', label: 'Vertical Bar Segment', w: 6, h: 24, repeat: 'tile-y', notes: 'Bars threading the whole stack, behind the beams. SAME STOCK as the Portcullis Gate kit\'s bar — paint them identically. CUT FROM THE DETACHED SLOT above the lattice: in the lattice the beams paint over the bars, so the dashed columns are look-only (paint them for the picture if you like — they ship nothing).' },
       { id: 'beam-plate', label: 'Beam Forge Plate', w: 4, h: 4, repeat: 'fixed', notes: 'SAME HARDWARE as the Control Rail kit\'s "Forge Plate" — paint them identically. Bolted where a bar crosses a beam. PAINT IT IN THE DETACHED SLOT above the lattice; the dashed on-beam boxes only preview placement — paint there ships inside the beam iron and tiles across every menu item.' },
+      { id: 'avatar-crest', label: 'Avatar Crest', w: 16, h: 16, repeat: 'fixed', notes: 'OPTIONAL picture-frame/crest behind the signed-in player\'s avatar on the profile plate — paint it as a finished attached object (it deliberately OVERHANGS the plate; the halo gives 4 art of paint room on every side). The avatar icon renders inside at ~12 art. Leave unpainted and the avatar sits directly on the plate.' },
       { id: 'sign-cap-l', label: 'Sign Cap L', w: 6, h: 13, repeat: 'fixed', notes: 'Steel plate signage end — the square forge bolt lives here (the CSS plate\'s bolt is 5px at 4px inset; renders 26px tall).' },
       { id: 'sign-mid', label: 'Sign Middle', w: 12, h: 13, repeat: 'tile-x', notes: 'Plate face behind the label text — the DOM label rides ON TOP, like the quest plate.' },
       { id: 'sign-cap-r', label: 'Sign Cap R', w: 6, h: 13, repeat: 'fixed' },
@@ -286,7 +287,12 @@ const STORAGE_KEY = 'panel_forge_kits_v1';
 //      tiling face repeated its painted outer outline internally; user
 //      catch). Cuts live in the EXISTING detached slot row, guides at the
 //      row ends: sheet size and all existing paint positions UNCHANGED.
-const DEFAULTS_VERSION = 15;
+// v16: nav-gate gains avatar-crest (16×16 fixed, 4-art halo all around) —
+//      the signed-in avatar's picture-frame on the profile plate, painted
+//      as a finished object that deliberately overhangs it (user design;
+//      the smooth CSS circle broke the gate's square-hardware language).
+//      Detached slot in the existing row; sheet size unchanged.
+const DEFAULTS_VERSION = 16;
 
 function loadKits(): KitSpec[] {
   try {
@@ -962,8 +968,12 @@ function assembleNavGate(kit: KitSpec): Assembly | null {
   // dashed guides instead.
   const bcl = P('beam-cap-l');
   const bcr = P('beam-cap-r');
+  const crest = P('avatar-crest');
   const slotPieces = [bar, plate, bcl, bcr].filter(Boolean) as PieceSpec[];
-  const slotH = slotPieces.length ? Math.max(...slotPieces.map(p => p.h)) + 2 : 0;
+  // The crest cuts with a 4-art halo on every side (it overhangs the
+  // profile plate by design), so its slot needs nominal + 8 of height.
+  const slotHeights = slotPieces.map(p => p.h).concat(crest ? [crest.h + 8] : []);
+  const slotH = slotHeights.length ? Math.max(...slotHeights) + 2 : 0;
   const H = slotH + ROWS * rowPitch;
   const regions: AssemblyRegion[] = [];
 
@@ -980,6 +990,13 @@ function assembleNavGate(kit: KitSpec): Assembly | null {
   slot('beam-plate', bar ? plate : undefined);
   slot('beam-cap-l', bcl);
   slot('beam-cap-r', bcr);
+  if (crest) {
+    // Halo'd like the quest plate: the cut ships nominal + 4 art of paint
+    // room per side, so the crest can be painted as a finished object
+    // that overhangs the profile plate it attaches to.
+    regions.push({ pieceId: 'avatar-crest', x: slotX + 4, y: 4, w: crest.w, h: crest.h, rep: 0, halo: { l: 4, t: 4, r: 4, b: 4 } });
+    slotX += crest.w + 8 + 4;
+  }
 
   // Bar centers at the six shared fractions, OUTER PAIR FLUSH at the sheet
   // edges — the same rule the live renderers use (edge bars contain the

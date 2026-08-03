@@ -2454,6 +2454,14 @@ body.menu-gate-instant .quest-box-anchor {
   padding: 0 12px; /* content clears the 6-art sign caps */
 }
 
+/* GateSign's inner content span is inline (text-oriented) — inside a
+   pill it baseline-aligned block-ish children and sat the avatar LOW on
+   the plate (user screenshot, 2026-08-03). Flex-center it here. */
+.nav-pill-skinned .nav-gate-sign-skinned > span {
+  display: inline-flex;
+  align-items: center;
+}
+
 /* Everything riding a beam sits above its iron (beams z:1, rail z:0) —
    the SKIN divs are iron, not contents, hence the exclusions. */
 .nav-gate-item > :not(svg):not(.nav-gate-beam-skin):not(.nav-gate-rail-mesh):not(.nav-gate-bars-skin) {

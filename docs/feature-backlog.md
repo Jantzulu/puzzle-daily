@@ -152,6 +152,22 @@ do, complementary to [`feature-roadmap.md`](../../puzzle-game/feature-roadmap.md
 
 ## Post-launch features
 
+### Sprite-bust avatar pipeline (captured 2026-08-03, user spec)
+
+- [ ] **Player avatars from entity sprite busts.** Replace the emoji
+  avatar icons with custom sprite busts cut from already-PUBLISHED
+  heroes, enemies, and allies — players pick a bust of their favorite
+  entity as their icon. Requires a DEV TOOL in the pipeline: the dev
+  positions a pre-existing entity sprite in the cutter, which cuts the
+  appropriate icon size from it (a "bust" crop), and the dev names the
+  icon (name set by the dev, not the player). Published-only sourcing
+  keeps the reveal rules intact (no undebuted art leaking through
+  avatars — same principle as the closure-prefetch reveal predicate).
+  Ties into the forge-cut `avatar-crest` piece (nav-gate kit v16), which
+  frames whatever icon sits on the profile plate — the bust would render
+  inside the crest at ~12 art. Emoji remain the placeholder until this
+  exists.
+
 ### Spell system extensions
 
 - [x] **Anti-projectile spells — "wind wall" — SHIPPED 2026-07-16**

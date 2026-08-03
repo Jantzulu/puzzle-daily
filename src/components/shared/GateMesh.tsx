@@ -245,6 +245,53 @@ export const GateSign: React.FC<{ children: React.ReactNode }> = ({ children }) 
 export const NavPillSign: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   navSignSkinActive ? <GateSign>{children}</GateSign> : <>{children}</>;
 
+/**
+ * The signed-in avatar's CREST — a forge-cut picture frame attached to
+ * the profile plate, painted as a finished object that deliberately
+ * OVERHANGS it (user design, 2026-08-03: the smooth CSS circle broke the
+ * gate's square-hardware language; overhang is fine when the artist
+ * designs it into the slices). Renders the 'avatar-crest' piece nominal-
+ * centered BEHIND its children (the avatar chip), halo overhang held by
+ * the bleed. No piece painted = children untouched.
+ */
+export const AvatarCrest: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const crest = NAV.get('avatar-crest');
+  const hostRef = React.useRef<HTMLSpanElement>(null);
+  const canvasRef = React.useRef<HTMLCanvasElement>(null);
+  React.useLayoutEffect(() => {
+    if (!crest) return;
+    const host = hostRef.current;
+    const canvas = canvasRef.current;
+    if (!host || !canvas) return;
+    let cancelled = false;
+    const draw = () => {
+      const w = host.clientWidth;
+      const h = host.clientHeight;
+      if (!w || !h) return;
+      const B = 16; // holds the crest's 4-art halo overhang (8px) with room
+      const ctx = prepCanvas(canvas, w, h, B);
+      if (!ctx) return;
+      ctx.clearRect(-B, -B, w + B * 2, h + B * 2);
+      const nw = nomW(crest) * Z;
+      const nh = nomH(crest) * Z;
+      drawFixed(ctx, crest, Math.round((w - nw) / 2) - (crest.halo?.l ?? 0) * Z, Math.round((h - nh) / 2) - (crest.halo?.t ?? 0) * Z);
+    };
+    // Synchronous after decode — the shared no-rAF rule.
+    const schedule = draw;
+    whenDecoded([crest]).then(() => { if (!cancelled) schedule(); });
+    const ro = new ResizeObserver(schedule);
+    ro.observe(host);
+    return () => { cancelled = true; ro.disconnect(); };
+  }, [crest]);
+  if (!crest) return <>{children}</>;
+  return (
+    <span ref={hostRef} style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+      <canvas ref={canvasRef} aria-hidden style={{ position: 'absolute' }} />
+      <span style={{ position: 'relative', display: 'inline-flex' }}>{children}</span>
+    </span>
+  );
+};
+
 export const GateBeamMesh: React.FC<{ first?: boolean }> = (props) => navGateSkinActive ? <GateBeamSkin {...props} /> : <GateBeamMeshSvg {...props} />;
 
 const GateBeamMeshSvg: React.FC<{ first?: boolean }> = ({ first = false }) => {
