@@ -42,12 +42,29 @@ export const drawStonePiece = (ctx: CanvasRenderingContext2D, w: number, h: numb
   drawFixed(ctx, piece, Math.round((w - nw) / 2) - (piece.halo?.l ?? 0) * Z, Math.round((h - nh) / 2) - (piece.halo?.t ?? 0) * Z);
 };
 
+/**
+ * Darken the face IN ITS OWN PIXELS — 'source-atop' clips the black wash
+ * to the painted silhouette, so the stone stays fully OPAQUE and its
+ * transparent surround stays transparent. The first dim implementation
+ * used CSS opacity, which made the whole face translucent and the rung's
+ * plates showed THROUGH the stone (user catch, 2026-08-04).
+ */
+export const dimStoneFace = (ctx: CanvasRenderingContext2D, w: number, h: number, bleed: number) => {
+  ctx.save();
+  ctx.globalCompositeOperation = 'source-atop';
+  ctx.fillStyle = `rgba(0, 0, 0, ${1 - PLAY_STONE_DIM})`;
+  ctx.fillRect(-bleed, -bleed, w + bleed * 2, h + bleed * 2);
+  ctx.restore();
+};
+
 const StoneCanvas: React.FC<{
   piece: SkinPiece;
   bleed: number;
+  /** Bake the opaque dim into the pixels (see dimStoneFace). */
+  darkened?: boolean;
   className?: string;
   style?: React.CSSProperties;
-}> = ({ piece, bleed, className, style }) => {
+}> = ({ piece, bleed, darkened = false, className, style }) => {
   const hostRef = React.useRef<HTMLSpanElement>(null);
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
   React.useLayoutEffect(() => {
@@ -63,6 +80,7 @@ const StoneCanvas: React.FC<{
       if (!ctx) return;
       ctx.clearRect(-bleed, -bleed, w + bleed * 2, h + bleed * 2);
       drawStonePiece(ctx, w, h, piece);
+      if (darkened) dimStoneFace(ctx, w, h, bleed);
     };
     // Synchronous after decode — the shared no-rAF rule.
     const schedule = draw;
@@ -70,7 +88,7 @@ const StoneCanvas: React.FC<{
     const ro = new ResizeObserver(schedule);
     ro.observe(host);
     return () => { cancelled = true; ro.disconnect(); };
-  }, [piece, bleed]);
+  }, [piece, bleed, darkened]);
   return (
     <span ref={hostRef} aria-hidden className={className} style={{ position: 'absolute', inset: 0, pointerEvents: 'none', ...style }}>
       <canvas ref={canvasRef} style={{ position: 'absolute' }} />
@@ -91,11 +109,20 @@ export const PlayStoneSkin: React.FC<{ dimmed?: boolean }> = ({ dimmed = false }
   return (
     <>
       {face && (
-        <StoneCanvas
-          piece={face}
-          bleed={0}
-          style={{ opacity: dimmed ? PLAY_STONE_DIM : 1, transition: 'opacity 0.25s ease' }}
-        />
+        <>
+          <StoneCanvas piece={face} bleed={0} />
+          {/* The waiting dim CROSSFADES between two fully-OPAQUE layers:
+              the bright face and a pixel-darkened twin. The first
+              implementation faded the single canvas's CSS opacity, which
+              made the face TRANSLUCENT — the rung's plates showed through
+              the stone (user catch, 2026-08-04). */}
+          <StoneCanvas
+            piece={face}
+            bleed={0}
+            darkened
+            style={{ opacity: dimmed ? 1 : 0, transition: 'opacity 0.25s ease' }}
+          />
+        </>
       )}
       {!dimmed && hover && <StoneCanvas piece={hover} bleed={0} className="play-stone-hover" />}
       {!dimmed && pressed && <StoneCanvas piece={pressed} bleed={0} className="play-stone-pressed" />}

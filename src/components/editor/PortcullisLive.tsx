@@ -2,7 +2,7 @@ import React from 'react';
 import { skinFromSlices, prepCanvas, whenDecoded, type ForgeSlice } from '../game/panelSkins';
 import { drawRailSkin } from '../game/PortcullisMesh';
 import { drawGateBars, drawGateBeamSkin, drawGateSignSkin } from '../shared/GateMesh';
-import { drawStonePiece, PLAY_STONE_DIM } from '../game/PlayStoneSkin';
+import { drawStonePiece, dimStoneFace } from '../game/PlayStoneSkin';
 
 // ============================================================================
 // PORTCULLIS LIVE — the Live panel for the non-nine-slice kits
@@ -75,9 +75,9 @@ export const PortcullisLive: React.FC<Props> = ({ kitId, family, slices, width }
             : stoneState === 'pressed' ? skin.get('play-button-pressed') ?? base
             : base);
         if (face) {
-          ctx.globalAlpha = stoneDimmed ? PLAY_STONE_DIM : 1;
           drawStonePiece(ctx, STONE_W, STONE_H, face);
-          ctx.globalAlpha = 1;
+          // OPAQUE dim, pixel-baked — never translucency (the game's rule).
+          if (stoneDimmed) dimStoneFace(ctx, STONE_W, STONE_H, B);
         }
         const frame = skin.get('play-frame');
         if (frame) drawStonePiece(ctx, STONE_W, STONE_H, frame);
