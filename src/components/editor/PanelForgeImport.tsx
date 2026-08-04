@@ -78,12 +78,13 @@ export const PanelForgeImport: React.FC<Props> = ({ kit, assembly }) => {
   // game's own draw routines) — PanelNineSlice knows nine-slice anatomy
   // only. Detection mirrors PanelForge's kitFamily precedence: nine-slice
   // ids win, so quest/window kits never land here.
-  const portFamily = useMemo<null | 'rail' | 'gate' | 'nav-gate'>(() => {
+  const portFamily = useMemo<null | 'rail' | 'gate' | 'nav-gate' | 'stone'>(() => {
     const ids = new Set(kit.pieces.map(p => p.id));
     if (ids.has('corner-tl') || ids.has('plate-mid')) return null;
     if (ids.has('rail-face')) return 'rail';
     if (ids.has('bar-segment')) return 'gate';
     if (ids.has('beam-face')) return 'nav-gate';
+    if (ids.has('play-button')) return 'stone';
     return null;
   }, [kit]);
   const [slices, setSlices] = useState<Slice[]>([]);
@@ -514,29 +515,36 @@ export const PanelForgeImport: React.FC<Props> = ({ kit, assembly }) => {
             <div className="border-t border-stone-700 pt-3 space-y-2">
               <div className="flex items-center gap-3 flex-wrap">
                 <h4 className="text-sm font-semibold text-parchment-100">Live panel</h4>
-                <label className="flex items-center gap-2 text-xs text-stone-400">
-                  W
-                  <input
-                    type="range" min={320} max={720} value={panelW}
-                    onChange={e => setPanelW(Number(e.target.value))}
-                    className="w-40"
-                  />
-                  <span className="w-10 tabular-nums">{panelW}</span>
-                </label>
-                <button
-                  onClick={() => setPanelW(393)}
-                  className="px-2 py-0.5 text-xs rounded border border-stone-600 text-stone-300 hover:bg-stone-700"
-                  title="A real phone width — where the menu and rail share the gate's width"
-                >
-                  Phone @393
-                </button>
-                <button
-                  onClick={() => setPanelW(672)}
-                  className="px-2 py-0.5 text-xs rounded border border-stone-600 text-stone-300 hover:bg-stone-700"
-                  title="The desktop rail (max-w-2xl) — more bare band, art stays fixed-size"
-                >
-                  Desktop @672
-                </button>
+                {portFamily !== 'stone' && (
+                  <>
+                    <label className="flex items-center gap-2 text-xs text-stone-400">
+                      W
+                      <input
+                        type="range" min={320} max={720} value={panelW}
+                        onChange={e => setPanelW(Number(e.target.value))}
+                        className="w-40"
+                      />
+                      <span className="w-10 tabular-nums">{panelW}</span>
+                    </label>
+                    <button
+                      onClick={() => setPanelW(393)}
+                      className="px-2 py-0.5 text-xs rounded border border-stone-600 text-stone-300 hover:bg-stone-700"
+                      title="A real phone width — where the menu and rail share the gate's width"
+                    >
+                      Phone @393
+                    </button>
+                    <button
+                      onClick={() => setPanelW(672)}
+                      className="px-2 py-0.5 text-xs rounded border border-stone-600 text-stone-300 hover:bg-stone-700"
+                      title="The desktop rail (max-w-2xl) — more bare band, art stays fixed-size"
+                    >
+                      Desktop @672
+                    </button>
+                  </>
+                )}
+                {portFamily === 'stone' && (
+                  <span className="text-xs text-stone-500">fixed 120×36 — the stone never resizes</span>
+                )}
               </div>
               <PortcullisLive kitId={kit.id} family={portFamily} slices={slices} width={panelW} />
             </div>

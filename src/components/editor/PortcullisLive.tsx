@@ -2,6 +2,7 @@ import React from 'react';
 import { skinFromSlices, prepCanvas, whenDecoded, type ForgeSlice } from '../game/panelSkins';
 import { drawRailSkin } from '../game/PortcullisMesh';
 import { drawGateBars, drawGateBeamSkin, drawGateSignSkin } from '../shared/GateMesh';
+import { drawStonePiece, PLAY_STONE_DIM } from '../game/PlayStoneSkin';
 
 // ============================================================================
 // PORTCULLIS LIVE — the Live panel for the non-nine-slice kits
@@ -20,11 +21,15 @@ import { drawGateBars, drawGateBeamSkin, drawGateSignSkin } from '../shared/Gate
 
 interface Props {
   kitId: string;
-  family: 'rail' | 'gate' | 'nav-gate';
+  family: 'rail' | 'gate' | 'nav-gate' | 'stone';
   slices: ForgeSlice[];
-  /** Surface width in CSS px — the W slider (mobile ~393, desktop rail 672). */
+  /** Surface width in CSS px — the W slider (mobile ~393, desktop rail 672). Ignored by 'stone' (fixed 120). */
   width: number;
 }
+
+/** The Play Stone's fixed live footprint — 60×18 art, every viewport. */
+const STONE_W = 120;
+const STONE_H = 36;
 
 const RAIL_BOX_H = 88;
 const ITEM_H = 52;
@@ -39,6 +44,10 @@ export const PortcullisLive: React.FC<Props> = ({ kitId, family, slices, width }
   // pixel probes proved the renderer clean at every cutaway), so it
   // defaults OFF; tick it only when placing the band.
   const [showGuide, setShowGuide] = React.useState(false);
+  // Play Stone preview state: which face shows, and the no-hero dim.
+  const [stoneState, setStoneState] = React.useState<'base' | 'hover' | 'pressed'>('base');
+  const [stoneDimmed, setStoneDimmed] = React.useState(false);
+  const stoneRef = React.useRef<HTMLCanvasElement>(null);
   const railRef = React.useRef<HTMLCanvasElement>(null);
   const beamRefA = React.useRef<HTMLCanvasElement>(null);
   const beamRefB = React.useRef<HTMLCanvasElement>(null);
@@ -49,7 +58,30 @@ export const PortcullisLive: React.FC<Props> = ({ kitId, family, slices, width }
     let cancelled = false;
     const draw = () => {
       if (cancelled) return;
-      if (family === 'rail' || family === 'gate') {
+      if (family === 'stone') {
+        const canvas = stoneRef.current;
+        if (!canvas) return;
+        const B = 20; // holds the frame's 8-art aura, like the game's canvas
+        const ctx = prepCanvas(canvas, STONE_W, STONE_H, B);
+        if (!ctx) return;
+        ctx.clearRect(-B, -B, STONE_W + B * 2, STONE_H + B * 2);
+        // Same composition as the game: chosen face (dimmed via alpha —
+        // the game dims the face canvas's CSS opacity, visually
+        // identical), then the NEVER-dimmed frame on top.
+        const base = skin.get('play-button');
+        const face = stoneDimmed
+          ? base
+          : (stoneState === 'hover' ? skin.get('play-button-hover') ?? base
+            : stoneState === 'pressed' ? skin.get('play-button-pressed') ?? base
+            : base);
+        if (face) {
+          ctx.globalAlpha = stoneDimmed ? PLAY_STONE_DIM : 1;
+          drawStonePiece(ctx, STONE_W, STONE_H, face);
+          ctx.globalAlpha = 1;
+        }
+        const frame = skin.get('play-frame');
+        if (frame) drawStonePiece(ctx, STONE_W, STONE_H, frame);
+      } else if (family === 'rail' || family === 'gate') {
         const canvas = railRef.current;
         if (!canvas) return;
         const ctx = prepCanvas(canvas, width, RAIL_BOX_H, 0);
@@ -90,6 +122,35 @@ export const PortcullisLive: React.FC<Props> = ({ kitId, family, slices, width }
     whenDecoded([...skin.values()]).then(draw);
     return () => { cancelled = true; };
   });
+
+  if (family === 'stone' && skin.size > 0) {
+    return (
+      <div className="rounded" style={{ background: '#040403', padding: 24 }}>
+        <div className="flex items-center justify-center gap-4 mb-3 text-xs text-stone-300">
+          <label className="inline-flex items-center gap-1.5">
+            <input type="checkbox" checked={stoneDimmed} onChange={e => setStoneDimmed(e.target.checked)} className="w-3.5 h-3.5" />
+            No hero placed (face dims, frame never)
+          </label>
+          {(['base', 'hover', 'pressed'] as const).map(s => (
+            <label key={s} className={`inline-flex items-center gap-1 ${stoneDimmed ? 'opacity-40' : ''}`}>
+              <input type="radio" name="stone-state" checked={stoneState === s} disabled={stoneDimmed} onChange={() => setStoneState(s)} className="w-3 h-3" />
+              {s}
+            </label>
+          ))}
+        </div>
+        <div style={{ position: 'relative', width: STONE_W, height: STONE_H, margin: '0 auto', overflow: 'visible' }}>
+          <canvas ref={stoneRef} style={{ position: 'absolute' }} />
+          <span className="absolute inset-0 flex items-center justify-center font-bold text-sm text-parchment-100 pointer-events-none">
+            Play
+          </span>
+        </div>
+        <p className="mt-3 text-[11px] text-stone-500 text-center">
+          The stone at its real 120×36 — face under, frame over, sample label on top.
+          Hover/pressed fall back to the base face when unpainted.
+        </p>
+      </div>
+    );
+  }
 
   if (skin.size === 0) {
     return (

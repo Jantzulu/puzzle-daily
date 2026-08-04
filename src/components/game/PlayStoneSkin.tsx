@@ -28,7 +28,19 @@ const P = (id: string) => PIECES.get(id);
 export const playStoneSkinActive = PIECES.has('play-button') || PIECES.has('play-frame');
 
 /** Face dim while no hero is placed — tuned to read as "waiting", not broken. */
-const DIM = 0.45;
+export const PLAY_STONE_DIM = 0.45;
+
+/**
+ * One stone piece, nominal-centered in the button box (halo overhang
+ * outside it). THE renderer's draw — the forge's live preview
+ * (PortcullisLive) composes the same routine on its filterless canvas,
+ * so preview divergence stays structurally impossible.
+ */
+export const drawStonePiece = (ctx: CanvasRenderingContext2D, w: number, h: number, piece: SkinPiece) => {
+  const nw = nomW(piece) * Z;
+  const nh = nomH(piece) * Z;
+  drawFixed(ctx, piece, Math.round((w - nw) / 2) - (piece.halo?.l ?? 0) * Z, Math.round((h - nh) / 2) - (piece.halo?.t ?? 0) * Z);
+};
 
 const StoneCanvas: React.FC<{
   piece: SkinPiece;
@@ -50,9 +62,7 @@ const StoneCanvas: React.FC<{
       const ctx = prepCanvas(canvas, w, h, bleed);
       if (!ctx) return;
       ctx.clearRect(-bleed, -bleed, w + bleed * 2, h + bleed * 2);
-      const nw = nomW(piece) * Z;
-      const nh = nomH(piece) * Z;
-      drawFixed(ctx, piece, Math.round((w - nw) / 2) - (piece.halo?.l ?? 0) * Z, Math.round((h - nh) / 2) - (piece.halo?.t ?? 0) * Z);
+      drawStonePiece(ctx, w, h, piece);
     };
     // Synchronous after decode — the shared no-rAF rule.
     const schedule = draw;
@@ -84,7 +94,7 @@ export const PlayStoneSkin: React.FC<{ dimmed?: boolean }> = ({ dimmed = false }
         <StoneCanvas
           piece={face}
           bleed={0}
-          style={{ opacity: dimmed ? DIM : 1, transition: 'opacity 0.25s ease' }}
+          style={{ opacity: dimmed ? PLAY_STONE_DIM : 1, transition: 'opacity 0.25s ease' }}
         />
       )}
       {!dimmed && hover && <StoneCanvas piece={hover} bleed={0} className="play-stone-hover" />}
