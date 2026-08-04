@@ -177,17 +177,21 @@ const PortcullisSkin: React.FC<{ className: string }> = ({ className }) => {
     // and pull the box onto whole screen pixels on both axes.
     const snap = () => {
       host.style.top = '';
-      host.style.left = '';
       const cs = getComputedStyle(host);
       const baseTop = parseFloat(cs.top);
-      const baseLeft = parseFloat(cs.left);
       // FLOOR, not round: the anchor's fraction is a constant .5 (62.5% of
       // 44), and rounding it away from the rung would seat the painted
       // band 1px below the DOM rung box; flooring pulls the art up onto
       // it exactly.
+      // Y ONLY — an x-snap was tried and REVERTED (2026-08-03): the mesh
+      // shares its x with the DOM controls and the menu's lattice, all of
+      // which ride the same fractionally-centered column; snapping the
+      // art alone shifted it 0.5–1px left of everything it must register
+      // with (user caught the plates sitting off-center of Play). If edge
+      // crispness at half-pixel viewports ever matters, snap the SHARED
+      // wrapper, never this layer.
       const r = host.getBoundingClientRect();
       if (Number.isFinite(baseTop)) host.style.top = `${baseTop - (r.top - Math.floor(r.top))}px`;
-      if (Number.isFinite(baseLeft)) host.style.left = `${baseLeft - (r.left - Math.floor(r.left))}px`;
     };
     // SYNCHRONOUS draw, not rAF: hidden/background tabs freeze rAF and the
     // canvas stays blank until the tab fronts (hit live in the hidden
