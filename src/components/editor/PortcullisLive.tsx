@@ -3,6 +3,7 @@ import { skinFromSlices, prepCanvas, whenDecoded, type ForgeSlice } from '../gam
 import { drawRailSkin } from '../game/PortcullisMesh';
 import { drawGateBars, drawGateBeamSkin, drawGateSignSkin } from '../shared/GateMesh';
 import { drawStonePiece, dimStoneFace } from '../game/PlayStoneSkin';
+import { drawRungPlaque } from '../game/RungPlaque';
 
 // ============================================================================
 // PORTCULLIS LIVE — the Live panel for the non-nine-slice kits
@@ -21,11 +22,45 @@ import { drawStonePiece, dimStoneFace } from '../game/PlayStoneSkin';
 
 interface Props {
   kitId: string;
-  family: 'rail' | 'gate' | 'nav-gate' | 'stone';
+  family: 'rail' | 'gate' | 'nav-gate' | 'stone' | 'plaque';
   slices: ForgeSlice[];
-  /** Surface width in CSS px — the W slider (mobile ~393, desktop rail 672). Ignored by 'stone' (fixed 120). */
+  /** Surface width in CSS px — the W slider (mobile ~393, desktop rail 672). Ignored by 'stone' and 'plaque' (content-sized). */
   width: number;
 }
+
+/**
+ * One plaque sample: the shared 3-slice behind REAL content, sized by the
+ * content like the live rail — drawn with the game's own drawRungPlaque.
+ */
+const PlaqueSample: React.FC<{ skin: Map<string, import('../game/panelSkins').SkinPiece>; children: React.ReactNode }> = ({ skin, children }) => {
+  const hostRef = React.useRef<HTMLSpanElement>(null);
+  const canvasRef = React.useRef<HTMLCanvasElement>(null);
+  React.useLayoutEffect(() => {
+    const host = hostRef.current;
+    const canvas = canvasRef.current;
+    if (!host || !canvas) return;
+    let cancelled = false;
+    const draw = () => {
+      const w = host.clientWidth;
+      const h = host.clientHeight;
+      if (!w || !h) return;
+      const ctx = prepCanvas(canvas, w, h, 0);
+      if (!ctx) return;
+      ctx.clearRect(0, 0, w, h);
+      drawRungPlaque(ctx, w, h, skin);
+    };
+    whenDecoded([...skin.values()]).then(() => { if (!cancelled) draw(); });
+    const ro = new ResizeObserver(draw);
+    ro.observe(host);
+    return () => { cancelled = true; ro.disconnect(); };
+  }, [skin]);
+  return (
+    <span ref={hostRef} style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minHeight: 26, padding: '0 14px' }}>
+      <canvas ref={canvasRef} aria-hidden style={{ position: 'absolute' }} />
+      <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: 4 }}>{children}</span>
+    </span>
+  );
+};
 
 /** The Play Stone's fixed live footprint — 60×18 art, every viewport. */
 const STONE_W = 120;
@@ -122,6 +157,27 @@ export const PortcullisLive: React.FC<Props> = ({ kitId, family, slices, width }
     whenDecoded([...skin.values()]).then(draw);
     return () => { cancelled = true; };
   });
+
+  if (family === 'plaque' && skin.size > 0) {
+    return (
+      <div className="rounded" style={{ background: '#040403', padding: 24 }}>
+        <div className="flex items-center justify-center gap-8 flex-wrap">
+          <PlaqueSample skin={skin}>
+            <span className="text-stone-400 text-xs">Lives:</span>
+            <span className="text-xs">❤️❤️❤️</span>
+          </PlaqueSample>
+          <PlaqueSample skin={skin}>
+            <span className="text-stone-400 text-xs">Max Turns:</span>
+            <span className="text-xs text-parchment-300 font-medium">100</span>
+          </PlaqueSample>
+        </div>
+        <p className="mt-3 text-[11px] text-stone-500 text-center">
+          Both rail plaques wear this ONE design at their own content widths —
+          caps fixed, middle tiling between them, text and hearts on top.
+        </p>
+      </div>
+    );
+  }
 
   if (family === 'stone' && skin.size > 0) {
     return (

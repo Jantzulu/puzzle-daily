@@ -218,6 +218,18 @@ export const DEFAULT_KITS: KitSpec[] = [
     ],
   },
   {
+    id: 'rung-plaque',
+    name: 'Rung Plaques (Lives / Max Turns)',
+    builtIn: true,
+    description:
+      'ONE shared 3-slice worn by BOTH rail plaques: Lives (left) and Max Turns (right) ride the control rung wearing this same design at their own content-driven widths — the sign-plate pattern (fixed painted ends, tiling middle). Design once, both wear it. Renders 26px tall (13 art), vertically centered on the rung; the DOM text and heart icons ride ON TOP. WIRED: drop the export at src/assets/panels/rung-plaque-slices.json. (During a run, Max Turns yields its spot to the Concede button, which keeps its own look.)',
+    pieces: [
+      { id: 'plaque-cap-l', label: 'Plaque Cap L', w: 6, h: 13, repeat: 'fixed', notes: 'Finished left end — same 13-art register as the gate sign plates, so the rung and menu speak one plate language.' },
+      { id: 'plaque-mid', label: 'Plaque Middle', w: 12, h: 13, repeat: 'tile-x', notes: 'Tiles behind the content to ANY width — Lives and Max Turns differ, one design serves both. Keep it plain or the motif recurs every period.' },
+      { id: 'plaque-cap-r', label: 'Plaque Cap R', w: 6, h: 13, repeat: 'fixed' },
+    ],
+  },
+  {
     id: 'play-gem',
     name: 'Play Stone',
     builtIn: true,
@@ -300,7 +312,11 @@ const STORAGE_KEY = 'panel_forge_kits_v1';
 //      optional hover/pressed + play-frame (never dims, 8-art aura,
 //      drawn OVER the face). Old draft gem-normal/hover/pressed (64×22)
 //      replaced.
-const DEFAULTS_VERSION = 17;
+// v18: NEW rung-plaque kit — ONE shared 3-slice worn by both rail
+//      plaques (Lives + Max Turns) at content-driven widths; 13-art
+//      register matching the gate sign plates. Design once, both wear it
+//      (user ask).
+const DEFAULTS_VERSION = 18;
 
 function loadKits(): KitSpec[] {
   try {
@@ -597,7 +613,7 @@ export interface Assembly {
   height: number;
 }
 
-type KitFamily = 'nine-slice' | 'nine-slice-capped' | 'quest-box' | 'gate' | 'rail' | 'nav-gate' | 'gem' | 'buttons';
+type KitFamily = 'nine-slice' | 'nine-slice-capped' | 'quest-box' | 'gate' | 'rail' | 'nav-gate' | 'gem' | 'plaque' | 'buttons';
 
 function kitFamily(kit: KitSpec): KitFamily | null {
   const ids = new Set(kit.pieces.map(p => p.id));
@@ -610,6 +626,7 @@ function kitFamily(kit: KitSpec): KitFamily | null {
   if (ids.has('rail-face')) return 'rail';
   if (ids.has('beam-face')) return 'nav-gate';
   if (ids.has('play-button')) return 'gem';
+  if (ids.has('plaque-mid')) return 'plaque';
   if (ids.has('btn-normal-mid')) return 'buttons';
   return null;
 }
@@ -1095,6 +1112,26 @@ function assembleGem(kit: KitSpec): Assembly | null {
   return { regions, width: x - gap, height: maxH };
 }
 
+function assemblePlaque(kit: KitSpec): Assembly | null {
+  const cl = kit.pieces.find(p => p.id === 'plaque-cap-l');
+  const m = kit.pieces.find(p => p.id === 'plaque-mid');
+  const cr = kit.pieces.find(p => p.id === 'plaque-cap-r');
+  if (!cl || !m || !cr) return null;
+  // Cap · mid · mid · cap — the second mid exists so the artist can check
+  // the seam; only the first period is the cut (the slicing rule).
+  const regions: AssemblyRegion[] = [];
+  let x = 0;
+  regions.push({ pieceId: cl.id, x, y: 0, w: cl.w, h: cl.h, rep: 0 });
+  x += cl.w;
+  for (let i = 0; i < 2; i++) {
+    regions.push({ pieceId: m.id, x, y: 0, w: m.w, h: m.h, rep: i });
+    x += m.w;
+  }
+  regions.push({ pieceId: cr.id, x, y: 0, w: cr.w, h: cr.h, rep: 0 });
+  x += cr.w;
+  return { regions, width: x, height: Math.max(cl.h, m.h, cr.h) };
+}
+
 function assembleButtons(kit: KitSpec): Assembly | null {
   const states = ['normal', 'hover', 'pressed'];
   const regions: AssemblyRegion[] = [];
@@ -1129,6 +1166,7 @@ export function assembleKit(kit: KitSpec): Assembly | null {
     case 'rail': return assembleRail(kit);
     case 'nav-gate': return assembleNavGate(kit);
     case 'gem': return assembleGem(kit);
+    case 'plaque': return assemblePlaque(kit);
     case 'buttons': return assembleButtons(kit);
     default: return null;
   }

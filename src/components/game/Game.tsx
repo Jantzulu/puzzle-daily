@@ -43,6 +43,7 @@ import { BugReportModal } from './BugReportModal';
 import type { TrackedRun } from '../../types/bugReport';
 import { GemMesh } from './GemMesh';
 import { PlayStoneSkin, playStoneSkinActive } from './PlayStoneSkin';
+import { RungPlaque } from './RungPlaque';
 import { ReplaySlabMesh } from './ReplaySlabMesh';
 
 // Test mode types
@@ -2428,8 +2429,12 @@ export const Game: React.FC<GameProps> = ({
                       rail as the spiked bottom. Spikes hang over the
                       dungeon (wrapper z-40 > board z-10). */}
                   <PortcullisMesh />
-                  {/* Left: Lives - centered in left third */}
-                  <div className="flex items-center justify-center gap-1">
+                  {/* Left: Lives - centered in left third, on the shared
+                      rung plaque (one painted 3-slice serves Lives AND Max
+                      Turns — user design; plain rung look when unpainted) */}
+                  <div className="flex items-center justify-center">
+                  <RungPlaque>
+                    <span className="inline-flex items-center gap-1">
                     <span className="text-stone-400 text-xs">Lives:</span>
                     <div className="flex items-center gap-0.5">
                       {(() => {
@@ -2476,6 +2481,8 @@ export const Game: React.FC<GameProps> = ({
                         return hearts;
                       })()}
                     </div>
+                    </span>
+                  </RungPlaque>
                   </div>
 
                   {/* Center: Play button OR Turn counter OR Test mode indicator - centered in middle third */}
@@ -2608,9 +2615,15 @@ export const Game: React.FC<GameProps> = ({
                   <div className="flex items-center justify-center">
                     {gameState.gameStatus === 'setup' || testMode !== 'none' ? (
                       gameState.puzzle.maxTurns && (
-                        <div className="flex items-center gap-1">
-                          <span className="text-stone-400 text-xs">Max Turns:</span>
-                          <span className="text-xs lg:text-sm text-parchment-300 font-medium">{gameState.puzzle.maxTurns}</span>
+                        <div className="flex items-center">
+                          {/* The same shared plaque as Lives — one design,
+                              both wear it at their own content width. */}
+                          <RungPlaque>
+                            <span className="inline-flex items-center gap-1">
+                              <span className="text-stone-400 text-xs">Max Turns:</span>
+                              <span className="text-xs lg:text-sm text-parchment-300 font-medium">{gameState.puzzle.maxTurns}</span>
+                            </span>
+                          </RungPlaque>
                         </div>
                       )
                     ) : (

@@ -2462,6 +2462,20 @@ body.menu-gate-instant .quest-box-anchor {
   align-items: center;
 }
 
+/* The rung plaques (Lives / Max Turns) on their painted 3-slice — one
+   shared design, content-driven widths (user call, 2026-08-04). Padding
+   clears the 6-art caps; min-height = the 13-art plaque (26px), centered
+   on the rung by the rail grid as before. position:relative for the
+   crisp-snap and the canvas behind. */
+.rung-plaque-skinned {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 26px;
+  padding: 0 14px;
+}
+
 /* Play Stone optional state faces (painted hover/pressed pieces) swap by
    CSS opacity — no JS state, and they only mount while playable, so a
    dimmed stone never glints. */

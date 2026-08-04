@@ -78,13 +78,14 @@ export const PanelForgeImport: React.FC<Props> = ({ kit, assembly }) => {
   // game's own draw routines) — PanelNineSlice knows nine-slice anatomy
   // only. Detection mirrors PanelForge's kitFamily precedence: nine-slice
   // ids win, so quest/window kits never land here.
-  const portFamily = useMemo<null | 'rail' | 'gate' | 'nav-gate' | 'stone'>(() => {
+  const portFamily = useMemo<null | 'rail' | 'gate' | 'nav-gate' | 'stone' | 'plaque'>(() => {
     const ids = new Set(kit.pieces.map(p => p.id));
     if (ids.has('corner-tl') || ids.has('plate-mid')) return null;
     if (ids.has('rail-face')) return 'rail';
     if (ids.has('bar-segment')) return 'gate';
     if (ids.has('beam-face')) return 'nav-gate';
     if (ids.has('play-button')) return 'stone';
+    if (ids.has('plaque-mid')) return 'plaque';
     return null;
   }, [kit]);
   const [slices, setSlices] = useState<Slice[]>([]);
@@ -515,7 +516,7 @@ export const PanelForgeImport: React.FC<Props> = ({ kit, assembly }) => {
             <div className="border-t border-stone-700 pt-3 space-y-2">
               <div className="flex items-center gap-3 flex-wrap">
                 <h4 className="text-sm font-semibold text-parchment-100">Live panel</h4>
-                {portFamily !== 'stone' && (
+                {portFamily !== 'stone' && portFamily !== 'plaque' && (
                   <>
                     <label className="flex items-center gap-2 text-xs text-stone-400">
                       W
@@ -544,6 +545,9 @@ export const PanelForgeImport: React.FC<Props> = ({ kit, assembly }) => {
                 )}
                 {portFamily === 'stone' && (
                   <span className="text-xs text-stone-500">fixed 120×36 — the stone never resizes</span>
+                )}
+                {portFamily === 'plaque' && (
+                  <span className="text-xs text-stone-500">content-sized — each plaque fits its own text</span>
                 )}
               </div>
               <PortcullisLive kitId={kit.id} family={portFamily} slices={slices} width={panelW} />
@@ -641,7 +645,7 @@ export const PanelForgeImport: React.FC<Props> = ({ kit, assembly }) => {
           {/* WIRED kits: their committed slices files ARE the in-game art
               (hardcoded by decision — core chrome is source, not a theme
               knob; see panelSkins.ts). */}
-          {['quest-box', 'portcullis-gate', 'control-rail', 'nav-gate', 'play-gem'].includes(kit.id) && (
+          {['quest-box', 'portcullis-gate', 'control-rail', 'nav-gate', 'play-gem', 'rung-plaque'].includes(kit.id) && (
             <p className="text-xs text-stone-400">
               This kit is live in the game: drop the exported JSON at{' '}
               <code className="text-copper-300">src/assets/panels/{kit.id}-slices.json</code>{' '}
