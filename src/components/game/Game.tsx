@@ -2442,10 +2442,12 @@ export const Game: React.FC<GameProps> = ({
                       the quest box's QUEST-plate relation; hearts alone in
                       the main box). pr-4 = the stone frame's 16px aura:
                       the cell spans rung end to stone BOX, so the padding
-                      re-centers the plaque against the stone ART. pl-2 =
-                      the user's inward bias off that midpoint ("moved out
-                      too much" — 8px outer pad nudges the center 4px in). */}
-                  <div className="flex items-center justify-center pl-2 pr-4">
+                      re-centers the plaque against the stone ART. pl-4 =
+                      the user's inward bias off that midpoint, tuned in
+                      two rounds ("moved out too much" then "a couple art
+                      pixels closer" — 16px outer pad = center 8px in,
+                      i.e. 4 art px total). */}
+                  <div className="flex items-center justify-center pl-4 pr-4">
                   <RungPlaque header="Lives">
                     <span className="inline-flex items-center gap-1">
                     <div className="flex items-center gap-0.5">
@@ -2614,8 +2616,9 @@ export const Game: React.FC<GameProps> = ({
                       blood color + pulse carry the warning (pinned).
                       pl-4 mirrors the Lives cell: 16px stone-aura padding
                       so the plaque centers between the stone ART edge and
-                      the rung end; pr-2 = the same 4px inward bias. */}
-                  <div className="flex items-center justify-center pl-4 pr-2">
+                      the rung end; pr-4 = the same two-round 8px inward
+                      bias. */}
+                  <div className="flex items-center justify-center pl-4 pr-4">
                     <RungPlaque header="Turns">
                       {(() => {
                         const maxTurns = currentPuzzle.maxTurns;
