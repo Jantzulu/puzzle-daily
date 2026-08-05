@@ -2417,8 +2417,9 @@ export const Game: React.FC<GameProps> = ({
                       rail's z-40) — the nav covered the header art's top
                       row. The nudge seats the header crest exactly at the
                       rung top. Cells already carry position:relative from
-                      .control-rail > *. */}
-                  <div className="flex items-center justify-end pr-[18px]" style={{ top: 2 }}>
+                      .control-rail > *. (+1 more by user eye, 2026-08-05:
+                      settled at 3.) */}
+                  <div className="flex items-center justify-end pr-[18px]" style={{ top: 3 }}>
                   <RungPlaque header="Lives">
                     {/* top: 2 = the TURNS counter's exact drop, so hearts
                         and digits share a visual center across the two
@@ -2593,9 +2594,9 @@ export const Game: React.FC<GameProps> = ({
                       STONE-ANCHORED like the Lives cell: justify-start +
                       18px stone-side padding (16px aura box + 2px gap),
                       constant at every viewport. */}
-                  {/* Same 2px seat as the Lives cell — the two plaques
+                  {/* Same seat as the Lives cell — the two plaques
                       move in lockstep. */}
-                  <div className="flex items-center justify-start pl-[18px]" style={{ top: 2 }}>
+                  <div className="flex items-center justify-start pl-[18px]" style={{ top: 3 }}>
                     <RungPlaque header="Turns">
                       {(() => {
                         const maxTurns = currentPuzzle.maxTurns;
