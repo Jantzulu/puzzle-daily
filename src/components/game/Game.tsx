@@ -2413,7 +2413,10 @@ export const Game: React.FC<GameProps> = ({
                       i.e. 4 art px total). */}
                   <div className="flex items-center justify-center pl-4 pr-4">
                   <RungPlaque header="Lives">
-                    <span className="inline-flex items-center gap-1">
+                    {/* top: 2 = the TURNS counter's exact drop, so hearts
+                        and digits share a visual center across the two
+                        plaques (user calls: dropped 3, then raised 1). */}
+                    <span className="relative inline-flex items-center gap-1" style={{ top: 2 }}>
                     <div className="flex items-center gap-0.5">
                       {(() => {
                         const puzzleLives = currentPuzzle.lives ?? 3;
@@ -2587,12 +2590,13 @@ export const Game: React.FC<GameProps> = ({
                         // the live counter centers over it.
                         const ghostNum = maxTurns ? String(maxTurns) : '000';
                         return (
-                          /* top: 3 drops the digits fully below the TURNS
-                             header plate (user call): the header reaches
-                             7px into the plaque (18px plate, 11px proud)
-                             and the centered digits' ink started at
-                             ~7.5px — reading as touching it. */
-                          <span className="relative inline-flex justify-center whitespace-nowrap tabular-nums" style={{ top: 3 }}>
+                          /* top: 2 drops the digits below the TURNS header
+                             plate (user calls: dropped 3 to clear the
+                             header's 7px reach into the plaque — the
+                             centered digits' ink read as touching it —
+                             then raised 1; keep in lockstep with the
+                             hearts' drop on the Lives plaque). */
+                          <span className="relative inline-flex justify-center whitespace-nowrap tabular-nums" style={{ top: 2 }}>
                             {/* inline-flex items-baseline, NOT block: as a
                                 block flex item the ghost inherits the theme
                                 root's 30px line box and inflates the plaque
