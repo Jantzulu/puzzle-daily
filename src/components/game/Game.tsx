@@ -2553,7 +2553,11 @@ export const Game: React.FC<GameProps> = ({
                           {playStoneSkinActive
                             ? <PlayStoneSkin dimmed={gameState.placedCharacters.length === 0} />
                             : <GemMesh tone="emerald" phase={0} />}
-                          <span>Play</span>
+                          {/* All-caps bold + carved-header tracking — the
+                              register of the panel titles below the board
+                              (user call 2026-08-04); JSX stays sentence
+                              case, CSS uppercases (house convention). */}
+                          <span className="uppercase tracking-[0.05em]">Play</span>
                         </button>
                       )
                     ) : (
@@ -2579,7 +2583,12 @@ export const Game: React.FC<GameProps> = ({
                         {concedeStoneActive
                           ? <PlayStoneSkin face="concede" />
                           : <GemMesh tone="topaz" phase={300} />}
-                        <span>Concede</span>
+                        {/* Same register and size as PLAY - measured in
+                            the themed face (Modern Antiqua, the pinned
+                            estimate-in-the-themed-font trap): CONCEDE =
+                            72px of tracked caps at text-sm, comfortable
+                            on the fixed 120px stone. */}
+                        <span className="uppercase tracking-[0.05em]">Concede</span>
                       </button>
                     )}
                   </div>
