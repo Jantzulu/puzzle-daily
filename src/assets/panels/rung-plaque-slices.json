@@ -1,44 +1,50 @@
 {
-    "version":  1,
-    "kitId":  "rung-plaque",
-    "kitName":  "Rung Plaques (Lives / Max Turns)",
-    "cutAt":  "2026-08-05T01:52:04.879Z",
-    "pieces":  [
-                   {
-                       "id":  "plaque-cap-l",
-                       "w":  6,
-                       "h":  13,
-                       "png":  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAYAAAANCAYAAACKCx+LAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAA6SURBVChTY2BgYGAQF+b/j47Bgl5OlhgYLGFtqouBKZAAmYusCC4Bcw2GBDqmtoS2mgIGBgUV1rACAOxNcQVn/C0fAAAAAElFTkSuQmCC"
-                   },
-                   {
-                       "id":  "plaque-mid",
-                       "w":  12,
-                       "h":  13,
-                       "png":  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAwAAAANCAYAAACdKY9CAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAAvSURBVChTYxAX5v9PCmbwcrL8TwpmsDbV/U8KHtVADKaDBm01hf+kYAb0tEIIAwCYnvGBR1+M2gAAAABJRU5ErkJggg=="
-                   },
-                   {
-                       "id":  "plaque-cap-r",
-                       "w":  6,
-                       "h":  13,
-                       "png":  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAYAAAANCAYAAACKCx+LAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAA8SURBVChTYxAX5v+PjhlAwMvJ8j86Bktam+r+R8cUSsDMxpCAuQhDAqdRVJDQVlP4j47BEjDXIGNQUAEAcrxxBfftOYIAAAAASUVORK5CYII="
-                   },
-                   {
-                       "id":  "header-cap-l",
-                       "w":  4,
-                       "h":  9,
-                       "png":  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAJCAYAAAAVb42gAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAAqSURBVBhXY2BgYGAQF+b/D8NgjpeTJRyDBaxNdeGYagLaagpwDHIGijsAvTkxmXAWxXAAAAAASUVORK5CYII="
-                   },
-                   {
-                       "id":  "header-mid",
-                       "w":  8,
-                       "h":  9,
-                       "png":  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAJCAYAAAAPU20uAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAAqSURBVChTYxAX5v+PDzN4OVn+x4cZrE11/+PDg0KBtprCf3yYAd3f6BgAOGltgb499MsAAAAASUVORK5CYII="
-                   },
-                   {
-                       "id":  "header-cap-r",
-                       "w":  4,
-                       "h":  9,
-                       "png":  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAJCAYAAAAVb42gAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAAqSURBVBhXYxAX5v8Pwwwg4OVk+R+GwYLWprr/YZhqAtpqCv9hGCyA7g4A+xkxmY1kxisAAAAASUVORK5CYII="
-                   }
-               ]
+  "version": 1,
+  "kitId": "rung-plaque",
+  "kitName": "Rung Plaques (Lives / Max Turns)",
+  "cutAt": "2026-08-05T04:26:50.400Z",
+  "pieces": [
+    {
+      "id": "plaque-cap-l",
+      "w": 6,
+      "h": 13,
+      "empty": false,
+      "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAYAAAANCAYAAACKCx+LAAAAfElEQVR4AbSPMQqAMBAEVxsLFSzERgRt7Pz/Q+xsFMRGLAQNYhWzJ5HkAQY2w92QHBfiPdrAC4VuysL0AdKGAuOyoqlrYRJHYER0bYVxmkDKU3OJMPSarD/Bws0foh9mdwRkBpvcgzzVDUZEnqWyB3moCwxFsO2HfEPaPAAAAP//f27KZgAAAAZJREFUAwCbOjMW9WC97AAAAABJRU5ErkJggg=="
+    },
+    {
+      "id": "plaque-mid",
+      "w": 12,
+      "h": 13,
+      "empty": false,
+      "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAwAAAANCAYAAACdKY9CAAAAQklEQVR4AezQKwoAIBgD4LFi0Gwxef+rGQQVMfm4wb8u7IuDMQLYCuYUoWDwDoo36S6y5xcsX7GPBQXbmFCw1AbFAQAA///1jUUzAAAABklEQVQDANv2eA+BJ7T7AAAAAElFTkSuQmCC"
+    },
+    {
+      "id": "plaque-cap-r",
+      "w": 6,
+      "h": 13,
+      "empty": false,
+      "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAYAAAANCAYAAACKCx+LAAAAfklEQVR4AbSPsQqDMBRFb9/SoS10KF1E0MXN//8QNxcFcREHQUWcNCcQQXB1OJyXe0PCM0nbBbI0+ivgLvjZebP36ymo2k5pkgi7QjyFlWexqrr2JjgKDpQYTgVB4K6iKJvwhWyaVwEhe2BaG+dF8Pt+/B7YF/0wKkDA7PzYAQAA///L0CHIAAAABklEQVQDAE81MxZXCtQfAAAAAElFTkSuQmCC"
+    },
+    {
+      "id": "header-cap-l",
+      "w": 4,
+      "h": 9,
+      "empty": false,
+      "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAJCAYAAAAVb42gAAAAV0lEQVR4ATzLoQ6AIBSF4aPFoNni3KDYfP8HsVlgcxazBhNwDzsw/jG+3dujnlQeZpD8MkMZYBqHFuE4r7JRL8E7ByEhxIh9WzlC0MeE8H4/lEEX7gcqAwAA//9T1lZcAAAABklEQVQDAHq8HxCuSTIYAAAAAElFTkSuQmCC"
+    },
+    {
+      "id": "header-mid",
+      "w": 8,
+      "h": 9,
+      "empty": false,
+      "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAJCAYAAAAPU20uAAAAPElEQVR4AbzNqQ0AIBQE0ck3CNAYFP0XhcKgQaA4CmAlyT63yRiwFMspoljwDuUmTuG9H4c+JoqV2lA2AAAA///q43lsAAAABklEQVQDAO+qOAts3IfFAAAAAElFTkSuQmCC"
+    },
+    {
+      "id": "header-cap-r",
+      "w": 4,
+      "h": 9,
+      "empty": false,
+      "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAJCAYAAAAVb42gAAAAWElEQVR4AUyLoQ6AMAwFHzUI0BhCshkc//8hOMyWEAwaxNS216TZxOXaayoAcgfErwsMHmSeRhg1gC80zutWa+DinWvh2DeEGFvgxEjL9ycYGsLzwqhhKAAAAP//tX+zEQAAAAZJREFUAwC2sB8Qm8iawgAAAABJRU5ErkJggg=="
+    }
+  ]
 }

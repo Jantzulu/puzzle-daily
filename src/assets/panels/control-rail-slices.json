@@ -2,35 +2,35 @@
   "version": 1,
   "kitId": "control-rail",
   "kitName": "Control Rail",
-  "cutAt": "2026-08-03T03:00:18.500Z",
+  "cutAt": "2026-08-05T03:44:38.361Z",
   "pieces": [
     {
       "id": "rail-face",
       "w": 24,
       "h": 22,
       "empty": false,
-      "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAWCAYAAADafVyIAAAAUUlEQVR4AeySIQpAQQhEh2lWk/c/nclq/H/3BKaBDYKvCcJ7EsCnhBEBJTQzKKG7Q8ltcBLoZg+MblfRKhoNjAv7RQ8oqioo0UfubihhZkLJDwAA//8kr8McAAAABklEQVQDACcl8BXMYH20AAAAAElFTkSuQmCC"
+      "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAWCAYAAADafVyIAAAAUUlEQVR4AeySsQkAQQgEl00Mtf8qNTT6v6vAaOECwckEYUYC+JQwIhBCaGZQQneHktvgJNDNHhjdrqJVNBoYF/aLHlBUVVCij9zdUMLMRAr5AQAA//8k1Pg4AAAABklEQVQDAHbX8BUJkbLNAAAAAElFTkSuQmCC"
     },
     {
       "id": "rail-cap-l",
       "w": 8,
       "h": 22,
       "empty": false,
-      "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAWCAYAAAD9091gAAAAY0lEQVR4AeyQMQ4AIQgEuetsqfj/66hoKT0XEqu1vUqTQQODGl7pNddGgTDNTE5AWM0iYwxKCSiqqjBKQKGuIaEEkt+pK/Qo/ppDRPSDJO4/QGKUkJmkt1Ml4AiJAeFxdznxAQAA//9o1JfSAAAABklEQVQDAArdRyYxu3FWAAAAAElFTkSuQmCC"
+      "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAWCAYAAAD9091gAAAAY0lEQVR4AeyQMQ4AIQgEuWss4f+vhJLKcyGxWturNBk0MKjhlV5zbRQI08zEDkBYzSJjDEoJKKqqMEpAoa4hoQSS36kr9Cj+mkNE9IMk7j9AYpSQmaS3UyXgCIkB4XF38QMfAAAA///Tur4kAAAABklEQVQDAIIpRyarmzSOAAAAAElFTkSuQmCC"
     },
     {
       "id": "rail-cap-r",
       "w": 8,
       "h": 22,
       "empty": false,
-      "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAWCAYAAAD9091gAAAAZElEQVR4AeyQoRLAMAhDM1xtFf//dSgsciPYwexM7/oo15C7FAFwfwBRVUzQKGstdKRYR/be6KCJE8zA+wVNfBwHKJIzwC0Af+7B3SuEsOkoNcsYMiJSzl+w6Sg1i5gZJlK/HgAAAP//pv74TQAAAAZJREFUAwAG0Ecmc7VdvQAAAABJRU5ErkJggg=="
+      "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAWCAYAAAD9091gAAAAY0lEQVR4AeyQMQ7AMAgDXZaM4f+vhJGpxayFrl0i5QiKseQgAO4PIKoKHaBR1lroSLGO7L3RQRMnmIH3C5r4OA5QJGeAWwD+3IO7Vwhh01FqljFkRKScv2DTUWoWMTPYQOrXAwAA///x+DK3AAAABklEQVQDAH4cRyZFi7rqAAAAAElFTkSuQmCC"
     },
     {
       "id": "forge-plate",
       "w": 4,
       "h": 4,
       "empty": false,
-      "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAYAAACp8Z5+AAAAMUlEQVR4ASTKgQ0AMAgCMNwl8v9R8xMGzoSYFA7+yS9BQCTBbhsUALRlYBd1Z5BY6gEAAP//jqJk8gAAAAZJREFUAwBN1QwHZo/G+gAAAABJRU5ErkJggg=="
+      "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAYAAACp8Z5+AAAAMUlEQVR4ASTKgQ0AMAgCMNwR8v958wkGzoSYFA7+yS9BQCTBbhsUALRlYBd1Z5BY6gEAAP//NDI8lQAAAAZJREFUAwBF3QwHrSi/rQAAAABJRU5ErkJggg=="
     },
     {
       "id": "rail-spike",
@@ -43,7 +43,7 @@
         "r": 8,
         "b": 0
       },
-      "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAICAYAAADjoT9jAAAAcElEQVR4AZyPQQ4AEQxFmSNY2TqD+x+h9+gNuuz4k0wTC7TEE6T1vifth/bejdaaglqr/ox2HSznSZCJyJpLKUlE7MzM2GcsK04C9E0SXADP46jzCFB3jVcw/cKbHqm8AtReERF8v4ikR6KIAPVhXgAAAP//wiOSGAAAAAZJREFUAwDKbiUPlZdOUAAAAABJRU5ErkJggg=="
+      "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAICAYAAADjoT9jAAAAbklEQVR4AZyPQQ4AEQxFmQuwcwP3P09P0W1XHX+SaWKBlniCtN73pP3Q3rvRWlNQa9Wf0a6D5TwJMhFZcykliYidmRn7jGXFSYC+SYIL4HkcdR4B6q7xCqZfeNMjlVeA2isigu8XkfRIFBGgPswLAAD//7vdraoAAAAGSURBVAMAlS8lD3ehtlMAAAAASUVORK5CYII="
     }
   ]
 }

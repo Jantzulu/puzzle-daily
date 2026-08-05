@@ -2,42 +2,55 @@
   "version": 1,
   "kitId": "nav-gate",
   "kitName": "Nav Gate Menu",
-  "cutAt": "2026-08-03T12:52:55.212Z",
+  "cutAt": "2026-08-05T03:39:16.510Z",
   "pieces": [
     {
       "id": "beam-face",
       "w": 24,
       "h": 18,
       "empty": false,
-      "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAASCAYAAABB7B6eAAAATElEQVR4AezSKwoAYAgD4LFmNXn/05msxv9xAtOa4NcEYZMAjhIjAko0MyjR3aH0O3gV6GYPjNluRBvRmMC4wKqCkv5NuxtKzEwoXQAAAP//KHyPgwAAAAZJREFUAwDrCPAN0wJh7wAAAABJRU5ErkJggg=="
+      "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAASCAYAAABB7B6eAAAAS0lEQVR4AezSKwoAYAgD4LFi1PufUqPpf5zAtCb4NUHYJICjxIhACNHMoER3h9Lv4FWgmz0wZrsRbURjAuMCqwpK+jftbigxM5FCFwAA//+QkVRPAAAABklEQVQDAMW08A1fq76WAAAAAElFTkSuQmCC"
     },
     {
       "id": "beam-cap-l",
       "w": 8,
       "h": 18,
       "empty": false,
-      "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAASCAYAAABmQp92AAAAYElEQVR4AeSQMQ4AIQgEuetsqfj/66hoKT2XSyjM+gJNRgUGE3nlX3MdFAjTzOQEhNUsMsaglICiqgqjBBTqGbKVQPKdukmIiP73fuk5QGKUkJl7Y8clIILEgPC4u5z4AAAA//+eKimyAAAABklEQVQDALCwRx4reT9FAAAAAElFTkSuQmCC"
+      "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAASCAYAAABmQp92AAAAX0lEQVR4AeSQMQ4AIQgEuWss4f+vhJLKc7mEwqwv0GRUYDCRV/4110GBMM1M7ACE1SwyxqCUgKKqCqMEFOoZspVA8p26SYiI/vd+6TlAYpSQmXtjxyUggsSA8Li7+IEPAAD//94VbgMAAAAGSURBVAMAtM9HHvu2h38AAAAASUVORK5CYII="
     },
     {
       "id": "beam-cap-r",
       "w": 8,
       "h": 18,
       "empty": false,
-      "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAASCAYAAABmQp92AAAAXklEQVR4AeSQMQ7AMAgDXW9ZM+X/r2NiZWwxa6EfqJQjKIelCAK4PwDPOZhQkGstdKSsw703OhTShP6g+4VCehwHJMXfB9xdawDVdJTNMi4qIlIDVNNRNgvNDBPprwcAAP//vU3HLwAAAAZJREFUAwCso0ceL9bKSwAAAABJRU5ErkJggg=="
+      "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAASCAYAAABmQp92AAAAXklEQVR4AeSQMQ7AMAgDXS8Zw/9fSUamFrMW+oFKOYJyWIoggPsD0MxgAwpyrYWOlHW490aHQprQH3S/UEiP44Ck+PvAOUdrANV0lM0yLioiUgNU01E2C90dPpD+egAAAP//QHj2nAAAAAZJREFUAwCwwkcefAyDewAAAABJRU5ErkJggg=="
     },
     {
       "id": "beam-bar-segment",
       "w": 6,
       "h": 24,
       "empty": false,
-      "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAYAAAAYCAYAAADZEIyjAAAAMUlEQVR4AeyQsQkAMBACJVPYOoP7z2byaV3hQRG87g6A2I6kX5KZb8DbzoJyskpKyQUAAP//0ZKUSwAAAAZJREFUAwC5rQfSICSBcgAAAABJRU5ErkJggg=="
+      "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAYAAAAYCAYAAADZEIyjAAAAMUlEQVR4AeyQsQkAMBACJRPYuYH7b2jyaV3hQRG87g6A2I6kX5KZb8DbzoJyskpKyQUAAP//l/kqbAAAAAZJREFUAwCewAdXwBw5KQAAAABJRU5ErkJggg=="
     },
     {
       "id": "beam-plate",
       "w": 4,
       "h": 4,
       "empty": false,
-      "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAYAAACp8Z5+AAAAMUlEQVR4ASTKgQ0AMAgCMNwl8v9R8xMGzoSYFA7+yS9BQCTBbhsUALRlYBd1Z5BY6gEAAP//jqJk8gAAAAZJREFUAwBN1QwHZo/G+gAAAABJRU5ErkJggg=="
+      "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAYAAACp8Z5+AAAAMUlEQVR4ASTKgQ0AMAgCMNwR8v958wkGzoSYFA7+yS9BQCTBbhsUALRlYBd1Z5BY6gEAAP//NDI8lQAAAAZJREFUAwBF3QwHrSi/rQAAAABJRU5ErkJggg=="
+    },
+    {
+      "id": "avatar-crest",
+      "w": 24,
+      "h": 24,
+      "empty": true,
+      "halo": {
+        "l": 4,
+        "t": 4,
+        "r": 4,
+        "b": 4
+      },
+      "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAANUlEQVR4AezSsQkAQAgEwef7L9oSNjIQxvhAGPa/5fMggREhSoEcqAhRCuRARYhSIAf3KxoAAAD//44aHwAAAAAGSURBVAMA7HAAMS/k/YQAAAAASUVORK5CYII="
     },
     {
       "id": "sign-cap-l",
