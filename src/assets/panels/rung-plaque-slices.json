@@ -1,1 +1,26 @@
-{"version":1,"kitId":"rung-plaque","kitName":"Rung Plaques (Lives / Max Turns)","cutAt":"","pieces":[]}
+{
+    "version":  1,
+    "kitId":  "rung-plaque",
+    "kitName":  "Rung Plaques (Lives / Max Turns)",
+    "cutAt":  "2026-08-05T01:52:04.879Z",
+    "pieces":  [
+                   {
+                       "id":  "plaque-cap-l",
+                       "w":  6,
+                       "h":  13,
+                       "png":  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAYAAAANCAYAAACKCx+LAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAA6SURBVChTY2BgYGAQF+b/j47Bgl5OlhgYLGFtqouBKZAAmYusCC4Bcw2GBDqmtoS2mgIGBgUV1rACAOxNcQVn/C0fAAAAAElFTkSuQmCC"
+                   },
+                   {
+                       "id":  "plaque-mid",
+                       "w":  12,
+                       "h":  13,
+                       "png":  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAwAAAANCAYAAACdKY9CAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAAvSURBVChTYxAX5v9PCmbwcrL8TwpmsDbV/U8KHtVADKaDBm01hf+kYAb0tEIIAwCYnvGBR1+M2gAAAABJRU5ErkJggg=="
+                   },
+                   {
+                       "id":  "plaque-cap-r",
+                       "w":  6,
+                       "h":  13,
+                       "png":  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAYAAAANCAYAAACKCx+LAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAA8SURBVChTYxAX5v+PjhlAwMvJ8j86Bktam+r+R8cUSsDMxpCAuQhDAqdRVJDQVlP4j47BEjDXIGNQUAEAcrxxBfftOYIAAAAASUVORK5CYII="
+                   }
+               ]
+}
