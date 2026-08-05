@@ -222,11 +222,14 @@ export const DEFAULT_KITS: KitSpec[] = [
     name: 'Rung Plaques (Lives / Max Turns)',
     builtIn: true,
     description:
-      'ONE shared 3-slice worn by BOTH rail plaques: Lives (left) and Max Turns (right) ride the control rung wearing this same design at their own content-driven widths — the sign-plate pattern (fixed painted ends, tiling middle). Design once, both wear it. Renders 26px tall (13 art), vertically centered on the rung; the DOM text and heart icons ride ON TOP. WIRED: drop the export at src/assets/panels/rung-plaque-slices.json. (During a run, Max Turns yields its spot to the Concede button, which keeps its own look.)',
+      'ONE shared design worn by BOTH rail plaques: LIVES (hearts) and TURNS (the run counter — 0/X before the run, counting during it) ride the control rung at their own content-driven widths. Two registers: the MAIN plaque 3-slice (13 art, 26px, vertically centered on the rung) carrying the hearts/counter, and a smaller HEADER plate 3-slice (9 art) riding ~60% proud of its top edge with the LIVES/TURNS label as DOM text — the quest box\'s QUEST-plate relation, miniaturized. Design once, both plaques wear it. WIRED: drop the export at src/assets/panels/rung-plaque-slices.json.',
     pieces: [
       { id: 'plaque-cap-l', label: 'Plaque Cap L', w: 6, h: 13, repeat: 'fixed', notes: 'Finished left end — same 13-art register as the gate sign plates, so the rung and menu speak one plate language.' },
       { id: 'plaque-mid', label: 'Plaque Middle', w: 12, h: 13, repeat: 'tile-x', notes: 'Tiles behind the content to ANY width — Lives and Max Turns differ, one design serves both. Keep it plain or the motif recurs every period.' },
       { id: 'plaque-cap-r', label: 'Plaque Cap R', w: 6, h: 13, repeat: 'fixed' },
+      { id: 'header-cap-l', label: 'Header Cap L', w: 4, h: 9, repeat: 'fixed', notes: 'The HEADER plate — a smaller register riding proud of the plaque\'s top edge (the quest box\'s QUEST-plate relation, miniaturized). Finished left end.' },
+      { id: 'header-mid', label: 'Header Middle', w: 8, h: 9, repeat: 'tile-x', notes: 'Tiles behind the header label (LIVES / TURNS as DOM text) to its text-driven width. Renders ~60% proud of the plaque top, centered. Leave the header pieces unpainted and the label falls back to an inline chip inside the plaque.' },
+      { id: 'header-cap-r', label: 'Header Cap R', w: 4, h: 9, repeat: 'fixed' },
     ],
   },
   {
@@ -234,12 +237,15 @@ export const DEFAULT_KITS: KitSpec[] = [
     name: 'Play Stone',
     builtIn: true,
     description:
-      'The action button on the control rail, at its REAL unified size: 120×36px at Z=2 on EVERY viewport (60×18 art — the user unified the old 118/132 split, 2026-08-03). Split by design: the BUTTON FACE auto-dims until a hero is placed, the FRAME never dims and stays constant through every state. No gem assumptions — transparency is silhouette, paint any shape (an opaque painting makes an opaque button). WIRED: drop the export at src/assets/panels/play-gem-slices.json. NOTE: after a run starts the same stone carries the Turn counter as DOM text, so the face doubles as that plate.',
+      'The action button on the control rail, at its REAL unified size: 120×36px at Z=2 on EVERY viewport (60×18 art). Split by design: the BUTTON FACE auto-dims until a hero is placed, the FRAME never dims and stays constant through every state. No gem assumptions — transparency is silhouette, paint any shape (an opaque painting makes an opaque button). WIRED: drop the export at src/assets/panels/play-gem-slices.json. While a run is in progress the SAME stone becomes the CONCEDE button: the concede face family (base + optional hover/pressed) swaps in under the ONE shared frame; the Turn counter now lives on the TURNS rung plaque, not here.',
     pieces: [
       { id: 'play-button', label: 'Button Face', w: 60, h: 18, repeat: 'fixed', notes: 'The stone itself — AUTO-DIMMED by the game until a hero is placed, so paint the LIT state. The DOM label (Play, then the running Turn counter) rides on top. Any silhouette works.' },
       { id: 'play-button-hover', label: 'Button · Hover', w: 60, h: 18, repeat: 'fixed', notes: 'OPTIONAL — swaps in under the pointer (only while playable). Leave unpainted to keep the base face.' },
       { id: 'play-button-pressed', label: 'Button · Pressed', w: 60, h: 18, repeat: 'fixed', notes: 'OPTIONAL — swaps in while pressed. Leave unpainted to skip.' },
-      { id: 'play-frame', label: 'Button Frame', w: 60, h: 18, repeat: 'fixed', notes: 'The ornate frame AROUND the stone — NEVER dimmed, constant in every state, drawn OVER the face so it can overlap its edges. 8 art of AURA on every side (the magenta box): overhang the rail, get ornate. Leave unpainted for a frameless stone.' },
+      { id: 'play-frame', label: 'Button Frame', w: 60, h: 18, repeat: 'fixed', notes: 'The ornate frame AROUND the stone — NEVER dimmed, constant in every state INCLUDING concede, drawn OVER the face so it can overlap its edges. 8 art of AURA on every side (the magenta box): overhang the rail, get ornate. Leave unpainted for a frameless stone.' },
+      { id: 'play-button-concede', label: 'Concede Face', w: 60, h: 18, repeat: 'fixed', notes: 'The stone\'s RUN-STATE face — while a game is in progress the Play stone becomes the CONCEDE button wearing this face under the same shared frame. Never dims. The CONCEDE label rides as DOM text. Leave unpainted and the game falls back to the procedural topaz gem for the concede state.' },
+      { id: 'play-button-concede-hover', label: 'Concede · Hover', w: 60, h: 18, repeat: 'fixed', notes: 'OPTIONAL — swaps in under the pointer while conceding is available. Falls back to the Concede Face, never to the Play faces.' },
+      { id: 'play-button-concede-pressed', label: 'Concede · Pressed', w: 60, h: 18, repeat: 'fixed', notes: 'OPTIONAL — swaps in while pressed. Falls back to the Concede Face.' },
     ],
   },
   {
@@ -316,7 +322,21 @@ const STORAGE_KEY = 'panel_forge_kits_v1';
 //      plaques (Lives + Max Turns) at content-driven widths; 13-art
 //      register matching the gate sign plates. Design once, both wear it
 //      (user ask).
-const DEFAULTS_VERSION = 18;
+// v19: THE PLAQUE/STONE REDESIGN (user spec, 2026-08-04). rung-plaque
+//      gains a HEADER plate 3-slice (header-cap-l/mid/cap-r, 4/8/4 × 9
+//      art) riding ~60% proud of the plaque's top edge with LIVES/TURNS
+//      as DOM text — the quest box's QUEST-plate relation, miniaturized.
+//      Sheet grows a header band at the TOP; artist migration = Sprite →
+//      Canvas Size, height +11, ANCHOR BOTTOM (paint stays put), then
+//      re-export the template. play-gem gains the CONCEDE face family
+//      (play-button-concede + optional -hover/-pressed, 60×18 each)
+//      sharing the ONE never-dimming frame — the stone becomes the
+//      CONCEDE button during a run (the Turn counter moved to the TURNS
+//      plaque). Slots append at the sheet's RIGHT; artist migration =
+//      Canvas Size, width +210, ANCHOR LEFT, then re-export the template.
+//      NOTE: header ids are header-*, NOT plate-* — plate-mid would flip
+//      kitFamily() to 'quest-box'.
+const DEFAULTS_VERSION = 19;
 
 function loadKits(): KitSpec[] {
   try {
@@ -388,6 +408,9 @@ const REF_CROPS: Record<string, RefCrop> = {
   'play-button': { src: 'gem', x: 0, y: 0, w: 200, h: 70 },
   'play-button-hover': { src: 'gem', x: 0, y: 0, w: 200, h: 70 },
   'play-button-pressed': { src: 'gem', x: 0, y: 0, w: 200, h: 70 },
+  'play-button-concede': { src: 'gem', x: 0, y: 0, w: 200, h: 70 },
+  'play-button-concede-hover': { src: 'gem', x: 0, y: 0, w: 200, h: 70 },
+  'play-button-concede-pressed': { src: 'gem', x: 0, y: 0, w: 200, h: 70 },
   // GateBeamMesh viewBox 400×52: beam band y 8–44, bars at x 40..360
   // (half-width 6), forge plates 9×9 at y=21. The sign pieces are DOM CSS
   // (.nav-pill) — no mesh crop; the upload path covers them.
@@ -1117,19 +1140,42 @@ function assemblePlaque(kit: KitSpec): Assembly | null {
   const m = kit.pieces.find(p => p.id === 'plaque-mid');
   const cr = kit.pieces.find(p => p.id === 'plaque-cap-r');
   if (!cl || !m || !cr) return null;
+  const P = (id: string) => kit.pieces.find(p => p.id === id);
+  const hl = P('header-cap-l');
+  const hm = P('header-mid');
+  const hr = P('header-cap-r');
+  // The HEADER band above the main strip (the quest-box band pattern,
+  // minus aura/ornaments): in the game the header straddles the plaque's
+  // top edge, but that overlap is a RENDER concern — the sample gives the
+  // header its own clean ground with a 2px seam so the cut is
+  // uncontaminated. Header row centered over the strip.
+  const header = hl && hm && hr;
+  const headerH = header ? Math.max(hl.h, hm.h, hr.h) : 0;
+  const bandH = header ? headerH + 2 : 0;
   // Cap · mid · mid · cap — the second mid exists so the artist can check
   // the seam; only the first period is the cut (the slicing rule).
   const regions: AssemblyRegion[] = [];
   let x = 0;
-  regions.push({ pieceId: cl.id, x, y: 0, w: cl.w, h: cl.h, rep: 0 });
+  regions.push({ pieceId: cl.id, x, y: bandH, w: cl.w, h: cl.h, rep: 0 });
   x += cl.w;
   for (let i = 0; i < 2; i++) {
-    regions.push({ pieceId: m.id, x, y: 0, w: m.w, h: m.h, rep: i });
+    regions.push({ pieceId: m.id, x, y: bandH, w: m.w, h: m.h, rep: i });
     x += m.w;
   }
-  regions.push({ pieceId: cr.id, x, y: 0, w: cr.w, h: cr.h, rep: 0 });
+  regions.push({ pieceId: cr.id, x, y: bandH, w: cr.w, h: cr.h, rep: 0 });
   x += cr.w;
-  return { regions, width: x, height: Math.max(cl.h, m.h, cr.h) };
+  if (header) {
+    const headerW = hl.w + hm.w * 2 + hr.w;
+    let hx = Math.round((x - headerW) / 2);
+    regions.push({ pieceId: hl.id, x: hx, y: 0, w: hl.w, h: hl.h, rep: 0 });
+    hx += hl.w;
+    for (let i = 0; i < 2; i++) {
+      regions.push({ pieceId: hm.id, x: hx, y: 0, w: hm.w, h: hm.h, rep: i });
+      hx += hm.w;
+    }
+    regions.push({ pieceId: hr.id, x: hx, y: 0, w: hr.w, h: hr.h, rep: 0 });
+  }
+  return { regions, width: x, height: bandH + Math.max(cl.h, m.h, cr.h) };
 }
 
 function assembleButtons(kit: KitSpec): Assembly | null {

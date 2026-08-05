@@ -110,15 +110,19 @@ export const pmod = (v: number, m: number) => ((v % m) + m) % m;
  * left/top — never transform, which can promote the subtree to a composited
  * layer resampled at the fractional offset. Snapped elements must carry
  * position: relative. `defer` puts a child a frame behind its snapped
- * ancestor (it otherwise measures the pre-snap position).
+ * ancestor (it otherwise measures the pre-snap position); a NUMBER of
+ * frames handles deeper nesting — a snapped child inside an already
+ * DEFERRED snapped ancestor (the plaque header inside RungPlaque) must
+ * wait one frame beyond that ancestor's own snap.
  */
-export function useCrispSnap<T extends HTMLElement>(active: boolean, defer = false) {
+export function useCrispSnap<T extends HTMLElement>(active: boolean, defer: boolean | number = false) {
   const ref = React.useRef<T>(null);
   React.useLayoutEffect(() => {
     if (!active) return;
     const el = ref.current;
     if (!el) return;
     let raf = 0;
+    const frames = defer === true ? 2 : defer === false ? 1 : Math.max(1, defer);
     const snap = () => {
       el.style.left = '0px';
       el.style.top = '0px';
@@ -130,9 +134,9 @@ export function useCrispSnap<T extends HTMLElement>(active: boolean, defer = fal
     };
     const run = () => {
       cancelAnimationFrame(raf);
-      raf = defer
-        ? requestAnimationFrame(() => { raf = requestAnimationFrame(snap); })
-        : requestAnimationFrame(snap);
+      let n = frames;
+      const step = () => { n -= 1; if (n <= 0) snap(); else raf = requestAnimationFrame(step); };
+      raf = requestAnimationFrame(step);
     };
     if (defer) run(); else snap();
     const ro = new ResizeObserver(run);

@@ -3,7 +3,7 @@ import { skinFromSlices, prepCanvas, whenDecoded, type ForgeSlice } from '../gam
 import { drawRailSkin } from '../game/PortcullisMesh';
 import { drawGateBars, drawGateBeamSkin, drawGateSignSkin } from '../shared/GateMesh';
 import { drawStonePiece, dimStoneFace } from '../game/PlayStoneSkin';
-import { drawRungPlaque } from '../game/RungPlaque';
+import { drawRungPlaque, PlaqueHeader, plaqueHeaderStraddle } from '../game/RungPlaque';
 
 // ============================================================================
 // PORTCULLIS LIVE — the Live panel for the non-nine-slice kits
@@ -30,9 +30,11 @@ interface Props {
 
 /**
  * One plaque sample: the shared 3-slice behind REAL content, sized by the
- * content like the live rail — drawn with the game's own drawRungPlaque.
+ * content like the live rail — drawn with the game's own drawRungPlaque,
+ * the header plate mounted with the game's own PlaqueHeader component
+ * (share-the-renderer law).
  */
-const PlaqueSample: React.FC<{ skin: Map<string, import('../game/panelSkins').SkinPiece>; children: React.ReactNode }> = ({ skin, children }) => {
+const PlaqueSample: React.FC<{ skin: Map<string, import('../game/panelSkins').SkinPiece>; header?: string; children: React.ReactNode }> = ({ skin, header, children }) => {
   const hostRef = React.useRef<HTMLSpanElement>(null);
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
   React.useLayoutEffect(() => {
@@ -54,9 +56,17 @@ const PlaqueSample: React.FC<{ skin: Map<string, import('../game/panelSkins').Sk
     ro.observe(host);
     return () => { cancelled = true; ro.disconnect(); };
   }, [skin]);
+  const showHeader = !!header && skin.has('header-mid');
   return (
     <span ref={hostRef} style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minHeight: 26, padding: '0 14px' }}>
       <canvas ref={canvasRef} aria-hidden style={{ position: 'absolute' }} />
+      {showHeader && (
+        <span style={{ position: 'absolute', left: 0, right: 0, top: -plaqueHeaderStraddle(skin), display: 'flex', justifyContent: 'center', pointerEvents: 'none' }}>
+          <PlaqueHeader pieces={skin}>
+            <span className="hud-label text-copper-300 whitespace-nowrap">{header}</span>
+          </PlaqueHeader>
+        </span>
+      )}
       <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: 4 }}>{children}</span>
     </span>
   );
@@ -79,8 +89,11 @@ export const PortcullisLive: React.FC<Props> = ({ kitId, family, slices, width }
   // pixel probes proved the renderer clean at every cutaway), so it
   // defaults OFF; tick it only when placing the band.
   const [showGuide, setShowGuide] = React.useState(false);
-  // Play Stone preview state: which face shows, and the no-hero dim.
+  // Play Stone preview state: which face family (play vs the run-state
+  // concede), which state within it, and the no-hero dim (play only —
+  // concede never dims, the game is already running).
   const [stoneState, setStoneState] = React.useState<'base' | 'hover' | 'pressed'>('base');
+  const [stoneFace, setStoneFace] = React.useState<'play' | 'concede'>('play');
   const [stoneDimmed, setStoneDimmed] = React.useState(false);
   const stoneRef = React.useRef<HTMLCanvasElement>(null);
   const railRef = React.useRef<HTMLCanvasElement>(null);
@@ -100,19 +113,21 @@ export const PortcullisLive: React.FC<Props> = ({ kitId, family, slices, width }
         const ctx = prepCanvas(canvas, STONE_W, STONE_H, B);
         if (!ctx) return;
         ctx.clearRect(-B, -B, STONE_W + B * 2, STONE_H + B * 2);
-        // Same composition as the game: chosen face (dimmed via alpha —
-        // the game dims the face canvas's CSS opacity, visually
-        // identical), then the NEVER-dimmed frame on top.
-        const base = skin.get('play-button');
-        const face = stoneDimmed
+        // Same composition as the game: chosen face family (concede falls
+        // back to its OWN base, never the play faces), pixel-baked dim on
+        // the play face only, then the ONE shared never-dimmed frame.
+        const concede = stoneFace === 'concede';
+        const base = concede ? skin.get('play-button-concede') : skin.get('play-button');
+        const dimming = !concede && stoneDimmed;
+        const face = dimming
           ? base
-          : (stoneState === 'hover' ? skin.get('play-button-hover') ?? base
-            : stoneState === 'pressed' ? skin.get('play-button-pressed') ?? base
+          : (stoneState === 'hover' ? skin.get(concede ? 'play-button-concede-hover' : 'play-button-hover') ?? base
+            : stoneState === 'pressed' ? skin.get(concede ? 'play-button-concede-pressed' : 'play-button-pressed') ?? base
             : base);
         if (face) {
           drawStonePiece(ctx, STONE_W, STONE_H, face);
           // OPAQUE dim, pixel-baked — never translucency (the game's rule).
-          if (stoneDimmed) dimStoneFace(ctx, STONE_W, STONE_H, B);
+          if (dimming) dimStoneFace(ctx, STONE_W, STONE_H, B);
         }
         const frame = skin.get('play-frame');
         if (frame) drawStonePiece(ctx, STONE_W, STONE_H, frame);
@@ -159,21 +174,25 @@ export const PortcullisLive: React.FC<Props> = ({ kitId, family, slices, width }
   });
 
   if (family === 'plaque' && skin.size > 0) {
+    // The header rides proud of the plaque top — reserve its reach above
+    // the samples row (straddle + the header's own height slack).
+    const headerPad = skin.has('header-mid') ? plaqueHeaderStraddle(skin) + 8 : 0;
     return (
-      <div className="rounded" style={{ background: '#040403', padding: 24 }}>
+      <div className="rounded" style={{ background: '#040403', padding: 24, paddingTop: 24 + headerPad }}>
         <div className="flex items-center justify-center gap-8 flex-wrap">
-          <PlaqueSample skin={skin}>
-            <span className="text-stone-400 text-xs">Lives:</span>
+          <PlaqueSample skin={skin} header="Lives">
             <span className="text-xs">❤️❤️❤️</span>
           </PlaqueSample>
-          <PlaqueSample skin={skin}>
-            <span className="text-stone-400 text-xs">Max Turns:</span>
-            <span className="text-xs text-parchment-300 font-medium">100</span>
+          <PlaqueSample skin={skin} header="Turns">
+            <span className="text-sm text-parchment-100 font-bold tabular-nums">0<span className="text-xs opacity-70">/100</span></span>
           </PlaqueSample>
         </div>
         <p className="mt-3 text-[11px] text-stone-500 text-center">
           Both rail plaques wear this ONE design at their own content widths —
-          caps fixed, middle tiling between them, text and hearts on top.
+          caps fixed, middle tiling between them, hearts and the run counter on
+          top. The header plate straddles the top edge with the LIVES/TURNS
+          label as DOM text; unpainted header pieces fall back to an inline
+          label inside the plaque.
         </p>
       </div>
     );
@@ -182,27 +201,36 @@ export const PortcullisLive: React.FC<Props> = ({ kitId, family, slices, width }
   if (family === 'stone' && skin.size > 0) {
     return (
       <div className="rounded" style={{ background: '#040403', padding: 24 }}>
+        <div className="flex items-center justify-center gap-4 mb-2 text-xs text-stone-300">
+          {(['play', 'concede'] as const).map(f => (
+            <label key={f} className="inline-flex items-center gap-1">
+              <input type="radio" name="stone-face" checked={stoneFace === f} onChange={() => setStoneFace(f)} className="w-3 h-3" />
+              {f === 'play' ? 'Play (setup)' : 'Concede (mid-run)'}
+            </label>
+          ))}
+        </div>
         <div className="flex items-center justify-center gap-4 mb-3 text-xs text-stone-300">
-          <label className="inline-flex items-center gap-1.5">
-            <input type="checkbox" checked={stoneDimmed} onChange={e => setStoneDimmed(e.target.checked)} className="w-3.5 h-3.5" />
+          <label className={`inline-flex items-center gap-1.5 ${stoneFace === 'concede' ? 'opacity-40' : ''}`}>
+            <input type="checkbox" checked={stoneDimmed} disabled={stoneFace === 'concede'} onChange={e => setStoneDimmed(e.target.checked)} className="w-3.5 h-3.5" />
             No hero placed (face dims, frame never)
           </label>
           {(['base', 'hover', 'pressed'] as const).map(s => (
-            <label key={s} className={`inline-flex items-center gap-1 ${stoneDimmed ? 'opacity-40' : ''}`}>
-              <input type="radio" name="stone-state" checked={stoneState === s} disabled={stoneDimmed} onChange={() => setStoneState(s)} className="w-3 h-3" />
+            <label key={s} className={`inline-flex items-center gap-1 ${stoneFace === 'play' && stoneDimmed ? 'opacity-40' : ''}`}>
+              <input type="radio" name="stone-state" checked={stoneState === s} disabled={stoneFace === 'play' && stoneDimmed} onChange={() => setStoneState(s)} className="w-3 h-3" />
               {s}
             </label>
           ))}
         </div>
         <div style={{ position: 'relative', width: STONE_W, height: STONE_H, margin: '0 auto', overflow: 'visible' }}>
           <canvas ref={stoneRef} style={{ position: 'absolute' }} />
-          <span className="absolute inset-0 flex items-center justify-center font-bold text-sm text-parchment-100 pointer-events-none">
-            Play
+          <span className="absolute inset-0 flex items-center justify-center font-bold text-sm text-parchment-100 uppercase tracking-[0.05em] pointer-events-none">
+            {stoneFace === 'concede' ? 'Concede' : 'Play'}
           </span>
         </div>
         <p className="mt-3 text-[11px] text-stone-500 text-center">
-          The stone at its real 120×36 — face under, frame over, sample label on top.
-          Hover/pressed fall back to the base face when unpainted.
+          The stone at its real 120×36 — face under, the ONE shared frame over,
+          sample label on top. Hover/pressed fall back to their family's base
+          face when unpainted; the concede family never borrows the play faces.
         </p>
       </div>
     );

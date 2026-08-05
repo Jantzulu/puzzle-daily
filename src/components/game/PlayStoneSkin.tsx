@@ -19,13 +19,20 @@ import { Z, buildSkin, nomW, nomH, prepCanvas, drawFixed, whenDecoded, type Skin
 //   - Optional hover/pressed faces swap via CSS opacity under
 //     .gem-btn:hover/:active (canvas stack, no JS state) — and only while
 //     playable (a dimmed stone shouldn't glint).
-// The DOM label (Play / the running Turn counter) rides on top, as
-// everywhere. One unified size: the button is 120×36px on every viewport.
+// The DOM label rides on top, as everywhere. One unified size: the button
+// is 120×36px on every viewport.
+//
+// 2026-08-04 redesign (user spec): while a run is in progress the same
+// stone becomes the CONCEDE button — an alternate face family
+// (play-button-concede + optional -hover/-pressed) SHARING the one
+// never-dimming frame. The Turn counter moved off the stone onto the
+// TURNS rung plaque.
 
 const PIECES = buildSkin(skinJson, 'play-gem');
 const P = (id: string) => PIECES.get(id);
 
 export const playStoneSkinActive = PIECES.has('play-button') || PIECES.has('play-frame');
+export const concedeStoneActive = PIECES.has('play-button-concede');
 
 /** Face dim while no hero is placed — tuned to read as "waiting", not broken. */
 export const PLAY_STONE_DIM = 0.45;
@@ -100,34 +107,46 @@ const StoneCanvas: React.FC<{
  * The full stone: face (dimmable, with optional hover/pressed swaps) under
  * the constant frame. Mount inside the button/plate (which must be
  * position: relative); the DOM label renders after it, above everything.
+ *
+ * face='concede' swaps in the concede face family (base + optional
+ * hover/pressed) under the SAME frame; the concede stone never dims (the
+ * game is already running). Unpainted concede faces fall back per-state to
+ * the concede base — never to the play faces (a green PLAY stone reading
+ * as the destructive button would mislead).
  */
-export const PlayStoneSkin: React.FC<{ dimmed?: boolean }> = ({ dimmed = false }) => {
-  const face = P('play-button');
-  const hover = P('play-button-hover');
-  const pressed = P('play-button-pressed');
+export const PlayStoneSkin: React.FC<{ dimmed?: boolean; face?: 'play' | 'concede' }> = ({ dimmed = false, face = 'play' }) => {
+  const concede = face === 'concede';
+  const base = concede ? P('play-button-concede') : P('play-button');
+  const hover = concede ? P('play-button-concede-hover') : P('play-button-hover');
+  const pressed = concede ? P('play-button-concede-pressed') : P('play-button-pressed');
   const frame = P('play-frame');
+  const dims = !concede && dimmed;
   return (
     <>
-      {face && (
+      {base && (
         <>
-          <StoneCanvas piece={face} bleed={0} />
+          <StoneCanvas piece={base} bleed={0} />
           {/* The waiting dim CROSSFADES between two fully-OPAQUE layers:
               the bright face and a pixel-darkened twin. The first
               implementation faded the single canvas's CSS opacity, which
               made the face TRANSLUCENT — the rung's plates showed through
-              the stone (user catch, 2026-08-04). */}
-          <StoneCanvas
-            piece={face}
-            bleed={0}
-            darkened
-            style={{ opacity: dimmed ? 1 : 0, transition: 'opacity 0.25s ease' }}
-          />
+              the stone (user catch, 2026-08-04). Concede skips the twin:
+              that state never dims. */}
+          {!concede && (
+            <StoneCanvas
+              piece={base}
+              bleed={0}
+              darkened
+              style={{ opacity: dims ? 1 : 0, transition: 'opacity 0.25s ease' }}
+            />
+          )}
         </>
       )}
-      {!dimmed && hover && <StoneCanvas piece={hover} bleed={0} className="play-stone-hover" />}
-      {!dimmed && pressed && <StoneCanvas piece={pressed} bleed={0} className="play-stone-pressed" />}
-      {/* The frame LAST: never dimmed, over the face so painted overlap
-          reads as the frame holding the stone. Bleed holds its 8-art aura. */}
+      {!dims && hover && <StoneCanvas piece={hover} bleed={0} className="play-stone-hover" />}
+      {!dims && pressed && <StoneCanvas piece={pressed} bleed={0} className="play-stone-pressed" />}
+      {/* The frame LAST: never dimmed, SHARED by the play and concede
+          families, over the face so painted overlap reads as the frame
+          holding the stone. Bleed holds its 8-art aura. */}
       {frame && <StoneCanvas piece={frame} bleed={20} />}
     </>
   );
