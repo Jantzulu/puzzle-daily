@@ -42,7 +42,7 @@ import { NextPuzzleCountdown } from './NextPuzzleCountdown';
 import { BugReportModal } from './BugReportModal';
 import type { TrackedRun } from '../../types/bugReport';
 import { GemMesh } from './GemMesh';
-import { PlayStoneSkin, playStoneSkinActive, concedeStoneActive } from './PlayStoneSkin';
+import { PlayStoneSkin, playStoneSkinActive, concedeStoneActive, PLAY_STONE_DIM } from './PlayStoneSkin';
 // The rail hearts are HARDCODED ART (user call 2026-08-04, the quest-box
 // precedent: core chrome ships in git, not as a theme knob — the old
 // Settings icon path stretched any upload into a fixed box). 7×7 native
@@ -2523,8 +2523,22 @@ export const Game: React.FC<GameProps> = ({
                           {/* All-caps bold + carved-header tracking — the
                               register of the panel titles below the board
                               (user call 2026-08-04); JSX stays sentence
-                              case, CSS uppercases (house convention). */}
-                          <span className="uppercase tracking-[0.05em]">Play</span>
+                              case, CSS uppercases (house convention).
+                              The label dims WITH the face (user call
+                              2026-08-05): same PLAY_STONE_DIM value and
+                              0.25s crossfade as the darkened twin —
+                              opacity is safe on TEXT over the opaque
+                              stone (the opaque-dim law guards painted
+                              layers, not the DOM label). Skinned path
+                              only: the mesh fallback dims the whole
+                              button already. */}
+                          <span
+                            className="uppercase tracking-[0.05em]"
+                            style={playStoneSkinActive ? {
+                              opacity: gameState.placedCharacters.length === 0 ? PLAY_STONE_DIM : 1,
+                              transition: 'opacity 0.25s ease',
+                            } : undefined}
+                          >Play</span>
                         </button>
                       )
                     ) : (
