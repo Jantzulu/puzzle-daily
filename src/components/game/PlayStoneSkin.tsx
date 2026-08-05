@@ -186,7 +186,9 @@ export const PlayStoneSkin: React.FC<{ dimmed?: boolean; face?: 'play' | 'conced
             WebkitMaskSize: '100% 100%', maskSize: '100% 100%',
           }}
         >
-          <span className="gem-scroll-shine play-stone-shine" />
+          {/* Own scroll curve (not .gem-scroll-shine): off-stone at rest,
+              full sweep within the first stretch of scrolling. */}
+          <span className="play-stone-shine" />
         </span>
       )}
       {/* The frame LAST: never dimmed, SHARED by the play and concede
