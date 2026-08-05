@@ -2701,12 +2701,17 @@ body.menu-gate-instant .quest-box-anchor {
   top: -8px;
   bottom: -8px;
   left: 0;
-  width: 44px;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.28), transparent);
+  width: 36px;
+  /* 0.14 peak / 36px band: the first cut (0.28 / 44px) was too intense
+     (user call) — the glint should read as a passing catchlight, not a
+     spotlight. */
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.14), transparent);
 }
 
 .play-stone-breathe {
-  animation: play-stone-breathe 4.5s ease-in-out infinite;
+  /* 6s: slowed from 4.5s in the same too-intense round — with the wash
+     halved to 0.10 the breath is a murmur, not a pulse. */
+  animation: play-stone-breathe 6s ease-in-out infinite;
 }
 
 @keyframes play-stone-breathe {

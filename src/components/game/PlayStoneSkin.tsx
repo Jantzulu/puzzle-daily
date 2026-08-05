@@ -73,7 +73,8 @@ export const dimStoneFace = (ctx: CanvasRenderingContext2D, w: number, h: number
 export const brightStoneFace = (ctx: CanvasRenderingContext2D, w: number, h: number, bleed: number) => {
   ctx.save();
   ctx.globalCompositeOperation = 'source-atop';
-  ctx.fillStyle = 'rgba(255, 244, 214, 0.22)';
+  // 0.10: the first cut (0.22) read too intense on the user's eyes.
+  ctx.fillStyle = 'rgba(255, 244, 214, 0.10)';
   ctx.fillRect(-bleed, -bleed, w + bleed * 2, h + bleed * 2);
   ctx.restore();
 };
