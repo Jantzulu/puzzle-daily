@@ -2430,12 +2430,14 @@ export const Game: React.FC<GameProps> = ({
                       dungeon (wrapper z-40 > board z-10). */}
                   <PortcullisMesh />
                   {/* Left: Lives - centered in left third, on the shared
-                      rung plaque (one painted 3-slice serves Lives AND Max
-                      Turns — user design; plain rung look when unpainted) */}
+                      rung plaque (one painted design serves Lives AND
+                      Turns — user spec 2026-08-04: the LIVES label rides a
+                      small HEADER plate proud of the plaque's top edge,
+                      the quest box's QUEST-plate relation; hearts alone in
+                      the main box) */}
                   <div className="flex items-center justify-center">
-                  <RungPlaque>
+                  <RungPlaque header="Lives">
                     <span className="inline-flex items-center gap-1">
-                    <span className="text-stone-400 text-xs">Lives:</span>
                     <div className="flex items-center gap-0.5">
                       {(() => {
                         const puzzleLives = currentPuzzle.lives ?? 3;
