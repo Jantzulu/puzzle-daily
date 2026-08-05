@@ -2404,14 +2404,14 @@ export const Game: React.FC<GameProps> = ({
                       Turns — user spec 2026-08-04: the LIVES label rides a
                       small HEADER plate proud of the plaque's top edge,
                       the quest box's QUEST-plate relation; hearts alone in
-                      the main box). pr-4 = the stone frame's 16px aura:
-                      the cell spans rung end to stone BOX, so the padding
-                      re-centers the plaque against the stone ART. pl-4 =
-                      the user's inward bias off that midpoint, tuned in
-                      two rounds ("moved out too much" then "a couple art
-                      pixels closer" — 16px outer pad = center 8px in,
-                      i.e. 4 art px total). */}
-                  <div className="flex items-center justify-center pl-4 pr-4">
+                      the main box). STONE-ANCHORED, not cell-centered
+                      (user call 2026-08-05: centering made the gap scale
+                      with viewport — right at 375px, ~85px adrift on
+                      desktop): justify-end + 18px stone-side padding =
+                      the frame's 16px aura box + 2px gap, constant at
+                      every width. Supersedes the centered-with-bias
+                      rounds. */}
+                  <div className="flex items-center justify-end pr-[18px]">
                   <RungPlaque header="Lives">
                     {/* top: 2 = the TURNS counter's exact drop, so hearts
                         and digits share a visual center across the two
@@ -2569,11 +2569,10 @@ export const Game: React.FC<GameProps> = ({
                       in its place). The near-limit warning colors carry
                       over from the old center counter — no glow, the
                       blood color + pulse carry the warning (pinned).
-                      pl-4 mirrors the Lives cell: 16px stone-aura padding
-                      so the plaque centers between the stone ART edge and
-                      the rung end; pr-4 = the same two-round 8px inward
-                      bias. */}
-                  <div className="flex items-center justify-center pl-4 pr-4">
+                      STONE-ANCHORED like the Lives cell: justify-start +
+                      18px stone-side padding (16px aura box + 2px gap),
+                      constant at every viewport. */}
+                  <div className="flex items-center justify-start pl-[18px]">
                     <RungPlaque header="Turns">
                       {(() => {
                         const maxTurns = currentPuzzle.maxTurns;
