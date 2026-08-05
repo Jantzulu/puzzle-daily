@@ -2706,13 +2706,15 @@ body.menu-gate-instant .quest-box-anchor {
      (user call) — the glint should read as a passing catchlight, not a
      spotlight. */
   background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.14), transparent);
-  /* Own travel curve, NOT .gem-scroll-shine's (user call 2026-08-05):
-     hidden entirely at rest (-40px = fully off the 120px stone's left),
-     then the WHOLE sweep completes within the first ~third of page
-     scroll (560px/unit) — the glint only exists once you move, and
-     replays in reverse on the way back up. Transform-only, same 0.15s
-     smoothing as the mesh gems. */
-  transform: translateX(calc(var(--scroll-percent, 0) * 560px - 40px));
+  /* THE MESH GEMS' PHYSICS, scaled to this stone (user call 2026-08-05:
+     "a crystal moving relative to a fixed light source"): hidden at rest
+     (-40px = fully off the 120px stone's left) and the band's position is
+     purely a function of scroll — barely scroll, the shine barely enters.
+     228px/unit = the mesh's 380 viewBox units on a 200-unit gem, so the
+     Play stone and the Test buttons share one light. A briefer 560px/unit
+     cut was tried and rolled back to match the mesh. Transform-only, same
+     0.15s smoothing. */
+  transform: translateX(calc(var(--scroll-percent, 0) * 228px - 40px));
   transition: transform 0.15s linear;
 }
 
