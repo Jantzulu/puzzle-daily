@@ -42,7 +42,7 @@ import { NextPuzzleCountdown } from './NextPuzzleCountdown';
 import { BugReportModal } from './BugReportModal';
 import type { TrackedRun } from '../../types/bugReport';
 import { GemMesh } from './GemMesh';
-import { PlayStoneSkin, playStoneSkinActive } from './PlayStoneSkin';
+import { PlayStoneSkin, playStoneSkinActive, concedeStoneActive } from './PlayStoneSkin';
 import { RungPlaque } from './RungPlaque';
 import { ReplaySlabMesh } from './ReplaySlabMesh';
 
@@ -2487,8 +2487,14 @@ export const Game: React.FC<GameProps> = ({
                   </RungPlaque>
                   </div>
 
-                  {/* Center: Play button OR Turn counter OR Test mode indicator - centered in middle third */}
-                  <div className="flex justify-center">
+                  {/* Center: Play/Concede stone OR Test mode indicator -
+                      centered in middle third. zIndex 2 (inline - the
+                      .control-rail > * rule's z:1 outranks utility
+                      classes): the thirds should never overlap, but if
+                      they ever do the action stone wins - the right
+                      plaque is a LATER sibling and was painting over the
+                      Play button (user report, 2026-08-04). */}
+                  <div className="flex justify-center" style={{ zIndex: 2 }}>
                     {testMode !== 'none' ? (
                       // Test mode indicator — a larger cut of the same stone
                       // as the Test button that started it
@@ -2551,94 +2557,90 @@ export const Game: React.FC<GameProps> = ({
                         </button>
                       )
                     ) : (
-                      // The turn counter rides the SAME emerald the Play
-                      // button was cut from (same size, phase, tone) — the
-                      // center stone never leaves, it just changes its
-                      // engraving and breathes (gem-plate-aura). Text
-                      // inherits the plate's Play-label ivory; the
-                      // near-limit warning colors still take over.
-                      // Width is LOCKED (w-[120px], the unified single size)
-                      // and matches the Play button exactly, so the stone
-                      // never resizes across setup→running or as the turn
-                      // count gains digits. shrink-0 is essential: without it the
-                      // center grid cell shrinks the fixed width back to
-                      // content size. Just clears the widest label
-                      // ("Turn 100 / 100" ≈ 83px text); games never exceed
-                      // 100 turns. px-4: enough to keep the first/last
-                      // glyphs off the emerald's slanted facets (px-3 was
-                      // too tight) without bloating the stone. The label is
-                      // ONE inline span so Turn/number/max share a baseline
-                      // and can never wrap.
-                      // Same 36px stone as the Play button it replaces, so the
-                      // rung's height never changes between states.
-                      <div className="gem-plate gem-plate-aura relative h-9 w-[120px] shrink-0 px-4 flex items-center justify-center">
-                        {playStoneSkinActive
-                          ? <PlayStoneSkin />
-                          : <GemMesh tone="emerald" phase={0} />}
-                        <span className="whitespace-nowrap">
-                          <span className="text-xs lg:text-sm font-medium opacity-80">Turn&nbsp;</span>
-                          {(() => {
-                            const maxTurns = currentPuzzle.maxTurns;
-                            const turnsRemaining = maxTurns ? maxTurns - gameState.currentTurn : null;
-                            const isNearLimit = turnsRemaining !== null && turnsRemaining <= 3;
-                            const isVeryNearLimit = turnsRemaining !== null && turnsRemaining <= 1;
-
-                            return (
-                              <>
-                                {/* No glow on the final-turn state: the 10px red text-shadow
-                                    rendered as a soft red square around the digits on desktop
-                                    and hurt readability — the blood color + pulse carry the
-                                    warning on their own. */}
-                                <span className={`text-base lg:text-lg font-bold ${
-                                  isVeryNearLimit
-                                    ? 'text-blood-400 animate-pulse'
-                                    : isNearLimit
-                                    ? 'text-rust-400'
-                                    : ''
-                                }`}>
-                                  {gameState.currentTurn}
-                                </span>
-                                {maxTurns && (
-                                  <span className={`text-xs lg:text-sm ${
-                                    isNearLimit ? 'text-blood-400' : 'opacity-70'
-                                  }`}>
-                                    &nbsp;/&nbsp;{maxTurns}
-                                  </span>
-                                )}
-                              </>
-                            );
-                          })()}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Right: Max Turns OR Concede button - centered in right third */}
-                  <div className="flex items-center justify-center">
-                    {gameState.gameStatus === 'setup' || testMode !== 'none' ? (
-                      gameState.puzzle.maxTurns && (
-                        <div className="flex items-center">
-                          {/* The same shared plaque as Lives — one design,
-                              both wear it at their own content width. */}
-                          <RungPlaque>
-                            <span className="inline-flex items-center gap-1">
-                              <span className="text-stone-400 text-xs">Max Turns:</span>
-                              <span className="text-xs lg:text-sm text-parchment-300 font-medium">{gameState.puzzle.maxTurns}</span>
-                            </span>
-                          </RungPlaque>
-                        </div>
-                      )
-                    ) : (
+                      // While the run is live the SAME stone becomes the
+                      // CONCEDE button (user spec 2026-08-04) — the Turn
+                      // counter moved to the TURNS rung plaque on the
+                      // right. Same locked 120×36 as the Play button it
+                      // replaces (the stone never resizes across
+                      // setup→running; the kit's 60×18 lockstep). The
+                      // concede face family swaps in under the ONE shared
+                      // never-dimming frame; unpainted concede face =
+                      // procedural topaz gem (the old Concede button's
+                      // stone). NO gem-plate-aura here: the green
+                      // "activated" breath read wrong behind a destructive
+                      // control — the counting TURNS plaque signals
+                      // run-in-progress now.
                       <button
                         onClick={() => setShowConcedeConfirm(true)}
-                        className="gem-btn text-xs px-2 py-1"
+                        className="gem-btn relative w-[120px] shrink-0 h-9 font-bold text-sm lg:text-base transition-all flex items-center justify-center !py-0 hit-44"
+                        style={{ minHeight: 'unset' }}
                         title="Give up this attempt and lose a life"
                       >
-                        {/* Orange topaz — matches the gem action-button set */}
-                        <GemMesh tone="topaz" phase={300} />
+                        {concedeStoneActive
+                          ? <PlayStoneSkin face="concede" />
+                          : <GemMesh tone="topaz" phase={300} />}
                         <span>Concede</span>
                       </button>
                     )}
+                  </div>
+
+                  {/* Right: the TURNS plaque, in EVERY rail state (user
+                      spec 2026-08-04) — the same shared plaque design as
+                      Lives with its own TURNS header plate. It carries
+                      the run counter: 0/X through setup and test mode,
+                      then counting live once the run starts (the counter
+                      used to ride the center stone; Concede moved there
+                      in its place). The near-limit warning colors carry
+                      over from the old center counter — no glow, the
+                      blood color + pulse carry the warning (pinned). */}
+                  <div className="flex items-center justify-center">
+                    <RungPlaque header="Turns">
+                      {(() => {
+                        const maxTurns = currentPuzzle.maxTurns;
+                        const running = gameState.gameStatus !== 'setup' && testMode === 'none';
+                        const shownTurn = running ? gameState.currentTurn : 0;
+                        const turnsRemaining = running && maxTurns ? maxTurns - gameState.currentTurn : null;
+                        const isNearLimit = turnsRemaining !== null && turnsRemaining <= 3;
+                        const isVeryNearLimit = turnsRemaining !== null && turnsRemaining <= 1;
+                        // The plaque must NOT resize as the count gains
+                        // digits (user call): an invisible ghost of the
+                        // WIDEST state (max/max, or 3 digits when
+                        // unlimited — games never exceed 100 turns)
+                        // reserves the width in the real themed font, and
+                        // the live counter centers over it.
+                        const ghostNum = maxTurns ? String(maxTurns) : '000';
+                        return (
+                          <span className="relative inline-flex justify-center whitespace-nowrap tabular-nums">
+                            {/* inline-flex items-baseline, NOT block: as a
+                                block flex item the ghost inherits the theme
+                                root's 30px line box and inflates the plaque
+                                past the Lives plaque's 26px. */}
+                            <span className="invisible inline-flex items-baseline" aria-hidden="true">
+                              <span className="text-sm lg:text-base font-bold">{ghostNum}</span>
+                              {maxTurns ? <span className="text-xs lg:text-sm">/{maxTurns}</span> : null}
+                            </span>
+                            <span className="absolute inset-0 flex items-baseline justify-center">
+                              <span className={`text-sm lg:text-base font-bold ${
+                                isVeryNearLimit
+                                  ? 'text-blood-400 animate-pulse'
+                                  : isNearLimit
+                                  ? 'text-rust-400'
+                                  : 'text-parchment-100'
+                              }`}>
+                                {shownTurn}
+                              </span>
+                              {maxTurns ? (
+                                <span className={`text-xs lg:text-sm ${
+                                  isNearLimit ? 'text-blood-400' : 'text-parchment-100 opacity-70'
+                                }`}>
+                                  /{maxTurns}
+                                </span>
+                              ) : null}
+                            </span>
+                          </span>
+                        );
+                      })()}
+                    </RungPlaque>
                   </div>
               </div>
               )}
