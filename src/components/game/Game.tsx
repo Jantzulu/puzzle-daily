@@ -2411,7 +2411,14 @@ export const Game: React.FC<GameProps> = ({
                       the frame's 16px aura box + 2px gap, constant at
                       every width. Supersedes the centered-with-bias
                       rounds. */}
-                  <div className="flex items-center justify-end pr-[18px]">
+                  {/* top 2px (user report, their screenshot): the header
+                      plate rose 2px above the rung top, and at page rest
+                      the rung sits flush under the navbar (z-50 over the
+                      rail's z-40) — the nav covered the header art's top
+                      row. The nudge seats the header crest exactly at the
+                      rung top. Cells already carry position:relative from
+                      .control-rail > *. */}
+                  <div className="flex items-center justify-end pr-[18px]" style={{ top: 2 }}>
                   <RungPlaque header="Lives">
                     {/* top: 2 = the TURNS counter's exact drop, so hearts
                         and digits share a visual center across the two
@@ -2586,7 +2593,9 @@ export const Game: React.FC<GameProps> = ({
                       STONE-ANCHORED like the Lives cell: justify-start +
                       18px stone-side padding (16px aura box + 2px gap),
                       constant at every viewport. */}
-                  <div className="flex items-center justify-start pl-[18px]">
+                  {/* Same 2px seat as the Lives cell — the two plaques
+                      move in lockstep. */}
+                  <div className="flex items-center justify-start pl-[18px]" style={{ top: 2 }}>
                     <RungPlaque header="Turns">
                       {(() => {
                         const maxTurns = currentPuzzle.maxTurns;
