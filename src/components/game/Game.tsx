@@ -2419,7 +2419,13 @@ export const Game: React.FC<GameProps> = ({
               // it overflowed its column and covered the third life heart.
               // Sizing the centre column to its content makes that overlap
               // structurally impossible instead of merely unlikely.
-              <div className={`control-rail relative z-0 w-full max-w-2xl grid grid-cols-[1fr_auto_1fr] items-center px-3 pt-1 pb-1 mt-0 mb-1 min-h-[44px]${railRiding ? ' rail-riding' : ''}${justExitedReplay ? ' animate-rail-descend' : ''}${enteringReplay ? ' animate-rail-ascend' : ''}${replayMode && !enteringReplay ? ' invisible' : ''}`}>
+              //
+              // No horizontal grid padding (the old px-3): the side cells
+              // span rung end to stone box, and each carries 16px of
+              // padding on its stone side (the play frame's 8-art aura) —
+              // so the plaques center exactly between the rung's END and
+              // the stone ART's edge (user call, 2026-08-04).
+              <div className={`control-rail relative z-0 w-full max-w-2xl grid grid-cols-[1fr_auto_1fr] items-center pt-1 pb-1 mt-0 mb-1 min-h-[44px]${railRiding ? ' rail-riding' : ''}${justExitedReplay ? ' animate-rail-descend' : ''}${enteringReplay ? ' animate-rail-ascend' : ''}${replayMode && !enteringReplay ? ' invisible' : ''}`}>
                   {/* Portcullis rail: with the mobile menu OPEN the sticky
                       wrapper rides the gate's leading edge (translated by
                       --gate-drop, see index.css), so this rail hangs
@@ -2434,8 +2440,12 @@ export const Game: React.FC<GameProps> = ({
                       Turns — user spec 2026-08-04: the LIVES label rides a
                       small HEADER plate proud of the plaque's top edge,
                       the quest box's QUEST-plate relation; hearts alone in
-                      the main box) */}
-                  <div className="flex items-center justify-center">
+                      the main box). pr-4 = the stone frame's 16px aura:
+                      the cell spans rung end to stone BOX, so the padding
+                      re-centers the plaque against the stone ART. pl-2 =
+                      the user's inward bias off that midpoint ("moved out
+                      too much" — 8px outer pad nudges the center 4px in). */}
+                  <div className="flex items-center justify-center pl-2 pr-4">
                   <RungPlaque header="Lives">
                     <span className="inline-flex items-center gap-1">
                     <div className="flex items-center gap-0.5">
@@ -2601,8 +2611,11 @@ export const Game: React.FC<GameProps> = ({
                       used to ride the center stone; Concede moved there
                       in its place). The near-limit warning colors carry
                       over from the old center counter — no glow, the
-                      blood color + pulse carry the warning (pinned). */}
-                  <div className="flex items-center justify-center">
+                      blood color + pulse carry the warning (pinned).
+                      pl-4 mirrors the Lives cell: 16px stone-aura padding
+                      so the plaque centers between the stone ART edge and
+                      the rung end; pr-2 = the same 4px inward bias. */}
+                  <div className="flex items-center justify-center pl-4 pr-2">
                     <RungPlaque header="Turns">
                       {(() => {
                         const maxTurns = currentPuzzle.maxTurns;
@@ -2619,7 +2632,12 @@ export const Game: React.FC<GameProps> = ({
                         // the live counter centers over it.
                         const ghostNum = maxTurns ? String(maxTurns) : '000';
                         return (
-                          <span className="relative inline-flex justify-center whitespace-nowrap tabular-nums">
+                          /* top: 3 drops the digits fully below the TURNS
+                             header plate (user call): the header reaches
+                             7px into the plaque (18px plate, 11px proud)
+                             and the centered digits' ink started at
+                             ~7.5px — reading as touching it. */
+                          <span className="relative inline-flex justify-center whitespace-nowrap tabular-nums" style={{ top: 3 }}>
                             {/* inline-flex items-baseline, NOT block: as a
                                 block flex item the ghost inherits the theme
                                 root's 30px line box and inflates the plaque

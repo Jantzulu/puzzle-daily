@@ -3,7 +3,7 @@ import { skinFromSlices, prepCanvas, whenDecoded, type ForgeSlice } from '../gam
 import { drawRailSkin } from '../game/PortcullisMesh';
 import { drawGateBars, drawGateBeamSkin, drawGateSignSkin } from '../shared/GateMesh';
 import { drawStonePiece, dimStoneFace } from '../game/PlayStoneSkin';
-import { drawRungPlaque, PlaqueHeader, plaqueHeaderStraddle } from '../game/RungPlaque';
+import { drawRungPlaque, PlaqueHeader, PlaqueHeaderLabel, plaqueHeaderStraddle } from '../game/RungPlaque';
 
 // ============================================================================
 // PORTCULLIS LIVE — the Live panel for the non-nine-slice kits
@@ -63,7 +63,7 @@ const PlaqueSample: React.FC<{ skin: Map<string, import('../game/panelSkins').Sk
       {showHeader && (
         <span style={{ position: 'absolute', left: 0, right: 0, top: -plaqueHeaderStraddle(skin), display: 'flex', justifyContent: 'center', pointerEvents: 'none' }}>
           <PlaqueHeader pieces={skin}>
-            <span className="hud-label text-copper-300 whitespace-nowrap">{header}</span>
+            <PlaqueHeaderLabel>{header}</PlaqueHeaderLabel>
           </PlaqueHeader>
         </span>
       )}

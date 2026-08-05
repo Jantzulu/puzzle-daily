@@ -120,17 +120,37 @@ export const PlaqueHeader: React.FC<{ pieces: Map<string, SkinPiece>; children: 
     <span ref={snapRef} className="inline-flex relative" style={{ height: h }}>
       <canvas ref={canvasRef} aria-hidden style={{ position: 'absolute' }} />
       {l && <span style={{ width: nomW(l) * Z, height: h, flexShrink: 0 }} />}
-      <span style={{ position: 'relative', minWidth: nomW(m) * Z, height: h, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
-        <span className="relative px-1">{children}</span>
+      <span style={{ position: 'relative', minWidth: nomW(m) * Z, height: h, display: 'inline-flex', justifyContent: 'center' }}>
+        {/* Deterministic vertical centering (user call: LIVES/TURNS
+            vertically centered on their plates). fontSize/lineHeight 0
+            kill the wrapper's inherited 20px strut (it was flex-centering
+            a phantom 30px line and sat the label 5px low); the label's
+            own 13px hud-label line box then places at an INTEGER offset.
+            The 6 = measured ink-center of tracked 11px Modern Antiqua
+            caps within that 13px line (2026-08-04) — retune if the theme
+            face or the label register ever changes. */}
+        <span
+          className="relative px-1"
+          style={{ fontSize: 0, lineHeight: 0, alignSelf: 'flex-start', marginTop: Math.round(h / 2) - 6 }}
+        >
+          {children}
+        </span>
       </span>
       {r && <span style={{ width: nomW(r) * Z, height: h, flexShrink: 0 }} />}
     </span>
   );
 };
 
-/** The header label's one register — the QUEST plate's recipe. */
-const HeaderLabel: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <span className="hud-label text-copper-300 whitespace-nowrap">{children}</span>
+/**
+ * The header label's one register — the QUEST plate's recipe a step
+ * smaller: 10px (the app's proven floor) via the style attribute, because
+ * .theme-root .hud-label's 11px outranks any size utility (the pinned
+ * scoped-class trap). User call 2026-08-04: "shrink the font of LIVES and
+ * TURNS slightly". Exported so the forge preview wears the identical
+ * register.
+ */
+export const PlaqueHeaderLabel: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <span className="hud-label text-copper-300 whitespace-nowrap" style={{ fontSize: '10px' }}>{children}</span>
 );
 
 /**
@@ -167,7 +187,7 @@ export const RungPlaque: React.FC<{ header?: string; children: React.ReactNode }
   const showPlate = rungPlaqueActive && plaqueHeaderActive && header;
   // Meaning survives every art state: unpainted header pieces (or an
   // unpainted kit entirely) put the label inline before the content.
-  const inlineHeader = header && !showPlate ? <HeaderLabel>{header}</HeaderLabel> : null;
+  const inlineHeader = header && !showPlate ? <PlaqueHeaderLabel>{header}</PlaqueHeaderLabel> : null;
   if (!rungPlaqueActive) {
     return inlineHeader
       ? <span className="inline-flex items-center gap-1">{inlineHeader}{children}</span>
@@ -190,7 +210,7 @@ export const RungPlaque: React.FC<{ header?: string; children: React.ReactNode }
             pointerEvents: 'none',
           }}
         >
-          <PlaqueHeader pieces={PIECES}><HeaderLabel>{header}</HeaderLabel></PlaqueHeader>
+          <PlaqueHeader pieces={PIECES}><PlaqueHeaderLabel>{header}</PlaqueHeaderLabel></PlaqueHeader>
         </span>
       )}
       <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
