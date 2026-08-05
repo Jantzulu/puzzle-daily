@@ -2689,6 +2689,31 @@ body.menu-gate-instant .quest-box-anchor {
   transition: transform 0.15s linear;
 }
 
+/* The PAINTED Play stone's dynamics (user pick 2026-08-05, effects 1+3):
+   both obey the pinned perf law — transform/opacity ONLY, never filters.
+   The shine band rides .gem-scroll-shine's scroll transform inside a
+   STATIC mask (the face png clips it to the painted silhouette); the
+   breath is a pixel-baked bright twin whose element opacity cycles
+   (opaque-layers rule: the fully-opaque base stays beneath, so the stack
+   never goes translucent). */
+.play-stone-shine {
+  position: absolute;
+  top: -8px;
+  bottom: -8px;
+  left: 0;
+  width: 44px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.28), transparent);
+}
+
+.play-stone-breathe {
+  animation: play-stone-breathe 4.5s ease-in-out infinite;
+}
+
+@keyframes play-stone-breathe {
+  0%, 100% { opacity: 0; }
+  50% { opacity: 1; }
+}
+
 /* ============================================
    BOARD PHASE TRANSITIONS
    A quick reveal masking the instant repaint on reset/retry.

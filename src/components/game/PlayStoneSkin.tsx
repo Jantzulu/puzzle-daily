@@ -64,14 +64,30 @@ export const dimStoneFace = (ctx: CanvasRenderingContext2D, w: number, h: number
   ctx.restore();
 };
 
+/**
+ * The dim's sibling in reverse — a warm wash clipped to the silhouette,
+ * for the BREATH twin (the "ready to play" glow). Same opaque-layers
+ * rule: the twin sits over the fully-opaque base, so animating the
+ * twin's opacity never makes the stack translucent.
+ */
+export const brightStoneFace = (ctx: CanvasRenderingContext2D, w: number, h: number, bleed: number) => {
+  ctx.save();
+  ctx.globalCompositeOperation = 'source-atop';
+  ctx.fillStyle = 'rgba(255, 244, 214, 0.22)';
+  ctx.fillRect(-bleed, -bleed, w + bleed * 2, h + bleed * 2);
+  ctx.restore();
+};
+
 const StoneCanvas: React.FC<{
   piece: SkinPiece;
   bleed: number;
   /** Bake the opaque dim into the pixels (see dimStoneFace). */
   darkened?: boolean;
+  /** Bake the opaque warm glow instead (see brightStoneFace). */
+  brightened?: boolean;
   className?: string;
   style?: React.CSSProperties;
-}> = ({ piece, bleed, darkened = false, className, style }) => {
+}> = ({ piece, bleed, darkened = false, brightened = false, className, style }) => {
   const hostRef = React.useRef<HTMLSpanElement>(null);
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
   React.useLayoutEffect(() => {
@@ -88,6 +104,7 @@ const StoneCanvas: React.FC<{
       ctx.clearRect(-bleed, -bleed, w + bleed * 2, h + bleed * 2);
       drawStonePiece(ctx, w, h, piece);
       if (darkened) dimStoneFace(ctx, w, h, bleed);
+      if (brightened) brightStoneFace(ctx, w, h, bleed);
     };
     // Synchronous after decode — the shared no-rAF rule.
     const schedule = draw;
@@ -95,7 +112,7 @@ const StoneCanvas: React.FC<{
     const ro = new ResizeObserver(schedule);
     ro.observe(host);
     return () => { cancelled = true; ro.disconnect(); };
-  }, [piece, bleed, darkened]);
+  }, [piece, bleed, darkened, brightened]);
   return (
     <span ref={hostRef} aria-hidden className={className} style={{ position: 'absolute', inset: 0, pointerEvents: 'none', ...style }}>
       <canvas ref={canvasRef} style={{ position: 'absolute' }} />
@@ -142,8 +159,35 @@ export const PlayStoneSkin: React.FC<{ dimmed?: boolean; face?: 'play' | 'conced
           )}
         </>
       )}
+      {/* BREATH (user pick, 2026-08-05: effects 1+3): a pixel-brightened
+          opaque twin whose CSS opacity breathes — the "ready to play"
+          heartbeat. Play face only, never while dimmed (a dimmed stone
+          doesn't glint — pinned), and it sits UNDER the hover/pressed
+          faces so pointer states read clean. Opacity-only animation per
+          the perf law. */}
+      {!concede && !dims && base && (
+        <StoneCanvas piece={base} bleed={0} brightened className="play-stone-breathe" />
+      )}
       {!dims && hover && <StoneCanvas piece={hover} bleed={0} className="play-stone-hover" />}
       {!dims && pressed && <StoneCanvas piece={pressed} bleed={0} className="play-stone-pressed" />}
+      {/* SHINE SWEEP: the GemMesh scroll-driven shine band, inherited by
+          the painted stone — the band rides .gem-scroll-shine's exact
+          --scroll-percent transform (transform-only; the mask is STATIC:
+          the face png itself clips the band to the painted silhouette).
+          Above the state faces (the gem glints under the pointer too),
+          under the frame. */}
+      {!concede && !dims && base && (
+        <span
+          aria-hidden
+          style={{
+            position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden',
+            WebkitMaskImage: `url(${base.png})`, maskImage: `url(${base.png})`,
+            WebkitMaskSize: '100% 100%', maskSize: '100% 100%',
+          }}
+        >
+          <span className="gem-scroll-shine play-stone-shine" />
+        </span>
+      )}
       {/* The frame LAST: never dimmed, SHARED by the play and concede
           families, over the face so painted overlap reads as the frame
           holding the stone. Bleed holds its 8-art aura. */}
