@@ -43,6 +43,12 @@ import { BugReportModal } from './BugReportModal';
 import type { TrackedRun } from '../../types/bugReport';
 import { GemMesh } from './GemMesh';
 import { PlayStoneSkin, playStoneSkinActive, concedeStoneActive } from './PlayStoneSkin';
+// The rail hearts are HARDCODED ART (user call 2026-08-04, the quest-box
+// precedent: core chrome ships in git, not as a theme knob — the old
+// Settings icon path stretched any upload into a fixed box). 7×7 native
+// art px, rendered at ×2 like all rail art.
+import heartFullIcon from '../../assets/icons/heart-full.png';
+import heartEmptyIcon from '../../assets/icons/heart-empty.png';
 import { RungPlaque } from './RungPlaque';
 import { ReplaySlabMesh } from './ReplaySlabMesh';
 
@@ -2305,52 +2311,10 @@ export const Game: React.FC<GameProps> = ({
     }, 50);
   };
 
-  // Render heart icons for lives (uses custom theme icons if available)
-  const renderLivesHearts = () => {
-    const puzzleLives = currentPuzzle.lives ?? 3;
-    const isUnlimitedLives = puzzleLives === 0;
-
-    if (isUnlimitedLives) {
-      return <span className="text-2xl text-copper-400" title="Unlimited lives">&#x221E;</span>;
-    }
-
-    const hearts = [];
-    for (let i = 0; i < puzzleLives; i++) {
-      const isFilled = i < livesRemaining;
-      const customIcon = isFilled ? themeAssets.iconHeart : themeAssets.iconHeartEmpty;
-
-      if (customIcon) {
-        // Use custom heart icon from theme with pixel-perfect 2x scaling
-        // 14x16 source -> 28x32 display for crisp pixel art
-        hearts.push(
-          <img
-            key={i}
-            src={customIcon}
-            alt={isFilled ? 'Life remaining' : 'Life lost'}
-            title={isFilled ? 'Life remaining' : 'Life lost'}
-            className="object-contain pixelated"
-            style={{
-              width: '28px',
-              height: '32px',
-              opacity: isFilled ? 1 : 0.4
-            }}
-          />
-        );
-      } else {
-        // Use default Unicode heart
-        hearts.push(
-          <span
-            key={i}
-            className={`text-xl ${isFilled ? 'heart-filled' : 'heart-empty'}`}
-            title={isFilled ? 'Life remaining' : 'Life lost'}
-          >
-            &#x2665;
-          </span>
-        );
-      }
-    }
-    return hearts;
-  };
+  // (renderLivesHearts, the old 28×32 hearts renderer, was DEAD CODE —
+  // defined but never called since the rail redesign era; deleted
+  // 2026-08-04 with the hardcoded-hearts change. The live hearts are in
+  // the rail's Lives plaque below.)
 
   // Determine if panels should be dimmed (during play or test mode)
   const isPanelsDimmed = gameState.gameStatus === 'running' || testMode !== 'none';
@@ -2462,35 +2426,23 @@ export const Game: React.FC<GameProps> = ({
                         const hearts = [];
                         for (let i = 0; i < puzzleLives; i++) {
                           const isFilled = i < livesRemaining;
-                          const customIcon = isFilled ? themeAssets.iconHeart : themeAssets.iconHeartEmpty;
-
-                          if (customIcon) {
-                            // Use integer pixel sizes for crisp pixel art (14px width)
-                            hearts.push(
-                              <img
-                                key={i}
-                                src={customIcon}
-                                alt={isFilled ? 'Life remaining' : 'Life lost'}
-                                title={isFilled ? 'Life remaining' : 'Life lost'}
-                                style={{
-                                  width: '14px',
-                                  height: '16px',
-                                  opacity: isFilled ? 1 : 0.4,
-                                  imageRendering: 'pixelated'
-                                }}
-                              />
-                            );
-                          } else {
-                            hearts.push(
-                              <span
-                                key={i}
-                                className={`text-sm lg:text-base ${isFilled ? 'heart-filled' : 'heart-empty'}`}
-                                title={isFilled ? 'Life remaining' : 'Life lost'}
-                              >
-                                &#x2665;
-                              </span>
-                            );
-                          }
+                          // Hardcoded 7×7 art at native × 2 (the rail's Z)
+                          // — never fit-to-box (the native-size sprite
+                          // law). The lost state is its own painting, so
+                          // no opacity dim.
+                          hearts.push(
+                            <img
+                              key={i}
+                              src={isFilled ? heartFullIcon : heartEmptyIcon}
+                              alt={isFilled ? 'Life remaining' : 'Life lost'}
+                              title={isFilled ? 'Life remaining' : 'Life lost'}
+                              style={{
+                                width: '14px',
+                                height: '14px',
+                                imageRendering: 'pixelated'
+                              }}
+                            />
+                          );
                         }
                         return hearts;
                       })()}

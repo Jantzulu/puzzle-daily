@@ -72,8 +72,9 @@ export interface ThemeAssets {
   borderFrame?: string; // Decorative border for panels
 
   // Icons (optional custom icons)
-  iconHeart?: string;
-  iconHeartEmpty?: string;
+  // (iconHeart/iconHeartEmpty removed 2026-08-04: the rail hearts are
+  // hardcoded art now — src/assets/icons/heart-*.png, the quest-box
+  // precedent. Stored theme JSON carrying the old keys is ignored.)
   iconBossHealthBar?: string; // Skull icon shown next to boss health bars
   iconNobleHealthBar?: string; // Crown icon shown next to Noble health bars (allies + heroes)
   iconAllyHealthBar?: string;  // Shield icon shown next to ally health bars
@@ -234,8 +235,6 @@ export const THEME_ASSET_CONFIG: Record<ThemeAssetKey, { label: string; descript
   bgNavbar: { label: 'Navbar Background', description: 'Navigation bar background', category: 'backgrounds', inputType: 'image' },
   buttonPrimary: { label: 'Primary Button', description: 'Main action button style', category: 'buttons', inputType: 'image' },
   borderFrame: { label: 'Border Frame', description: 'Decorative border for large panels', category: 'borders', inputType: 'image' },
-  iconHeart: { label: 'Heart Icon (Filled)', description: 'Custom filled heart for lives display', category: 'icons', inputType: 'image' },
-  iconHeartEmpty: { label: 'Heart Icon (Empty)', description: 'Custom empty heart for lives display', category: 'icons', inputType: 'image' },
   iconBossHealthBar: { label: 'Boss Health Bar Icon', description: 'Small skull/icon shown next to boss health bars (recommended: 8x8 or 16x16 pixels)', category: 'icons', inputType: 'image' },
   iconNobleHealthBar: { label: 'Noble Health Bar Icon', description: 'Small crown/icon shown next to Noble health bars — allies and heroes (recommended: 8x8 or 16x16 pixels)', category: 'icons', inputType: 'image' },
   iconAllyHealthBar: { label: 'Ally Health Bar Icon', description: 'Small shield/icon shown next to ally health bars (recommended: 8x8 or 16x16 pixels)', category: 'icons', inputType: 'image' },
