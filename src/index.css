@@ -2583,8 +2583,10 @@ body.menu-gate-instant .quest-box-anchor {
   content: '';
   display: block;
   position: absolute;
-  inset: -4px -8px;
-  background: radial-gradient(ellipse closest-side, rgba(228, 185, 106, 0.30), transparent);
+  /* User round: "slightly more obvious" — reach and strength up a
+     notch from -4px -8px / 0.30. */
+  inset: -6px -12px;
+  background: radial-gradient(ellipse closest-side, rgba(228, 185, 106, 0.40), transparent);
   pointer-events: none;
 }
 
@@ -2596,7 +2598,8 @@ body.menu-gate-instant .quest-box-anchor {
    filters per frame) and outside the dark-bars class (that needs a
    continuous shape split across canvases; a discrete plate is safe). */
 .nav-gate-item-active > .nav-gate-sign-skinned > canvas {
-  filter: drop-shadow(0 0 6px rgba(228, 185, 106, 0.35));
+  /* "Slightly more obvious" (user round) — up from 6px @ 0.35. */
+  filter: drop-shadow(0 0 9px rgba(228, 185, 106, 0.45));
 }
 
 /* Nav items carved into the stone — dark chiseled fill; the engraving
