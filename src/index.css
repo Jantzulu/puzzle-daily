@@ -2241,6 +2241,25 @@ body.menu-gate-instant .quest-panel-sticky {
    opening still drops the box instantly. */
 .quest-box-anchor {
   transition: z-index 0s 1.1s; /* = the close winch duration (lockstep) */
+  /* SILHOUETTE GLOW (user ask 2026-08-06, "like the play button's"): ONE
+     static drop-shadow on the PARENT — the filter computes from the
+     subtree's combined alpha, so the QUEST plate + box + ornaments glow
+     as a single union silhouette and the plate's glow can NEVER spill
+     onto the box below (their overlap is opaque-on-opaque inside the
+     filtered group). Static filter = legal (the perf law bans ANIMATING
+     filters); the bob below translates the already-rasterized filtered
+     layer, so the shadow is never recomputed per frame. */
+  filter: drop-shadow(0 0 6px rgba(228, 185, 106, 0.35));
+  /* THE BOB: whole-panel idle, stepping in WHOLE 2px hops (1 art px) —
+     a smooth sub-pixel bob would resample the pixel art into blur every
+     frame (the pinned integer-px law). Two-position hold = the classic
+     pixel-game idle. */
+  animation: quest-bob 2.6s linear infinite;
+}
+
+@keyframes quest-bob {
+  0%, 49.99% { transform: translateY(0); }
+  50%, 100% { transform: translateY(2px); }
 }
 
 body.menu-gate-lowered .quest-box-anchor {
