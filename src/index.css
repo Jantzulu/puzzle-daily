@@ -2049,7 +2049,7 @@ body:not(.menu-gate-lowered) .control-rail.rail-riding {
    object — both are compositor transforms, so with matching curves they
    stay frame-locked even when the main thread stutters. */
 .quest-panel-sticky {
-  transition: transform 1s cubic-bezier(0.5, 0, 0.75, 0.5);
+  transition: transform 1s cubic-bezier(0.45, 0, 0.25, 1); /* unified iron curve (user call 2026-08-06) - keep in LOCKSTEP with its gate/rail twin */
 }
 
 body.menu-gate-lowered .quest-panel-sticky {
@@ -2058,7 +2058,7 @@ body.menu-gate-lowered .quest-panel-sticky {
      — Game.tsx comment on the rail), keeping the docked beam-to-beam
      gap at its tuned spacing while the rail rides the gate. */
   transform: translateY(calc(var(--gate-drop, 0px) - 6px));
-  transition: transform 1.2s cubic-bezier(0.45, 0.3, 0.25, 1);
+  transition: transform 1.2s cubic-bezier(0.45, 0, 0.25, 1); /* unified iron curve (user call 2026-08-06) - keep in LOCKSTEP with its gate/rail twin */
 }
 
 /* Scroll-during-open differs by navbar mode. MOBILE: the navbar is
@@ -2112,7 +2112,7 @@ body.menu-gate-lowered .quest-panel-sticky {
 
 .menu-gate > div {
   transform: translateY(-100%);
-  transition: transform 1s cubic-bezier(0.5, 0, 0.75, 0.5);
+  transition: transform 1s cubic-bezier(0.45, 0, 0.25, 1); /* unified iron curve (user call 2026-08-06) - keep in LOCKSTEP with its gate/rail twin */
 }
 
 /* The dungeon dims behind the lowered gate: a dark scrim tints the page
@@ -2178,7 +2178,7 @@ body.menu-gate-lowered .quest-panel-sticky {
   transform: translateY(0);
   /* Moderate start + soft landing: an aggressive ease-out front-loaded
      half the travel into the first 40ms — a slam, not a lowering */
-  transition: transform 1.2s cubic-bezier(0.45, 0.3, 0.25, 1);
+  transition: transform 1.2s cubic-bezier(0.45, 0, 0.25, 1); /* unified iron curve (user call 2026-08-06) - keep in LOCKSTEP with its gate/rail twin */
 }
 
 /* Instant dismissal — a link was tapped: the destination page appears
