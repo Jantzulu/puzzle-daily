@@ -42,7 +42,7 @@ import { NextPuzzleCountdown } from './NextPuzzleCountdown';
 import { BugReportModal } from './BugReportModal';
 import type { TrackedRun } from '../../types/bugReport';
 import { GemMesh } from './GemMesh';
-import { PlayStoneSkin, playStoneSkinActive, concedeStoneActive, PLAY_STONE_DIM } from './PlayStoneSkin';
+import { PlayStoneSkin, playStoneSkinActive, concedeStoneActive, PLAY_STONE_DIM, PLAY_STONE_LIT_TRANSITION } from './PlayStoneSkin';
 // The rail hearts are HARDCODED ART (user call 2026-08-04, the quest-box
 // precedent: core chrome ships in git, not as a theme knob — the old
 // Settings icon path stretched any upload into a fixed box). 7×7 native
@@ -2553,7 +2553,7 @@ export const Game: React.FC<GameProps> = ({
                             style={playStoneSkinActive ? {
                               top: 1,
                               opacity: gameState.placedCharacters.length === 0 ? PLAY_STONE_DIM : 1,
-                              transition: 'opacity 0.25s ease',
+                              transition: PLAY_STONE_LIT_TRANSITION,
                             } : undefined}
                           >Play</span>
                         </button>

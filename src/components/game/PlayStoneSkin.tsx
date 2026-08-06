@@ -38,6 +38,13 @@ export const concedeStoneActive = PIECES.has('play-button-concede');
 export const PLAY_STONE_DIM = 0.45;
 
 /**
+ * One clock for the stone's coming-alive moment (user call 2026-08-05:
+ * dim→lit and glow-in must be transitions, not instant): the face
+ * crossfade, the frame's glow twin, and the DOM label all ride this.
+ */
+export const PLAY_STONE_LIT_TRANSITION = 'opacity 0.6s ease';
+
+/**
  * One stone piece, nominal-centered in the button box (halo overhang
  * outside it). THE renderer's draw — the forge's live preview
  * (PortcullisLive) composes the same routine on its filterless canvas,
@@ -155,7 +162,7 @@ export const PlayStoneSkin: React.FC<{ dimmed?: boolean; face?: 'play' | 'conced
               piece={base}
               bleed={0}
               darkened
-              style={{ opacity: dims ? 1 : 0, transition: 'opacity 0.25s ease' }}
+              style={{ opacity: dims ? 1 : 0, transition: PLAY_STONE_LIT_TRANSITION }}
             />
           )}
         </>
@@ -195,6 +202,25 @@ export const PlayStoneSkin: React.FC<{ dimmed?: boolean; face?: 'play' | 'conced
           families, over the face so painted overlap reads as the frame
           holding the stone. Bleed holds its 8-art aura. */}
       {frame && <StoneCanvas piece={frame} bleed={20} />}
+      {/* THE LIT FRAME (user ask 2026-08-05): when the gem lights, the
+          frame glows and brightens with it — a pixel-brightened twin of
+          the frame carrying a STATIC gold drop-shadow (CSS class), faded
+          in by OPACITY on the shared lit clock. Static filter on an
+          opacity-animated layer keeps the perf law intact (the filtered
+          layer rasterizes once; only opacity composites per frame).
+          The glow lives in EVERY state except the no-heroes dim (user
+          call: it should only stop when Play can't be clicked) — the
+          frame is the one shared element across the play→concede swap,
+          so its glow rides through the whole run. */}
+      {frame && (
+        <StoneCanvas
+          piece={frame}
+          bleed={20}
+          brightened
+          className="play-stone-frame-lit"
+          style={{ opacity: dims ? 0 : 1, transition: PLAY_STONE_LIT_TRANSITION }}
+        />
+      )}
     </>
   );
 };

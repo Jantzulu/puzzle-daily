@@ -2735,6 +2735,15 @@ body.menu-gate-instant .quest-box-anchor {
   animation: play-stone-breathe 6s ease-in-out infinite;
 }
 
+/* The lit frame's glow (user ask 2026-08-05): STATIC drop-shadow in the
+   active gold (the nav plate's glow color) on a layer whose OPACITY does
+   the transitioning — the filter itself never animates (perf law). The
+   layer also carries the brightened frame pixels, so glow + slight
+   brightening arrive as one. */
+.play-stone-frame-lit {
+  filter: drop-shadow(0 0 6px rgba(228, 185, 106, 0.4));
+}
+
 @keyframes play-stone-breathe {
   0%, 100% { opacity: 0; }
   50% { opacity: 1; }
