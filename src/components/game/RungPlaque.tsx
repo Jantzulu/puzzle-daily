@@ -126,12 +126,14 @@ export const PlaqueHeader: React.FC<{ pieces: Map<string, SkinPiece>; children: 
             kill the wrapper's inherited 20px strut (it was flex-centering
             a phantom 30px line and sat the label 5px low); the label's
             own 13px hud-label line box then places at an INTEGER offset.
-            The 6 = measured ink-center of tracked 11px Modern Antiqua
-            caps within that 13px line (2026-08-04) — retune if the theme
-            face or the label register ever changes. */}
+            The 5 = measured ink-center (6) of the tracked Modern Antiqua
+            caps within their line box, MINUS the user's 1px-lower eye
+            call (2026-08-05) — retune if the theme face or the label
+            register ever changes. One knob, both plaques (LIVES and
+            TURNS share this component). */}
         <span
           className="relative px-1"
-          style={{ fontSize: 0, lineHeight: 0, alignSelf: 'flex-start', marginTop: Math.round(h / 2) - 6 }}
+          style={{ fontSize: 0, lineHeight: 0, alignSelf: 'flex-start', marginTop: Math.round(h / 2) - 5 }}
         >
           {children}
         </span>
