@@ -309,7 +309,13 @@ function PlayerNavigation() {
             mobile (mirroring the hamburger's right pin) */}
         <NavCalendar />
         <div className="flex items-center gap-2 md:gap-4">
-        <Link to="/" className="flex items-center gap-2 md:gap-3 no-underline shrink-0">
+        {/* Same dismissal contract as the gate's rung links (user bug
+            report 2026-08-06) — see App.tsx's twin. */}
+        <Link
+          to="/"
+          className="flex items-center gap-2 md:gap-3 no-underline shrink-0"
+          onClick={() => { closeMobileMenu(true); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+        >
           {logoSrc ? (
             logoFrameCount > 1 ? (
               <AnimatedLogo

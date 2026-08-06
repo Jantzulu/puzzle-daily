@@ -2055,7 +2055,7 @@ body:not(.menu-gate-lowered) .control-rail.rail-riding {
      phase. Ease-in spends the duration in the visible lower travel and
      accelerates away as it vanishes behind the nav. LOCKSTEP with the
      .menu-gate > div twin and the visibility/z-index holds (1.4s). */
-  transition: transform 1.4s cubic-bezier(0.4, 0.1, 0.75, 0.5); /* softened from (0.5,0,...) - user: slightly too heavy */
+  transition: transform 1.1s cubic-bezier(0.4, 0.1, 0.75, 0.5); /* CLOSE = 1.1s (open stays 1.4s): with only the winch's front half visible, equal clocks read as a crawl (user round 4) - perceived parity needs the shorter close. Curve softened from (0.5,0,...). LOCKSTEP: visibility + z-index holds = 1.1s */
 }
 
 body.menu-gate-lowered .quest-panel-sticky {
@@ -2113,7 +2113,7 @@ body.menu-gate-lowered .quest-panel-sticky {
   right: 0;
   overflow: hidden;
   visibility: hidden;
-  transition: visibility 0s 1.4s; /* = the close winch duration (lockstep) */
+  transition: visibility 0s 1.1s; /* = the close winch duration (lockstep) */
 }
 
 .menu-gate > div {
@@ -2122,7 +2122,7 @@ body.menu-gate-lowered .quest-panel-sticky {
      base rule (see its comment: identical math reads faster on close
      because the tail exits offscreen; ease-in keeps the visible phase
      slow). */
-  transition: transform 1.4s cubic-bezier(0.4, 0.1, 0.75, 0.5); /* softened from (0.5,0,...) - user: slightly too heavy */
+  transition: transform 1.1s cubic-bezier(0.4, 0.1, 0.75, 0.5); /* CLOSE = 1.1s (open stays 1.4s): with only the winch's front half visible, equal clocks read as a crawl (user round 4) - perceived parity needs the shorter close. Curve softened from (0.5,0,...). LOCKSTEP: visibility + z-index holds = 1.1s */
 }
 
 /* The dungeon dims behind the lowered gate: a dark scrim tints the page
@@ -2238,7 +2238,7 @@ body.menu-gate-instant .quest-panel-sticky {
    transition) has finished; the lowered state transitions with no delay so
    opening still drops the box instantly. */
 .quest-box-anchor {
-  transition: z-index 0s 1.4s; /* = the close winch duration (lockstep) */
+  transition: z-index 0s 1.1s; /* = the close winch duration (lockstep) */
 }
 
 body.menu-gate-lowered .quest-box-anchor {

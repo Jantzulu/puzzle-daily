@@ -399,8 +399,15 @@ function Navigation() {
             ghost spacer's 44px on desktop, pins to the left edge on
             mobile (mirroring the hamburger's right pin) */}
         <NavCalendar />
-        {/* Logo/Title — pops off the wall */}
-        <Link to="/" className="nav-pop flex items-center gap-2 md:gap-3 no-underline">
+        {/* Logo/Title — pops off the wall. Same dismissal contract as the
+            gate's rung links (user bug report 2026-08-06: logo-to-play
+            with the menu open left the gate hanging): instant close + go
+            home + scroll home. */}
+        <Link
+          to="/"
+          className="nav-pop flex items-center gap-2 md:gap-3 no-underline"
+          onClick={() => { closeMobileMenu(true); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+        >
           {/* Custom logo or default torch icon */}
           {(() => {
             // Check for randomized logo first
