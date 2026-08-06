@@ -2034,7 +2034,11 @@ body:not(.menu-gate-lowered) .control-rail.rail-riding {
 }
 
 body.menu-gate-lowered .quest-panel-sticky {
-  transform: translateY(var(--gate-drop, 0px));
+  /* -6px cancels the rail's mt-[6px] CREST EXPOSURE (the whole panel
+     sits 6px lower at rest so the play frame's crest clears the navbar
+     — Game.tsx comment on the rail), keeping the docked beam-to-beam
+     gap at its tuned spacing while the rail rides the gate. */
+  transform: translateY(calc(var(--gate-drop, 0px) - 6px));
   transition: transform 1.2s cubic-bezier(0.45, 0.3, 0.25, 1);
 }
 

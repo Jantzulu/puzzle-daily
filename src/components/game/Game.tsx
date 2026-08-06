@@ -2389,15 +2389,20 @@ export const Game: React.FC<GameProps> = ({
               // padding on its stone side (the play frame's 8-art aura) —
               // so the plaques center exactly between the rung's END and
               // the stone ART's edge (user call, 2026-08-04).
-              <div className={`control-rail relative z-0 w-full max-w-2xl grid grid-cols-[1fr_auto_1fr] items-center pt-1 pb-1 mt-0 mb-1 min-h-[44px]${railRiding ? ' rail-riding' : ''}${justExitedReplay ? ' animate-rail-descend' : ''}${enteringReplay ? ' animate-rail-ascend' : ''}${replayMode && !enteringReplay ? ' invisible' : ''}`}>
+              <div className={`control-rail relative z-0 w-full max-w-2xl grid grid-cols-[1fr_auto_1fr] items-center pt-1 pb-1 mt-[6px] mb-1 min-h-[44px]${railRiding ? ' rail-riding' : ''}${justExitedReplay ? ' animate-rail-descend' : ''}${enteringReplay ? ' animate-rail-ascend' : ''}${replayMode && !enteringReplay ? ' invisible' : ''}`}>
                   {/* Portcullis rail: with the mobile menu OPEN the sticky
                       wrapper rides the gate's leading edge (translated by
                       --gate-drop, see index.css), so this rail hangs
-                      pb-3 = 12px under the menu's last beam — the mt here
-                      is tuned so that beam-to-beam gap matches the menu's
-                      own rung spacing: one equidistant lattice with this
-                      rail as the spiked bottom. Spikes hang over the
-                      dungeon (wrapper z-40 > board z-10). */}
+                      pb-3 = 12px under the menu's last beam — mt-0 was
+                      the tuned value making that beam-to-beam gap match
+                      the menu's own rung spacing. mt-[6px] now = THE
+                      CREST EXPOSURE (user call 2026-08-05): the frame
+                      art's top reaches 6px above the rung, which sat
+                      exactly under the navbar — the whole panel drops 6px
+                      so the crest lands flush at the nav's bottom edge.
+                      The docked gap keeps its tuning via the -6px in the
+                      menu-gate-lowered translate (index.css). Spikes hang
+                      over the dungeon (wrapper z-40 > board z-10). */}
                   <PortcullisMesh />
                   {/* Left: Lives - centered in left third, on the shared
                       rung plaque (one painted design serves Lives AND
