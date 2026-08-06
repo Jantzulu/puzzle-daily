@@ -3245,7 +3245,13 @@ export const Game: React.FC<GameProps> = ({
               // quest-box-anchor: while the menu gate is lowered the box's
               // z-45 DROPS below the riding rail (see index.css) — nothing
               // may hide the open gate (user call, 2026-08-01 mobile test).
-              <div className="quest-box-anchor w-full max-w-2xl relative z-[45] -mt-[3px] mb-1">
+              // w-fit, not w-full (user call 2026-08-05): the box hugs
+              // its text and the art wraps neatly around it — the parent
+              // column's items-center centers it; max-w-2xl still caps
+              // long quests into wrapping. (Line comment, NOT {/* */} —
+              // this is EXPRESSION position; the documented parse trap
+              // struck its third time right here.)
+              <div className="quest-box-anchor w-fit max-w-2xl mx-auto relative z-[45] -mt-[3px] mb-1">
                 {/* pt-1.5/pb-1.5 (user call, third round): the plate now
                     rides HIGHER on the border (-top-[15px], only ~6px of it
                     inside the box), which is what lets the top padding drop
@@ -3265,9 +3271,12 @@ export const Game: React.FC<GameProps> = ({
                   ref={questBoxSnapRef}
                   className={`relative ${questSkinFrameActive
                     ? ''
-                    : 'text-shadow-dungeon bg-stone-950/95 border-[3px] border-copper-700 rounded-pixel-md px-4 md:px-5 pt-1.5 pb-1.5'}`}
+                    : 'text-shadow-dungeon bg-stone-950/95 border-[3px] border-copper-700 rounded-pixel-md px-4 md:px-5 pt-0.5 pb-0.5'}`}
                   style={questSkinFrameActive ? {
-                    padding: `${questFrameBorders.t + 4}px ${questFrameBorders.r + 8}px ${questFrameBorders.b + 2}px ${questFrameBorders.l + 8}px`,
+                    // Vertical add-ons trimmed 4/2 -> 1/0 (user call
+                    // 2026-08-05: less padding above and below the
+                    // objective) — the art's own borders still clear.
+                    padding: `${questFrameBorders.t + 1}px ${questFrameBorders.r + 8}px ${questFrameBorders.b}px ${questFrameBorders.l + 8}px`,
                   } : undefined}
                 >
                 {questSkinFrameActive && <QuestBoxFrame />}
