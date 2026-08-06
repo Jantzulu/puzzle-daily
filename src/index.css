@@ -2567,22 +2567,13 @@ body.menu-gate-instant .quest-box-anchor {
 
 /* The PAINTED plate's version of the active glow (user ask 2026-08-05):
    the CSS-era box glow above dies with the plate stock (skinned mode
-   forces box-shadow:none). A canvas drop-shadow was tried first and
-   READ AS A RECTANGLE on mobile Safari (user phone screenshot — WebKit
-   shadows the element box, and the plate art is near-rectangular
-   anyway), so the glow is a RADIAL GRADIENT behind the plate instead:
-   reads as lamplight, renders identically everywhere, no filter at
-   all. ::before = the span's first positioned child, so it paints
-   under the later canvas without negative z (the pinned no-negative-z
-   gate rule). span in the selector matches the display:none stock-kill
-   rule's specificity; this later rule wins. */
-.nav-gate-item-active > span.nav-gate-sign-skinned::before {
-  content: '';
-  display: block;
-  position: absolute;
-  inset: -12px -18px;
-  background: radial-gradient(ellipse closest-side, rgba(228, 185, 106, 0.32), transparent);
-  pointer-events: none;
+   forces box-shadow:none), so the active page's plate glows via a STATIC
+   drop-shadow on the sign canvas — it hugs the art's silhouette, in the
+   text glow's own gold. Legal under the perf law (which bans ANIMATING
+   filters per frame) and outside the dark-bars class (that needs a
+   continuous shape split across canvases; a discrete plate is safe). */
+.nav-gate-item-active > .nav-gate-sign-skinned > canvas {
+  filter: drop-shadow(0 0 6px rgba(228, 185, 106, 0.35));
 }
 
 /* Nav items carved into the stone — dark chiseled fill; the engraving
