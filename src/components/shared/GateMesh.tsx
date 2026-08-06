@@ -227,9 +227,12 @@ export const GateSign: React.FC<{ children: React.ReactNode }> = ({ children }) 
   return (
     <span ref={snapRef} className="nav-gate-sign-skinned" style={{ position: 'relative' }}>
       {/* No negative z anywhere in the gate (pinned WebKit rule): the
-          canvas paints first, the positioned text sibling above it. */}
+          canvas paints first, the positioned text sibling above it.
+          zIndex 1 (positive, allowed) lifts the label over the active
+          plate's ::after bloom layer, which is generated as the span's
+          LAST child and would otherwise paint over the text. */}
       <canvas ref={canvasRef} aria-hidden style={{ position: 'absolute' }} />
-      <span style={{ position: 'relative' }}>{children}</span>
+      <span style={{ position: 'relative', zIndex: 1 }}>{children}</span>
     </span>
   );
 };
