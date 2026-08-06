@@ -249,7 +249,7 @@ export const Game: React.FC<GameProps> = ({
   // transitions), which froze the rail while the gate lowered.
   const [gateSettling, setGateSettling] = useState(true);
   useEffect(() => {
-    const id = setTimeout(() => setGateSettling(false), 1050); // settle runs 1s
+    const id = setTimeout(() => setGateSettling(false), 1450); // settle = 0.35s delay + 1s run (lockstep with .gate-settle)
     return () => clearTimeout(id);
   }, []);
   // Reset reveal: masks the instant repaint on reset/retry/replay swaps.

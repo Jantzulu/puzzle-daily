@@ -1854,8 +1854,13 @@ body:not(.menu-gate-lowered) .control-rail.rail-riding {
      transform:translateY(0) forever and an animation fill beats any later
      class — it would silently pin the rail against the menu-gate-lowered
      ride below. The last keyframe already lands on translateY(0), so
-     releasing the fill at animation end is invisible. */
-  animation: gate-settle 1s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+     releasing the fill at animation end is invisible.
+     0.35s DELAY (user call 2026-08-06: "a brief delay so the user
+     actually sees it happen"): fill backwards holds the gate at its
+     open start through the delay, so the page paints open, pauses a
+     beat, then retracts. Game.tsx's gateSettling timeout must cover
+     delay + duration — keep them in lockstep. */
+  animation: gate-settle 1s cubic-bezier(0.22, 1, 0.36, 1) 0.35s backwards;
 }
 
 /* Replay exit: the control rail re-enters like the portcullis it is —
