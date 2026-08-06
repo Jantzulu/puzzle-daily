@@ -2541,9 +2541,15 @@ export const Game: React.FC<GameProps> = ({
                               layers, not the DOM label). Skinned path
                               only: the mesh fallback dims the whole
                               button already. */}
+                          {/* THE LABEL SEAT (user eye, 2026-08-05): +2px
+                              centers the text between the painted gem's
+                              parallel face lines — skinned art only, the
+                              mesh keeps its own centering. Twin knob on
+                              the CONCEDE label below; keep them equal. */}
                           <span
-                            className="uppercase tracking-[0.05em]"
+                            className="relative uppercase tracking-[0.05em]"
                             style={playStoneSkinActive ? {
+                              top: 2,
                               opacity: gameState.placedCharacters.length === 0 ? PLAY_STONE_DIM : 1,
                               transition: 'opacity 0.25s ease',
                             } : undefined}
@@ -2577,8 +2583,12 @@ export const Game: React.FC<GameProps> = ({
                             the themed face (Modern Antiqua, the pinned
                             estimate-in-the-themed-font trap): CONCEDE =
                             72px of tracked caps at text-sm, comfortable
-                            on the fixed 120px stone. */}
-                        <span className="uppercase tracking-[0.05em]">Concede</span>
+                            on the fixed 120px stone. The +2px LABEL SEAT
+                            matches PLAY's (keep equal). */}
+                        <span
+                          className="relative uppercase tracking-[0.05em]"
+                          style={concedeStoneActive ? { top: 2 } : undefined}
+                        >Concede</span>
                       </button>
                     )}
                   </div>
