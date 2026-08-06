@@ -2250,16 +2250,21 @@ body.menu-gate-instant .quest-panel-sticky {
      filters); the bob below translates the already-rasterized filtered
      layer, so the shadow is never recomputed per frame. */
   filter: drop-shadow(0 0 6px rgba(228, 185, 106, 0.35));
-  /* THE BOB: whole-panel idle, stepping in WHOLE 2px hops (1 art px) —
-     a smooth sub-pixel bob would resample the pixel art into blur every
-     frame (the pinned integer-px law). Two-position hold = the classic
-     pixel-game idle. */
-  animation: quest-bob 2.6s linear infinite;
+  /* THE BOB: whole-panel idle in 1px INTEGER steps — crispness only
+     needs whole CSS px (fractions resample the art into blur; the
+     pinned law), and the panel translates as one unit, so half-art-px
+     positions stay perfectly sharp. Four 1px steps per cycle (round 2:
+     the single 2px hop was too sharp for the user); ~800ms cadence.
+     Still too mechanical -> delete this animation + keyframes, keep
+     the glow. */
+  animation: quest-bob 3.2s linear infinite;
 }
 
 @keyframes quest-bob {
-  0%, 49.99% { transform: translateY(0); }
-  50%, 100% { transform: translateY(2px); }
+  0%, 24.99% { transform: translateY(0); }
+  25%, 49.99% { transform: translateY(1px); }
+  50%, 74.99% { transform: translateY(2px); }
+  75%, 100% { transform: translateY(1px); }
 }
 
 body.menu-gate-lowered .quest-box-anchor {
