@@ -1860,7 +1860,11 @@ body:not(.menu-gate-lowered) .control-rail.rail-riding {
      open start through the delay, so the page paints open, pauses a
      beat, then retracts. Game.tsx's gateSettling timeout must cover
      delay + duration — keep them in lockstep. */
-  animation: gate-settle 1s cubic-bezier(0.22, 1, 0.36, 1) 0.35s backwards;
+  /* Balanced in-out, not the old quint-out (0.22,1,0.36,1) — that curve
+     spent its speed in the first beats and coasted, which read as a
+     lurch (user call 2026-08-06). This one takes up the winch slack
+     gently, rises steadily, and lands soft. */
+  animation: gate-settle 1s cubic-bezier(0.45, 0, 0.25, 1) 0.35s backwards;
 }
 
 /* Replay exit: the control rail re-enters like the portcullis it is —
