@@ -2580,11 +2580,8 @@ body.menu-gate-instant .quest-box-anchor {
   content: '';
   display: block;
   position: absolute;
-  /* Wide horizontal pool (user round 2: the first cut read no different
-     from the old box glow on the phone) — the strong ellipse is what
-     makes it read as lamplight instead of a traced outline. */
-  inset: -14px -34px;
-  background: radial-gradient(ellipse closest-side, rgba(228, 185, 106, 0.40), rgba(228, 185, 106, 0.12) 55%, transparent);
+  inset: -12px -18px;
+  background: radial-gradient(ellipse closest-side, rgba(228, 185, 106, 0.32), transparent);
   pointer-events: none;
 }
 
