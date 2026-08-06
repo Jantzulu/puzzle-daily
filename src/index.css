@@ -807,9 +807,10 @@ html body.theme-font-active,
 /* Mobile: the navbar is not sticky, so the banner sticks to the viewport
    top — offset it so the rod (pulled up by the banner's negative margin)
    stays fully visible instead of being cut off by the page edge. */
-.quest-panel-sticky {
-  top: 3px;
-}
+/* (The mobile top: 3px sticky offset died with the mobile un-stick,
+   2026-08-06 — the wrapper is position:relative below md now, where a
+   top offset would SHIFT it instead of setting a stick point. The ride
+   rule provides mobile's 3px sliver instead.) */
 
 @media (min-width: 768px) {
   .animate-slide-in-right {
@@ -1827,14 +1828,13 @@ html body.theme-font-active,
    navbar, so a 3px ride provides it. Suppressed while the menu gate is
    lowered — the rail is riding the gate's leading edge then, and a sag
    would break the tuned beam-to-beam docking gap. */
+/* 3px at EVERY width since the mobile un-stick (2026-08-06): mobile's
+   sliver used to come free from the 3px sticky offset; with the mobile
+   rail IN-FLOW the ride provides it instead — the portcullis "extends
+   slightly at the beginning of a scroll" (user design) then travels
+   away with the page. Desktop unchanged in effect. */
 body:not(.menu-gate-lowered) .control-rail.rail-riding {
-  transform: translateY(0);
-}
-
-@media (min-width: 768px) {
-  body:not(.menu-gate-lowered) .control-rail.rail-riding {
-    transform: translateY(3px);
-  }
+  transform: translateY(3px);
 }
 
 /* The gate settles on page load: the rail (mesh + controls, applied to

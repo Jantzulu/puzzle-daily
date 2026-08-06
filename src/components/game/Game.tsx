@@ -2344,7 +2344,21 @@ export const Game: React.FC<GameProps> = ({
               // `|| replayMode` keeps the wrapper mounted through replay
               // (whatever status the scrubbed snapshot carries) so the
               // board never jumps when the rail hides.
-              <div className={`w-full flex flex-col items-center sticky top-0 z-[40] quest-panel-sticky${gateSettling ? ' gate-settle' : ''}`}>
+              // IN-FLOW ON MOBILE, STICKY ON DESKTOP (user call
+              // 2026-08-06, ending the iOS 26 glass saga): the pinned
+              // mobile rail floated under the glass chrome with nothing
+              // connecting to it — Safari clips sticky-layer content
+              // above, by design, and the hunt proved no mechanism
+              // paints there. In-flow, the mobile portcullis stays
+              // attached to the dungeon scene: it sags its 3px at scroll
+              // start (rail-riding, now both widths), then travels away
+              // with the page like the iron it is. Desktop keeps the
+              // stuck rail under its solid navbar (docking included);
+              // dockRail is width-gated in App/PlayerApp so the MOBILE
+              // menu carries its own spiked bottom while desktop still
+              // docks. z-[40] stays: spikes over the board (z-10),
+              // everything under the nav (z-50).
+              <div className={`w-full flex flex-col items-center relative md:sticky z-[40] quest-panel-sticky${gateSettling ? ' gate-settle' : ''}`}>
               {/* (The quest banner used to hang here — it now hangs BELOW
                   the board, and only this rail rides sticky.) */}
               {/* Control Panel Row — Lives / Play / Max Turns riding the

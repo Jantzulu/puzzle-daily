@@ -191,7 +191,10 @@ function PlayerNavigation() {
 
   useLayoutEffect(() => {
     if (mobileMenuOpen) {
-      setDockRail(location.pathname === '/' && !!document.querySelector('.control-rail-mesh'));
+      // DESKTOP-ONLY since the mobile un-stick (user call 2026-08-06) —
+      // see App.tsx's twin comment: the mobile rail is in-flow, the
+      // mobile menu carries its own spiked bottom; desktop still docks.
+      setDockRail(window.matchMedia('(min-width: 768px)').matches && location.pathname === '/' && !!document.querySelector('.control-rail-mesh'));
     }
   }, [mobileMenuOpen, location.pathname]);
 

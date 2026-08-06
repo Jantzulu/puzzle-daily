@@ -252,7 +252,13 @@ function Navigation() {
 
   useLayoutEffect(() => {
     if (mobileMenuOpen) {
-      setDockRail(location.pathname === '/' && !!document.querySelector('.control-rail-mesh'));
+      // DESKTOP-ONLY since the mobile un-stick (user call 2026-08-06):
+      // the mobile rail is IN-FLOW now — it scrolls with the page
+      // instead of pinning under iOS 26's glass chrome (Safari clips
+      // sticky-layer content above a stuck element, by design) — so the
+      // MOBILE menu carries its own spiked bottom like every non-game
+      // page. Desktop keeps the stuck rail and the docking.
+      setDockRail(window.matchMedia('(min-width: 768px)').matches && location.pathname === '/' && !!document.querySelector('.control-rail-mesh'));
     }
   }, [mobileMenuOpen, location.pathname]);
 
