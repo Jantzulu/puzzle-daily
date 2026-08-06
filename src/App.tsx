@@ -252,13 +252,13 @@ function Navigation() {
 
   useLayoutEffect(() => {
     if (mobileMenuOpen) {
-      // DESKTOP-ONLY since the mobile un-stick (user call 2026-08-06):
-      // the mobile rail is IN-FLOW now — it scrolls with the page
-      // instead of pinning under iOS 26's glass chrome (Safari clips
-      // sticky-layer content above a stuck element, by design) — so the
-      // MOBILE menu carries its own spiked bottom like every non-game
-      // page. Desktop keeps the stuck rail and the docking.
-      setDockRail(window.matchMedia('(min-width: 768px)').matches && location.pathname === '/' && !!document.querySelector('.control-rail-mesh'));
+      // Docking survives the mobile un-stick (user call 2026-08-06,
+      // round 2: the gate must stay ATTACHED to the control panel): the
+      // mobile rail is IN-FLOW now, but the mobile navbar scrolls away
+      // with the page, so the hamburger is only reachable near the page
+      // top — exactly where the in-flow rail sits in its old sticky-rest
+      // position. The docking translate lands identically from there.
+      setDockRail(location.pathname === '/' && !!document.querySelector('.control-rail-mesh'));
     }
   }, [mobileMenuOpen, location.pathname]);
 

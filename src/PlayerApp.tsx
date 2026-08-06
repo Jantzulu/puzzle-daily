@@ -191,10 +191,11 @@ function PlayerNavigation() {
 
   useLayoutEffect(() => {
     if (mobileMenuOpen) {
-      // DESKTOP-ONLY since the mobile un-stick (user call 2026-08-06) —
-      // see App.tsx's twin comment: the mobile rail is in-flow, the
-      // mobile menu carries its own spiked bottom; desktop still docks.
-      setDockRail(window.matchMedia('(min-width: 768px)').matches && location.pathname === '/' && !!document.querySelector('.control-rail-mesh'));
+      // Docking survives the mobile un-stick (user call 2026-08-06,
+      // round 2) — see App.tsx's twin comment: the mobile hamburger is
+      // only reachable near page top, where the in-flow rail sits at
+      // its old sticky-rest position; the dock lands identically.
+      setDockRail(location.pathname === '/' && !!document.querySelector('.control-rail-mesh'));
     }
   }, [mobileMenuOpen, location.pathname]);
 
