@@ -151,9 +151,22 @@ export const drawRailSkin = (
   }
 };
 
+/**
+ * How far the rising bars continue ABOVE the mesh box — the iOS 26
+ * "liquid glass" fix (user report, 2026-08-06): glass Safari shows the
+ * page through the whole top region, so the stuck rail's bars ended in
+ * hollow space and the portcullis stopped reading as anchored. These
+ * extension bars fill that region; on pre-glass devices and desktop
+ * they're occluded for free (above the viewport, or behind the opaque
+ * navbar's z-50) — pixel-identical to the old look. Game rail only
+ * (the nav-gate's own rung lives inside the menu and needs no reach).
+ */
+const BARS_EXT_H = 160;
+
 const PortcullisSkin: React.FC<{ className: string }> = ({ className }) => {
   const hostRef = React.useRef<HTMLDivElement>(null);
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
+  const extRef = React.useRef<HTMLCanvasElement>(null);
   React.useLayoutEffect(() => {
     const host = hostRef.current;
     const canvas = canvasRef.current;
@@ -167,6 +180,23 @@ const PortcullisSkin: React.FC<{ className: string }> = ({ className }) => {
       if (!ctx) return;
       ctx.clearRect(0, 0, w, h);
       drawRailSkin(ctx, w, h, RAIL, BARS);
+      // The upward extension: same six columns, tile phase anchored at
+      // the SEAM (ay = BARS_EXT_H = the mesh canvas's own y0 anchor), so
+      // the pattern continues unbroken across the canvas handoff.
+      const ext = extRef.current;
+      if (ext) {
+        const bar = BARS.get('bar-segment');
+        const ctx2 = prepCanvas(ext, w, BARS_EXT_H, 0);
+        if (ctx2) {
+          ctx2.clearRect(0, 0, w, BARS_EXT_H);
+          if (bar) {
+            const bw = bar.w * Z;
+            for (const bx of barCenters(w, bw, EDGE_BAR_INSET * Z)) {
+              drawTiled(ctx2, bar, Math.round(bx - bw / 2), 0, bw, BARS_EXT_H, Math.round(bx - bw / 2), BARS_EXT_H);
+            }
+          }
+        }
+      }
     };
     // INTEGER-PX SNAP (the quest box's law, root cause of the 2026-08-03
     // "darker first pixels on the rising bars" saga): the class anchors
@@ -208,6 +238,16 @@ const PortcullisSkin: React.FC<{ className: string }> = ({ className }) => {
   return (
     <div className={className} aria-hidden style={{ overflow: 'visible' }} ref={hostRef}>
       <canvas ref={canvasRef} style={{ position: 'absolute' }} />
+      {/* The glass-era bars extension, GAME RAIL ONLY: a span anchors it
+          on top of the mesh box (prepCanvas owns the canvas's own
+          left/top, so the canvas can't carry the bottom:100% itself).
+          Empty when the gate kit is unpainted — the svg baseline never
+          shows it. */}
+      {className === 'control-rail-mesh' && (
+        <span style={{ position: 'absolute', left: 0, right: 0, bottom: '100%', height: BARS_EXT_H }}>
+          <canvas ref={extRef} style={{ position: 'absolute' }} />
+        </span>
+      )}
     </div>
   );
 };
