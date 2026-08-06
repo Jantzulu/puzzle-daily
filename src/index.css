@@ -2055,7 +2055,7 @@ body:not(.menu-gate-lowered) .control-rail.rail-riding {
      phase. Ease-in spends the duration in the visible lower travel and
      accelerates away as it vanishes behind the nav. LOCKSTEP with the
      .menu-gate > div twin and the visibility/z-index holds (1.4s). */
-  transition: transform 1.4s cubic-bezier(0.5, 0, 0.75, 0.5);
+  transition: transform 1.4s cubic-bezier(0.4, 0.1, 0.75, 0.5); /* softened from (0.5,0,...) - user: slightly too heavy */
 }
 
 body.menu-gate-lowered .quest-panel-sticky {
@@ -2122,7 +2122,7 @@ body.menu-gate-lowered .quest-panel-sticky {
      base rule (see its comment: identical math reads faster on close
      because the tail exits offscreen; ease-in keeps the visible phase
      slow). */
-  transition: transform 1.4s cubic-bezier(0.5, 0, 0.75, 0.5);
+  transition: transform 1.4s cubic-bezier(0.4, 0.1, 0.75, 0.5); /* softened from (0.5,0,...) - user: slightly too heavy */
 }
 
 /* The dungeon dims behind the lowered gate: a dark scrim tints the page
