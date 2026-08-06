@@ -2250,21 +2250,21 @@ body.menu-gate-instant .quest-panel-sticky {
      filters); the bob below translates the already-rasterized filtered
      layer, so the shadow is never recomputed per frame. */
   filter: drop-shadow(0 0 6px rgba(228, 185, 106, 0.35));
-  /* THE BOB: whole-panel idle in 1px INTEGER steps — crispness only
-     needs whole CSS px (fractions resample the art into blur; the
-     pinned law), and the panel translates as one unit, so half-art-px
-     positions stay perfectly sharp. Four 1px steps per cycle (round 2:
-     the single 2px hop was too sharp for the user); ~800ms cadence.
-     Still too mechanical -> delete this animation + keyframes, keep
-     the glow. */
-  animation: quest-bob 3.2s linear infinite;
+  /* THE BOB, round 3 — the TRUE smooth sine the user imagined
+     ("weightlessly bobbing"; the 2px hop and 1px steps both read
+     mechanical). DELIBERATE, USER-JUDGED EXCEPTION to the integer-px
+     law: that law guards against PERMANENT fractional placement — here
+     the fractional positions exist only mid-transit of a slow eased
+     motion (the eye tracks movement, not pixel edges), and the
+     ease-in-out dwells at the integer endpoints where the art is
+     pin-sharp. If the transit softness bothers the user's eye: delete
+     this animation + keyframes, keep the glow. */
+  animation: quest-bob 3.5s ease-in-out infinite;
 }
 
 @keyframes quest-bob {
-  0%, 24.99% { transform: translateY(0); }
-  25%, 49.99% { transform: translateY(1px); }
-  50%, 74.99% { transform: translateY(2px); }
-  75%, 100% { transform: translateY(1px); }
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(2px); }
 }
 
 body.menu-gate-lowered .quest-box-anchor {
