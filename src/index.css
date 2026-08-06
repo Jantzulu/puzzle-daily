@@ -2049,7 +2049,13 @@ body:not(.menu-gate-lowered) .control-rail.rail-riding {
    object — both are compositor transforms, so with matching curves they
    stay frame-locked even when the main thread stutters. */
 .quest-panel-sticky {
-  transition: transform 1.4s cubic-bezier(0.45, 0, 0.25, 1); /* unified iron pace: 1.4s BOTH ways (user call 2026-08-06 - close matched to open, both slowed) - keep in LOCKSTEP with its gate/rail twin AND the visibility/z-index holds */
+  /* CLOSE (base state) — same 1.4s as the open, but the WINCH-UP curve:
+     identical math felt faster on close because the graceful tail
+     happens OFFSCREEN (user round 3) — the eye only sees the visible
+     phase. Ease-in spends the duration in the visible lower travel and
+     accelerates away as it vanishes behind the nav. LOCKSTEP with the
+     .menu-gate > div twin and the visibility/z-index holds (1.4s). */
+  transition: transform 1.4s cubic-bezier(0.5, 0, 0.75, 0.5);
 }
 
 body.menu-gate-lowered .quest-panel-sticky {
@@ -2112,7 +2118,11 @@ body.menu-gate-lowered .quest-panel-sticky {
 
 .menu-gate > div {
   transform: translateY(-100%);
-  transition: transform 1.4s cubic-bezier(0.45, 0, 0.25, 1); /* unified iron pace: 1.4s BOTH ways (user call 2026-08-06 - close matched to open, both slowed) - keep in LOCKSTEP with its gate/rail twin AND the visibility/z-index holds */
+  /* CLOSE — the winch-up curve, LOCKSTEP with .quest-panel-sticky's
+     base rule (see its comment: identical math reads faster on close
+     because the tail exits offscreen; ease-in keeps the visible phase
+     slow). */
+  transition: transform 1.4s cubic-bezier(0.5, 0, 0.75, 0.5);
 }
 
 /* The dungeon dims behind the lowered gate: a dark scrim tints the page
