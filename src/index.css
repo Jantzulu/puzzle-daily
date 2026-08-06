@@ -1839,11 +1839,13 @@ body:not(.menu-gate-lowered) .control-rail.rail-riding {
 
 /* The gate settles on page load: the rail (mesh + controls, applied to
    the sticky wrapper so it can't fight the rail's own replay-exit
-   scale-pop) starts a touch low and rises into place — catching the last
+   scale-pop) starts LOW and rises into place — catching the last
    moment of the portcullis opening as the dungeon is revealed.
-   Transform-only, runs once per mount. */
+   Transform-only, runs once per mount. 32px (user call 2026-08-06:
+   "starts slightly even more open and retracts up" — deepened from the
+   original 16). */
 @keyframes gate-settle {
-  from { transform: translateY(16px); }
+  from { transform: translateY(32px); }
   to { transform: translateY(0); }
 }
 
