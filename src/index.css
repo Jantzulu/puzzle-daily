@@ -1841,11 +1841,13 @@ body:not(.menu-gate-lowered) .control-rail.rail-riding {
    the sticky wrapper so it can't fight the rail's own replay-exit
    scale-pop) starts LOW and rises into place — catching the last
    moment of the portcullis opening as the dungeon is revealed.
-   Transform-only, runs once per mount. 32px (user call 2026-08-06:
-   "starts slightly even more open and retracts up" — deepened from the
-   original 16). */
+   Transform-only, runs once per mount. 24px: deepened from the original
+   16 (user call 2026-08-06, "starts slightly even more open"), then
+   pulled back from 32 when the gate TAIL was removed — the mesh's bars
+   only reach 27.5px above the rung, so a deeper start exposed art that
+   is no longer there. */
 @keyframes gate-settle {
-  from { transform: translateY(32px); }
+  from { transform: translateY(24px); }
   to { transform: translateY(0); }
 }
 
