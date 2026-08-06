@@ -54,6 +54,14 @@ html {
      document. */
   overflow-x: hidden;
   overflow-x: clip;
+  /* EXPLICIT root background — iOS 26 glass Safari one-shot SAMPLES the
+     page background near first paint to color its own slab over the
+     glass region, and a transparent root falls back to a SOLID
+     BLACK/WHITE slab (the "hard black cutoff" the user's iPhone showed,
+     nondeterministically vs the translucent mode — likely the sampler
+     racing our canvas paint). body alone is not enough; the community
+     recipe (thread 801694 / 1ar.io, 2025-2026) wants BOTH roots opaque. */
+  background-color: var(--color-bg-primary);
 }
 
 body {

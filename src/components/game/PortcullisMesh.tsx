@@ -1,6 +1,7 @@
 import React from 'react';
 import railJson from '../../assets/panels/control-rail-slices.json';
 import barsJson from '../../assets/panels/portcullis-gate-slices.json';
+import navJson from '../../assets/panels/nav-gate-slices.json';
 import { Z, buildSkin, barCenters, EDGE_BAR_INSET, nomW, nomH, drawFixed, drawTiled, prepCanvas, whenDecoded, type SkinPiece } from './panelSkins';
 
 // ============================================================================
@@ -69,6 +70,9 @@ const SPIKE_HALF = 22; // spike half-width at the root
 // whatever space the box gives above the band.
 const RAIL = buildSkin(railJson, 'control-rail');
 const BARS = buildSkin(barsJson, 'portcullis-gate');
+// The nav-gate kit supplies the closed gate's TAIL rungs above the rail
+// (beam face + end caps) — the same art the open menu's lattice wears.
+const NAV = buildSkin(navJson, 'nav-gate');
 export const portcullisSkinActive = RAIL.has('rail-face') || BARS.has('bar-segment');
 
 /**
@@ -152,21 +156,33 @@ export const drawRailSkin = (
 };
 
 /**
- * How far the rising bars continue ABOVE the mesh box — the iOS 26
- * "liquid glass" fix (user report, 2026-08-06): glass Safari shows the
- * page through the whole top region, so the stuck rail's bars ended in
- * hollow space and the portcullis stopped reading as anchored. These
- * extension bars fill that region; on pre-glass devices and desktop
- * they're occluded for free (above the viewport, or behind the opaque
- * navbar's z-50) — pixel-identical to the old look. Game rail only
- * (the nav-gate's own rung lives inside the menu and needs no reach).
+ * THE CLOSED GATE'S TAIL — how far the portcullis continues ABOVE the
+ * mesh box, and what it's made of. iOS 26 glass round (user report +
+ * user design, 2026-08-06): glass Safari shows page content through the
+ * whole top region, so the stuck rail's bars ended mid-shaft in hollow
+ * space. Per the user's call, the fix is not bare shafts but the actual
+ * BOTTOM OF THE CLOSED PORTCULLIS: the menu-gate's iron rungs (nav-gate
+ * kit beam face + end caps, the user's art) with the rising bars running
+ * through them — most of it hidden at rest (behind the opaque navbar's
+ * z-50, or above pre-glass viewports), revealed through the glass when
+ * scrolled. Game rail only.
  */
 const BARS_EXT_H = 160;
+/** Menu lattice pitch: 52px items + 8px gaps — the open gate's rhythm. */
+const TAIL_RUNG_PITCH = 60;
 
 const PortcullisSkin: React.FC<{ className: string }> = ({ className }) => {
   const hostRef = React.useRef<HTMLDivElement>(null);
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
-  const extRef = React.useRef<HTMLCanvasElement>(null);
+  // The gate tail renders IN-BOX: iOS refused to paint sticky-layer
+  // children positioned outside their boxes (two anchorings tried,
+  // freshness-marker verified on the user's phone) — but the mesh's own
+  // in-box overflow zone renders fine there. So the game rail's host box
+  // GROWS upward by the tail (inline style, skin path only — the svg
+  // baseline keeps the class geometry) and ONE canvas draws tail + rail,
+  // which also retires the cross-canvas seam class entirely.
+  const isGameRail = className === 'control-rail-mesh';
+  const extH = isGameRail ? BARS_EXT_H : 0;
   React.useLayoutEffect(() => {
     const host = hostRef.current;
     const canvas = canvasRef.current;
@@ -179,24 +195,41 @@ const PortcullisSkin: React.FC<{ className: string }> = ({ className }) => {
       const ctx = prepCanvas(canvas, w, h, 0);
       if (!ctx) return;
       ctx.clearRect(0, 0, w, h);
-      drawRailSkin(ctx, w, h, RAIL, BARS);
-      // The upward extension: same six columns, tile phase anchored at
-      // the SEAM (ay = BARS_EXT_H = the mesh canvas's own y0 anchor), so
-      // the pattern continues unbroken across the canvas handoff.
-      const ext = extRef.current;
-      if (ext) {
+      if (extH) {
+        // Tail bars: anchored at the tail/rail boundary (y = extH), the
+        // same line drawRailSkin's translated frame anchors its own bars
+        // to — one lattice, continuous by construction.
         const bar = BARS.get('bar-segment');
-        const ctx2 = prepCanvas(ext, w, BARS_EXT_H, 0);
-        if (ctx2) {
-          ctx2.clearRect(0, 0, w, BARS_EXT_H);
-          if (bar) {
-            const bw = bar.w * Z;
-            for (const bx of barCenters(w, bw, EDGE_BAR_INSET * Z)) {
-              drawTiled(ctx2, bar, Math.round(bx - bw / 2), 0, bw, BARS_EXT_H, Math.round(bx - bw / 2), BARS_EXT_H);
-            }
+        if (bar) {
+          const bw = bar.w * Z;
+          for (const bx of barCenters(w, bw, EDGE_BAR_INSET * Z)) {
+            drawTiled(ctx, bar, Math.round(bx - bw / 2), 0, bw, extH, Math.round(bx - bw / 2), extH);
+          }
+        }
+        // The gate's iron rungs over the bars (beam face tiled between
+        // END CAPS centered on the iron — v15's rule). First rung's iron
+        // bottom sits at the boundary; the 27.5px of bare bars below it
+        // read as the rung-to-rail gap.
+        const face = NAV.get('beam-face');
+        const tCapL = NAV.get('beam-cap-l');
+        const tCapR = NAV.get('beam-cap-r');
+        if (face) {
+          const ironH = face.h * Z;
+          const lw = tCapL ? nomW(tCapL) * Z : 0;
+          const rw = tCapR ? nomW(tCapR) * Z : 0;
+          for (const bottomY of [extH, extH - TAIL_RUNG_PITCH]) {
+            const y = bottomY - ironH;
+            drawTiled(ctx, face, lw, y, w - lw - rw, ironH, lw, y);
+            const capY = (pc: SkinPiece) => y + Math.round((ironH - nomH(pc) * Z) / 2) - (pc.halo?.t ?? 0) * Z;
+            if (tCapL) drawFixed(ctx, tCapL, -(tCapL.halo?.l ?? 0) * Z, capY(tCapL));
+            if (tCapR) drawFixed(ctx, tCapR, w - rw - (tCapR.halo?.l ?? 0) * Z, capY(tCapR));
           }
         }
       }
+      ctx.save();
+      ctx.translate(0, extH);
+      drawRailSkin(ctx, w, h - extH, RAIL, BARS);
+      ctx.restore();
     };
     // INTEGER-PX SNAP (the quest box's law, root cause of the 2026-08-03
     // "darker first pixels on the rising bars" saga): the class anchors
@@ -221,33 +254,34 @@ const PortcullisSkin: React.FC<{ className: string }> = ({ className }) => {
       // crispness at half-pixel viewports ever matters, snap the SHARED
       // wrapper, never this layer.
       const r = host.getBoundingClientRect();
-      if (Number.isFinite(baseTop)) host.style.top = `${baseTop - (r.top - Math.floor(r.top))}px`;
+      // extH lifts the whole (taller) box so the RAIL zone stays seated
+      // exactly where the class geometry puts it — the tail occupies the
+      // added space above.
+      if (Number.isFinite(baseTop)) host.style.top = `${baseTop - extH - (r.top - Math.floor(r.top))}px`;
     };
     // SYNCHRONOUS draw, not rAF: hidden/background tabs freeze rAF and the
     // canvas stays blank until the tab fronts (hit live in the hidden
     // preview pane). RO callbacks batch already; the draws are tiny.
     const schedule = () => { snap(); draw(); };
-    whenDecoded([...RAIL.values(), ...BARS.values()] as SkinPiece[]).then(() => { if (!cancelled) schedule(); });
+    whenDecoded([...RAIL.values(), ...BARS.values(), ...NAV.values()] as SkinPiece[]).then(() => { if (!cancelled) schedule(); });
     const ro = new ResizeObserver(schedule);
     ro.observe(host);
     ro.observe(document.documentElement);
     return () => { cancelled = true; ro.disconnect(); };
-  }, []);
+  }, [extH]);
   // The div takes the mesh's className so the CSS (.control-rail-mesh /
   // .nav-gate-rail-mesh) positions the skin exactly where the svg sat.
+  // The game rail's box grows upward by the tail (inline height; the
+  // snap owns top) — in-box is the only geometry iOS paints on the
+  // sticky layer.
   return (
-    <div className={className} aria-hidden style={{ overflow: 'visible' }} ref={hostRef}>
+    <div
+      className={className}
+      aria-hidden
+      style={{ overflow: 'visible', ...(extH ? { height: `calc(200% + ${extH}px)` } : {}) }}
+      ref={hostRef}
+    >
       <canvas ref={canvasRef} style={{ position: 'absolute' }} />
-      {/* The glass-era bars extension, GAME RAIL ONLY: a span anchors it
-          on top of the mesh box (prepCanvas owns the canvas's own
-          left/top, so the canvas can't carry the bottom:100% itself).
-          Empty when the gate kit is unpainted — the svg baseline never
-          shows it. */}
-      {className === 'control-rail-mesh' && (
-        <span style={{ position: 'absolute', left: 0, right: 0, bottom: '100%', height: BARS_EXT_H }}>
-          <canvas ref={extRef} style={{ position: 'absolute' }} />
-        </span>
-      )}
     </div>
   );
 };
