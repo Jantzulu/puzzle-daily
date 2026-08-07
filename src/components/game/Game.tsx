@@ -43,6 +43,7 @@ import { BugReportModal } from './BugReportModal';
 import type { TrackedRun } from '../../types/bugReport';
 import { GemMesh } from './GemMesh';
 import { PlayStoneSkin, playStoneSkinActive, concedeStoneActive, PLAY_STONE_DIM, PLAY_STONE_LIT_TRANSITION } from './PlayStoneSkin';
+import { DeathSpriteThumbnail, deathVignetteUsable } from './DeathSpriteThumbnail';
 // The rail hearts are HARDCODED ART (user call 2026-08-04, the quest-box
 // precedent: core chrome ships in git, not as a theme knob — the old
 // Settings icon path stretched any upload into a fixed box). 7×7 native
@@ -3094,8 +3095,30 @@ export const Game: React.FC<GameProps> = ({
                 style={{ backgroundColor: 'rgba(0, 0, 0, 0.75)' }}
               >
                 <div ref={lifeLostPanelRef} tabIndex={-1} className={`p-6 rounded-pixel-lg text-center max-w-[90%] defeat-panel ${dismissingOverlay ? 'animate-panel-scale-out' : 'animate-panel-scale-in'}`}>
-                  <div className="text-4xl mb-1 animate-icon-drop">
-                    {defeatReason === 'turns' ? '\u23F3' : '\uD83D\uDC80'}
+                  {/* THE FALLEN HERO (the user's girlfriend's idea,
+                      2026-08-06): a damage defeat replays the death
+                      animation of the LAST hero to fall that round \u2014
+                      played as in-game, held on the corpse frame, soul
+                      rising after. Skull fallback when no placed hero
+                      died (concede, ally-loss defeats) or the hero has
+                      no death art; \u23F3 keeps the out-of-turns branch.
+                      Ties on diedOnTurn resolve to the latest-placed
+                      (array order = placement order) \u2014 deterministic.
+                      DeathSpriteThumbnail is standalone for the future
+                      game-over port (that surface is the user's own
+                      pending design). */}
+                  <div className="text-4xl mb-1 animate-icon-drop flex justify-center">
+                    {(() => {
+                      if (defeatReason === 'turns') return '\u23F3';
+                      const fallen = gameState.placedCharacters
+                        .filter(c => c.dead && !c.despawned)
+                        .sort((a, b) => (a.diedOnTurn ?? 0) - (b.diedOnTurn ?? 0))
+                        .pop();
+                      const sprite = fallen ? getCharacter(fallen.characterId)?.customSprite : undefined;
+                      return deathVignetteUsable(sprite)
+                        ? <DeathSpriteThumbnail sprite={sprite} />
+                        : '\uD83D\uDC80';
+                    })()}
                   </div>
                   <h2 className="text-2xl md:text-3xl font-bold font-medieval text-blood-200 text-shadow-glow-blood">
                     {defeatReason === 'turns' ? 'Out of Turns!' : 'Defeated!'}
