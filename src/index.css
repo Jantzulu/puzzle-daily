@@ -2284,7 +2284,20 @@ body.menu-gate-instant .quest-panel-sticky {
    transforms: the plate and box both carry crisp-snap machinery);
    backwards fill holds each invisible through its delay. */
 .quest-stage-plate {
-  animation: quest-appear 0.45s ease-out 0.5s backwards;
+  /* THE STAMP (user call, entrance round 2: "more impactful" for QUEST,
+     objective keeps its subtle fade): the plate presses in from large,
+     compresses a hair past its size, and settles — a seal stamped onto
+     the contract. Ends at identity scale = art pin-sharp at rest; the
+     0.4s transit softening is the bob's user-validated transient
+     exception. transform-origin: the full-width anchor's center = the
+     plate's own center. */
+  animation: quest-plate-stamp 0.4s cubic-bezier(0.2, 0, 0.3, 1) 0.5s backwards;
+}
+
+@keyframes quest-plate-stamp {
+  from { opacity: 0; transform: scale(1.6); }
+  60% { opacity: 1; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
 }
 
 .quest-stage-box {
