@@ -3293,7 +3293,17 @@ export const Game: React.FC<GameProps> = ({
                     padding: `${questFrameBorders.t + 1}px ${questFrameBorders.r + 8}px ${questFrameBorders.b}px ${questFrameBorders.l + 8}px`,
                   } : undefined}
                 >
-                {questSkinFrameActive && <QuestBoxFrame />}
+                {/* ENTRANCE STAGING (user design 2026-08-06): the frame,
+                    ornaments and content wear quest-stage-box (arrive
+                    second); the plate anchor wears quest-stage-plate
+                    (arrives first); the anchor's ignite+bob follow — see
+                    index.css. The frame/ornament wrappers keep each
+                    layer's coordinate space and paint order. */}
+                {questSkinFrameActive && (
+                  <div className="quest-stage-box absolute inset-0 pointer-events-none">
+                    <QuestBoxFrame />
+                  </div>
+                )}
                 {/* The plate on the border line (legend-style) — the plate
                     ALONE is centered (user call: it must be true-centered;
                     the (?) rides inline before the quest text instead).
@@ -3304,23 +3314,27 @@ export const Game: React.FC<GameProps> = ({
                   // is text-driven, so the translate landed the ART on
                   // half-pixels (bitmap blur); QuestPlate self-snaps the
                   // residue.
-                  <span className="absolute left-0 right-0 flex justify-center pointer-events-none" style={{ top: -questPlateStraddle }}>
+                  <span className="quest-stage-plate absolute left-0 right-0 flex justify-center pointer-events-none" style={{ top: -questPlateStraddle }}>
                     <QuestPlate>
                       <span className="hud-label text-copper-300 whitespace-nowrap">Quest</span>
                     </QuestPlate>
                   </span>
                 ) : (
-                  <span className="absolute -top-[15px] left-1/2 -translate-x-1/2 px-3 py-0.5 bg-stone-950 border-2 border-copper-700 rounded-pixel hud-label text-copper-300 whitespace-nowrap">Quest</span>
+                  <span className="quest-stage-plate absolute -top-[15px] left-1/2 -translate-x-1/2 px-3 py-0.5 bg-stone-950 border-2 border-copper-700 rounded-pixel hud-label text-copper-300 whitespace-nowrap">Quest</span>
                 )}
                 {/* Edge medallions ride over ALL the art — frame AND plate
                     (user call: on top of the panel, not below it) — hence
                     after the plate in the DOM. Text still wins: the content
                     wrapper is a later sibling, the plate label carries z-1. */}
-                {questSkinOrnamentsActive && <QuestOrnaments />}
+                {questSkinOrnamentsActive && (
+                  <div className="quest-stage-box absolute inset-0 pointer-events-none">
+                    <QuestOrnaments />
+                  </div>
+                )}
                 {/* relative: the art frame is absolutely positioned, and
                     absolute layers paint over STATIC siblings — everything
                     readable lives above the art. */}
-                <div className="relative">
+                <div className="quest-stage-box relative">
                 {/* Puzzle Number & Quest Row */}
                 {puzzleNumber && (
                   <div className="text-center mb-0.5">

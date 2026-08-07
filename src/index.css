@@ -2250,16 +2250,45 @@ body.menu-gate-instant .quest-panel-sticky {
      filters); the bob below translates the already-rasterized filtered
      layer, so the shadow is never recomputed per frame. */
   filter: drop-shadow(0 0 6px rgba(228, 185, 106, 0.35));
-  /* THE BOB, round 3 — the TRUE smooth sine the user imagined
-     ("weightlessly bobbing"; the 2px hop and 1px steps both read
-     mechanical). DELIBERATE, USER-JUDGED EXCEPTION to the integer-px
-     law: that law guards against PERMANENT fractional placement — here
-     the fractional positions exist only mid-transit of a slow eased
-     motion (the eye tracks movement, not pixel edges), and the
-     ease-in-out dwells at the integer endpoints where the art is
-     pin-sharp. If the transit softness bothers the user's eye: delete
-     this animation + keyframes, keep the glow. */
-  animation: quest-bob 3.5s ease-in-out infinite;
+  /* THE ENTRANCE (user design 2026-08-06): three stages on page load —
+     the QUEST plate appears first (floating where the panel's top will
+     be), the box + win condition materialize beneath it, then the whole
+     panel IGNITES (glow bloom) and begins to bob. quest-ignite is a
+     documented ONE-SHOT filter animation: 0.6s once per load — the perf
+     law bans STEADY-STATE filter animation, not a single arrival; its
+     to-frame equals the static filter above, so the handoff is seamless
+     with no forwards fill (the gate-settle's fill lesson).
+     THE BOB (round 3 of its own saga): the TRUE smooth sine the user
+     imagined — a DELIBERATE, USER-JUDGED EXCEPTION to the integer-px
+     law (which guards PERMANENT fractional placement; here fractions
+     exist only mid-transit of slow motion, and the user confirmed zero
+     visible softening). Delayed to start with the ignition. */
+  animation:
+    quest-ignite 0.6s ease-out 1.8s backwards,
+    quest-bob 3.5s ease-in-out 1.8s infinite;
+}
+
+@keyframes quest-ignite {
+  from { filter: drop-shadow(0 0 6px rgba(228, 185, 106, 0)); }
+  to { filter: drop-shadow(0 0 6px rgba(228, 185, 106, 0.35)); }
+}
+
+/* Stage 1 — the QUEST plate (0.5s in): fades in alone, straddling the
+   spot where the box's top border will be. Stage 2 — the box, its
+   ornaments and the win condition (1.05s in). Opacity-only (no
+   transforms: the plate and box both carry crisp-snap machinery);
+   backwards fill holds each invisible through its delay. */
+.quest-stage-plate {
+  animation: quest-appear 0.45s ease-out 0.5s backwards;
+}
+
+.quest-stage-box {
+  animation: quest-appear 0.55s ease-out 1.05s backwards;
+}
+
+@keyframes quest-appear {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 @keyframes quest-bob {
