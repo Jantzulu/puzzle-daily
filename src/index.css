@@ -2301,22 +2301,24 @@ body.menu-gate-instant .quest-panel-sticky {
 }
 
 .quest-stage-box {
-  /* THE UNFURL (user call, entrance round 3: the objective should come
-     OUT of the QUEST seal, not slide): a clip-path wipe — the box never
-     moves (no sliding mass, no transit softness); the REVEAL EDGE
-     sweeps down from the plate's line like parchment unrolling. The
-     -60px outsets keep the ornament halos free on the open sides while
-     only the bottom edge travels; the animation ends and clip-path
-     returns to none, so nothing stays boxed. The silhouette glow
-     follows the subtree's visible shape, so it unfurls WITH the edge
-     (ignite is coupled at the same 1.05s). One-shot at load. */
-  animation: quest-unfurl 0.6s cubic-bezier(0.2, 0, 0.3, 1) 1.05s backwards;
+  /* The objective's subtle fade (an unfurling clip-wipe was tried and
+     reverted — user: not clean enough). */
+  animation: quest-appear 0.55s ease-out 1.05s backwards;
 }
 
-@keyframes quest-unfurl {
-  from { clip-path: inset(-60px -60px 100% -60px); opacity: 0.5; }
-  35% { opacity: 1; }
-  to { clip-path: inset(-60px -60px -60px -60px); opacity: 1; }
+/* The edge medallions are ATTACHED TO THE SEAL (user call, round 2 of
+   their staging: not separate objects, not part of the objective) —
+   they STAMP IN WITH THE PLATE: same strike, same beat.
+   transform-origin center top ≈ the plate line, so plate and medallions
+   scale about the same point and read as one object pressing down. */
+.quest-stage-ornaments {
+  animation: quest-plate-stamp 0.4s cubic-bezier(0.2, 0, 0.3, 1) 0.5s backwards;
+  transform-origin: center top;
+}
+
+@keyframes quest-appear {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 @keyframes quest-bob {

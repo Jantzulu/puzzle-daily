@@ -3327,7 +3327,10 @@ export const Game: React.FC<GameProps> = ({
                     after the plate in the DOM. Text still wins: the content
                     wrapper is a later sibling, the plate label carries z-1. */}
                 {questSkinOrnamentsActive && (
-                  <div className="quest-stage-box absolute inset-0 pointer-events-none">
+                  /* quest-stage-ornaments: the medallions are part of the
+                     SEAL assembly (user call) — they stamp in with the
+                     plate, not with the objective. */
+                  <div className="quest-stage-ornaments absolute inset-0 pointer-events-none">
                     <QuestOrnaments />
                   </div>
                 )}
