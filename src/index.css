@@ -2264,7 +2264,9 @@ body.menu-gate-instant .quest-panel-sticky {
 
 @keyframes quest-bob {
   0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(2px); }
+  /* 3px (round 4: user confirmed zero visible softening, wanted a
+     marginally bigger travel — up from 2). */
+  50% { transform: translateY(3px); }
 }
 
 body.menu-gate-lowered .quest-box-anchor {
