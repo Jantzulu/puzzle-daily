@@ -2263,9 +2263,12 @@ body.menu-gate-instant .quest-panel-sticky {
      law (which guards PERMANENT fractional placement; here fractions
      exist only mid-transit of slow motion, and the user confirmed zero
      visible softening). Delayed to start with the ignition. */
+  /* Ignite + bob at 1.4s — right on the objective's heels (user call:
+     "almost immediately after the objective appears"; the box fade runs
+     1.05-1.6s, so the glow blooms as the text finishes materializing). */
   animation:
-    quest-ignite 0.6s ease-out 1.8s backwards,
-    quest-bob 3.5s ease-in-out 1.8s infinite;
+    quest-ignite 0.6s ease-out 1.4s backwards,
+    quest-bob 3.5s ease-in-out 1.4s infinite;
 }
 
 @keyframes quest-ignite {
