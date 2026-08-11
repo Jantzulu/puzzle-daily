@@ -3442,11 +3442,12 @@ export const Game: React.FC<GameProps> = ({
                     <span key={shimmerKey} className={questSkinFrameActive ? 'shimmer-container shimmer-ink' : 'shimmer-container'}>
                       {/* 13px on phones (was text-sm/14): the user accepted a
                           slight size cut to buy quest line capacity. */}
-                      {/* Ink mode runs SEMIBOLD: dark-on-light strokes read
-                          thinner than light-on-dark at equal weight, and
-                          the parchment is a mid-tone — thin black strokes
-                          starve there. */}
-                      <span className={`text-[13px] md:text-base lg:text-lg ${questSkinFrameActive ? 'text-black font-semibold' : 'text-copper-300 font-medium'}`}>
+                      {/* NEVER bold the themed text: the medieval faces
+                          (Modern Antiqua et al.) ship a single 400 weight,
+                          so 600+ triggers SYNTHETIC bold — the browser
+                          smears the glyphs (user-visible fuzz, 2026-08-10).
+                          500 cleanly falls back to the real 400 outlines. */}
+                      <span className={`text-[13px] md:text-base lg:text-lg font-medium ${questSkinFrameActive ? 'text-black' : 'text-copper-300'}`}>
                       {gameState.puzzle.winConditions.map((wc) => {
                         // Quest text override (2026-07-21): authored text
                         // wins verbatim over every auto-phrased label.
