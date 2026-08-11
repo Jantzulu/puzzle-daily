@@ -2416,7 +2416,11 @@ body.menu-gate-instant .quest-panel-sticky {
   transition: transform 0.3s ease;
 }
 .quest-tucked .quest-frame-layer {
-  transform: translateY(-50%);
+  /* -50% centers the rolled scroll on the seal ELEMENT; --qseal-dip
+     (stamped by QuestBoxFrame = the art's in-piece downward offset)
+     drops it onto the seal's ART center — the plate is painted 2 art
+     below its piece center to seat the DOM text (user catch). */
+  transform: translateY(calc(-50% + var(--qseal-dip, 0px)));
 }
 
 /* THE REOPEN UNFURL: same forward keyframes as the entrance but with

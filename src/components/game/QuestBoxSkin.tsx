@@ -101,6 +101,15 @@ const plateMid = plateMidL;
  */
 export const SEAL_DROP = 1;
 /**
+ * The plate ART sits this many art px below its piece's geometric center —
+ * the artist's deliberate in-template placement (seats the DOM text; user's
+ * annotated screenshot, 2026-08-11). Element-centering math must offset by
+ * it wherever the SEAL'S ART is the thing being centered: the entrance
+ * ride-down starts this much higher, the tuck drops the rolled scroll this
+ * much lower. Re-measure against the template if the plate is repainted.
+ */
+export const SEAL_ART_DIP = 2;
+/**
  * How far the plate pokes above the box's top edge (the preview's 60% rule,
  * minus the seal drop). Rounded in ART pixels, then scaled — an odd CSS
  * offset (the old CSS-px rounding gave 17) put the plate's art grid half an
@@ -161,10 +170,15 @@ export const QuestBoxFrame: React.FC = () => {
       if (!w) return;
       // The seal's entrance ride-down: it stamps vertically centered on
       // the closed scroll (half the box height below its natural spot),
-      // art-grid rounded. Read before the width guard would be fine too —
-      // kept together with the other var stamps.
+      // art-grid rounded — MINUS the art dip: the artist painted the
+      // plate 2 art px below its piece's center (deliberate, to seat the
+      // DOM text), so centering the ELEMENT leaves the ART 2 art low
+      // (user catch, 2026-08-11, template screenshot). The seal rides
+      // that much higher, and the tuck (--qseal-dip, index.css) drops
+      // the rolled scroll the same amount to center on the ART.
       const hh = host.clientHeight;
-      if (hh) varTarget.style.setProperty('--qseal-start', `${Math.round(hh / 2 / Z) * Z}px`);
+      if (hh) varTarget.style.setProperty('--qseal-start', `${(Math.round(hh / 2 / Z) - SEAL_ART_DIP) * Z}px`);
+      varTarget.style.setProperty('--qseal-dip', `${SEAL_ART_DIP * Z}px`);
       varTarget.style.setProperty('--qtravel-l', `${Math.max(0, Math.round(w / 2 - ROLL_W_L))}px`);
       varTarget.style.setProperty('--qtravel-r', `${Math.max(0, Math.round(w / 2 - ROLL_W_R))}px`);
       // The clip's CLOSED insets, in px: the keyframes must interpolate
