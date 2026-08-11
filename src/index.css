@@ -786,6 +786,42 @@ html body.theme-font-active,
    Same specificity as the child rules above — order carries the win. */
 .shimmer-container.shimmer-ink > span {
   --flare-base: #000000;
+  /* Ink rides its own sweep variant: shimmer-sweep's 100% frame (held
+     by forwards) restores a DARK 0 1px 2px shadow — depth under light
+     text on the dark cloth, but a smudge halo under black ink on tan
+     (the user's "fuzzy" report, 2026-08-10 — it was the SHADOW, not
+     the glyphs; shadow removal user-confirmed as the fix). The ink
+     variant rests on NO shadow (a gold rim was tried and rejected
+     same night). */
+  animation-name: shimmer-sweep-ink;
+  /* "Bold" without faux bold: the medieval faces ship one 400 weight,
+     so real bolding synthesizes and smears (user-confirmed fuzz).
+     A hairline stroke thickens the true outlines instead — crisp
+     vector fattening, semibold-ish read. currentColor keeps the
+     outline black through the sweep's transparent-fill phase (the
+     band races inside outlined glyphs). */
+  -webkit-text-stroke: 0.5px currentColor;
+}
+
+@keyframes shimmer-sweep-ink {
+  /* Mirrors shimmer-sweep: fill transparent + shadow suppressed while
+     the band races (a shadow over a transparent fill paints across the
+     glyph interiors) — and unlike the original, the REST state stays
+     shadowless: ink on parchment carries no smudge. */
+  0% {
+    background-position: 200% center;
+    -webkit-text-fill-color: transparent;
+    text-shadow: none;
+  }
+  92% {
+    -webkit-text-fill-color: transparent;
+    text-shadow: none;
+  }
+  100% {
+    background-position: -100% center;
+    -webkit-text-fill-color: currentColor;
+    text-shadow: none;
+  }
 }
 
 @keyframes slide-in-up {

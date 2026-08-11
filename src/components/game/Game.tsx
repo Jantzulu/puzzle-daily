@@ -3430,11 +3430,15 @@ export const Game: React.FC<GameProps> = ({
                     {/* INK on parchment (user call): black (?) + objective
                         when the scroll art is live; the baseline dark box
                         keeps its light registers. !important beats the
-                        HelpButton's own text-stone-400 (class order in the
-                        attribute does not decide Tailwind conflicts). */}
+                        HelpButton's own classes (class order in the
+                        attribute does not decide Tailwind conflicts).
+                        !p-0.5 (user ask: tighter) shrinks the button box
+                        24→20px, which also drops the icon's optical center
+                        2px toward the text line at the same align offset —
+                        an integer-only knob per the fractional-align law. */}
                     <HelpButton
                       sectionId="game_general"
-                      className={`inline-block align-[-4px] mr-1 ${questSkinFrameActive ? '!text-black hover:!text-stone-800 hover:!bg-black/10' : ''}`}
+                      className={`inline-block align-[-4px] mr-1 !p-0.5 ${questSkinFrameActive ? '!text-black hover:!text-stone-800 hover:!bg-black/10' : ''}`}
                       preamble={gameState.puzzle.questDescription?.trim()
                         ? { title: 'About this Puzzle', text: gameState.puzzle.questDescription.trim() }
                         : undefined}

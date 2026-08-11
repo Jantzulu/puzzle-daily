@@ -81,12 +81,20 @@ export const questFrameBorders = {
 
 const plateMid = P('plate-mid');
 /**
- * How far the plate pokes above the box's top edge (the preview's 60% rule).
- * Rounded in ART pixels, then scaled — an odd CSS offset (the old CSS-px
- * rounding gave 17) put the plate's art grid half an art pixel off the
- * frame's, the user's "not pixel perfect" report (2026-08-10).
+ * The whole SEAL assembly (plate + top medallions + QUEST text) sits this
+ * much lower than pure geometry would put it — 1 art px, user nudge
+ * 2026-08-10. Applied to the plate straddle AND the top ornament;
+ * PanelNineSlice mirrors it (preview parity).
  */
-export const questPlateStraddle = plateMid ? Math.round(nomH(plateMid) * 0.6) * Z : 0;
+export const SEAL_DROP = 1;
+/**
+ * How far the plate pokes above the box's top edge (the preview's 60% rule,
+ * minus the seal drop). Rounded in ART pixels, then scaled — an odd CSS
+ * offset (the old CSS-px rounding gave 17) put the plate's art grid half an
+ * art pixel off the frame's, the user's "not pixel perfect" report
+ * (2026-08-10).
+ */
+export const questPlateStraddle = plateMid ? (Math.round(nomH(plateMid) * 0.6) - SEAL_DROP) * Z : 0;
 
 // ─── The frame ──────────────────────────────────────────────────────────────
 
@@ -319,7 +327,8 @@ export const QuestOrnaments: React.FC = () => {
         // half an art px off-grid is not.
         const x = Math.round((w - nw) / (2 * Z)) * Z - (pc.halo?.l ?? 0) * Z;
         const edgeOffset = Math.round((bandH - nh) / (2 * Z)) * Z;
-        const y = (isTop ? edgeOffset : h - bandH + edgeOffset) - (pc.halo?.t ?? 0) * Z;
+        // Top medallions ride the seal assembly's 1-art drop (user nudge).
+        const y = (isTop ? edgeOffset + SEAL_DROP * Z : h - bandH + edgeOffset) - (pc.halo?.t ?? 0) * Z;
         drawFixed(ctx, pc, x, y);
       };
       ornament(P('edge-top-ornament'), true);

@@ -234,8 +234,9 @@ export const PanelNineSlice: React.FC<Props> = ({ pieces, zoom, width, height, s
   // its negative centering offset on a thin band) — reserve that too.
   // Straddle rounds in ART pixels then scales (parity with the game's
   // questPlateStraddle): a display-px rounding could land the plate half an
-  // art pixel off the frame's grid.
-  const straddle = Math.round((plateH / zoom) * 0.6) * zoom;
+  // art pixel off the frame's grid. The −1 art is the game's SEAL_DROP
+  // (user nudge, 2026-08-10) — keep in lockstep with QuestBoxSkin.
+  const straddle = (Math.round((plateH / zoom) * 0.6) - 1) * zoom;
   const topOrn = p['edge-top-ornament'];
   const topOrnReach = topOrn
     ? (topOrn.halo?.t ?? 0) * zoom
@@ -451,7 +452,8 @@ export const PanelNineSlice: React.FC<Props> = ({ pieces, zoom, width, height, s
         // game's QuestOrnaments: an odd display-px offset is half an art
         // pixel off the frame's grid.
         const edgeOffset = Math.round((bandH - onh) / (2 * zoom)) * zoom;
-        const nominalTop = isTop ? edgeOffset : height - bandH + edgeOffset;
+        // Top medallions ride the seal's 1-art drop (game's SEAL_DROP).
+        const nominalTop = isTop ? edgeOffset + zoom : height - bandH + edgeOffset;
         const s = layer(pc, zoom, 'no-repeat', {
           left: GROUND_PAD + Math.round((width - onw) / (2 * zoom)) * zoom - haloL,
           top: groundPadTop + nominalTop - haloT,
