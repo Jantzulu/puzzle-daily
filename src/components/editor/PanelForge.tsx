@@ -161,15 +161,17 @@ export const DEFAULT_KITS: KitSpec[] = [
     description:
       'The quest panel under the board (the 2026-08-01 plate-box design, currently placeholder CSS in Game.tsx). Capped nine-slice — finished edge ends, so ornament survives ANY width or height — plus the QUEST title plate as its own 3-slice riding the top border. In the game the plate STRADDLES the border line (about 60% above it), so paint it as a finished object on all four sides; the sample gives it a separate band only so the cut is clean. The divider is the side-quests rule. Periods match the other kits (mid 24, cap = corner 12) so motifs transfer.',
     pieces: [
-      // THE SHIPPED ART IS THE SPEC: the overrides below mirror the committed
-      // quest skin (src/assets/panels/quest-box-slices.json — the artist's
-      // painted geometry, thin 5-art top/bottom bands). A DEFAULTS_VERSION
-      // bump resets stored built-ins, and a reset to sizes that don't match
-      // the live art desyncs the slice map from the artist's sheet mid-paint
-      // (2026-08-01: the Live panel shredded the sheet into misplaced
-      // fragments). Change these only alongside the committed art.
+      // Top/bottom bands: 8 art (v20, user ask — headroom for the scroll
+      // silhouette; the original thin 5-art bands left the painted bottom
+      // line pinned on the band's top row). SAFE ahead of re-exported art
+      // because band heights move no other region and neither sheet
+      // dimension — the committed 5-tall JSON keeps rendering (it is
+      // self-describing) and the artist's sheet re-cuts cleanly, the bands
+      // just gaining rows. The 2026-08-01 shred was different: size changes
+      // that SHIFT other regions do desync a painted sheet mid-paint — any
+      // future resize here must re-prove the no-shift property first.
       ...nineSliceCapped(12, 12, 12, 24, 24).map(p =>
-        p.id.startsWith('edge-top-') || p.id.startsWith('edge-bottom-') ? { ...p, h: 5 } : p),
+        p.id.startsWith('edge-top-') || p.id.startsWith('edge-bottom-') ? { ...p, h: 8 } : p),
       { id: 'plate-cap-l', label: 'Plate Cap L', w: 6, h: 14, repeat: 'fixed', notes: 'Finished left end of the QUEST plate — it straddles the box border in-game, so give it a complete outline.' },
       { id: 'plate-mid', label: 'Plate Middle', w: 12, h: 14, repeat: 'tile-x', notes: 'Repeats behind the plate label so the plate hugs any text length. The label itself stays DOM text.' },
       { id: 'plate-cap-r', label: 'Plate Cap R', w: 6, h: 14, repeat: 'fixed' },
@@ -336,7 +338,17 @@ const STORAGE_KEY = 'panel_forge_kits_v1';
 //      Canvas Size, width +210, ANCHOR LEFT, then re-export the template.
 //      NOTE: header ids are header-*, NOT plate-* — plate-mid would flip
 //      kitFamily() to 'quest-box'.
-const DEFAULTS_VERSION = 19;
+// v20: quest-box top/bottom bands grow 5 → 8 art (user ask, 2026-08-10:
+//      room to shape the scroll silhouette — the painted bottom line sat
+//      pinned on the band's top row with zero headroom; +1px edits crossed
+//      into the never-cut gutter ring and vanished). Band heights feed NO
+//      other region and neither sheet dimension (assembleNineSliceCapped
+//      W/H key off corners, top-cap widths, left-run heights), so the
+//      painted sheet stays valid with NO migration — the cut simply grows
+//      into rows the gutter ring was discarding. Migration adopts 8 only
+//      where the stored height is still the old default 5; a deliberate
+//      artist resize stays sacred per the v12 law.
+const DEFAULTS_VERSION = 20;
 
 function loadKits(): KitSpec[] {
   try {
@@ -358,6 +370,14 @@ function loadKits(): KitSpec[] {
       // thinness lever), and a bump must never desync their sheet again.
       // Genuine size corrections must ship as NEW piece ids or be called
       // out for manual re-apply in the kit description.
+      // v20 carve-out: the quest-box band pieces adopt the new 8-art height
+      // ONLY where the stored height is still the old default 5 — a
+      // deliberate artist resize (≠5) stays sacred. See the v20 entry above
+      // for why this size change cannot desync the painted sheet.
+      const questBandsV20 = new Set([
+        'edge-top-cap-l', 'edge-top-mid', 'edge-top-cap-r',
+        'edge-bottom-cap-l', 'edge-bottom-mid', 'edge-bottom-cap-r',
+      ]);
       const merged = DEFAULT_KITS.map(d => {
         const prev = stored.find(s => s.builtIn && s.id === d.id);
         if (!prev) return d;
@@ -365,7 +385,9 @@ function loadKits(): KitSpec[] {
           ...d,
           pieces: d.pieces.map(p => {
             const old = prev.pieces.find(q => q.id === p.id);
-            return old ? { ...p, w: old.w, h: old.h } : p;
+            if (!old) return p;
+            if (d.id === 'quest-box' && questBandsV20.has(p.id) && old.h === 5) return { ...p, w: old.w };
+            return { ...p, w: old.w, h: old.h };
           }),
         };
       });
