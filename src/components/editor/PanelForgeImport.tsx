@@ -201,9 +201,15 @@ export const PanelForgeImport: React.FC<Props> = ({ kit, assembly }) => {
       const clean = scale === Math.round(scale) && scale >= 1 && img.height === assembly.height * scale;
       if (!clean) {
         const dh = assembly.height - img.height;
-        const hint = img.width === assembly.width && dh > 0
-          ? ` The template has grown ${dh}px taller since this sheet was exported: Sprite → Canvas Size, height +${dh}, ANCHOR BOTTOM (your paint stays put), then re-slice.`
-          : ' Re-export the assembled template and carry your paint onto it.';
+        // A kit-specific recipe always wins: the generic hint assumes the
+        // sheet only ever grew at its very TOP (true through v19), and an
+        // anchor-bottom on a mid-sheet growth passes the size gate while
+        // slicing garbage silently (v21 corner-overhang lesson).
+        const hint = kit.migrationHint
+          ? ` ${kit.migrationHint}`
+          : img.width === assembly.width && dh > 0
+            ? ` The template has grown ${dh}px taller since this sheet was exported: Sprite → Canvas Size, height +${dh}, ANCHOR BOTTOM (your paint stays put), then re-slice.`
+            : ' Re-export the assembled template and carry your paint onto it.';
         setSizeWarning(`Sheet is ${img.width}×${img.height} but this kit assembles to ${expected} — NOT sliced: the cuts would land in the wrong places.${hint}`);
         setSlices([]);
         return;

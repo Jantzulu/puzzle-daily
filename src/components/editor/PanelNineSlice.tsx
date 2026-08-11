@@ -103,6 +103,11 @@ export const PanelNineSlice: React.FC<Props> = ({ pieces, zoom, width, height, s
   const tr = p['corner-tr'];
   const bl = p['corner-bl'];
   const br = p['corner-br'];
+  // Halo'd bitmaps are bigger than the piece; all GEOMETRY runs on nominal
+  // sizes and the bitmaps hang out past them. Corners carry a vertical halo
+  // since kit v21 (overhang room), so the border math below must be nominal.
+  const nomW = (pc?: NineSlicePiece) => (pc ? pc.w - (pc.halo ? pc.halo.l + pc.halo.r : 0) : 0);
+  const nomH = (pc?: NineSlicePiece) => (pc ? pc.h - (pc.halo ? pc.halo.t + pc.halo.b : 0) : 0);
   // Capped kits split each edge into cap · middle · cap; plain kits have one
   // repeating part. Detected per-piece rather than configured, so both render
   // from the same component and a half-converted kit still previews.
@@ -113,20 +118,20 @@ export const PanelNineSlice: React.FC<Props> = ({ pieces, zoom, width, height, s
   const center = p['center'];
 
   // Border thicknesses come from the ART, not from a guess: the corners define
-  // them, with the edges as a fallback when a corner is unpainted.
-  const bt = (tl?.h ?? top?.h ?? 0) * zoom;
-  const bb = (bl?.h ?? bottom?.h ?? 0) * zoom;
-  const bLeft = (tl?.w ?? left?.w ?? 0) * zoom;
-  const bRight = (tr?.w ?? right?.w ?? 0) * zoom;
+  // them (NOMINAL — bitmaps may overhang), edges as fallback when unpainted.
+  const bt = (tl ? nomH(tl) : top?.h ?? 0) * zoom;
+  const bb = (bl ? nomH(bl) : bottom?.h ?? 0) * zoom;
+  const bLeft = (tl ? nomW(tl) : left?.w ?? 0) * zoom;
+  const bRight = (tr ? nomW(tr) : right?.w ?? 0) * zoom;
 
   // CONTENT insets are EDGE-keyed (corner fallback) — mirroring the game
   // renderer's thinness lever: thin edges pull the content in close while
   // the corners stand proud. The sample text must sit where real content
   // will.
-  const cbt = (top?.h ?? tl?.h ?? 0) * zoom;
-  const cbb = (bottom?.h ?? bl?.h ?? 0) * zoom;
-  const cbl = (left?.w ?? tl?.w ?? 0) * zoom;
-  const cbr = (right?.w ?? tr?.w ?? 0) * zoom;
+  const cbt = (top?.h ?? (tl ? nomH(tl) : 0)) * zoom;
+  const cbb = (bottom?.h ?? (bl ? nomH(bl) : 0)) * zoom;
+  const cbl = (left?.w ?? (tl ? nomW(tl) : 0)) * zoom;
+  const cbr = (right?.w ?? (tr ? nomW(tr) : 0)) * zoom;
 
   // Cap footprints in display px. The middles start after them, which is the
   // whole point: a cap never stretches and never repeats, so ornament painted
@@ -153,8 +158,9 @@ export const PanelNineSlice: React.FC<Props> = ({ pieces, zoom, width, height, s
   const capRB = fitR ? (p['edge-right-cap-b']?.h ?? 0) * zoom : 0;
 
   const layers: Array<React.CSSProperties | null> = [
-    // Centre first, then edge middles, then caps, then corners — each covers
-    // the ends of the run beneath it, which is how the partial tile hides.
+    // Centre first, then edge middles, then caps — each covers the ends of
+    // the run beneath it, which is how the partial tile hides. Corners cover
+    // everything but live on the ground wrapper since v21 (overhang).
     // THE CORNER SQUARE IS SACRED: corner-art transparency is the panel's
     // silhouette, so the centre is a notched CROSS (corner-anchored field
     // + gutter strips reaching the thin bands, stopping at the corner
@@ -182,10 +188,9 @@ export const PanelNineSlice: React.FC<Props> = ({ pieces, zoom, width, height, s
     layer(p['edge-left-cap-b'], zoom, 'no-repeat', { left: 0, bottom: bb, width: (p['edge-left-cap-b']?.w ?? 0) * zoom, height: capLB }),
     layer(p['edge-right-cap-t'], zoom, 'no-repeat', { right: 0, top: bt, width: (p['edge-right-cap-t']?.w ?? 0) * zoom, height: capRT }),
     layer(p['edge-right-cap-b'], zoom, 'no-repeat', { right: 0, bottom: bb, width: (p['edge-right-cap-b']?.w ?? 0) * zoom, height: capRB }),
-    layer(tl, zoom, 'no-repeat', { left: 0, top: 0, width: (tl?.w ?? 0) * zoom, height: (tl?.h ?? 0) * zoom }),
-    layer(tr, zoom, 'no-repeat', { right: 0, top: 0, width: (tr?.w ?? 0) * zoom, height: (tr?.h ?? 0) * zoom }),
-    layer(bl, zoom, 'no-repeat', { left: 0, bottom: 0, width: (bl?.w ?? 0) * zoom, height: (bl?.h ?? 0) * zoom }),
-    layer(br, zoom, 'no-repeat', { right: 0, bottom: 0, width: (br?.w ?? 0) * zoom, height: (br?.h ?? 0) * zoom }),
+    // Corners render OUTSIDE this box since v21 — their halo'd bitmaps
+    // overhang the silhouette and the box's overflow:hidden would clip
+    // them (the ornaments' exact escape). See the ground-wrapper block.
     // Edge ornaments render OUTSIDE this box, on the ground wrapper after
     // the plate (user call: on top of the panel, not below it) — in here
     // the box's overflow:hidden clipped their halo overhang at the panel
@@ -207,7 +212,7 @@ export const PanelNineSlice: React.FC<Props> = ({ pieces, zoom, width, height, s
     }),
   ];
 
-  const anyArt = layers.some(Boolean);
+  const anyArt = layers.some(Boolean) || !!(tl || tr || bl || br);
 
   // ---- the quest box's title plate ----------------------------------------
   // Rides the top border, centered, straddling it ~60% above (the live CSS
@@ -219,10 +224,6 @@ export const PanelNineSlice: React.FC<Props> = ({ pieces, zoom, width, height, s
   const plateM = p['plate-mid'];
   const plateR = p['plate-cap-r'];
   const hasPlate = !!plateM;
-  // Halo'd bitmaps are bigger than the piece; all GEOMETRY runs on nominal
-  // sizes and the bitmaps hang out past them.
-  const nomW = (pc?: NineSlicePiece) => (pc ? pc.w - (pc.halo ? pc.halo.l + pc.halo.r : 0) : 0);
-  const nomH = (pc?: NineSlicePiece) => (pc ? pc.h - (pc.halo ? pc.halo.t + pc.halo.b : 0) : 0);
   const plateH = (nomH(plateM) || nomH(plateL)) * zoom;
   const PLATE_MIDS = 2;
   const plateW = (nomW(plateL) + nomW(plateM) * PLATE_MIDS + nomW(plateR)) * zoom;
@@ -231,18 +232,27 @@ export const PanelNineSlice: React.FC<Props> = ({ pieces, zoom, width, height, s
   // padding at high zoom — the ground's top padding grows to hold both.
   // The TOP ornament's aura reaches higher still (upward halo 13 art plus
   // its negative centering offset on a thin band) — reserve that too.
-  const straddle = Math.round(plateH * 0.6);
+  // Straddle rounds in ART pixels then scales (parity with the game's
+  // questPlateStraddle): a display-px rounding could land the plate half an
+  // art pixel off the frame's grid.
+  const straddle = Math.round((plateH / zoom) * 0.6) * zoom;
   const topOrn = p['edge-top-ornament'];
   const topOrnReach = topOrn
     ? (topOrn.halo?.t ?? 0) * zoom
       - Math.round(((cbt - (topOrn.h - (topOrn.halo ? topOrn.halo.t + topOrn.halo.b : 0)) * zoom)) / 2)
     : 0;
+  // Corner halo reach (v21 overhang): the ground must hold the tails above
+  // AND below the box, or they paint over the editor UI around the preview.
+  const cornerHaloTop = Math.max(tl?.halo?.t ?? 0, tr?.halo?.t ?? 0) * zoom;
+  const cornerHaloBottom = Math.max(bl?.halo?.b ?? 0, br?.halo?.b ?? 0) * zoom;
   const groundPadTop = Math.max(
     GROUND_PAD,
     hasPlate ? straddle + plateHaloT + 2 : 0,
     topOrnReach + 2,
+    cornerHaloTop + 2,
   );
-  const plateLeft = GROUND_PAD + Math.round((width - plateW) / 2);
+  const groundPadBottom = Math.max(GROUND_PAD, cornerHaloBottom + 2);
+  const plateLeft = GROUND_PAD + Math.round((width - plateW) / (2 * zoom)) * zoom;
   const plateTop = groundPadTop - straddle;
 
   // ---- where the periods actually land -----------------------------------
@@ -282,7 +292,7 @@ export const PanelNineSlice: React.FC<Props> = ({ pieces, zoom, width, height, s
   };
 
   return (
-    <div style={{ background: ground, padding: GROUND_PAD, paddingTop: groundPadTop, borderRadius: 2, position: 'relative' }}>
+    <div style={{ background: ground, padding: GROUND_PAD, paddingTop: groundPadTop, paddingBottom: groundPadBottom, borderRadius: 2, position: 'relative' }}>
       <div style={{ position: 'relative', width, height, overflow: 'hidden' }}>
         {layers.map((s, i) => (s ? <div key={i} aria-hidden style={s} /> : null))}
 
@@ -357,6 +367,43 @@ export const PanelNineSlice: React.FC<Props> = ({ pieces, zoom, width, height, s
         )}
       </div>
 
+      {/* CORNERS — on the ground wrapper since v21: halo'd corner bitmaps
+          overhang the box (tails past the silhouette) and the panel box's
+          overflow:hidden would clip them, the ornaments' exact escape.
+          Rendered BEFORE the plate/ornaments so those still ride on top;
+          the sample text keeps its z-1 lift over everything. The clip box
+          allows exactly the game renderer's overhang (QuestBoxFrame BLEED
+          = 8 art past the box) — the preview must not show corner art the
+          game canvas would clip, nor let degenerate slider sizes scatter
+          unclipped corners across the ground. */}
+      <div
+        aria-hidden
+        style={{
+          position: 'absolute',
+          left: GROUND_PAD - 8 * zoom,
+          top: groundPadTop - 8 * zoom,
+          width: width + 16 * zoom,
+          height: height + 16 * zoom,
+          overflow: 'hidden',
+          pointerEvents: 'none',
+        }}
+      >
+        {([['corner-tl', tl], ['corner-tr', tr], ['corner-bl', bl], ['corner-br', br]] as const).map(([id, pc]) => {
+          if (!pc) return null;
+          const haloL = (pc.halo?.l ?? 0) * zoom;
+          const haloT = (pc.halo?.t ?? 0) * zoom;
+          const isRight = id === 'corner-tr' || id === 'corner-br';
+          const isBottom = id === 'corner-bl' || id === 'corner-br';
+          const s = layer(pc, zoom, 'no-repeat', {
+            left: 8 * zoom + (isRight ? width - nomW(pc) * zoom : 0) - haloL,
+            top: 8 * zoom + (isBottom ? height - nomH(pc) * zoom : 0) - haloT,
+            width: pc.w * zoom,
+            height: pc.h * zoom,
+          });
+          return s ? <div key={id} style={s} /> : null;
+        })}
+      </div>
+
       {/* THE QUEST PLATE — composited over the top border, centered, poking
           into the ground padding. Drawn after (over) the panel box. The
           wrapper is NOMINAL-sized (centering math); halo'd bitmaps overhang
@@ -400,10 +447,13 @@ export const PanelNineSlice: React.FC<Props> = ({ pieces, zoom, width, height, s
         const onw = (pc.w - (pc.halo ? pc.halo.l + pc.halo.r : 0)) * zoom;
         const onh = (pc.h - (pc.halo ? pc.halo.t + pc.halo.b : 0)) * zoom;
         const bandH = isTop ? cbt : cbb;
-        const edgeOffset = Math.round((bandH - onh) / 2);
+        // Art-grid-snapped centering (multiples of zoom) — parity with the
+        // game's QuestOrnaments: an odd display-px offset is half an art
+        // pixel off the frame's grid.
+        const edgeOffset = Math.round((bandH - onh) / (2 * zoom)) * zoom;
         const nominalTop = isTop ? edgeOffset : height - bandH + edgeOffset;
         const s = layer(pc, zoom, 'no-repeat', {
-          left: GROUND_PAD + Math.round((width - onw) / 2) - haloL,
+          left: GROUND_PAD + Math.round((width - onw) / (2 * zoom)) * zoom - haloL,
           top: groundPadTop + nominalTop - haloT,
           width: pc.w * zoom,
           height: pc.h * zoom,

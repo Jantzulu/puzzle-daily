@@ -44,6 +44,16 @@ export interface KitSpec {
   builtIn?: boolean;
   description: string;
   pieces: PieceSpec[];
+  /**
+   * Kit-specific stale-sheet recipe, shown by the slicer's size-mismatch
+   * HARD STOP in place of its generic "anchor bottom" hint. REQUIRED
+   * whenever a version bump grows a sheet anywhere but its very top —
+   * the generic hint assumes top-growth and would mis-migrate the
+   * artist's paint (v21 lesson: rows inserted mid-sheet, and the size
+   * gate can't tell a correctly-migrated sheet from an anchor-bottomed
+   * one — it would slice garbage silently).
+   */
+  migrationHint?: string;
 }
 
 const REPEAT_INFO: Record<RepeatMode, { symbol: string; blurb: string }> = {
@@ -159,7 +169,8 @@ export const DEFAULT_KITS: KitSpec[] = [
     name: 'Quest Box',
     builtIn: true,
     description:
-      'The quest panel under the board (the 2026-08-01 plate-box design, currently placeholder CSS in Game.tsx). Capped nine-slice — finished edge ends, so ornament survives ANY width or height — plus the QUEST title plate as its own 3-slice riding the top border. In the game the plate STRADDLES the border line (about 60% above it), so paint it as a finished object on all four sides; the sample gives it a separate band only so the cut is clean. The divider is the side-quests rule. Periods match the other kits (mid 24, cap = corner 12) so motifs transfer.',
+      'The quest panel under the board (the 2026-08-01 plate-box design, currently placeholder CSS in Game.tsx). Capped nine-slice — finished edge ends, so ornament survives ANY width or height — plus the QUEST title plate as its own 3-slice riding the top border. In the game the plate STRADDLES the border line (about 60% above it), so paint it as a finished object on all four sides; the sample gives it a separate band only so the cut is clean. The divider is the side-quests rule. Periods match the other kits (mid 24, cap = corner 12) so motifs transfer. The four corners carry 8 art of VERTICAL overhang room (above the top pair, below the bottom pair) — tails past the box silhouette paint in the magenta halo rows and ship with the corners.',
+    migrationHint: 'v21 grew this sheet in the MIDDLE and at the bottom (corner overhang rows), so the usual anchor-bottom move is WRONG here. Migrate a 144×157 sheet: Canvas Size, height +16, ANCHOR TOP — then select the whole frame block (everything from y=37 down, the first row below the plate band’s seam) and drag it DOWN 8 px. Re-export the template to see the new outlines.',
     pieces: [
       // Top/bottom bands: 8 art (v20, user ask — headroom for the scroll
       // silhouette; the original thin 5-art bands left the painted bottom
@@ -348,7 +359,21 @@ const STORAGE_KEY = 'panel_forge_kits_v1';
 //      into rows the gutter ring was discarding. Migration adopts 8 only
 //      where the stored height is still the old default 5; a deliberate
 //      artist resize stays sacred per the v12 law.
-const DEFAULTS_VERSION = 20;
+// v21: quest-box CORNERS gain vertical overhang room (user ask, 2026-08-10:
+//      "draw below corner BL/BR and above the top corners and have those
+//      pixels attached to those elements"): 8-art halo above the top pair /
+//      below the bottom pair, cut and shipped exactly like the plate's
+//      halo (renderers anchor by nominal; QuestBoxFrame's 16-CSS BLEED =
+//      exactly 8 art at Z=2, the hard ceiling — do not raise the halo
+//      without raising BLEED). SHEET GROWS 144×157 → 144×173: 8 rows
+//      inserted between the plate band and the frame top + 8 appended at
+//      the bottom. Artist migration (user accepted the resize) = Canvas
+//      Size height +16 ANCHOR TOP, then select the whole frame block
+//      (everything from y=37 down — the first frame row, right below the
+//      plate band's 2px seam) and drag it DOWN 8 px; re-export the
+//      template for the new outlines + magenta paint boxes. Piece sizes
+//      unchanged — no size migration, the v12 merge passes through.
+const DEFAULTS_VERSION = 21;
 
 function loadKits(): KitSpec[] {
   try {
@@ -859,7 +884,25 @@ function assembleQuestBox(kit: KitSpec): Assembly | null {
   const AURA = 5;
   const plateH = Math.max(pl.h, pm.h, pr.h);
   const bandH = AURA + HALO + plateH + HALO + 2;
-  const regions = base.regions.map(r => ({ ...r, y: r.y + bandH }));
+
+  // CORNER OVERHANG (v21, user ask 2026-08-10): paint room ABOVE the top
+  // corners and BELOW the bottom pair, shipped WITH the corner pieces — the
+  // scroll's rod ends get tails past the box silhouette. Same halo machinery
+  // as the plate; VERTICAL only, so corner widths (and every run/field
+  // position keyed to them) are untouched. 8 art = the game renderer's
+  // ceiling (QuestBoxFrame BLEED = 8 art × Z). The sheet grows: CORNER_HALO
+  // rows inserted between the plate band and the frame top + CORNER_HALO
+  // appended at the bottom — each corner's paint room must be physically
+  // adjacent to its chunk (the slicer cuts region ± halo contiguously).
+  const CORNER_HALO = 8;
+  const cornerHalo = (id: string) =>
+    id === 'corner-tl' || id === 'corner-tr' ? { l: 0, t: CORNER_HALO, r: 0, b: 0 }
+      : id === 'corner-bl' || id === 'corner-br' ? { l: 0, t: 0, r: 0, b: CORNER_HALO }
+        : undefined;
+  const regions = base.regions.map(r => {
+    const halo = cornerHalo(r.pieceId);
+    return { ...r, y: r.y + bandH + CORNER_HALO, ...(halo ? { halo } : {}) };
+  });
 
   const MIDS = 2; // sample shows one seam; only the first period is cut
   const plateW = pl.w + pm.w * MIDS + pr.w;
@@ -894,7 +937,7 @@ function assembleQuestBox(kit: KitSpec): Assembly | null {
     regions.push({ pieceId: 'edge-bottom-ornament', x: base.width - HALO - 2 - ob.w, y: oy, w: ob.w, h: ob.h, rep: 0, halo: ornHalo });
   }
 
-  return { regions, width: base.width, height: base.height + bandH };
+  return { regions, width: base.width, height: base.height + bandH + CORNER_HALO * 2 };
 }
 
 function assembleGate(kit: KitSpec): Assembly | null {
@@ -1513,6 +1556,21 @@ export const PanelForge: React.FC = () => {
       ctx.strokeStyle = '#ff00ff';
       ctx.lineWidth = 1;
       ctx.strokeRect(0.5, 0.5, assembly.width - 1, assembly.height - 1);
+      // HALO PAINT BOXES first (magenta, under the nominal outlines): the
+      // extra paint room around halo'd cuts — plate caps, ornaments, the
+      // v21 corner overhang rows. Without these the downloaded template
+      // showed only nominal outlines and the halo rows were visually
+      // identical to the sheet's dead areas — the on-screen assembled view
+      // marked them but the PNG the artist actually paints against did not.
+      for (const r of assembly.regions) {
+        if (r.guide || !r.halo) continue;
+        ctx.strokeStyle = 'rgba(255, 0, 255, 0.5)';
+        ctx.setLineDash([3, 2]);
+        ctx.strokeRect(
+          r.x - r.halo.l + 0.5, r.y - r.halo.t + 0.5,
+          r.w + r.halo.l + r.halo.r - 1, r.h + r.halo.t + r.halo.b - 1,
+        );
+      }
       for (const r of assembly.regions) {
         // Guides dashed + dimmer: placement previews, not paint slots.
         ctx.strokeStyle = r.guide ? 'rgba(0, 255, 255, 0.28)' : 'rgba(0, 255, 255, 0.55)';

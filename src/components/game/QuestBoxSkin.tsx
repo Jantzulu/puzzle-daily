@@ -59,24 +59,34 @@ export const questSkinDividerActive = PIECES.has('divider-mid');
 
 // Frame geometry (run starts, cap anchoring) keys off the CORNERS as a
 // nine-slice must; the CONTENT padding keys off the EDGE BANDS instead
-// (thinness lever): thin edges + proud corners = a thin box. Frame pieces
-// carry no halo, so nominal == bitmap.
+// (thinness lever): thin edges + proud corners = a thin box. Edges, caps
+// and center carry no halo (nominal == bitmap); the CORNERS carry a
+// vertical halo since kit v21 (overhang room above/below the silhouette),
+// so all corner-keyed geometry runs on NOMINAL dims and corner draws
+// anchor nominal with the bitmap overhanging into the bleed.
 const tl = P('corner-tl');
 const tr = P('corner-tr');
+const cornerBl = P('corner-bl');
+const cornerBr = P('corner-br');
 const topMid = P('edge-top-mid');
 const bottomMid = P('edge-bottom-mid');
 const leftMid = P('edge-left-mid');
 const rightMid = P('edge-right-mid');
 export const questFrameBorders = {
-  t: (topMid?.h ?? tl?.h ?? 0) * Z,
-  b: (bottomMid?.h ?? P('corner-bl')?.h ?? 0) * Z,
-  l: (leftMid?.w ?? tl?.w ?? 0) * Z,
-  r: (rightMid?.w ?? tr?.w ?? 0) * Z,
+  t: (topMid?.h ?? (tl ? nomH(tl) : 0)) * Z,
+  b: (bottomMid?.h ?? (cornerBl ? nomH(cornerBl) : 0)) * Z,
+  l: (leftMid?.w ?? (tl ? nomW(tl) : 0)) * Z,
+  r: (rightMid?.w ?? (tr ? nomW(tr) : 0)) * Z,
 };
 
 const plateMid = P('plate-mid');
-/** How far the plate pokes above the box's top edge (the preview's 60% rule). */
-export const questPlateStraddle = plateMid ? Math.round(nomH(plateMid) * Z * 0.6) : 0;
+/**
+ * How far the plate pokes above the box's top edge (the preview's 60% rule).
+ * Rounded in ART pixels, then scaled — an odd CSS offset (the old CSS-px
+ * rounding gave 17) put the plate's art grid half an art pixel off the
+ * frame's, the user's "not pixel perfect" report (2026-08-10).
+ */
+export const questPlateStraddle = plateMid ? Math.round(nomH(plateMid) * 0.6) * Z : 0;
 
 // ─── The frame ──────────────────────────────────────────────────────────────
 
@@ -103,11 +113,12 @@ export const QuestBoxFrame: React.FC = () => {
       if (!ctx) return;
       ctx.clearRect(-BLEED, -BLEED, w + BLEED * 2, h + BLEED * 2);
 
-      // Corner-keyed geometry; edge-keyed content bands (see header).
-      const bt = (tl?.h ?? topMid?.h ?? 0) * Z;
-      const bb = (P('corner-bl')?.h ?? bottomMid?.h ?? 0) * Z;
-      const bl = (tl?.w ?? leftMid?.w ?? 0) * Z;
-      const br = (tr?.w ?? rightMid?.w ?? 0) * Z;
+      // Corner-keyed geometry (NOMINAL — corner bitmaps may carry a v21
+      // vertical halo); edge-keyed content bands (see header).
+      const bt = (tl ? nomH(tl) : topMid?.h ?? 0) * Z;
+      const bb = (cornerBl ? nomH(cornerBl) : bottomMid?.h ?? 0) * Z;
+      const bl = (tl ? nomW(tl) : leftMid?.w ?? 0) * Z;
+      const br = (tr ? nomW(tr) : rightMid?.w ?? 0) * Z;
       const gt = questFrameBorders.t;
       const gb = questFrameBorders.b;
       const gl = questFrameBorders.l;
@@ -148,10 +159,12 @@ export const QuestBoxFrame: React.FC = () => {
       if (fitB) { drawFixed(ctx, P('edge-bottom-cap-l'), bl, h - (P('edge-bottom-cap-l')?.h ?? 0) * Z); drawFixed(ctx, P('edge-bottom-cap-r'), w - br - capBR, h - (P('edge-bottom-cap-r')?.h ?? 0) * Z); }
       if (fitL) { drawFixed(ctx, P('edge-left-cap-t'), 0, bt); drawFixed(ctx, P('edge-left-cap-b'), 0, h - bb - capLB); }
       if (fitR) { drawFixed(ctx, P('edge-right-cap-t'), w - (P('edge-right-cap-t')?.w ?? 0) * Z, bt); drawFixed(ctx, P('edge-right-cap-b'), w - (P('edge-right-cap-b')?.w ?? 0) * Z, h - bb - capRB); }
-      drawFixed(ctx, tl, 0, 0);
-      drawFixed(ctx, tr, w - (tr?.w ?? 0) * Z, 0);
-      drawFixed(ctx, P('corner-bl'), 0, h - (P('corner-bl')?.h ?? 0) * Z);
-      drawFixed(ctx, P('corner-br'), w - (P('corner-br')?.w ?? 0) * Z, h - (P('corner-br')?.h ?? 0) * Z);
+      // Corners anchor by NOMINAL box; halo'd bitmaps overhang into the
+      // bleed (v21 corner overhang — tails past the silhouette).
+      if (tl) drawFixed(ctx, tl, -(tl.halo?.l ?? 0) * Z, -(tl.halo?.t ?? 0) * Z);
+      if (tr) drawFixed(ctx, tr, w - nomW(tr) * Z - (tr.halo?.l ?? 0) * Z, -(tr.halo?.t ?? 0) * Z);
+      if (cornerBl) drawFixed(ctx, cornerBl, -(cornerBl.halo?.l ?? 0) * Z, h - nomH(cornerBl) * Z - (cornerBl.halo?.t ?? 0) * Z);
+      if (cornerBr) drawFixed(ctx, cornerBr, w - nomW(cornerBr) * Z - (cornerBr.halo?.l ?? 0) * Z, h - nomH(cornerBr) * Z - (cornerBr.halo?.t ?? 0) * Z);
       // Edge ornaments moved OUT of this canvas (QuestOrnaments below):
       // painted here they sat UNDER the QUEST plate, and the user wants the
       // medallions riding over the whole panel.
@@ -221,8 +234,13 @@ export const QuestOrnaments: React.FC = () => {
         const bandH = isTop ? questFrameBorders.t : questFrameBorders.b;
         const nw = nomW(pc) * Z;
         const nh = nomH(pc) * Z;
-        const x = Math.round((w - nw) / 2) - (pc.halo?.l ?? 0) * Z;
-        const edgeOffset = Math.round((bandH - nh) / 2);
+        // Centering SNAPS TO THE ART GRID (multiples of Z): plain CSS-px
+        // rounding could land the ornament on an odd CSS offset — half an
+        // art pixel off the frame's grid, visibly "not pixel perfect"
+        // (user report 2026-08-10). One CSS px off-center is invisible;
+        // half an art px off-grid is not.
+        const x = Math.round((w - nw) / (2 * Z)) * Z - (pc.halo?.l ?? 0) * Z;
+        const edgeOffset = Math.round((bandH - nh) / (2 * Z)) * Z;
         const y = (isTop ? edgeOffset : h - bandH + edgeOffset) - (pc.halo?.t ?? 0) * Z;
         drawFixed(ctx, pc, x, y);
       };

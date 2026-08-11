@@ -2,7 +2,7 @@
   "version": 1,
   "kitId": "quest-box",
   "kitName": "Quest Box",
-  "cutAt": "2026-08-10T23:48:29.928Z",
+  "cutAt": "2026-08-11T00:45:58.953Z",
   "pieces": [
     {
       "id": "corner-tl",
@@ -35,44 +35,44 @@
     {
       "id": "edge-top-cap-l",
       "w": 12,
-      "h": 5,
+      "h": 8,
       "empty": false,
-      "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAwAAAAFCAYAAABxeg0vAAAAJ0lEQVR4AbyOMQ0AAAjDlulDEYpwCUjYnjXp2aSESSbYv5LldMHxAAAA//9+eeI+AAAABklEQVQDABTWHSe6eztTAAAAAElFTkSuQmCC"
+      "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAwAAAAICAYAAADN5B7xAAAAOUlEQVR4AcyPsREAMAgCPefLRJkoWxqsfQs7PWg4gcNteEsNoRlEyRX+7jGiXikk2tEUklprUAPiAwAA///0Gqp7AAAABklEQVQDAHl1HS1I3B6qAAAAAElFTkSuQmCC"
     },
     {
       "id": "edge-top-mid",
       "w": 24,
-      "h": 5,
+      "h": 8,
       "empty": false,
-      "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAFCAYAAABfPyy9AAAAJ0lEQVR4AdyQMQ0AAAjDlulDEYpwCZjosya9m9SCyQjsX8L0dIn0AAAA//9pduoNAAAABklEQVQDABrfOkPFb2DLAAAAAElFTkSuQmCC"
+      "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAICAYAAADjoT9jAAAALElEQVR4AeyQsQ0AAAjCCPd5kRf5pfqBE4uBpDNpCfF8cAb+kajXUwYrA0oGAAD///rVYAQAAAAGSURBVAMAK+w6SUsATdgAAAAASUVORK5CYII="
     },
     {
       "id": "edge-top-cap-r",
       "w": 12,
-      "h": 5,
+      "h": 8,
       "empty": false,
-      "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAwAAAAFCAYAAABxeg0vAAAAJ0lEQVR4AbyOMQ0AAAjDlulDEYpwCUjYnjXp2aSESSbYv5LldMHxAAAA//9+eeI+AAAABklEQVQDABTWHSe6eztTAAAAAElFTkSuQmCC"
+      "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAwAAAAICAYAAADN5B7xAAAANklEQVR4AdSPsREAAAQDnflMZCJbIrUolJw0Ty4XleM8M2TXG0KHAfEYbsKkDIK1iS4S6GGDBQAA//8T5/d8AAAABklEQVQDAHl1HS1I3B6qAAAAAElFTkSuQmCC"
     },
     {
       "id": "edge-bottom-cap-l",
       "w": 12,
-      "h": 5,
+      "h": 8,
       "empty": false,
-      "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAwAAAAFCAYAAABxeg0vAAAAJklEQVR4AbTLsREAAAjCwOj+OytsgIV3pOMbmEsGJRBnoH++f7AAAAD///5yG5QAAAAGSURBVAMASP0MC265bbsAAAAASUVORK5CYII="
+      "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAwAAAAICAYAAADN5B7xAAAAPklEQVR4AcyNsREAIAgDkfkcwFkcwFkcwP2U9E9hB0eaDyG+Z78/cktmrGMkJygWfxpJDWjEMa4CaGSwYOABAAD//xe9N5AAAAAGSURBVAMAjD8wEYss1kEAAAAASUVORK5CYII="
     },
     {
       "id": "edge-bottom-mid",
       "w": 24,
-      "h": 5,
+      "h": 8,
       "empty": false,
-      "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAFCAYAAABfPyy9AAAAJklEQVR4AdTNsREAAAjCQHT/nRWGSMEdafmVdGQBxgBWAP9z6wceAAD//9fHXgQAAAAGSURBVAMAzoMYC9ZKFlMAAAAASUVORK5CYII="
+      "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAICAYAAADjoT9jAAAALUlEQVR4AeyQsQ0AAAjC0P9/VrjAicGEhK40aQMYJxIUBTYk4L9vEZxt/ydaAAAA//8Epi9nAAAABklEQVQDACk0GBGgkX49AAAAAElFTkSuQmCC"
     },
     {
       "id": "edge-bottom-cap-r",
       "w": 12,
-      "h": 5,
+      "h": 8,
       "empty": false,
-      "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAwAAAAFCAYAAABxeg0vAAAAJklEQVR4AbTLsREAAAjCwOj+OytsgIV3pOMbmEsGJRBnoH++f7AAAAD///5yG5QAAAAGSURBVAMASP0MC265bbsAAAAASUVORK5CYII="
+      "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAwAAAAICAYAAADN5B7xAAAAPUlEQVR4AcyMQQ0AIAwDR/UhAC0IQAsC8Afb/yDht2X9NL3T7HX/RG0so9jl5H2hkCS6AHyPj6IXgJaEwAEAAP//ETFvDgAAAAZJREFUAwCMPzARiyzWQQAAAABJRU5ErkJggg=="
     },
     {
       "id": "edge-left-cap-t",
@@ -194,7 +194,7 @@
         "r": 8,
         "b": 8
       },
-      "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAhCAYAAACr8emlAAAAs0lEQVR4AeyWsQmAMBBFEwvXcB7HsHIMcQwrx3Ae17DROyFi95H7hZAvOXJ4JjxfAkmTfv4IMLpAMiiDHw2c9r2HdZzG3IPn1HfJw9BokCzAG27e9uTBhGQAPnBjOyQPJiQDMBtQtmXNy7He4Xl5Z3moMQBDAGiwAJEhVJdBZAjVZRAZQnUZRIZQvTqDtFtMMcs26GdymZvSswEpUO9JagF8/zM3l8GoTxmUwaiB6Pjf78ELAAD//4U7xwgAAAAGSURBVAMAQrkhQy66O44AAAAASUVORK5CYII="
+      "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAhCAYAAACr8emlAAAAwElEQVR4AeyWsQ2EMAxFkytujZvnxqBiDMQYVIzBPKxBAzZSEE30I/KLSHwUKxZOwtNzQT6h8UeAtQ2SwdYM7gbkYRNnMFu8D/9f8DA0GiQL8IQblzV4MCEZgBdc/+2CBxOSARgNKFpb47TNZ3ie3lleNRiAVQBoswCRIVSXQWQI1WUQGUJ1GUSGUP11Bmm3mGSWbdD/yelsyswGpEDdDxHg3caTnGTwyafL9giwzFN+lQzm3ZRVZLDMU35V8wYPAAAA//+9dDkcAAAABklEQVQDAAT0IUPohyL8AAAAAElFTkSuQmCC"
     },
     {
       "id": "edge-bottom-ornament",
