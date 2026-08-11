@@ -2377,6 +2377,56 @@ body.menu-gate-instant .quest-panel-sticky {
   to { clip-path: inset(0 0px 0 0px); }
 }
 
+/* THE SCROLL TOGGLE'S CLOSE (user ask 2026-08-11: the QUEST seal is a
+   button; clicking rolls the scroll up). Exact inverses of the entrance,
+   riding the same stamped vars so the clip boundary tracks the rods on
+   the way in too. forwards fill holds the rolled-up state until Game.tsx
+   flips to 'closed' and unmounts the layers; then the box height
+   transition lowers the page content into the freed space. The closed
+   scroll UN-STAMPS (0.25s @ 0.5s) after the rolls meet. */
+.quest-closing .quest-paper {
+  animation: quest-scroll-paper-close 0.5s cubic-bezier(0.45, 0, 0.25, 1) forwards;
+}
+.quest-closing .quest-roll-l {
+  animation: quest-scroll-roll-l-close 0.5s cubic-bezier(0.45, 0, 0.25, 1) forwards;
+}
+.quest-closing .quest-roll-r {
+  animation: quest-scroll-roll-r-close 0.5s cubic-bezier(0.45, 0, 0.25, 1) forwards;
+}
+.quest-closing .quest-stage-scroll {
+  animation: quest-scroll-content-close 0.5s cubic-bezier(0.45, 0, 0.25, 1) forwards;
+}
+.quest-closing .quest-scroll-stamp {
+  /* fill BOTH: backwards holds full opacity through the 0.5s delay
+     (the roll-up), forwards holds the vanished state after. */
+  animation: quest-unstamp 0.25s cubic-bezier(0.7, 0, 0.8, 1) 0.5s both;
+}
+
+@keyframes quest-scroll-paper-close {
+  from { clip-path: inset(0 var(--qedge-r, 0px) 0 var(--qedge-l, 0px)); }
+  to { clip-path: inset(0 var(--qclose, 50%) 0 var(--qclose, 50%)); }
+}
+
+@keyframes quest-scroll-roll-l-close {
+  from { transform: translateX(0); }
+  to { transform: translateX(var(--qtravel-l, 0px)); }
+}
+
+@keyframes quest-scroll-roll-r-close {
+  from { transform: translateX(0); }
+  to { transform: translateX(calc(-1 * var(--qtravel-r, 0px))); }
+}
+
+@keyframes quest-scroll-content-close {
+  from { clip-path: inset(0 0px 0 0px); }
+  to { clip-path: inset(0 var(--qclose, 50%) 0 var(--qclose, 50%)); }
+}
+
+@keyframes quest-unstamp {
+  from { opacity: 1; transform: scale(1); }
+  to { opacity: 0; transform: scale(1.45); }
+}
+
 @keyframes quest-scroll-paper {
   /* Both endpoints PX-VALUED (--qclose = half the measured box width,
      stamped by QuestBoxFrame): a 50% from-value interpolating to a px

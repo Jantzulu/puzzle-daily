@@ -362,6 +362,58 @@ export const Game: React.FC<GameProps> = ({
   // Pixel-snaps the skinned quest box (flex centering can land it on
   // half-pixels, which blurs the bitmap art at any zoom — see useCrispSnap).
   const questBoxSnapRef = useCrispSnap<HTMLDivElement>(questSkinFrameActive);
+  // THE SCROLL TOGGLE (user ask 2026-08-11): the QUEST plate is a button.
+  // open → closing (reverse roll-up, then the closed scroll un-stamps) →
+  // closed (only the seal remains; the box height collapses so the page
+  // below rises) → opening (height expands, then the entrance's stamp +
+  // unfurl REPLAY via a remount key — the plate itself never re-fades).
+  // Height rides a one-shot CSS transition between measured px values;
+  // null = content-driven auto (the resting states). Skinned-mode only.
+  const [questScroll, setQuestScroll] = useState<'open' | 'closing' | 'closed' | 'opening'>('open');
+  const [questBoxHeight, setQuestBoxHeight] = useState<number | null>(null);
+  const [questReplayKey, setQuestReplayKey] = useState(0);
+  const questScrollTimers = useRef<number[]>([]);
+  useEffect(() => () => questScrollTimers.current.forEach(clearTimeout), []);
+  // Collapsed height = the box's own padding sum (border-box floor): the
+  // seal's below-line half stays contained, padding never needs animating.
+  const questCollapsedH = questFrameBorders.t + 1 + questFrameBorders.b;
+  const toggleQuestScroll = () => {
+    const box = questBoxSnapRef.current;
+    if (!box || !questSkinFrameActive) return;
+    if (questScroll === 'open') {
+      setQuestBoxHeight(box.offsetHeight); // pin (no visual change) so the later px→px transition can run
+      setQuestScroll('closing');
+      questScrollTimers.current = [
+        window.setTimeout(() => setQuestBoxHeight(questCollapsedH), 750), // after roll-up (0.5s) + un-stamp (0.25s)
+        window.setTimeout(() => setQuestScroll('closed'), 1100),
+      ];
+    } else if (questScroll === 'closed') {
+      setQuestReplayKey(k => k + 1);
+      setQuestScroll('opening');
+      // Target height measured in the layout effect below, once the
+      // remounted (clip-hidden) content exists to measure.
+    }
+  };
+  useLayoutEffect(() => {
+    if (questScroll !== 'opening') return;
+    const box = questBoxSnapRef.current;
+    if (!box) return;
+    // Expansion target = the IN-FLOW content's natural height + the box
+    // paddings. NOT box.scrollHeight: that counts absolutely-positioned
+    // descendants' overflow, and the skin canvases overhang the box by
+    // their bleed (the ornament canvas alone reaches 48px past the
+    // bottom) — the box opened ~50px too tall, then snapped (user
+    // report). The remounted content is still clip-hidden by its
+    // entrance animation, so the 0.3s stretch happens invisibly during
+    // the stamp's pre-beat.
+    const content = box.querySelector(':scope > .quest-stage-scroll') as HTMLElement | null;
+    setQuestBoxHeight(content
+      ? content.offsetHeight + questFrameBorders.t + 1 + questFrameBorders.b
+      : box.scrollHeight);
+    questScrollTimers.current = [
+      window.setTimeout(() => { setQuestScroll('open'); setQuestBoxHeight(null); }, 1600),
+    ];
+  }, [questScroll, questBoxSnapRef]);
   useEffect(() => {
     const onScroll = () => setRailRiding(window.scrollY > 8);
     onScroll();
@@ -3288,7 +3340,7 @@ export const Game: React.FC<GameProps> = ({
               // long quests into wrapping. (Line comment, NOT {/* */} —
               // this is EXPRESSION position; the documented parse trap
               // struck its third time right here.)
-              <div className="quest-box-anchor w-fit max-w-2xl mx-auto relative z-[45] -mt-[3px] mb-1">
+              <div className={`quest-box-anchor w-fit max-w-2xl mx-auto relative z-[45] -mt-[3px] mb-1${questScroll === 'closing' ? ' quest-closing' : ''}`}>
                 {/* pt-1.5/pb-1.5 (user call, third round): the plate now
                     rides HIGHER on the border (-top-[15px], only ~6px of it
                     inside the box), which is what lets the top padding drop
@@ -3314,6 +3366,13 @@ export const Game: React.FC<GameProps> = ({
                     // 2026-08-05: less padding above and below the
                     // objective) — the art's own borders still clear.
                     padding: `${questFrameBorders.t + 1}px ${questFrameBorders.r + 4}px ${questFrameBorders.b}px ${questFrameBorders.l + 4}px`,
+                    // Scroll-toggle collapse: height rides a one-shot
+                    // transition between measured px values (null = auto,
+                    // the resting states). Padding stays put — border-box
+                    // floors the collapsed height at the padding sum, so
+                    // the seal keeps its little shelf of box.
+                    height: questBoxHeight ?? undefined,
+                    transition: 'height 0.3s ease',
                   } : undefined}
                 >
                 {/* ENTRANCE STAGING (user design 2026-08-06): the frame,
@@ -3326,8 +3385,13 @@ export const Game: React.FC<GameProps> = ({
                   // No quest-stage-box fade here: the frame's entrance is
                   // the scroll OPENING (paper + roll layers animate inside
                   // QuestBoxFrame — index.css .quest-paper/.quest-roll-*),
-                  // visible from first paint as the closed scroll.
-                  <div className="absolute inset-0 pointer-events-none">
+                  // visible from first paint as the closed scroll. The
+                  // scroll toggle HIDES it at 'closed' (display, not
+                  // unmount — conditional unmounts of the keyed siblings
+                  // left orphaned frames stacking on reopen; user bug
+                  // 2026-08-11) and the DISTINCT replay key remounts it on
+                  // reopen so the stamp + unfurl play again.
+                  <div key={`quest-frame-${questReplayKey}`} className={`absolute inset-0 pointer-events-none${questScroll === 'closed' ? ' hidden' : ''}`}>
                     <QuestBoxFrame />
                   </div>
                 )}
@@ -3342,9 +3406,23 @@ export const Game: React.FC<GameProps> = ({
                   // half-pixels (bitmap blur); QuestPlate self-snaps the
                   // residue.
                   <span className="quest-stage-plate absolute left-0 right-0 flex justify-center pointer-events-none" style={{ top: -questPlateStraddle }}>
-                    <QuestPlate>
-                      <span className="hud-label text-copper-300 whitespace-nowrap">Quest</span>
-                    </QuestPlate>
+                    {/* THE SEAL IS A BUTTON (user ask 2026-08-11): click
+                        rolls the scroll up/down. pointer-events-auto
+                        re-enables inside the none wrapper; z-[2] wins the
+                        hit-test over the later content-wrapper sibling
+                        whose top rows overlap the plate's lower half. */}
+                    <button
+                      type="button"
+                      onClick={toggleQuestScroll}
+                      disabled={questScroll === 'closing' || questScroll === 'opening'}
+                      aria-expanded={questScroll !== 'closed'}
+                      title={questScroll === 'closed' ? 'Unfurl the quest scroll' : 'Roll the quest scroll up'}
+                      className="pointer-events-auto relative z-[2] cursor-pointer bg-transparent border-0 p-0"
+                    >
+                      <QuestPlate>
+                        <span className="hud-label text-copper-300 whitespace-nowrap">Quest</span>
+                      </QuestPlate>
+                    </button>
                   </span>
                 ) : (
                   <span className="quest-stage-plate absolute -top-[15px] left-1/2 -translate-x-1/2 px-3 py-0.5 bg-stone-950 border-2 border-copper-700 rounded-pixel hud-label text-copper-300 whitespace-nowrap">Quest</span>
@@ -3365,8 +3443,13 @@ export const Game: React.FC<GameProps> = ({
                     absolute layers paint over STATIC siblings — everything
                     readable lives above the art. Skinned: the content
                     UNFURLS with the paper (quest-scroll-content wipe);
-                    baseline keeps the plain fade. */}
-                <div className={questSkinFrameActive ? 'quest-stage-scroll relative' : 'quest-stage-box relative'}>
+                    baseline keeps the plain fade. Hidden entirely while
+                    the scroll toggle rests closed; the replay key re-runs
+                    the unfurl on reopen. */}
+                <div
+                  key={`quest-content-${questReplayKey}`}
+                  className={`${questSkinFrameActive ? 'quest-stage-scroll relative' : 'quest-stage-box relative'}${questSkinFrameActive && questScroll === 'closed' ? ' hidden' : ''}`}
+                >
                 {/* Puzzle Number & Quest Row */}
                 {puzzleNumber && (
                   <div className="text-center mb-0.5">
