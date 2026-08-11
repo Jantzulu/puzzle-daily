@@ -3313,7 +3313,7 @@ export const Game: React.FC<GameProps> = ({
                     // Vertical add-ons trimmed 4/2 -> 1/0 (user call
                     // 2026-08-05: less padding above and below the
                     // objective) — the art's own borders still clear.
-                    padding: `${questFrameBorders.t + 1}px ${questFrameBorders.r + 8}px ${questFrameBorders.b}px ${questFrameBorders.l + 8}px`,
+                    padding: `${questFrameBorders.t + 1}px ${questFrameBorders.r + 4}px ${questFrameBorders.b}px ${questFrameBorders.l + 4}px`,
                   } : undefined}
                 >
                 {/* ENTRANCE STAGING (user design 2026-08-06): the frame,
@@ -3432,13 +3432,18 @@ export const Game: React.FC<GameProps> = ({
                         keeps its light registers. !important beats the
                         HelpButton's own classes (class order in the
                         attribute does not decide Tailwind conflicts).
-                        !p-0.5 (user ask: tighter) shrinks the button box
-                        24→20px, which also drops the icon's optical center
-                        2px toward the text line at the same align offset —
-                        an integer-only knob per the fractional-align law. */}
+                        !p-0 (user round 2): the padded 20px box exceeded
+                        the MOBILE 18px line height, inflating whichever
+                        line held the icon and shifting the text per
+                        breakpoint — the user's "not centered all the
+                        time". A 16px box fits inside every line height
+                        (18/22/25); hit-44 keeps the tap target. Aligns
+                        are per-breakpoint INTEGERS putting the icon's
+                        center on the measured cap-center (13px: baseline
+                        −5 exactly; drift ~1px/breakpoint otherwise). */}
                     <HelpButton
                       sectionId="game_general"
-                      className={`inline-block align-[-4px] mr-1 !p-0.5 ${questSkinFrameActive ? '!text-black hover:!text-stone-800 hover:!bg-black/10' : ''}`}
+                      className={`inline-block align-[-3px] md:align-[-2px] lg:align-[-1px] mr-1 !p-0 ${questSkinFrameActive ? '!text-black hover:!text-stone-800 hover:!bg-black/10' : ''}`}
                       preamble={gameState.puzzle.questDescription?.trim()
                         ? { title: 'About this Puzzle', text: gameState.puzzle.questDescription.trim() }
                         : undefined}
