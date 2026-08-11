@@ -221,12 +221,16 @@ export const PanelNineSlice: React.FC<Props> = ({ pieces, zoom, width, height, s
   // ground wrapper instead. Detected per-piece like the caps: any kit
   // without plate pieces renders exactly as before.
   const plateL = p['plate-cap-l'];
-  const plateM = p['plate-mid'];
+  // v22 split band (bookmatched halves) with legacy single-mid fallback —
+  // keep in lockstep with QuestBoxSkin's plateMidL/plateMidR.
+  const plateLegacy = p['plate-mid'];
+  const plateM = p['plate-mid-l'] ?? plateLegacy ?? p['plate-mid-r'];
+  const plateMR = p['plate-mid-r'] ?? plateLegacy ?? p['plate-mid-l'];
+  const plateSplit = !!(p['plate-mid-l'] || p['plate-mid-r']);
   const plateR = p['plate-cap-r'];
   const hasPlate = !!plateM;
   const plateH = (nomH(plateM) || nomH(plateL)) * zoom;
-  const PLATE_MIDS = 2;
-  const plateW = (nomW(plateL) + nomW(plateM) * PLATE_MIDS + nomW(plateR)) * zoom;
+  const plateW = (nomW(plateL) + nomW(plateM) + nomW(plateMR) + nomW(plateR)) * zoom;
   const plateHaloT = (plateM?.halo?.t ?? plateL?.halo?.t ?? 0) * zoom;
   // The straddle (and any halo overflow above the plate) can exceed the base
   // padding at high zoom — the ground's top padding grows to hold both.
@@ -413,12 +417,36 @@ export const PanelNineSlice: React.FC<Props> = ({ pieces, zoom, width, height, s
       {hasPlate && (
         <div aria-hidden style={{ position: 'absolute', left: plateLeft, top: plateTop, width: plateW, height: plateH }}>
           {[
-            layer(plateM, zoom, 'repeat-x', {
-              left: nomW(plateL) * zoom,
-              right: nomW(plateR) * zoom,
-              top: -(plateM?.halo?.t ?? 0) * zoom,
-              height: (plateM?.h ?? 0) * zoom,
-            }),
+            // v22 bookmatch: left half tiles from the left cap, right half
+            // right-anchored ('right top' lattice) against its cap, seam at
+            // the art-grid center. Legacy single-mid keeps one span (a
+            // split would phase-shift the committed art's tiling).
+            ...(plateSplit
+              ? (() => {
+                  const span = plateW - (nomW(plateL) + nomW(plateR)) * zoom;
+                  const half = Math.round(span / (2 * zoom)) * zoom;
+                  return [
+                    layer(plateM, zoom, 'repeat-x', {
+                      left: nomW(plateL) * zoom,
+                      width: half,
+                      top: -(plateM?.halo?.t ?? 0) * zoom,
+                      height: (plateM?.h ?? 0) * zoom,
+                    }),
+                    layer(plateMR, zoom, 'repeat-x', {
+                      left: nomW(plateL) * zoom + half,
+                      right: nomW(plateR) * zoom,
+                      top: -(plateMR?.halo?.t ?? 0) * zoom,
+                      height: (plateMR?.h ?? 0) * zoom,
+                      backgroundPosition: 'right top',
+                    }),
+                  ];
+                })()
+              : [layer(plateM, zoom, 'repeat-x', {
+                  left: nomW(plateL) * zoom,
+                  right: nomW(plateR) * zoom,
+                  top: -(plateM?.halo?.t ?? 0) * zoom,
+                  height: (plateM?.h ?? 0) * zoom,
+                })]),
             layer(plateL, zoom, 'no-repeat', {
               left: -(plateL?.halo?.l ?? 0) * zoom,
               top: -(plateL?.halo?.t ?? 0) * zoom,

@@ -184,7 +184,13 @@ export const DEFAULT_KITS: KitSpec[] = [
       ...nineSliceCapped(12, 12, 12, 24, 24).map(p =>
         p.id.startsWith('edge-top-') || p.id.startsWith('edge-bottom-') ? { ...p, h: 8 } : p),
       { id: 'plate-cap-l', label: 'Plate Cap L', w: 6, h: 14, repeat: 'fixed', notes: 'Finished left end of the QUEST plate — it straddles the box border in-game, so give it a complete outline.' },
-      { id: 'plate-mid', label: 'Plate Middle', w: 12, h: 14, repeat: 'tile-x', notes: 'Repeats behind the plate label so the plate hugs any text length. The label itself stays DOM text.' },
+      // v22 (user ask): the plate middle is TWO distinct pieces occupying
+      // exactly the sample's two old mid slots — the second slot used to be
+      // a discarded seam-check repeat; now it ships. The band renders
+      // BOOKMATCHED: left piece tiles from the left cap, right piece tiles
+      // right-anchored from the right cap, meeting at a center seam.
+      { id: 'plate-mid-l', label: 'Plate Mid L', w: 12, h: 14, repeat: 'tile-x', notes: 'LEFT half of the band behind the QUEST label — its own painting, tiling out from the left cap. Width overflow crops at the CENTER seam, so keep the inner (right) 2–3 art forgiving. The label stays DOM text.' },
+      { id: 'plate-mid-r', label: 'Plate Mid R', w: 12, h: 14, repeat: 'tile-x', notes: 'RIGHT half of the band — tiles right-anchored, flush against the right cap; overflow crops at the center seam (keep the inner/left edge forgiving). Paint it identical to Mid L for the old repeating look.' },
       { id: 'plate-cap-r', label: 'Plate Cap R', w: 6, h: 14, repeat: 'fixed' },
       { id: 'edge-top-ornament', label: 'Top Edge Ornament', w: 24, h: 12, repeat: 'fixed', notes: 'OPTIONAL centerpiece medallion, rendered CENTERED on the top edge, layered over ALL the panel art (frame and plate — only the DOM text rides higher) — fixed like a corner: never stretched, never tiled, survives every panel width. Halo\'d, so it may be painted larger than the edge band — and the template\'s top 5 rows are EXTRA ornament aura (the slots\' upward halo reaches 13, everything else sits 5 lower). Leave unpainted to skip it.' },
       { id: 'edge-bottom-ornament', label: 'Bottom Edge Ornament', w: 24, h: 12, repeat: 'fixed', notes: 'Same as the top ornament, centered on the bottom edge — its slot shares the template\'s 5-row top aura.' },
@@ -373,7 +379,20 @@ const STORAGE_KEY = 'panel_forge_kits_v1';
 //      plate band's 2px seam) and drag it DOWN 8 px; re-export the
 //      template for the new outlines + magenta paint boxes. Piece sizes
 //      unchanged — no size migration, the v12 merge passes through.
-const DEFAULTS_VERSION = 21;
+// v22: quest-box plate-mid SPLIT into plate-mid-l + plate-mid-r (user
+//      ask, 2026-08-10: two distinct pieces instead of one repeated).
+//      The two pieces occupy EXACTLY the sample's two old mid slots —
+//      the second slot was a discarded rep-1 seam preview and now
+//      SHIPS — so the sheet layout, every cut position, and the caps
+//      are all UNCHANGED: no migration; a sheet whose second slot
+//      holds a seam-check copy renders identically to before. Band
+//      renders BOOKMATCHED (left piece tiles from the left cap, right
+//      piece right-anchored against its cap, overflow crops at the
+//      center seam); legacy single-mid exports keep the original
+//      single-span tiling (a split would phase-shift committed art).
+//      NOTE: a custom-resized plate-mid width does NOT carry to the
+//      new ids (the v12 merge matches by id) — re-apply manually.
+const DEFAULTS_VERSION = 22;
 
 function loadKits(): KitSpec[] {
   try {
@@ -688,8 +707,9 @@ type KitFamily = 'nine-slice' | 'nine-slice-capped' | 'quest-box' | 'gate' | 'ra
 function kitFamily(kit: KitSpec): KitFamily | null {
   const ids = new Set(kit.pieces.map(p => p.id));
   // Quest box before capped (it contains the capped anatomy plus a plate);
-  // capped before plain nine-slice (it also has corners).
-  if (ids.has('plate-mid')) return 'quest-box';
+  // capped before plain nine-slice (it also has corners). plate-mid is the
+  // pre-v22 single-mid id — legacy/custom kits still classify.
+  if (ids.has('plate-mid') || ids.has('plate-mid-l')) return 'quest-box';
   if (ids.has('edge-top-cap-l')) return 'nine-slice-capped';
   if (ids.has('corner-tl')) return 'nine-slice';
   if (ids.has('bar-segment')) return 'gate';
@@ -867,9 +887,14 @@ function assembleQuestBox(kit: KitSpec): Assembly | null {
   if (!base) return null;
   const P = (id: string) => kit.pieces.find(p => p.id === id);
   const pl = P('plate-cap-l');
-  const pm = P('plate-mid');
+  // v22: two distinct mid pieces in the sample's two old slots (the second
+  // was a discarded seam-check repeat; now it ships). Legacy kits with a
+  // single plate-mid fill both slots exactly as the old MIDS loop did.
+  const pmLegacy = P('plate-mid');
+  const ml = P('plate-mid-l') ?? pmLegacy;
+  const mr = P('plate-mid-r') ?? pmLegacy;
   const pr = P('plate-cap-r');
-  if (!pl || !pm || !pr) return base;
+  if (!pl || !ml || !mr || !pr) return base;
 
   // The plate is DETACHED from the frame, so it gets real overflow room —
   // HALO around the whole object (user call 2026-08-01: "space around the
@@ -882,7 +907,7 @@ function assembleQuestBox(kit: KitSpec): Assembly | null {
   // AURA rows belong to the ornament slots alone (their upward halo is
   // HALO + AURA); everything else keeps its old layout, shifted down.
   const AURA = 5;
-  const plateH = Math.max(pl.h, pm.h, pr.h);
+  const plateH = Math.max(pl.h, ml.h, mr.h, pr.h);
   const bandH = AURA + HALO + plateH + HALO + 2;
 
   // CORNER OVERHANG (v21, user ask 2026-08-10): paint room ABOVE the top
@@ -904,20 +929,21 @@ function assembleQuestBox(kit: KitSpec): Assembly | null {
     return { ...r, y: r.y + bandH + CORNER_HALO, ...(halo ? { halo } : {}) };
   });
 
-  const MIDS = 2; // sample shows one seam; only the first period is cut
-  const plateW = pl.w + pm.w * MIDS + pr.w;
+  const plateW = pl.w + ml.w + mr.w + pr.w;
   let x = Math.round((base.width - plateW) / 2);
   const py = AURA + HALO; // the plate sits below the ornament aura rows
   regions.push({ pieceId: 'plate-cap-l', x, y: py, w: pl.w, h: pl.h, rep: 0, halo: { l: HALO, t: HALO, r: 0, b: HALO } });
   x += pl.w;
-  for (let i = 0; i < MIDS; i++) {
-    // Strict axis rule: the mid tiles in x, so no x halo — its period stays
-    // exact; overflow rides the caps and the top/bottom.
-    regions.push(i === 0
-      ? { pieceId: 'plate-mid', x, y: py, w: pm.w, h: pm.h, rep: 0, halo: { l: 0, t: HALO, r: 0, b: HALO } }
-      : { pieceId: 'plate-mid', x, y: py, w: pm.w, h: pm.h, rep: i });
-    x += pm.w;
-  }
+  // Strict axis rule: the mids tile in x, so no x halo — their period stays
+  // exact; overflow rides the caps and the top/bottom. In the legacy
+  // single-mid case the second slot is a rep-1 seam preview (never cut),
+  // exactly the old MIDS loop.
+  regions.push({ pieceId: ml.id, x, y: py, w: ml.w, h: ml.h, rep: 0, halo: { l: 0, t: HALO, r: 0, b: HALO } });
+  x += ml.w;
+  regions.push(mr.id === ml.id
+    ? { pieceId: mr.id, x, y: py, w: mr.w, h: mr.h, rep: 1 }
+    : { pieceId: mr.id, x, y: py, w: mr.w, h: mr.h, rep: 0, halo: { l: 0, t: HALO, r: 0, b: HALO } });
+  x += mr.w;
   regions.push({ pieceId: 'plate-cap-r', x, y: py, w: pr.w, h: pr.h, rep: 0, halo: { l: 0, t: HALO, r: HALO, b: HALO } });
 
   // Centered edge ornaments (optional medallions) — cut from the plate

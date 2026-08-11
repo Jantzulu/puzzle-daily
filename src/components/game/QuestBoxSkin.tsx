@@ -52,8 +52,8 @@ const P = (id: string) => PIECES.get(id);
 
 /** The frame renders only when the minimum readable box exists. */
 export const questSkinFrameActive = PIECES.has('corner-tl') && PIECES.has('center');
-/** The plate art renders when its middle exists (caps optional). */
-export const questSkinPlateActive = PIECES.has('plate-mid');
+/** The plate art renders when a middle exists (caps optional). */
+export const questSkinPlateActive = PIECES.has('plate-mid') || PIECES.has('plate-mid-l') || PIECES.has('plate-mid-r');
 /** The divider ("the side-quests rule") renders when its middle exists. */
 export const questSkinDividerActive = PIECES.has('divider-mid');
 
@@ -79,7 +79,20 @@ export const questFrameBorders = {
   r: (rightMid?.w ?? (tr ? nomW(tr) : 0)) * Z,
 };
 
-const plateMid = P('plate-mid');
+// THE SPLIT PLATE BAND (kit v22, user ask 2026-08-10: "divide plate mid
+// into two different pieces instead of repeating the left one"): the band
+// is BOOKMATCHED — plate-mid-l tiles from the left cap, plate-mid-r tiles
+// RIGHT-ANCHORED from the right cap, meeting at a center seam, so each
+// side is its own painting and any width overflow crops at the middle
+// where the eye forgives it. Legacy single-piece exports (plate-mid) fall
+// back to both slots and render exactly as before — slice JSONs stay
+// self-describing.
+const plateMidLegacy = P('plate-mid');
+const plateMidL = P('plate-mid-l') ?? plateMidLegacy ?? P('plate-mid-r');
+const plateMidR = P('plate-mid-r') ?? plateMidLegacy ?? P('plate-mid-l');
+/** True when the export carries the v22 split pieces (bookmatch path). */
+const plateSplit = PIECES.has('plate-mid-l') || PIECES.has('plate-mid-r');
+const plateMid = plateMidL;
 /**
  * The whole SEAL assembly (plate + top medallions + QUEST text) sits this
  * much lower than pure geometry would put it — 1 art px, user nudge
@@ -410,7 +423,10 @@ export const QuestDivider: React.FC = () => {
 export const QuestPlate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const snapRef = useCrispSnap<HTMLSpanElement>(true, true);
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
-  const m = P('plate-mid');
+  // Bookmatched band (kit v22): left/right halves are distinct pieces;
+  // legacy single-mid exports fall back to both slots (module consts).
+  const m = plateMidL;
+  const mr = plateMidR;
   const h = m ? nomH(m) * Z : 0;
   React.useLayoutEffect(() => {
     if (!m) return;
@@ -434,8 +450,23 @@ export const QuestPlate: React.FC<{ children: React.ReactNode }> = ({ children }
       // pixels behind the caps' transparent rounded-end cutaways, which
       // surfaced as stray grey corner pixels (user regression report).
       // Cap-art transparency is silhouette, same law as the corners.
+      // BOOKMATCH (v22): the left piece tiles from the left cap, the
+      // right piece tiles RIGHT-ANCHORED (lattice at w−rw, so its art
+      // sits flush against its cap), meeting at an art-grid center seam
+      // — overflow crops in the middle, never at the finished ends.
+      // LEGACY single-mid exports keep the ORIGINAL single-span draw:
+      // splitting them would re-anchor the right half's lattice and
+      // phase-shift the committed art (the span is not generally a
+      // tile multiple).
       const my = -(m.halo?.t ?? 0) * Z;
-      drawTiled(ctx, m, lw, my, w - lw - rw, m.h * Z, lw, my);
+      const span = w - lw - rw;
+      if (!plateSplit || !mr) {
+        drawTiled(ctx, m, lw, my, span, m.h * Z, lw, my);
+      } else {
+        const half = Math.round(span / (2 * Z)) * Z;
+        drawTiled(ctx, m, lw, my, half, m.h * Z, lw, my);
+        drawTiled(ctx, mr, lw + half, my, span - half, mr.h * Z, w - rw, my);
+      }
       if (l) drawFixed(ctx, l, -(l.halo?.l ?? 0) * Z, -(l.halo?.t ?? 0) * Z);
       if (r) drawFixed(ctx, r, w - rw - (r.halo?.l ?? 0) * Z, -(r.halo?.t ?? 0) * Z);
     };
@@ -443,11 +474,11 @@ export const QuestPlate: React.FC<{ children: React.ReactNode }> = ({ children }
     // canvas stays blank until the tab fronts (hit live in the hidden
     // preview pane). RO callbacks batch already; the draws are tiny.
     const schedule = draw;
-    whenDecoded([m, P('plate-cap-l'), P('plate-cap-r')].filter(Boolean) as SkinPiece[]).then(() => { if (!cancelled) schedule(); });
+    whenDecoded([m, mr, P('plate-cap-l'), P('plate-cap-r')].filter(Boolean) as SkinPiece[]).then(() => { if (!cancelled) schedule(); });
     const ro = new ResizeObserver(schedule);
     ro.observe(host);
     return () => { cancelled = true; ro.disconnect(); };
-  }, [m, h, snapRef]);
+  }, [m, mr, h, snapRef]);
   if (!m) return null;
   const l = P('plate-cap-l');
   const r = P('plate-cap-r');
