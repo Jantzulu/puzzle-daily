@@ -795,12 +795,13 @@ html body.theme-font-active,
      same night). */
   animation-name: shimmer-sweep-ink;
   /* "Bold" without faux bold: the medieval faces ship one 400 weight,
-     so real bolding synthesizes and smears (user-confirmed fuzz).
-     A hairline stroke thickens the true outlines instead — crisp
-     vector fattening, semibold-ish read. currentColor keeps the
-     outline black through the sweep's transparent-fill phase (the
-     band races inside outlined glyphs). */
-  -webkit-text-stroke: 0.5px currentColor;
+     so real bolding synthesizes and smears (user-confirmed fuzz —
+     note the hero-name hud-title runs synthetic 600 and only gets
+     away with it light-on-dark). A stroke thickens the true outlines
+     instead — crisp vector fattening. 0.75px ≈ the names' bold read;
+     1px starts closing tight counters at 15px. currentColor keeps
+     the outline black through the sweep's transparent-fill phase. */
+  -webkit-text-stroke: 0.75px currentColor;
 }
 
 @keyframes shimmer-sweep-ink {
