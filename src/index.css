@@ -2269,13 +2269,60 @@ body.menu-gate-instant .quest-panel-sticky {
      one breath. The drop-shadow follows the subtree's alpha, so the
      rising glow naturally tracks the appearing art. */
   animation:
-    quest-ignite 0.6s ease-out 1.05s backwards,
-    quest-bob 3.5s ease-in-out 1.05s infinite;
+    quest-ignite 0.6s ease-out 1.3s backwards,
+    quest-bob 3.5s ease-in-out 1.3s infinite;
 }
 
 @keyframes quest-ignite {
   from { filter: drop-shadow(0 0 6px rgba(228, 185, 106, 0)); }
   to { filter: drop-shadow(0 0 6px rgba(228, 185, 106, 0.35)); }
+}
+
+/* Stage 0 — THE SCROLL OPENS (user idea, 2026-08-10). The two painted
+   roll columns start butted at the box center (the closed scroll,
+   visible through the whole pre-delay via backwards fill) and slide
+   outward — pure transform — while the paper beneath reveals through a
+   one-shot clip-path wipe. The wipe's cut edge TRACKS THE ROLLS
+   EXACTLY: inset interpolates 50% → the roll's own width over the same
+   curve as the roll's travel, both linear in progress, so the boundary
+   stays flush under each roll's inner edge and no naked cut ever shows
+   (the earlier clip-wipe rejection was a bare edge on TEXT — here the
+   moving rod masks it). The box's LAYOUT never animates: the page
+   below holds still while the visuals open. clip-path here is a
+   documented ONE-SHOT exception to the transform/opacity law, same
+   class as quest-ignite. --qtravel-* are stamped by QuestBoxFrame from
+   the box's measured width; --qedge-* are the roll widths (the
+   exact-tracking contract — change one, change both). */
+.quest-paper {
+  animation: quest-scroll-paper 0.65s cubic-bezier(0.45, 0, 0.25, 1) 0.3s backwards;
+}
+.quest-roll-l {
+  animation: quest-scroll-roll-l 0.65s cubic-bezier(0.45, 0, 0.25, 1) 0.3s backwards;
+}
+.quest-roll-r {
+  animation: quest-scroll-roll-r 0.65s cubic-bezier(0.45, 0, 0.25, 1) 0.3s backwards;
+}
+
+@keyframes quest-scroll-paper {
+  /* Both endpoints PX-VALUED (--qclose = half the measured box width,
+     stamped by QuestBoxFrame): a 50% from-value interpolating to a px
+     to-value is mixed-unit territory that some engines animate
+     DISCRETELY — the paper would snap to full width mid-open while the
+     rods were still traveling. The 50% fallback only exists for the
+     unstamped first frames, where it renders the identical closed
+     state. */
+  from { clip-path: inset(0 var(--qclose, 50%) 0 var(--qclose, 50%)); }
+  to { clip-path: inset(0 var(--qedge-r, 0px) 0 var(--qedge-l, 0px)); }
+}
+
+@keyframes quest-scroll-roll-l {
+  from { transform: translateX(var(--qtravel-l, 0px)); }
+  to { transform: translateX(0); }
+}
+
+@keyframes quest-scroll-roll-r {
+  from { transform: translateX(calc(-1 * var(--qtravel-r, 0px))); }
+  to { transform: translateX(0); }
 }
 
 /* Stage 1 — the QUEST plate (0.5s in): fades in alone, straddling the
@@ -2291,7 +2338,9 @@ body.menu-gate-instant .quest-panel-sticky {
      0.4s transit softening is the bob's user-validated transient
      exception. transform-origin: the full-width anchor's center = the
      plate's own center. */
-  animation: quest-plate-stamp 0.4s cubic-bezier(0.2, 0, 0.3, 1) 0.5s backwards;
+  /* Delay rides AFTER the scroll opens (0.3s + 0.65s): the seal stamps
+     onto an opened scroll, not onto empty air. */
+  animation: quest-plate-stamp 0.4s cubic-bezier(0.2, 0, 0.3, 1) 1s backwards;
 }
 
 @keyframes quest-plate-stamp {
@@ -2302,8 +2351,9 @@ body.menu-gate-instant .quest-panel-sticky {
 
 .quest-stage-box {
   /* The objective's subtle fade (an unfurling clip-wipe was tried and
-     reverted — user: not clean enough). */
-  animation: quest-appear 0.55s ease-out 1.05s backwards;
+     reverted — user: not clean enough). Follows the plate stamp, which
+     itself follows the scroll opening. */
+  animation: quest-appear 0.55s ease-out 1.3s backwards;
 }
 
 /* The edge medallions are ATTACHED TO THE SEAL (user call, round 2 of
@@ -2312,7 +2362,7 @@ body.menu-gate-instant .quest-panel-sticky {
    transform-origin center top ≈ the plate line, so plate and medallions
    scale about the same point and read as one object pressing down. */
 .quest-stage-ornaments {
-  animation: quest-plate-stamp 0.4s cubic-bezier(0.2, 0, 0.3, 1) 0.5s backwards;
+  animation: quest-plate-stamp 0.4s cubic-bezier(0.2, 0, 0.3, 1) 1s backwards;
   transform-origin: center top;
 }
 

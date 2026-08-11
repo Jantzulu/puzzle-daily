@@ -3323,7 +3323,11 @@ export const Game: React.FC<GameProps> = ({
                     index.css. The frame/ornament wrappers keep each
                     layer's coordinate space and paint order. */}
                 {questSkinFrameActive && (
-                  <div className="quest-stage-box absolute inset-0 pointer-events-none">
+                  // No quest-stage-box fade here: the frame's entrance is
+                  // the scroll OPENING (paper + roll layers animate inside
+                  // QuestBoxFrame — index.css .quest-paper/.quest-roll-*),
+                  // visible from first paint as the closed scroll.
+                  <div className="absolute inset-0 pointer-events-none">
                     <QuestBoxFrame />
                   </div>
                 )}

@@ -90,35 +90,73 @@ export const questPlateStraddle = plateMid ? Math.round(nomH(plateMid) * 0.6) * 
 
 // ─── The frame ──────────────────────────────────────────────────────────────
 
+// THE SCROLL SPLIT (user ask, 2026-08-10: "animate the scroll opening"):
+// the frame renders as THREE canvases so the entrance can part the rolls —
+// PAPER (center field + top/bottom runs and caps) under two ROLL columns
+// (each side's corners + vertical edge run, the painted rods). The split is
+// PERMANENT — no swap at animation end, so there is nothing to pop. The
+// entrance (index.css .quest-paper/.quest-roll-*) starts the rolls butted
+// at the box center (the closed scroll) and slides them outward — pure
+// transform — while the paper reveals via a one-shot clip-path whose
+// boundary tracks each roll's inner edge EXACTLY: clip inset interpolates
+// 50% → roll width over the same easing as the roll's travel (both linear
+// in progress p), so the cut edge is always flush with the roll and the
+// paper texture is REVEALED in place, never stretched. The box's layout
+// size never animates — the page below holds still. Travel distances are
+// content-dependent, so draw() stamps them as CSS vars on the host.
+const ROLL_W_L = (tl ? nomW(tl) : leftMid?.w ?? 0) * Z;
+const ROLL_W_R = (tr ? nomW(tr) : rightMid?.w ?? 0) * Z;
+
 /**
- * The nine-slice frame, absolutely filling the quest box, composited into
- * ONE canvas. Render it FIRST inside the box and wrap the box's content in
- * a `relative` div so text paints above the art.
+ * The nine-slice frame, absolutely filling the quest box: one paper canvas
+ * plus two roll-column canvases (see THE SCROLL SPLIT above). Render it
+ * FIRST inside the box and wrap the box's content in a `relative` div so
+ * text paints above the art.
  */
 export const QuestBoxFrame: React.FC = () => {
   const hostRef = React.useRef<HTMLDivElement>(null);
-  const canvasRef = React.useRef<HTMLCanvasElement>(null);
+  const paperRef = React.useRef<HTMLCanvasElement>(null);
+  const rollLRef = React.useRef<HTMLCanvasElement>(null);
+  const rollRRef = React.useRef<HTMLCanvasElement>(null);
   React.useLayoutEffect(() => {
     if (!questSkinFrameActive) return;
     const host = hostRef.current;
-    const canvas = canvasRef.current;
-    if (!host || !canvas) return;
+    const paper = paperRef.current;
+    const rollL = rollLRef.current;
+    const rollR = rollRRef.current;
+    if (!host || !paper || !rollL || !rollR) return;
     let cancelled = false;
+
+    // The rolls' travel = from butted-at-center to their resting columns.
+    // Stamped SYNCHRONOUSLY (layout is ready in a layout effect) so the
+    // entrance keyframes see real values on the very first paint — the
+    // full draw below waits on image decode and may land after it.
+    const stamp = () => {
+      const w = host.clientWidth;
+      if (!w) return;
+      host.style.setProperty('--qtravel-l', `${Math.max(0, Math.round(w / 2 - ROLL_W_L))}px`);
+      host.style.setProperty('--qtravel-r', `${Math.max(0, Math.round(w / 2 - ROLL_W_R))}px`);
+      // The clip's CLOSED insets, in px: the keyframes must interpolate
+      // px → px. A 50% from-value interpolating to a px to-value is
+      // mixed-unit calc territory, which some engines animate DISCRETELY
+      // — the paper snapped to full width mid-open while the rods were
+      // still traveling (user report, 2026-08-10).
+      host.style.setProperty('--qclose', `${w / 2}px`);
+    };
+    stamp();
 
     const draw = () => {
       const w = host.clientWidth;
       const h = host.clientHeight;
       if (!w || !h) return;
-      const ctx = prepCanvas(canvas, w, h, BLEED);
-      if (!ctx) return;
-      ctx.clearRect(-BLEED, -BLEED, w + BLEED * 2, h + BLEED * 2);
+      stamp();
 
       // Corner-keyed geometry (NOMINAL — corner bitmaps may carry a v21
       // vertical halo); edge-keyed content bands (see header).
       const bt = (tl ? nomH(tl) : topMid?.h ?? 0) * Z;
       const bb = (cornerBl ? nomH(cornerBl) : bottomMid?.h ?? 0) * Z;
-      const bl = (tl ? nomW(tl) : leftMid?.w ?? 0) * Z;
-      const br = (tr ? nomW(tr) : rightMid?.w ?? 0) * Z;
+      const bl = ROLL_W_L;
+      const br = ROLL_W_R;
       const gt = questFrameBorders.t;
       const gb = questFrameBorders.b;
       const gl = questFrameBorders.l;
@@ -140,32 +178,48 @@ export const QuestBoxFrame: React.FC = () => {
 
       const ctr = P('center');
 
-      // Notched-cross centre, all tiles phase-anchored at (bl, bt). The
-      // sacred corner squares stay unpainted.
-      drawTiled(ctx, ctr, bl, bt, w - bl - br, h - bt - bb, bl, bt);
-      if (bt > gt) drawTiled(ctx, ctr, bl, gt, w - bl - br, bt - gt, bl, bt);
-      if (bb > gb) drawTiled(ctx, ctr, bl, h - bb, w - bl - br, bb - gb, bl, bt);
-      if (bl > gl) drawTiled(ctx, ctr, gl, bt, bl - gl, h - bt - bb, bl, bt);
-      if (br > gr) drawTiled(ctx, ctr, w - br, bt, br - gr, h - bt - bb, bl, bt);
+      // ── PAPER: the notched-cross centre + top/bottom runs, everything
+      // the rolls reveal. Tiles phase-anchored at (bl, bt); the sacred
+      // corner squares stay unpainted.
+      const pctx = prepCanvas(paper, w, h, BLEED);
+      if (pctx) {
+        pctx.clearRect(-BLEED, -BLEED, w + BLEED * 2, h + BLEED * 2);
+        drawTiled(pctx, ctr, bl, bt, w - bl - br, h - bt - bb, bl, bt);
+        if (bt > gt) drawTiled(pctx, ctr, bl, gt, w - bl - br, bt - gt, bl, bt);
+        if (bb > gb) drawTiled(pctx, ctr, bl, h - bb, w - bl - br, bb - gb, bl, bt);
+        drawTiled(pctx, topMid, bl + capTL, 0, w - bl - br - capTL - capTR, (topMid?.h ?? 0) * Z, bl + capTL, 0);
+        drawTiled(pctx, bottomMid, bl + capBL, h - (bottomMid?.h ?? 0) * Z, w - bl - br - capBL - capBR, (bottomMid?.h ?? 0) * Z, bl + capBL, h - (bottomMid?.h ?? 0) * Z);
+        if (fitT) { drawFixed(pctx, P('edge-top-cap-l'), bl, 0); drawFixed(pctx, P('edge-top-cap-r'), w - br - capTR, 0); }
+        if (fitB) { drawFixed(pctx, P('edge-bottom-cap-l'), bl, h - (P('edge-bottom-cap-l')?.h ?? 0) * Z); drawFixed(pctx, P('edge-bottom-cap-r'), w - br - capBR, h - (P('edge-bottom-cap-r')?.h ?? 0) * Z); }
+      }
 
-      // Edge runs between the corner squares.
-      drawTiled(ctx, topMid, bl + capTL, 0, w - bl - br - capTL - capTR, (topMid?.h ?? 0) * Z, bl + capTL, 0);
-      drawTiled(ctx, bottomMid, bl + capBL, h - (bottomMid?.h ?? 0) * Z, w - bl - br - capBL - capBR, (bottomMid?.h ?? 0) * Z, bl + capBL, h - (bottomMid?.h ?? 0) * Z);
-      drawTiled(ctx, leftMid, 0, bt + capLT, (leftMid?.w ?? 0) * Z, h - bt - bb - capLT - capLB, 0, bt + capLT);
-      drawTiled(ctx, rightMid, w - (rightMid?.w ?? 0) * Z, bt + capRT, (rightMid?.w ?? 0) * Z, h - bt - bb - capRT - capRB, w - (rightMid?.w ?? 0) * Z, bt + capRT);
+      // ── LEFT ROLL (column-local coords equal box coords on this side):
+      // side gutter strip (paper wrapped around the roll — it rides the
+      // roll so the exact-tracking clip never has to reveal art under the
+      // column), the vertical run, its caps, then the corners on top with
+      // their v21 tails overhanging into the bleed.
+      const lctx = prepCanvas(rollL, bl, h, BLEED);
+      if (lctx) {
+        lctx.clearRect(-BLEED, -BLEED, bl + BLEED * 2, h + BLEED * 2);
+        if (bl > gl) drawTiled(lctx, ctr, gl, bt, bl - gl, h - bt - bb, bl, bt);
+        drawTiled(lctx, leftMid, 0, bt + capLT, gl, h - bt - bb - capLT - capLB, 0, bt + capLT);
+        if (fitL) { drawFixed(lctx, P('edge-left-cap-t'), 0, bt); drawFixed(lctx, P('edge-left-cap-b'), 0, h - bb - capLB); }
+        if (tl) drawFixed(lctx, tl, -(tl.halo?.l ?? 0) * Z, -(tl.halo?.t ?? 0) * Z);
+        if (cornerBl) drawFixed(lctx, cornerBl, -(cornerBl.halo?.l ?? 0) * Z, h - nomH(cornerBl) * Z - (cornerBl.halo?.t ?? 0) * Z);
+      }
 
-      // Caps (only when they fit), then corners over everything.
-      if (fitT) { drawFixed(ctx, P('edge-top-cap-l'), bl, 0); drawFixed(ctx, P('edge-top-cap-r'), w - br - capTR, 0); }
-      if (fitB) { drawFixed(ctx, P('edge-bottom-cap-l'), bl, h - (P('edge-bottom-cap-l')?.h ?? 0) * Z); drawFixed(ctx, P('edge-bottom-cap-r'), w - br - capBR, h - (P('edge-bottom-cap-r')?.h ?? 0) * Z); }
-      if (fitL) { drawFixed(ctx, P('edge-left-cap-t'), 0, bt); drawFixed(ctx, P('edge-left-cap-b'), 0, h - bb - capLB); }
-      if (fitR) { drawFixed(ctx, P('edge-right-cap-t'), w - (P('edge-right-cap-t')?.w ?? 0) * Z, bt); drawFixed(ctx, P('edge-right-cap-b'), w - (P('edge-right-cap-b')?.w ?? 0) * Z, h - bb - capRB); }
-      // Corners anchor by NOMINAL box; halo'd bitmaps overhang into the
-      // bleed (v21 corner overhang — tails past the silhouette).
-      if (tl) drawFixed(ctx, tl, -(tl.halo?.l ?? 0) * Z, -(tl.halo?.t ?? 0) * Z);
-      if (tr) drawFixed(ctx, tr, w - nomW(tr) * Z - (tr.halo?.l ?? 0) * Z, -(tr.halo?.t ?? 0) * Z);
-      if (cornerBl) drawFixed(ctx, cornerBl, -(cornerBl.halo?.l ?? 0) * Z, h - nomH(cornerBl) * Z - (cornerBl.halo?.t ?? 0) * Z);
-      if (cornerBr) drawFixed(ctx, cornerBr, w - nomW(cornerBr) * Z - (cornerBr.halo?.l ?? 0) * Z, h - nomH(cornerBr) * Z - (cornerBr.halo?.t ?? 0) * Z);
-      // Edge ornaments moved OUT of this canvas (QuestOrnaments below):
+      // ── RIGHT ROLL (column-local: box x minus (w - br)).
+      const rctx = prepCanvas(rollR, br, h, BLEED);
+      if (rctx) {
+        rctx.clearRect(-BLEED, -BLEED, br + BLEED * 2, h + BLEED * 2);
+        const dx0 = w - br;
+        if (br > gr) drawTiled(rctx, ctr, 0, bt, br - gr, h - bt - bb, bl - dx0, bt);
+        drawTiled(rctx, rightMid, br - gr, bt + capRT, gr, h - bt - bb - capRT - capRB, br - gr, bt + capRT);
+        if (fitR) { drawFixed(rctx, P('edge-right-cap-t'), br - (P('edge-right-cap-t')?.w ?? 0) * Z, bt); drawFixed(rctx, P('edge-right-cap-b'), br - (P('edge-right-cap-b')?.w ?? 0) * Z, h - bb - capRB); }
+        if (tr) drawFixed(rctx, tr, br - nomW(tr) * Z - (tr.halo?.l ?? 0) * Z, -(tr.halo?.t ?? 0) * Z);
+        if (cornerBr) drawFixed(rctx, cornerBr, br - nomW(cornerBr) * Z - (cornerBr.halo?.l ?? 0) * Z, h - nomH(cornerBr) * Z - (cornerBr.halo?.t ?? 0) * Z);
+      }
+      // Edge ornaments stay OUT of these canvases (QuestOrnaments below):
       // painted here they sat UNDER the QUEST plate, and the user wants the
       // medallions riding over the whole panel.
     };
@@ -186,7 +240,20 @@ export const QuestBoxFrame: React.FC = () => {
   if (!questSkinFrameActive) return null;
   return (
     <div ref={hostRef} aria-hidden className="absolute inset-0">
-      <canvas ref={canvasRef} style={{ position: 'absolute' }} />
+      {/* The clip's resting insets must equal the roll widths — the
+          exact-tracking contract with the entrance keyframes. */}
+      <div
+        className="quest-paper absolute inset-0"
+        style={{ '--qedge-l': `${ROLL_W_L}px`, '--qedge-r': `${ROLL_W_R}px` } as React.CSSProperties}
+      >
+        <canvas ref={paperRef} style={{ position: 'absolute' }} />
+      </div>
+      <div className="quest-roll-l absolute inset-y-0 left-0" style={{ width: ROLL_W_L }}>
+        <canvas ref={rollLRef} style={{ position: 'absolute' }} />
+      </div>
+      <div className="quest-roll-r absolute inset-y-0 right-0" style={{ width: ROLL_W_R }}>
+        <canvas ref={rollRRef} style={{ position: 'absolute' }} />
+      </div>
     </div>
   );
 };
