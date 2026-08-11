@@ -3442,7 +3442,11 @@ export const Game: React.FC<GameProps> = ({
                     <span key={shimmerKey} className={questSkinFrameActive ? 'shimmer-container shimmer-ink' : 'shimmer-container'}>
                       {/* 13px on phones (was text-sm/14): the user accepted a
                           slight size cut to buy quest line capacity. */}
-                      <span className={`text-[13px] md:text-base lg:text-lg font-medium ${questSkinFrameActive ? 'text-black' : 'text-copper-300'}`}>
+                      {/* Ink mode runs SEMIBOLD: dark-on-light strokes read
+                          thinner than light-on-dark at equal weight, and
+                          the parchment is a mid-tone — thin black strokes
+                          starve there. */}
+                      <span className={`text-[13px] md:text-base lg:text-lg ${questSkinFrameActive ? 'text-black font-semibold' : 'text-copper-300 font-medium'}`}>
                       {gameState.puzzle.winConditions.map((wc) => {
                         // Quest text override (2026-07-21): authored text
                         // wins verbatim over every auto-phrased label.

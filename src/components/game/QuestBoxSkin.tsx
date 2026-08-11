@@ -247,7 +247,12 @@ export const QuestBoxFrame: React.FC = () => {
   }, []);
   if (!questSkinFrameActive) return null;
   return (
-    <div ref={hostRef} aria-hidden className="absolute inset-0">
+    // quest-scroll-stamp: the CLOSED scroll takes the entrance's first
+    // beat (user re-order round 2) — the whole layer presses in with the
+    // stamp keyframes. Only the butted rods read (the paper is hidden by
+    // its own closed clip), and the stamp's scale composes fine with the
+    // rolls' travel transforms since they sit at the scaled center.
+    <div ref={hostRef} aria-hidden className="quest-scroll-stamp absolute inset-0">
       {/* The paper's resting clip insets (--qedge-*, stamped on the
           anchor) must equal the roll widths — the exact-tracking
           contract with the entrance keyframes. */}
