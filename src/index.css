@@ -2343,12 +2343,13 @@ body.menu-gate-instant .quest-panel-sticky {
    class as quest-ignite. --qtravel-* are stamped by QuestBoxFrame from
    the box's measured width; --qedge-* are the roll widths (the
    exact-tracking contract — change one, change both). */
-/* Timeline (user re-order round 2, 2026-08-10): the CLOSED SCROLL
-   stamps 0.3–0.7s (the whole frame layer presses in; only the butted
-   rods are visible) → rolls part 0.8–1.45s with the objective
-   unfurling INSIDE the wipe and the QUEST plate fading in over the
-   opening scroll → ignite + bob at 1.2s, blooming through the unfurl's
-   second half (user call — warm by the time the rolls settle). */
+/* Timeline (user round 3, 2026-08-11): the WHOLE SEAL+SCROLL ASSEMBLY
+   stamps together 0.3–0.7s, vertically centered on the box (the seal
+   rides --qseal-start down to the scroll's middle; both stamps scale
+   about the same point, one object pressing in) → at 0.8s the seal
+   RISES quickly to its natural straddle while the rolls part 0.8–1.45s
+   and the objective unfurls INSIDE the wipe → ignite + bob at 1.2s,
+   blooming through the unfurl's second half. */
 .quest-scroll-stamp {
   animation: quest-plate-stamp 0.4s cubic-bezier(0.2, 0, 0.3, 1) 0.3s backwards;
 }
@@ -2380,10 +2381,10 @@ body.menu-gate-instant .quest-panel-sticky {
 /* THE SCROLL TOGGLE'S CLOSE (user ask 2026-08-11: the QUEST seal is a
    button; clicking rolls the scroll up). Exact inverses of the entrance,
    riding the same stamped vars so the clip boundary tracks the rods on
-   the way in too. forwards fill holds the rolled-up state until Game.tsx
-   flips to 'closed' and unmounts the layers; then the box height
-   transition lowers the page content into the freed space. The closed
-   scroll UN-STAMPS (0.25s @ 0.5s) after the rolls meet. */
+   the way in too. forwards fill HOLDS the rolled state through the
+   'closed' rest (the layers stay mounted and visible — round 2: the
+   rolled scroll TUCKS behind the seal via .quest-tucked while the box
+   height transition lowers the page content into the freed space). */
 .quest-closing .quest-paper {
   animation: quest-scroll-paper-close 0.5s cubic-bezier(0.45, 0, 0.25, 1) forwards;
 }
@@ -2396,10 +2397,44 @@ body.menu-gate-instant .quest-panel-sticky {
 .quest-closing .quest-stage-scroll {
   animation: quest-scroll-content-close 0.5s cubic-bezier(0.45, 0, 0.25, 1) forwards;
 }
-.quest-closing .quest-scroll-stamp {
-  /* fill BOTH: backwards holds full opacity through the 0.5s delay
-     (the roll-up), forwards holds the vanished state after. */
-  animation: quest-unstamp 0.25s cubic-bezier(0.7, 0, 0.8, 1) 0.5s both;
+.quest-closing .quest-scroll-stamp,
+.quest-reopening .quest-scroll-stamp {
+  /* The scroll no longer un-stamps (round 2: it TUCKS behind the seal
+     instead) — and the base entrance stamp must not re-apply when these
+     phase classes toggle (a re-applied animation RESTARTS: the whole
+     scroll would flash through the load stamp mid-toggle). */
+  animation: none;
+}
+
+/* THE TUCK (user round 2): at rest-closed the rolled scroll rides UP
+   behind the seal — translateY(-50%) of the frame layer centers the
+   (collapsing) box's scroll on the box top edge, which is exactly the
+   seal's resting center. Percentage self-tracks the height transition,
+   so the scroll rises as the box closes over it, and lowers back down
+   ahead of the reopen unfurl. */
+.quest-frame-layer {
+  transition: transform 0.3s ease;
+}
+.quest-tucked .quest-frame-layer {
+  transform: translateY(-50%);
+}
+
+/* THE REOPEN UNFURL: same forward keyframes as the entrance but with
+   no stamp and no delay — applied when the lowered scroll is back in
+   position ('reopening' phase). The class STAYS after the reopen
+   completes (reverting to the base entrance animations would re-apply
+   and replay them). */
+.quest-reopening .quest-paper {
+  animation: quest-scroll-paper 0.65s cubic-bezier(0.45, 0, 0.25, 1) backwards;
+}
+.quest-reopening .quest-roll-l {
+  animation: quest-scroll-roll-l 0.65s cubic-bezier(0.45, 0, 0.25, 1) backwards;
+}
+.quest-reopening .quest-roll-r {
+  animation: quest-scroll-roll-r 0.65s cubic-bezier(0.45, 0, 0.25, 1) backwards;
+}
+.quest-reopening .quest-stage-scroll {
+  animation: quest-scroll-content 0.65s cubic-bezier(0.45, 0, 0.25, 1) backwards;
 }
 
 @keyframes quest-scroll-paper-close {
@@ -2422,9 +2457,17 @@ body.menu-gate-instant .quest-panel-sticky {
   to { clip-path: inset(0 var(--qclose, 50%) 0 var(--qclose, 50%)); }
 }
 
-@keyframes quest-unstamp {
-  from { opacity: 1; transform: scale(1); }
-  to { opacity: 0; transform: scale(1.45); }
+/* THE SEAL'S ENTRANCE RIDE (user round 2): the seal (plate + top
+   medallions) stamps in WITH the scroll, vertically centered on it —
+   --qseal-start (stamped by QuestBoxFrame = half the box height, art-
+   grid rounded) drops the whole assembly to the box center — then
+   rises quickly to its natural straddle as the unfurl begins. The rise
+   lives on the WRAPPERS (plate anchor span / ornament rise layer); the
+   stamp's scale lives on the INNER elements (button / ornaments div) —
+   two transforms on one element would override each other. */
+@keyframes quest-seal-rise {
+  from { transform: translateY(var(--qseal-start, 0px)); }
+  to { transform: translateY(0); }
 }
 
 @keyframes quest-scroll-paper {
@@ -2449,22 +2492,21 @@ body.menu-gate-instant .quest-panel-sticky {
   to { transform: translateX(0); }
 }
 
-/* Stage 1 — the QUEST plate (0.5s in): fades in alone, straddling the
-   spot where the box's top border will be. Stage 2 — the box, its
-   ornaments and the win condition (1.05s in). Opacity-only (no
-   transforms: the plate and box both carry crisp-snap machinery);
-   backwards fill holds each invisible through its delay. */
+/* THE SEAL'S ENTRANCE (user round 3): the plate anchor RIDES the
+   assembly — it starts at --qseal-start (the box's vertical center,
+   where the closed scroll stamps) and rises quickly to its natural
+   straddle as the unfurl begins. The stamp's scale+opacity live on the
+   BUTTON inside (.quest-seal-stamp) so the two transforms compose. */
 .quest-stage-plate {
-  /* THE STAMP (user call, entrance round 2: "more impactful" for QUEST,
-     objective keeps its subtle fade): the plate presses in from large,
-     compresses a hair past its size, and settles — a seal stamped onto
-     the contract. Ends at identity scale = art pin-sharp at rest; the
-     0.4s transit softening is the bob's user-validated transient
-     exception. transform-origin: the full-width anchor's center = the
-     plate's own center. */
-  /* Re-order round 2 (user call): the CLOSED SCROLL owns the stamp beat
-     now; the QUEST plate FADES IN while the scroll unfurls beneath it. */
-  animation: quest-appear 0.5s ease-out 0.85s backwards;
+  animation: quest-seal-rise 0.35s cubic-bezier(0.45, 0, 0.25, 1) 0.8s backwards;
+}
+
+/* The seal's press-in, same beat as the scroll's (0.3s): translated to
+   the scroll's middle by the wrapper above, both stamps scale about
+   the same point — one object pressing in. The 0.4s transit softening
+   is the bob's user-validated transient exception. */
+.quest-seal-stamp {
+  animation: quest-plate-stamp 0.4s cubic-bezier(0.2, 0, 0.3, 1) 0.3s backwards;
 }
 
 @keyframes quest-plate-stamp {
@@ -2479,14 +2521,16 @@ body.menu-gate-instant .quest-panel-sticky {
   animation: quest-appear 0.55s ease-out 0.3s backwards;
 }
 
-/* The edge medallions are ATTACHED TO THE SEAL (user call, round 2 of
-   their staging: not separate objects, not part of the objective) —
-   they STAMP IN WITH THE PLATE: same strike, same beat.
-   transform-origin center top ≈ the plate line, so plate and medallions
-   scale about the same point and read as one object pressing down. */
+/* The edge medallions are ATTACHED TO THE SEAL (user call): they ride
+   the same entrance — the rise layer wrapper (Game.tsx) carries
+   quest-seal-rise, and the ornaments div itself presses in on the
+   scroll's stamp beat. */
+.quest-seal-rise-layer {
+  animation: quest-seal-rise 0.35s cubic-bezier(0.45, 0, 0.25, 1) 0.8s backwards;
+}
 .quest-stage-ornaments {
-  /* Attached to the seal, so they fade with the plate. */
-  animation: quest-appear 0.5s ease-out 0.85s backwards;
+  animation: quest-plate-stamp 0.4s cubic-bezier(0.2, 0, 0.3, 1) 0.3s backwards;
+  transform-origin: center top;
 }
 
 @keyframes quest-appear {

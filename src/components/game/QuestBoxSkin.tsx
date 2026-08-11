@@ -159,6 +159,12 @@ export const QuestBoxFrame: React.FC = () => {
     const stamp = () => {
       const w = host.clientWidth;
       if (!w) return;
+      // The seal's entrance ride-down: it stamps vertically centered on
+      // the closed scroll (half the box height below its natural spot),
+      // art-grid rounded. Read before the width guard would be fine too —
+      // kept together with the other var stamps.
+      const hh = host.clientHeight;
+      if (hh) varTarget.style.setProperty('--qseal-start', `${Math.round(hh / 2 / Z) * Z}px`);
       varTarget.style.setProperty('--qtravel-l', `${Math.max(0, Math.round(w / 2 - ROLL_W_L))}px`);
       varTarget.style.setProperty('--qtravel-r', `${Math.max(0, Math.round(w / 2 - ROLL_W_R))}px`);
       // The clip's CLOSED insets, in px: the keyframes must interpolate
