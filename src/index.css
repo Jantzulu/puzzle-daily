@@ -2316,10 +2316,11 @@ body.menu-gate-instant .quest-panel-sticky {
      one breath. The drop-shadow follows the subtree's alpha, so the
      rising glow naturally tracks the appearing art. */
   animation:
-    /* Ignite starts JUST BEFORE the unfurl completes at 1.45s (user
-       call: glow rises with the scroll's final settling moments). */
-    quest-ignite 0.6s ease-out 1.4s backwards,
-    quest-bob 3.5s ease-in-out 1.4s infinite;
+    /* Ignite at 1.2s (user call, round 2): the glow blooms THROUGH the
+       unfurl's second half — visibly rising while the rolls are still
+       traveling, warm by the time they settle at 1.45s. */
+    quest-ignite 0.6s ease-out 1.2s backwards,
+    quest-bob 3.5s ease-in-out 1.2s infinite;
 }
 
 @keyframes quest-ignite {
@@ -2346,8 +2347,8 @@ body.menu-gate-instant .quest-panel-sticky {
    stamps 0.3–0.7s (the whole frame layer presses in; only the butted
    rods are visible) → rolls part 0.8–1.45s with the objective
    unfurling INSIDE the wipe and the QUEST plate fading in over the
-   opening scroll → ignite + bob at 1.4s, rising just before the
-   unfurl settles (user call — glow no longer waits for full rest). */
+   opening scroll → ignite + bob at 1.2s, blooming through the unfurl's
+   second half (user call — warm by the time the rolls settle). */
 .quest-scroll-stamp {
   animation: quest-plate-stamp 0.4s cubic-bezier(0.2, 0, 0.3, 1) 0.3s backwards;
 }
