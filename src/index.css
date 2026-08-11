@@ -778,6 +778,16 @@ html body.theme-font-active,
   animation-delay: 0.12s;
 }
 
+/* INK on parchment (user call, 2026-08-10: black objective text on the
+   painted scroll): the glyph fill is the shimmer gradient's base, not
+   the Tailwind color class — so black must be set HERE. The hot band
+   still races through: light catching wet ink. Applied only when the
+   skin art is active (Game.tsx); the baseline dark box keeps copper.
+   Same specificity as the child rules above — order carries the win. */
+.shimmer-container.shimmer-ink > span {
+  --flare-base: #000000;
+}
+
 @keyframes slide-in-up {
   from {
     transform: translateY(100%);
@@ -2269,8 +2279,8 @@ body.menu-gate-instant .quest-panel-sticky {
      one breath. The drop-shadow follows the subtree's alpha, so the
      rising glow naturally tracks the appearing art. */
   animation:
-    quest-ignite 0.6s ease-out 1.3s backwards,
-    quest-bob 3.5s ease-in-out 1.3s infinite;
+    quest-ignite 0.6s ease-out 1.65s backwards,
+    quest-bob 3.5s ease-in-out 1.65s infinite;
 }
 
 @keyframes quest-ignite {
@@ -2293,14 +2303,41 @@ body.menu-gate-instant .quest-panel-sticky {
    class as quest-ignite. --qtravel-* are stamped by QuestBoxFrame from
    the box's measured width; --qedge-* are the roll widths (the
    exact-tracking contract — change one, change both). */
+/* Timeline (user re-order, 2026-08-10): seal stamps 0.3–0.7s → closed
+   scroll fades in 0.75–0.93s → rolls part 1–1.65s with the objective
+   unfurling INSIDE the wipe → ignite + bob at 1.65s (glow last). */
 .quest-paper {
-  animation: quest-scroll-paper 0.65s cubic-bezier(0.45, 0, 0.25, 1) 0.3s backwards;
+  animation: quest-scroll-paper 0.65s cubic-bezier(0.45, 0, 0.25, 1) 1s backwards;
 }
 .quest-roll-l {
-  animation: quest-scroll-roll-l 0.65s cubic-bezier(0.45, 0, 0.25, 1) 0.3s backwards;
+  animation:
+    quest-roll-appear 0.18s ease-out 0.75s backwards,
+    quest-scroll-roll-l 0.65s cubic-bezier(0.45, 0, 0.25, 1) 1s backwards;
 }
 .quest-roll-r {
-  animation: quest-scroll-roll-r 0.65s cubic-bezier(0.45, 0, 0.25, 1) 0.3s backwards;
+  animation:
+    quest-roll-appear 0.18s ease-out 0.75s backwards,
+    quest-scroll-roll-r 0.65s cubic-bezier(0.45, 0, 0.25, 1) 1s backwards;
+}
+
+/* The objective content unfurls WITH the paper (user re-order): the same
+   wipe, but ending at inset 0px — the content wrapper sits inside the
+   box's side padding, so its resting edges must not be clipped. Its
+   boundary therefore rides 32px − 24p px INSIDE the paper's (the padding
+   offset), always at least 8px behind the rod — text emerges from paper
+   already revealed, never at the raw cut. */
+.quest-stage-scroll {
+  animation: quest-scroll-content 0.65s cubic-bezier(0.45, 0, 0.25, 1) 1s backwards;
+}
+
+@keyframes quest-roll-appear {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes quest-scroll-content {
+  from { clip-path: inset(0 var(--qclose, 50%) 0 var(--qclose, 50%)); }
+  to { clip-path: inset(0 0px 0 0px); }
 }
 
 @keyframes quest-scroll-paper {
@@ -2338,9 +2375,9 @@ body.menu-gate-instant .quest-panel-sticky {
      0.4s transit softening is the bob's user-validated transient
      exception. transform-origin: the full-width anchor's center = the
      plate's own center. */
-  /* Delay rides AFTER the scroll opens (0.3s + 0.65s): the seal stamps
-     onto an opened scroll, not onto empty air. */
-  animation: quest-plate-stamp 0.4s cubic-bezier(0.2, 0, 0.3, 1) 1s backwards;
+  /* THE SEAL LEADS (user re-order, 2026-08-10): the stamp comes FIRST,
+     then the closed scroll appears beneath it and opens. */
+  animation: quest-plate-stamp 0.4s cubic-bezier(0.2, 0, 0.3, 1) 0.3s backwards;
 }
 
 @keyframes quest-plate-stamp {
@@ -2350,10 +2387,9 @@ body.menu-gate-instant .quest-panel-sticky {
 }
 
 .quest-stage-box {
-  /* The objective's subtle fade (an unfurling clip-wipe was tried and
-     reverted — user: not clean enough). Follows the plate stamp, which
-     itself follows the scroll opening. */
-  animation: quest-appear 0.55s ease-out 1.3s backwards;
+  /* BASELINE (no skin art) content fade only — the skinned path unfurls
+     via .quest-stage-scroll instead. */
+  animation: quest-appear 0.55s ease-out 0.3s backwards;
 }
 
 /* The edge medallions are ATTACHED TO THE SEAL (user call, round 2 of
@@ -2362,7 +2398,7 @@ body.menu-gate-instant .quest-panel-sticky {
    transform-origin center top ≈ the plate line, so plate and medallions
    scale about the same point and read as one object pressing down. */
 .quest-stage-ornaments {
-  animation: quest-plate-stamp 0.4s cubic-bezier(0.2, 0, 0.3, 1) 1s backwards;
+  animation: quest-plate-stamp 0.4s cubic-bezier(0.2, 0, 0.3, 1) 0.3s backwards;
   transform-origin: center top;
 }
 

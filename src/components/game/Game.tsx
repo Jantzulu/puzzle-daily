@@ -3363,8 +3363,10 @@ export const Game: React.FC<GameProps> = ({
                 )}
                 {/* relative: the art frame is absolutely positioned, and
                     absolute layers paint over STATIC siblings — everything
-                    readable lives above the art. */}
-                <div className="quest-stage-box relative">
+                    readable lives above the art. Skinned: the content
+                    UNFURLS with the paper (quest-scroll-content wipe);
+                    baseline keeps the plain fade. */}
+                <div className={questSkinFrameActive ? 'quest-stage-scroll relative' : 'quest-stage-box relative'}>
                 {/* Puzzle Number & Quest Row */}
                 {puzzleNumber && (
                   <div className="text-center mb-0.5">
@@ -3425,17 +3427,22 @@ export const Game: React.FC<GameProps> = ({
                         align-middle) for the same reason: middle aligns by
                         half x-height, which is fractional. */}
                     <span className="min-w-0 text-center leading-[18px] md:leading-[22px] lg:leading-[25px] [text-wrap:balance]">
+                    {/* INK on parchment (user call): black (?) + objective
+                        when the scroll art is live; the baseline dark box
+                        keeps its light registers. !important beats the
+                        HelpButton's own text-stone-400 (class order in the
+                        attribute does not decide Tailwind conflicts). */}
                     <HelpButton
                       sectionId="game_general"
-                      className="inline-block align-[-4px] mr-1"
+                      className={`inline-block align-[-4px] mr-1 ${questSkinFrameActive ? '!text-black hover:!text-stone-800 hover:!bg-black/10' : ''}`}
                       preamble={gameState.puzzle.questDescription?.trim()
                         ? { title: 'About this Puzzle', text: gameState.puzzle.questDescription.trim() }
                         : undefined}
                     />
-                    <span key={shimmerKey} className="shimmer-container">
+                    <span key={shimmerKey} className={questSkinFrameActive ? 'shimmer-container shimmer-ink' : 'shimmer-container'}>
                       {/* 13px on phones (was text-sm/14): the user accepted a
                           slight size cut to buy quest line capacity. */}
-                      <span className="text-[13px] md:text-base lg:text-lg text-copper-300 font-medium">
+                      <span className={`text-[13px] md:text-base lg:text-lg font-medium ${questSkinFrameActive ? 'text-black' : 'text-copper-300'}`}>
                       {gameState.puzzle.winConditions.map((wc) => {
                         // Quest text override (2026-07-21): authored text
                         // wins verbatim over every auto-phrased label.

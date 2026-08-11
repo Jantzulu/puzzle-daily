@@ -131,17 +131,25 @@ export const QuestBoxFrame: React.FC = () => {
     // Stamped SYNCHRONOUSLY (layout is ready in a layout effect) so the
     // entrance keyframes see real values on the very first paint — the
     // full draw below waits on image decode and may land after it.
+    // Vars live on the ANCHOR: the content wrapper unfurls with the same
+    // wipe (quest-scroll-content) and it is a sibling of the frame's
+    // wrapper, so only a shared ancestor's vars reach both.
+    const varTarget = (host.closest('.quest-box-anchor') as HTMLElement | null) ?? host;
     const stamp = () => {
       const w = host.clientWidth;
       if (!w) return;
-      host.style.setProperty('--qtravel-l', `${Math.max(0, Math.round(w / 2 - ROLL_W_L))}px`);
-      host.style.setProperty('--qtravel-r', `${Math.max(0, Math.round(w / 2 - ROLL_W_R))}px`);
+      varTarget.style.setProperty('--qtravel-l', `${Math.max(0, Math.round(w / 2 - ROLL_W_L))}px`);
+      varTarget.style.setProperty('--qtravel-r', `${Math.max(0, Math.round(w / 2 - ROLL_W_R))}px`);
       // The clip's CLOSED insets, in px: the keyframes must interpolate
       // px → px. A 50% from-value interpolating to a px to-value is
       // mixed-unit calc territory, which some engines animate DISCRETELY
       // — the paper snapped to full width mid-open while the rods were
-      // still traveling (user report, 2026-08-10).
-      host.style.setProperty('--qclose', `${w / 2}px`);
+      // still traveling (user report, 2026-08-10). NOTE the content
+      // wrapper is narrower than the box (side padding), so w/2 over-
+      // clips it when closed — harmless, fully hidden is fully hidden.
+      varTarget.style.setProperty('--qclose', `${w / 2}px`);
+      varTarget.style.setProperty('--qedge-l', `${ROLL_W_L}px`);
+      varTarget.style.setProperty('--qedge-r', `${ROLL_W_R}px`);
     };
     stamp();
 
@@ -240,12 +248,10 @@ export const QuestBoxFrame: React.FC = () => {
   if (!questSkinFrameActive) return null;
   return (
     <div ref={hostRef} aria-hidden className="absolute inset-0">
-      {/* The clip's resting insets must equal the roll widths — the
-          exact-tracking contract with the entrance keyframes. */}
-      <div
-        className="quest-paper absolute inset-0"
-        style={{ '--qedge-l': `${ROLL_W_L}px`, '--qedge-r': `${ROLL_W_R}px` } as React.CSSProperties}
-      >
+      {/* The paper's resting clip insets (--qedge-*, stamped on the
+          anchor) must equal the roll widths — the exact-tracking
+          contract with the entrance keyframes. */}
+      <div className="quest-paper absolute inset-0">
         <canvas ref={paperRef} style={{ position: 'absolute' }} />
       </div>
       <div className="quest-roll-l absolute inset-y-0 left-0" style={{ width: ROLL_W_L }}>
