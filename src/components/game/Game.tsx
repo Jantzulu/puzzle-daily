@@ -3443,7 +3443,7 @@ export const Game: React.FC<GameProps> = ({
                         −5 exactly; drift ~1px/breakpoint otherwise). */}
                     <HelpButton
                       sectionId="game_general"
-                      className={`inline-block align-[-3px] md:align-[-2px] lg:align-[-1px] mr-1 !p-0 ${questSkinFrameActive ? '!text-black hover:!text-stone-800 hover:!bg-black/10' : ''}`}
+                      className={`inline-block align-[-2px] lg:align-[-1px] mr-1 !p-0 ${questSkinFrameActive ? '!text-black hover:!text-stone-800 hover:!bg-black/10' : ''}`}
                       preamble={gameState.puzzle.questDescription?.trim()
                         ? { title: 'About this Puzzle', text: gameState.puzzle.questDescription.trim() }
                         : undefined}
@@ -3456,7 +3456,11 @@ export const Game: React.FC<GameProps> = ({
                           so 600+ triggers SYNTHETIC bold — the browser
                           smears the glyphs (user-visible fuzz, 2026-08-10).
                           500 cleanly falls back to the real 400 outlines. */}
-                      <span className={`text-[13px] md:text-base lg:text-lg font-medium ${questSkinFrameActive ? 'text-black' : 'text-copper-300'}`}>
+                      {/* 15px on phones (user round: 13 felt too small on
+                          mobile; desktop reads right) — matches the card
+                          names' hud-title register; 18px line stays
+                          integer and still swallows the 16px (?) box. */}
+                      <span className={`text-[15px] md:text-base lg:text-lg font-medium ${questSkinFrameActive ? 'text-black' : 'text-copper-300'}`}>
                       {gameState.puzzle.winConditions.map((wc) => {
                         // Quest text override (2026-07-21): authored text
                         // wins verbatim over every auto-phrased label.
