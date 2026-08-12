@@ -2316,10 +2316,10 @@ body.menu-gate-instant .quest-panel-sticky {
      one breath. The drop-shadow follows the subtree's alpha, so the
      rising glow naturally tracks the appearing art. */
   animation:
-    /* Ignite at 1.2s (user call, round 2): the glow blooms THROUGH the
-       unfurl's second half — visibly rising while the rolls are still
-       traveling, warm by the time they settle at 1.45s. */
-    quest-ignite 0.6s ease-out 1.2s backwards,
+    /* Ignite ON the stamp beat (user call, round 3: "glowing from the
+       moment they are stamped") — the glow blooms with the assembly's
+       press-in and holds through every toggle. Bob stays at 1.2s. */
+    quest-ignite 0.6s ease-out 0.3s backwards,
     quest-bob 3.5s ease-in-out 1.2s infinite;
 }
 
@@ -2354,7 +2354,15 @@ body.menu-gate-instant .quest-panel-sticky {
   animation: quest-plate-stamp 0.4s cubic-bezier(0.2, 0, 0.3, 1) 0.3s backwards;
 }
 .quest-paper {
-  animation: quest-scroll-paper 0.65s cubic-bezier(0.45, 0, 0.25, 1) 0.8s backwards;
+  /* 0.6s vs the rolls' 0.65s — A DELIBERATE LEAD (user diagnosis,
+     round 3): the rolls ride the compositor thread (transform) while
+     the clip wipe runs on the main thread, so under load the rolls
+     can outrun the reveal and page background peeks through the lag
+     strip. The paper opening slightly AHEAD hides all jitter under
+     the rods (which paint above it); excess paper behind a rod is
+     physical. OPEN direction only — on close a lag shows paper, not
+     background, and the user pinned close speeds as-is. */
+  animation: quest-scroll-paper 0.6s cubic-bezier(0.45, 0, 0.25, 1) 0.8s backwards;
 }
 .quest-roll-l {
   animation: quest-scroll-roll-l 0.65s cubic-bezier(0.45, 0, 0.25, 1) 0.8s backwards;
@@ -2429,7 +2437,9 @@ body.menu-gate-instant .quest-panel-sticky {
    completes (reverting to the base entrance animations would re-apply
    and replay them). */
 .quest-reopening .quest-paper {
-  animation: quest-scroll-paper 0.65s cubic-bezier(0.45, 0, 0.25, 1) backwards;
+  /* 0.6s = the entrance's deliberate lead over the 0.65s rolls (see
+     .quest-paper) — same anti-gap guarantee on the reopen unfurl. */
+  animation: quest-scroll-paper 0.6s cubic-bezier(0.45, 0, 0.25, 1) backwards;
 }
 .quest-reopening .quest-roll-l {
   animation: quest-scroll-roll-l 0.65s cubic-bezier(0.45, 0, 0.25, 1) backwards;

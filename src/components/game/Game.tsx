@@ -3424,18 +3424,26 @@ export const Game: React.FC<GameProps> = ({
                   // half-pixels (bitmap blur); QuestPlate self-snaps the
                   // residue.
                   <span className="quest-stage-plate absolute left-0 right-0 flex justify-center pointer-events-none" style={{ top: -questPlateStraddle }}>
-                    {/* THE SEAL IS A BUTTON (user ask 2026-08-11): click
+    {/* THE SEAL IS A BUTTON (user ask 2026-08-11): click
                         rolls the scroll up/down. pointer-events-auto
-                        re-enables inside the none wrapper; z-[2] wins the
-                        hit-test over the later content-wrapper sibling
-                        whose top rows overlap the plate's lower half. */}
+                        re-enables inside the none wrapper. NO z-index: a
+                        z on the button makes it a stacking context ABOVE
+                        the ornaments once the entrance animations end
+                        (their transforms stop holding the plate wrapper
+                        down as a context) — the medallions visibly receded
+                        beneath the plate (user catch). z-auto keeps the
+                        original law: ornament canvas above plate ART (DOM
+                        order), QUEST label above the ornaments (its z-1
+                        escalates to the box context), and nothing overlaps
+                        the button's hit area anyway (the content wrapper
+                        starts below the box's top padding). */}
                     <button
                       type="button"
                       onClick={toggleQuestScroll}
                       disabled={questScroll === 'closing' || questScroll === 'lowering' || questScroll === 'reopening'}
                       aria-expanded={questScroll !== 'closed'}
                       title={questScroll === 'closed' ? 'Unfurl the quest scroll' : 'Roll the quest scroll up'}
-                      className="quest-seal-stamp pointer-events-auto relative z-[2] cursor-pointer bg-transparent border-0 p-0"
+                      className="quest-seal-stamp pointer-events-auto relative cursor-pointer bg-transparent border-0 p-0"
                     >
                       <QuestPlate>
                         <span className="hud-label text-copper-300 whitespace-nowrap">Quest</span>
