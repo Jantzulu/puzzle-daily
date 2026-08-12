@@ -696,6 +696,16 @@ html body.theme-font-active,
    rendered in the heading font before the knob existed. */
 .nav-subtitle {
   font-family: var(--theme-font-family-subtitle, var(--theme-font-family-heading, var(--theme-font-family, 'Almendra', serif)));
+  /* The settings-driven size arrives as --nav-sub-size (inline styles
+     can't be responsive, so the apps stamp the var and the stylesheet
+     applies it): mobile CLAMPS to 0.7rem (nav-height diet, user call
+     2026-08-11), md+ honors the setting exactly. */
+  font-size: min(var(--nav-sub-size, 0.75rem), 0.7rem);
+}
+@media (min-width: 768px) {
+  .nav-subtitle {
+    font-size: var(--nav-sub-size, 0.75rem);
+  }
 }
 
 /* Theme-aware navigation link buttons (header nav) */

@@ -137,6 +137,20 @@ function AnimatedLogo({ src, alt, frameCount, frameRate, className }: {
     let animationFrameId: number | null = null;
     const frameDuration = 1000 / frameRate;
 
+    // NATIVE-SIZE LAW for the logo slot (user call, 2026-08-11): the art
+    // renders at its OWN frame size × an integer — 1× on phones, 2× at
+    // md+ — so ANY entity animation dropped into the slot is pixel-
+    // perfect at every width. The old fit-to-height sizing was fractional
+    // for any art that didn't divide it (soft sprite on phones).
+    const mq = window.matchMedia('(min-width: 768px)');
+    const applyScale = () => {
+      if (!canvas.width) return;
+      const scale = mq.matches ? 2 : 1;
+      canvas.style.width = `${canvas.width * scale}px`;
+      canvas.style.height = `${canvas.height * scale}px`;
+    };
+    mq.addEventListener('change', applyScale);
+
     img.onload = () => {
       // Calculate frame dimensions (horizontal sprite sheet)
       const frameWidth = Math.floor(img.width / frameCount);
@@ -145,12 +159,7 @@ function AnimatedLogo({ src, alt, frameCount, frameRate, className }: {
       // Set canvas size to single frame size
       canvas.width = frameWidth;
       canvas.height = frameHeight;
-
-      // Scale canvas display size to fit height while maintaining aspect ratio
-      const displayHeight = 48;
-      const displayWidth = frameWidth * (displayHeight / frameHeight);
-      canvas.style.width = `${displayWidth}px`;
-      canvas.style.height = `${displayHeight}px`;
+      applyScale();
 
       // Only touch the canvas when the frame index actually changes —
       // repainting an identical frame every rAF keeps this layer dirty at
@@ -188,6 +197,7 @@ function AnimatedLogo({ src, alt, frameCount, frameRate, className }: {
     img.src = src;
 
     return () => {
+      mq.removeEventListener('change', applyScale);
       if (animationFrameId !== null) {
         cancelAnimationFrame(animationFrameId);
       }
@@ -425,22 +435,36 @@ function Navigation() {
                     alt={themeAssets.logoAlt || 'Logo'}
                     frameCount={logoFrameCount}
                     frameRate={logoFrameRate}
-                    className="h-8 md:h-12 flex-shrink-0"
+                    // No height classes: the canvas sizes itself to the
+                    // art's native frame × integer (1× phone / 2× md+).
+                    className="flex-shrink-0"
                   />
                 );
               } else {
+                // Static single-frame logo: same native-size law as the
+                // animated path — each img sizes to its natural dims ×
+                // integer on load (1× phone / 2× md+).
+                const sizeLogoNative = (e: React.SyntheticEvent<HTMLImageElement>) => {
+                  const img = e.currentTarget;
+                  const scale = window.matchMedia('(min-width: 768px)').matches ? 2 : 1;
+                  img.style.width = `${img.naturalWidth * scale}px`;
+                  img.style.height = `${img.naturalHeight * scale}px`;
+                };
                 return (
                   <span className="nav-sprite-torchlit flex-shrink-0">
                     <img
                       src={logoSrc}
                       alt={themeAssets.logoAlt || 'Logo'}
-                      className="h-8 md:h-12 w-auto object-contain"
+                      onLoad={sizeLogoNative}
+                      style={{ imageRendering: 'pixelated' }}
                     />
                     <img
                       src={logoSrc}
                       alt=""
                       aria-hidden="true"
-                      className="nav-sprite-torchlit-lit h-8 md:h-12 w-auto object-contain"
+                      className="nav-sprite-torchlit-lit"
+                      onLoad={sizeLogoNative}
+                      style={{ imageRendering: 'pixelated' }}
                     />
                   </span>
                 );
@@ -450,12 +474,14 @@ function Navigation() {
               return null;
             }
           })()}
-          {/* Title and subtitle - stacked vertically */}
-          <div className="flex flex-col leading-tight">
+          {/* Title and subtitle - stacked vertically. leading-none below
+              md (nav-height diet, user call 2026-08-11: the TEXT STACK,
+              not the sprite, drove the mobile bar height). */}
+          <div className="flex flex-col leading-none md:leading-tight">
             {/* text-shadow-dungeon deliberately absent: nav-title-glimmer owns
                 the full static shadow stack (its ::after breathes the glow) */}
             <h1
-              className="text-base xs:text-lg md:text-xl font-medieval font-bold text-copper-400 nav-title-glimmer tracking-wide whitespace-nowrap"
+              className="text-base md:text-xl font-medieval font-bold text-copper-400 nav-title-glimmer tracking-wide whitespace-nowrap"
               data-text={themeAssets.siteTitle || 'Puzzle Daily'}
             >
               {themeAssets.siteTitle || 'Puzzle Daily'}
@@ -468,7 +494,10 @@ function Navigation() {
                   // Stored toggles arrive as boolean or 'true' depending on
                   // the writer (same both-forms check as bgPreviewTile).
                   fontWeight: (themeAssets.siteSubtitleBold === true || String(themeAssets.siteSubtitleBold) === 'true') ? 700 : undefined,
-                  fontSize: (() => {
+                  // Size rides a CSS var so index.css can CLAMP it below
+                  // md (inline font-size would beat any stylesheet rule);
+                  // desktop honors the setting exactly.
+                  ['--nav-sub-size' as string]: (() => {
                     const sizeMap: Record<string, string> = {
                       'x-small': '0.65rem',
                       'small': '0.75rem',
