@@ -331,15 +331,21 @@ function PlayerNavigation() {
         >
           {logoSrc ? (
             logoFrameCount > 1 ? (
-              <AnimatedLogo
-                src={logoSrc}
-                alt={themeAssets.logoAlt || 'Logo'}
-                frameCount={logoFrameCount}
-                frameRate={logoFrameRate}
-                // No height classes: the canvas sizes itself to the art's
-                // native frame × integer (1× phone / 2× md+).
-                className="flex-shrink-0"
-              />
+              // THE MARCHING PARTY preview (user idea — see App.tsx twin):
+              // same sprite ×3 in step; real version deals distinct
+              // entities into the slots.
+              <span className="flex items-end gap-1 flex-shrink-0">
+                {[0, 1, 2].map(i => (
+                  <AnimatedLogo
+                    key={i}
+                    src={logoSrc}
+                    alt={i === 2 ? (themeAssets.logoAlt || 'Logo') : ''}
+                    frameCount={logoFrameCount}
+                    frameRate={logoFrameRate}
+                    className="flex-shrink-0"
+                  />
+                ))}
+              </span>
             ) : (
               <span className="nav-sprite-torchlit">
               {(() => {
@@ -368,7 +374,7 @@ function PlayerNavigation() {
             {/* text-shadow-dungeon deliberately absent: nav-title-glimmer owns
                 the full static shadow stack (its ::after breathes the glow) */}
             <h1
-              className="text-base md:text-xl font-medieval font-bold text-copper-400 nav-title-glimmer tracking-wide whitespace-nowrap"
+              className="text-sm md:text-xl font-medieval font-bold text-copper-400 nav-title-glimmer tracking-wide whitespace-nowrap"
               data-text={themeAssets.siteTitle || DEFAULT_SITE_NAME}
             >
               {themeAssets.siteTitle || DEFAULT_SITE_NAME}

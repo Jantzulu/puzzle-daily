@@ -429,16 +429,26 @@ function Navigation() {
             if (logoSrc) {
               // Check if this is an animated sprite sheet
               if (logoFrameCount > 1) {
+                // THE MARCHING PARTY (user idea, 2026-08-11: the 1×
+                // native sprite left room beside it — "an opportunity to
+                // add other party members"). PREVIEW: the same sprite ×3
+                // walking in step; the real version can deal distinct
+                // entities into the slots (getRandomLogo already rotates
+                // the stock). Feet-aligned; each canvas self-sizes to
+                // native × integer.
                 return (
-                  <AnimatedLogo
-                    src={logoSrc}
-                    alt={themeAssets.logoAlt || 'Logo'}
-                    frameCount={logoFrameCount}
-                    frameRate={logoFrameRate}
-                    // No height classes: the canvas sizes itself to the
-                    // art's native frame × integer (1× phone / 2× md+).
-                    className="flex-shrink-0"
-                  />
+                  <span className="flex items-end gap-1 flex-shrink-0">
+                    {[0, 1, 2].map(i => (
+                      <AnimatedLogo
+                        key={i}
+                        src={logoSrc}
+                        alt={i === 2 ? (themeAssets.logoAlt || 'Logo') : ''}
+                        frameCount={logoFrameCount}
+                        frameRate={logoFrameRate}
+                        className="flex-shrink-0"
+                      />
+                    ))}
+                  </span>
                 );
               } else {
                 // Static single-frame logo: same native-size law as the
@@ -481,7 +491,7 @@ function Navigation() {
             {/* text-shadow-dungeon deliberately absent: nav-title-glimmer owns
                 the full static shadow stack (its ::after breathes the glow) */}
             <h1
-              className="text-base md:text-xl font-medieval font-bold text-copper-400 nav-title-glimmer tracking-wide whitespace-nowrap"
+              className="text-sm md:text-xl font-medieval font-bold text-copper-400 nav-title-glimmer tracking-wide whitespace-nowrap"
               data-text={themeAssets.siteTitle || 'Puzzle Daily'}
             >
               {themeAssets.siteTitle || 'Puzzle Daily'}
@@ -521,10 +531,12 @@ function Navigation() {
         {isCreator && (
           <button
             onClick={() => setSearchOpen(true)}
-            className="absolute right-12 md:right-0 flex items-center gap-2 px-2.5 py-1.5 rounded bg-stone-700/60 hover:bg-stone-600/80 border border-stone-600 text-stone-400 hover:text-parchment-200 transition-colors text-sm"
+            // Compact (user call, 2026-08-11: the dev-only search must not
+            // outgrow the dieted bar).
+            className="absolute right-12 md:right-0 flex items-center px-1.5 py-1 rounded bg-stone-700/60 hover:bg-stone-600/80 border border-stone-600 text-stone-400 hover:text-parchment-200 transition-colors"
             title="Search all assets (Ctrl+K)"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
             <span className="hidden lg:inline">Search...</span>
