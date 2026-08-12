@@ -429,22 +429,36 @@ function Navigation() {
             if (logoSrc) {
               // Check if this is an animated sprite sheet
               if (logoFrameCount > 1) {
-                // THE MARCHING PARTY (user idea, 2026-08-11: the 1×
-                // native sprite left room beside it — "an opportunity to
-                // add other party members"). PREVIEW: the same sprite ×3
-                // walking in step; the real version can deal distinct
-                // entities into the slots (getRandomLogo already rotates
-                // the stock). Feet-aligned; each canvas self-sizes to
-                // native × integer.
+                // THE MARCHING PARTY (user feature, 2026-08-11): up to
+                // two configurable companions (Settings → Branding →
+                // Party Marcher 1/2) walk LEFT of the logo, each its own
+                // sheet at native size × integer (AnimatedLogo handles
+                // frameCount 1 statics too). Empty slots don't march —
+                // no slots = the logo walks alone.
+                const marchers = [
+                  themeAssets.navParty1 && {
+                    src: themeAssets.navParty1,
+                    frameCount: Number(themeAssets.navParty1FrameCount) || 1,
+                    frameRate: Number(themeAssets.navParty1FrameRate) || 10,
+                    alt: '',
+                  },
+                  themeAssets.navParty2 && {
+                    src: themeAssets.navParty2,
+                    frameCount: Number(themeAssets.navParty2FrameCount) || 1,
+                    frameRate: Number(themeAssets.navParty2FrameRate) || 10,
+                    alt: '',
+                  },
+                  { src: logoSrc, frameCount: logoFrameCount, frameRate: logoFrameRate, alt: themeAssets.logoAlt || 'Logo' },
+                ].filter(Boolean) as { src: string; frameCount: number; frameRate: number; alt: string }[];
                 return (
                   <span className="flex items-end gap-1 flex-shrink-0">
-                    {[0, 1, 2].map(i => (
+                    {marchers.map((m, i) => (
                       <AnimatedLogo
-                        key={i}
-                        src={logoSrc}
-                        alt={i === 2 ? (themeAssets.logoAlt || 'Logo') : ''}
-                        frameCount={logoFrameCount}
-                        frameRate={logoFrameRate}
+                        key={`${i}-${m.src.slice(0, 32)}`}
+                        src={m.src}
+                        alt={m.alt}
+                        frameCount={m.frameCount}
+                        frameRate={m.frameRate}
                         className="flex-shrink-0"
                       />
                     ))}

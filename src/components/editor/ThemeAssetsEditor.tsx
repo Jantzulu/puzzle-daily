@@ -450,6 +450,45 @@ const AssetUpload: React.FC<AssetUploadProps> = ({ assetKey, value, onChange, on
         <div className="flex items-center justify-center py-4 text-stone-400">
           <span className="animate-pulse">Uploading to cloud...</span>
         </div>
+      ) : showUrlInput ? (
+        // URL entry — reachable from BOTH states now (user catch,
+        // 2026-08-11: with a value set, the only path was
+        // Replace-by-file; pointing at a hosted/Supabase URL required
+        // removing the asset first).
+        <div className="space-y-2">
+          <div className="flex gap-2">
+            <input
+              type="url"
+              value={urlValue}
+              onChange={(e) => setUrlValue(e.target.value)}
+              placeholder="https://example.com/image.png"
+              className={`${INPUT} flex-1 min-w-0`}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleUrlSubmit();
+                if (e.key === 'Escape') {
+                  setShowUrlInput(false);
+                  setUrlValue('');
+                }
+              }}
+              autoFocus
+            />
+            <button
+              onClick={handleUrlSubmit}
+              className={`${BTN_CONFIRM} flex-shrink-0`}
+            >
+              Use
+            </button>
+          </div>
+          <button
+            onClick={() => {
+              setShowUrlInput(false);
+              setUrlValue('');
+            }}
+            className="text-xs text-stone-500 hover:text-stone-400"
+          >
+            ← Back
+          </button>
+        </div>
       ) : value ? (
         <div className="space-y-2">
           {/* Preview */}
@@ -491,47 +530,19 @@ const AssetUpload: React.FC<AssetUploadProps> = ({ assetKey, value, onChange, on
               Replace
             </button>
             <button
+              onClick={() => setShowUrlInput(true)}
+              className={BTN}
+              title="Point at a public or Supabase Storage URL"
+            >
+              URL
+            </button>
+            <button
               onClick={handleRemove}
               className={BTN_DANGER}
             >
               Remove
             </button>
           </div>
-        </div>
-      ) : showUrlInput ? (
-        <div className="space-y-2">
-          <div className="flex gap-2">
-            <input
-              type="url"
-              value={urlValue}
-              onChange={(e) => setUrlValue(e.target.value)}
-              placeholder="https://example.com/image.png"
-              className={`${INPUT} flex-1 min-w-0`}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleUrlSubmit();
-                if (e.key === 'Escape') {
-                  setShowUrlInput(false);
-                  setUrlValue('');
-                }
-              }}
-              autoFocus
-            />
-            <button
-              onClick={handleUrlSubmit}
-              className={`${BTN_CONFIRM} flex-shrink-0`}
-            >
-              Use
-            </button>
-          </div>
-          <button
-            onClick={() => {
-              setShowUrlInput(false);
-              setUrlValue('');
-            }}
-            className="text-xs text-stone-500 hover:text-stone-400"
-          >
-            ← Back to upload
-          </button>
         </div>
       ) : (
         <div className="flex gap-2">

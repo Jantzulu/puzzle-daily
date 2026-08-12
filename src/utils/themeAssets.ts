@@ -48,6 +48,17 @@ export interface ThemeAssets {
   notFoundIconFrameCount?: number; // Number of frames in 404 icon sprite sheet (default: 1 = static)
   notFoundIconFrameRate?: number; // Frames per second for animated 404 icon (default: 10)
 
+  // Nav marching party (user feature 2026-08-11): up to two companions
+  // walking LEFT of the logo in the navbar, each its own horizontal
+  // sprite sheet rendered at native size × integer like the logo.
+  // Slot 1 is the leftmost marcher; empty slots simply don't march.
+  navParty1?: string; // Slot 1 sprite sheet (leftmost)
+  navParty1FrameCount?: number;
+  navParty1FrameRate?: number;
+  navParty2?: string; // Slot 2 sprite sheet (middle, right of slot 1)
+  navParty2FrameCount?: number;
+  navParty2FrameRate?: number;
+
   // Navigation labels (customizable button text)
   navLabelPlay?: string;       // "Play" button label
   navLabelCompendium?: string; // "Compendium" button label
@@ -221,6 +232,12 @@ export const THEME_ASSET_CONFIG: Record<ThemeAssetKey, { label: string; descript
   notFoundIcon: { label: '404 Page Icon', description: 'Custom sprite for the "Page Not Found" page. Supports horizontal sprite sheets for animation.', category: 'branding', inputType: 'image' },
   notFoundIconFrameCount: { label: '404 Icon Frame Count', description: 'Number of frames in sprite sheet (e.g., 8). Leave blank for static image.', category: 'branding', inputType: 'text' },
   notFoundIconFrameRate: { label: '404 Icon Frame Rate', description: 'Animation speed in frames per second (default: 10)', category: 'branding', inputType: 'text' },
+  navParty1: { label: 'Party Marcher 1', description: 'Leftmost companion walking beside the logo in the navbar. Horizontal sprite sheet, rendered at native size like the logo. Leave empty for no marcher.', category: 'branding', inputType: 'image' },
+  navParty1FrameCount: { label: 'Marcher 1 Frame Count', description: 'Number of frames in the sheet (e.g., 8). Leave blank for a static image.', category: 'branding', inputType: 'text' },
+  navParty1FrameRate: { label: 'Marcher 1 Frame Rate', description: 'Animation speed in frames per second (default: 10)', category: 'branding', inputType: 'text' },
+  navParty2: { label: 'Party Marcher 2', description: 'Middle companion (between Marcher 1 and the logo). Horizontal sprite sheet, native size. Leave empty for no marcher.', category: 'branding', inputType: 'image' },
+  navParty2FrameCount: { label: 'Marcher 2 Frame Count', description: 'Number of frames in the sheet (e.g., 8). Leave blank for a static image.', category: 'branding', inputType: 'text' },
+  navParty2FrameRate: { label: 'Marcher 2 Frame Rate', description: 'Animation speed in frames per second (default: 10)', category: 'branding', inputType: 'text' },
   navLabelPlay: { label: 'Play Button Label', description: 'Text for Play navigation button (default: "Play")', category: 'branding', inputType: 'text' },
   navLabelCompendium: { label: 'Compendium Button Label', description: 'Text for the Compendium/Slab navigation button (default: "The Slab")', category: 'branding', inputType: 'text' },
   navLabelEditor: { label: 'Editor Button Label', description: 'Text for Map Editor navigation button (default: "Map Editor")', category: 'branding', inputType: 'text' },

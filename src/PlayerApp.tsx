@@ -331,17 +331,31 @@ function PlayerNavigation() {
         >
           {logoSrc ? (
             logoFrameCount > 1 ? (
-              // THE MARCHING PARTY preview (user idea — see App.tsx twin):
-              // same sprite ×3 in step; real version deals distinct
-              // entities into the slots.
+              // THE MARCHING PARTY (user feature — see App.tsx twin):
+              // configurable companions from Settings → Branding; empty
+              // slots don't march.
               <span className="flex items-end gap-1 flex-shrink-0">
-                {[0, 1, 2].map(i => (
+                {([
+                  themeAssets.navParty1 && {
+                    src: themeAssets.navParty1,
+                    frameCount: Number(themeAssets.navParty1FrameCount) || 1,
+                    frameRate: Number(themeAssets.navParty1FrameRate) || 10,
+                    alt: '',
+                  },
+                  themeAssets.navParty2 && {
+                    src: themeAssets.navParty2,
+                    frameCount: Number(themeAssets.navParty2FrameCount) || 1,
+                    frameRate: Number(themeAssets.navParty2FrameRate) || 10,
+                    alt: '',
+                  },
+                  { src: logoSrc, frameCount: logoFrameCount, frameRate: logoFrameRate, alt: themeAssets.logoAlt || 'Logo' },
+                ].filter(Boolean) as { src: string; frameCount: number; frameRate: number; alt: string }[]).map((m, i) => (
                   <AnimatedLogo
-                    key={i}
-                    src={logoSrc}
-                    alt={i === 2 ? (themeAssets.logoAlt || 'Logo') : ''}
-                    frameCount={logoFrameCount}
-                    frameRate={logoFrameRate}
+                    key={`${i}-${m.src.slice(0, 32)}`}
+                    src={m.src}
+                    alt={m.alt}
+                    frameCount={m.frameCount}
+                    frameRate={m.frameRate}
                     className="flex-shrink-0"
                   />
                 ))}
