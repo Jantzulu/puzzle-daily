@@ -137,17 +137,26 @@ function AnimatedLogo({ src, alt, frameCount, frameRate, className }: {
     let animationFrameId: number | null = null;
     const frameDuration = 1000 / frameRate;
 
-    // NATIVE-SIZE LAW for the logo slot (user call, 2026-08-11): the art
-    // renders at its OWN frame size × an integer — 1× on phones, 2× at
-    // md+ — so ANY entity animation dropped into the slot is pixel-
-    // perfect at every width. The old fit-to-height sizing was fractional
-    // for any art that didn't divide it (soft sprite on phones).
+    // Logo sizing (user round 3, 2026-08-11): desktop = native × 2,
+    // integer-crisp with pixelated rendering. Mobile = FIT to a 26px cap
+    // (the dieted bar's text-stack height, so the sprite never drives
+    // the bar): 1× read too small, 2× overflows — a FRACTIONAL fit is
+    // the user-sanctioned exception to the integer law here, with
+    // SMOOTHING instead of pixelated (nearest-neighbor at ~1.2× makes
+    // ragged pixel stripes; mild softness is imperceptible this small).
+    const MOBILE_LOGO_H = 26;
     const mq = window.matchMedia('(min-width: 768px)');
     const applyScale = () => {
-      if (!canvas.width) return;
-      const scale = mq.matches ? 2 : 1;
-      canvas.style.width = `${canvas.width * scale}px`;
-      canvas.style.height = `${canvas.height * scale}px`;
+      if (!canvas.width || !canvas.height) return;
+      if (mq.matches) {
+        canvas.style.width = `${canvas.width * 2}px`;
+        canvas.style.height = `${canvas.height * 2}px`;
+        canvas.style.imageRendering = 'pixelated';
+      } else {
+        canvas.style.width = `${(canvas.width * MOBILE_LOGO_H / canvas.height).toFixed(2)}px`;
+        canvas.style.height = `${MOBILE_LOGO_H}px`;
+        canvas.style.imageRendering = 'auto';
+      }
     };
     mq.addEventListener('change', applyScale);
 
@@ -465,14 +474,21 @@ function Navigation() {
                   </span>
                 );
               } else {
-                // Static single-frame logo: same native-size law as the
-                // animated path — each img sizes to its natural dims ×
-                // integer on load (1× phone / 2× md+).
+                // Static single-frame logo: same sizing rules as the
+                // animated path — desktop native × 2 pixelated, mobile
+                // fits a 26px cap with smoothing (user round 3).
                 const sizeLogoNative = (e: React.SyntheticEvent<HTMLImageElement>) => {
                   const img = e.currentTarget;
-                  const scale = window.matchMedia('(min-width: 768px)').matches ? 2 : 1;
-                  img.style.width = `${img.naturalWidth * scale}px`;
-                  img.style.height = `${img.naturalHeight * scale}px`;
+                  if (!img.naturalWidth || !img.naturalHeight) return;
+                  if (window.matchMedia('(min-width: 768px)').matches) {
+                    img.style.width = `${img.naturalWidth * 2}px`;
+                    img.style.height = `${img.naturalHeight * 2}px`;
+                    img.style.imageRendering = 'pixelated';
+                  } else {
+                    img.style.width = `${(img.naturalWidth * 26 / img.naturalHeight).toFixed(2)}px`;
+                    img.style.height = '26px';
+                    img.style.imageRendering = 'auto';
+                  }
                 };
                 return (
                   <span className="nav-sprite-torchlit flex-shrink-0">

@@ -99,16 +99,22 @@ function AnimatedLogo({ src, alt, frameCount, frameRate, className }: {
     let animationFrameId: number | null = null;
     const frameDuration = 1000 / frameRate;
 
-    // NATIVE-SIZE LAW for the logo slot (user call, 2026-08-11 — see
-    // App.tsx twin): the art renders at its OWN frame size × an integer,
-    // 1× on phones / 2× at md+, so any entity animation in the slot is
-    // pixel-perfect at every width.
+    // Logo sizing (user round 3 — see App.tsx twin): desktop native × 2
+    // pixelated; mobile FITS a 26px cap with smoothing (the sanctioned
+    // fractional exception — 1× too small, 2× overflows the dieted bar).
+    const MOBILE_LOGO_H = 26;
     const mq = window.matchMedia('(min-width: 768px)');
     const applyScale = () => {
-      if (!canvas.width) return;
-      const scale = mq.matches ? 2 : 1;
-      canvas.style.width = `${canvas.width * scale}px`;
-      canvas.style.height = `${canvas.height * scale}px`;
+      if (!canvas.width || !canvas.height) return;
+      if (mq.matches) {
+        canvas.style.width = `${canvas.width * 2}px`;
+        canvas.style.height = `${canvas.height * 2}px`;
+        canvas.style.imageRendering = 'pixelated';
+      } else {
+        canvas.style.width = `${(canvas.width * MOBILE_LOGO_H / canvas.height).toFixed(2)}px`;
+        canvas.style.height = `${MOBILE_LOGO_H}px`;
+        canvas.style.imageRendering = 'auto';
+      }
     };
     mq.addEventListener('change', applyScale);
 
@@ -363,12 +369,20 @@ function PlayerNavigation() {
             ) : (
               <span className="nav-sprite-torchlit">
               {(() => {
-                // Static logo shares the native-size law (App.tsx twin).
+                // Static logo shares the sizing rules (App.tsx twin):
+                // desktop native × 2 pixelated, mobile fit-26 smooth.
                 const sizeLogoNative = (e: React.SyntheticEvent<HTMLImageElement>) => {
                   const img = e.currentTarget;
-                  const scale = window.matchMedia('(min-width: 768px)').matches ? 2 : 1;
-                  img.style.width = `${img.naturalWidth * scale}px`;
-                  img.style.height = `${img.naturalHeight * scale}px`;
+                  if (!img.naturalWidth || !img.naturalHeight) return;
+                  if (window.matchMedia('(min-width: 768px)').matches) {
+                    img.style.width = `${img.naturalWidth * 2}px`;
+                    img.style.height = `${img.naturalHeight * 2}px`;
+                    img.style.imageRendering = 'pixelated';
+                  } else {
+                    img.style.width = `${(img.naturalWidth * 26 / img.naturalHeight).toFixed(2)}px`;
+                    img.style.height = '26px';
+                    img.style.imageRendering = 'auto';
+                  }
                 };
                 return (
                   <>
