@@ -1,12 +1,12 @@
 import React from 'react';
 
 /**
- * A painted nav-chrome icon (theme slots iconNavCalendar / iconNavMenu /
- * iconNavMenuClose): renders at NATIVE × 2 — the page's Z=2 art scale —
- * so a 12×12 art canvas lands at the standard 24 CSS px footprint, and
- * any other canvas size the artist picks renders proportionally without
- * code changes. Pixelated, block display; the wrapping button keeps its
- * own hit area.
+ * A painted nav-chrome icon (hardcoded drop-path art — see
+ * src/assets/icons/navChrome.ts): renders at NATIVE × 2 — the page's Z=2
+ * art scale — so the standard 13×13 canvas (odd = a true center pixel)
+ * lands at 26 CSS px, and any other canvas size renders proportionally
+ * without code changes. Pixelated, block display; the wrapping button
+ * keeps its own hit area.
  */
 export const PaintedNavIcon: React.FC<{ src: string; alt?: string }> = ({ src, alt = '' }) => (
   <img

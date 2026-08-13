@@ -623,7 +623,7 @@ function Navigation() {
         >
           {/* Hardcoded chrome art (hearts precedent): drop nav-menu.png /
               nav-menu-close.png in src/assets/icons/ and the glyphs
-              retire. 12×12 art = 24 CSS at the page's 2× scale. */}
+              retire. 13×13 art = 26 CSS at the page's 2× scale (odd = true center px). */}
           {mobileMenuOpen ? (
             navChromeIcon('menu-close') ? (
               <PaintedNavIcon src={navChromeIcon('menu-close')!} />

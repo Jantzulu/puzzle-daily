@@ -3,8 +3,10 @@
  * SOURCE, not a theme knob: git is the custodian, both apps get it on
  * deploy, no sync step).
  *
- * THE DROP PATH: paint at 12×12 art px (renders 24 CSS at the page's 2×
- * scale; other sizes render proportionally) and save into THIS folder as
+ * THE DROP PATH: paint at 13×13 art px (the user's standard — odd size =
+ * a true CENTER PIXEL for symmetric strokes; renders 26 CSS at the page's
+ * 2× scale, and any other canvas size renders at native × 2 too) and
+ * save into THIS folder as
  *   nav-calendar.png      — the navbar calendar button
  *   nav-menu.png          — the hamburger (menu open) button
  *   nav-menu-close.png    — the X (menu open state of the same button)

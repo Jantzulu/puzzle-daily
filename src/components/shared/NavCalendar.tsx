@@ -36,7 +36,7 @@ function monthCells(year: number, month: number): (number | null)[] {
  * Opens a NavSheet with a stone-carved month showing the current date.
  */
 // Hardcoded chrome art (the hearts precedent): drop nav-calendar.png in
-// src/assets/icons/ and the glyph below retires. 12×12 art = 24 CSS at 2×.
+// src/assets/icons/ and the glyph below retires. 13×13 art = 26 CSS at 2×.
 const paintedIcon = navChromeIcon('calendar');
 
 export const NavCalendar: React.FC = () => {
