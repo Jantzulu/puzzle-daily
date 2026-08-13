@@ -146,7 +146,11 @@ function AnimatedLogo({ src, alt, frameCount, frameRate, className }: {
     // padding is trimmed out of LAYOUT via negative margins so the bar
     // sees exactly 28px. Fractional scale + smoothing are the
     // user-sanctioned exception to the integer law at this size.
-    const MOBILE_INK_H = 28;
+    const MOBILE_INK_H = 30;
+    // The bar has 2px of vertical padding each side: a 1px overhang per
+    // side lets the 30px figure ride inside it with the LAYOUT box still
+    // 28px -- the wizard grows, the bar does not (user round 5).
+    const MOBILE_INK_OVERHANG = 1;
     const inkBounds = { top: 0, bottom: 0 }; // rows, set on load
     const mq = window.matchMedia('(min-width: 768px)');
     const applyScale = () => {
@@ -161,8 +165,8 @@ function AnimatedLogo({ src, alt, frameCount, frameRate, className }: {
         const s = MOBILE_INK_H / inkH;
         canvas.style.width = `${(canvas.width * s).toFixed(2)}px`;
         canvas.style.height = `${(canvas.height * s).toFixed(2)}px`;
-        canvas.style.marginTop = `${(-inkBounds.top * s).toFixed(2)}px`;
-        canvas.style.marginBottom = `${(-(canvas.height - 1 - inkBounds.bottom) * s).toFixed(2)}px`;
+        canvas.style.marginTop = `${(-inkBounds.top * s - MOBILE_INK_OVERHANG).toFixed(2)}px`;
+        canvas.style.marginBottom = `${(-(canvas.height - 1 - inkBounds.bottom) * s - MOBILE_INK_OVERHANG).toFixed(2)}px`;
         canvas.style.imageRendering = 'auto';
       }
     };
