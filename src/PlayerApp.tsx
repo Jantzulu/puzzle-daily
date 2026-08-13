@@ -99,20 +99,28 @@ function AnimatedLogo({ src, alt, frameCount, frameRate, className }: {
     let animationFrameId: number | null = null;
     const frameDuration = 1000 / frameRate;
 
-    // Logo sizing (user round 3 — see App.tsx twin): desktop native × 2
-    // pixelated; mobile FITS a 28px cap with smoothing (the sanctioned
-    // fractional exception — 1× too small, 2× overflows the dieted bar).
-    const MOBILE_LOGO_H = 28;
+    // Logo sizing (user rounds 3-4 — see App.tsx twin): desktop native
+    // × 2 pixelated; mobile fits the art's VISIBLE INK to 28px (frames
+    // carry transparent padding; frame-fit rendered the sprite smaller
+    // than the text), trimming the padding out of layout via negative
+    // margins. Fractional + smoothing = the sanctioned exception.
+    const MOBILE_INK_H = 28;
+    const inkBounds = { top: 0, bottom: 0 };
     const mq = window.matchMedia('(min-width: 768px)');
     const applyScale = () => {
       if (!canvas.width || !canvas.height) return;
       if (mq.matches) {
         canvas.style.width = `${canvas.width * 2}px`;
         canvas.style.height = `${canvas.height * 2}px`;
+        canvas.style.margin = '';
         canvas.style.imageRendering = 'pixelated';
       } else {
-        canvas.style.width = `${(canvas.width * MOBILE_LOGO_H / canvas.height).toFixed(2)}px`;
-        canvas.style.height = `${MOBILE_LOGO_H}px`;
+        const inkH = Math.max(1, inkBounds.bottom - inkBounds.top + 1);
+        const s = MOBILE_INK_H / inkH;
+        canvas.style.width = `${(canvas.width * s).toFixed(2)}px`;
+        canvas.style.height = `${(canvas.height * s).toFixed(2)}px`;
+        canvas.style.marginTop = `${(-inkBounds.top * s).toFixed(2)}px`;
+        canvas.style.marginBottom = `${(-(canvas.height - 1 - inkBounds.bottom) * s).toFixed(2)}px`;
         canvas.style.imageRendering = 'auto';
       }
     };
@@ -121,6 +129,30 @@ function AnimatedLogo({ src, alt, frameCount, frameRate, className }: {
     img.onload = () => {
       const frameWidth = Math.floor(img.width / frameCount);
       const frameHeight = img.height;
+      // Ink rows (union over all frames; tainted canvas falls back to
+      // the full frame = frame-fit).
+      inkBounds.top = 0;
+      inkBounds.bottom = frameHeight - 1;
+      try {
+        const probe = document.createElement('canvas');
+        probe.width = img.width;
+        probe.height = img.height;
+        const pctx = probe.getContext('2d', { willReadFrequently: true });
+        if (pctx) {
+          pctx.drawImage(img, 0, 0);
+          const d = pctx.getImageData(0, 0, img.width, img.height).data;
+          let top = -1;
+          let bottom = -1;
+          for (let y = 0; y < img.height; y++) {
+            let opaque = false;
+            for (let x = 0; x < img.width; x++) {
+              if (d[(y * img.width + x) * 4 + 3] > 8) { opaque = true; break; }
+            }
+            if (opaque) { if (top === -1) top = y; bottom = y; }
+          }
+          if (top !== -1) { inkBounds.top = top; inkBounds.bottom = bottom; }
+        }
+      } catch { /* tainted — keep full-frame fallback */ }
       canvas.width = frameWidth;
       canvas.height = frameHeight;
       applyScale();

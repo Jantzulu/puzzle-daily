@@ -137,24 +137,32 @@ function AnimatedLogo({ src, alt, frameCount, frameRate, className }: {
     let animationFrameId: number | null = null;
     const frameDuration = 1000 / frameRate;
 
-    // Logo sizing (user round 3, 2026-08-11): desktop = native × 2,
-    // integer-crisp with pixelated rendering. Mobile = FIT to a 28px cap
-    // (the dieted bar's text-stack height, so the sprite never drives
-    // the bar): 1× read too small, 2× overflows — a FRACTIONAL fit is
-    // the user-sanctioned exception to the integer law here, with
-    // SMOOTHING instead of pixelated (nearest-neighbor at ~1.2× makes
-    // ragged pixel stripes; mild softness is imperceptible this small).
-    const MOBILE_LOGO_H = 28;
+    // Logo sizing (user rounds 3-4, 2026-08-11): desktop = native × 2,
+    // integer-crisp with pixelated rendering. Mobile = fit the art's
+    // VISIBLE INK to a 28px cap: sheets carry transparent padding around
+    // the figure, so fitting the frame box rendered the sprite visibly
+    // smaller than the text (user screenshot). The ink rows are measured
+    // once from the whole sheet (union over frames); the transparent
+    // padding is trimmed out of LAYOUT via negative margins so the bar
+    // sees exactly 28px. Fractional scale + smoothing are the
+    // user-sanctioned exception to the integer law at this size.
+    const MOBILE_INK_H = 28;
+    const inkBounds = { top: 0, bottom: 0 }; // rows, set on load
     const mq = window.matchMedia('(min-width: 768px)');
     const applyScale = () => {
       if (!canvas.width || !canvas.height) return;
       if (mq.matches) {
         canvas.style.width = `${canvas.width * 2}px`;
         canvas.style.height = `${canvas.height * 2}px`;
+        canvas.style.margin = '';
         canvas.style.imageRendering = 'pixelated';
       } else {
-        canvas.style.width = `${(canvas.width * MOBILE_LOGO_H / canvas.height).toFixed(2)}px`;
-        canvas.style.height = `${MOBILE_LOGO_H}px`;
+        const inkH = Math.max(1, inkBounds.bottom - inkBounds.top + 1);
+        const s = MOBILE_INK_H / inkH;
+        canvas.style.width = `${(canvas.width * s).toFixed(2)}px`;
+        canvas.style.height = `${(canvas.height * s).toFixed(2)}px`;
+        canvas.style.marginTop = `${(-inkBounds.top * s).toFixed(2)}px`;
+        canvas.style.marginBottom = `${(-(canvas.height - 1 - inkBounds.bottom) * s).toFixed(2)}px`;
         canvas.style.imageRendering = 'auto';
       }
     };
@@ -164,6 +172,32 @@ function AnimatedLogo({ src, alt, frameCount, frameRate, className }: {
       // Calculate frame dimensions (horizontal sprite sheet)
       const frameWidth = Math.floor(img.width / frameCount);
       const frameHeight = img.height;
+
+      // Measure the ink rows (union over ALL frames, one scan of the
+      // whole sheet). Tainted canvas (CORS-less host) falls back to the
+      // full frame — frame-fit, the pre-round-4 behavior.
+      inkBounds.top = 0;
+      inkBounds.bottom = frameHeight - 1;
+      try {
+        const probe = document.createElement('canvas');
+        probe.width = img.width;
+        probe.height = img.height;
+        const pctx = probe.getContext('2d', { willReadFrequently: true });
+        if (pctx) {
+          pctx.drawImage(img, 0, 0);
+          const d = pctx.getImageData(0, 0, img.width, img.height).data;
+          let top = -1;
+          let bottom = -1;
+          for (let y = 0; y < img.height; y++) {
+            let opaque = false;
+            for (let x = 0; x < img.width; x++) {
+              if (d[(y * img.width + x) * 4 + 3] > 8) { opaque = true; break; }
+            }
+            if (opaque) { if (top === -1) top = y; bottom = y; }
+          }
+          if (top !== -1) { inkBounds.top = top; inkBounds.bottom = bottom; }
+        }
+      } catch { /* tainted — keep the full-frame fallback */ }
 
       // Set canvas size to single frame size
       canvas.width = frameWidth;
