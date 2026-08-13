@@ -7,6 +7,7 @@ import { GemMesh } from './GemMesh';
 import { RichTextRenderer } from '../editor/RichTextEditor';
 import { attributeText, attributeSubItems } from '../../utils/attributeShape';
 import { HelpButton } from './HelpOverlay';
+import { TapHintChip } from './TapHintChip';
 import { MovementArrow } from './DirectionArrow';
 import { DirectionPicker, CompassArrow, BEARING_INITIALS, type DirectionPickerEntry } from './DirectionPicker';
 import type { ThemeAssets } from '../../utils/themeAssets';
@@ -646,9 +647,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
           (see Game.tsx). */}
       {!disabled && !(isAtMaxPlaced || (selectedCharacterId && !placedCharacterIds.includes(selectedCharacterId))) && (
         <div className="mt-1.5 text-center">
-          <span className="inline-block px-3 py-1 rounded-pixel bg-stone-900/85 border border-copper-700 hud-label text-copper-300 whitespace-nowrap">
-            Tap a hero for more info
-          </span>
+          <TapHintChip>Tap a hero for more info</TapHintChip>
         </div>
       )}
     </>

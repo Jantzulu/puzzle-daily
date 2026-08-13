@@ -4,6 +4,7 @@ import { drawRailSkin } from '../game/PortcullisMesh';
 import { drawGateBars, drawGateBeamSkin, drawGateSignSkin } from '../shared/GateMesh';
 import { drawStonePiece, dimStoneFace } from '../game/PlayStoneSkin';
 import { drawRungPlaque, PlaqueHeader, PlaqueHeaderLabel, plaqueHeaderStraddle } from '../game/RungPlaque';
+import { TapHintChip } from '../game/TapHintChip';
 
 // ============================================================================
 // PORTCULLIS LIVE — the Live panel for the non-nine-slice kits
@@ -22,9 +23,9 @@ import { drawRungPlaque, PlaqueHeader, PlaqueHeaderLabel, plaqueHeaderStraddle }
 
 interface Props {
   kitId: string;
-  family: 'rail' | 'gate' | 'nav-gate' | 'stone' | 'plaque';
+  family: 'rail' | 'gate' | 'nav-gate' | 'stone' | 'plaque' | 'hint';
   slices: ForgeSlice[];
-  /** Surface width in CSS px — the W slider (mobile ~393, desktop rail 672). Ignored by 'stone' and 'plaque' (content-sized). */
+  /** Surface width in CSS px — the W slider (mobile ~393, desktop rail 672). Ignored by 'stone', 'plaque' and 'hint' (content-sized). */
   width: number;
 }
 
@@ -172,6 +173,27 @@ export const PortcullisLive: React.FC<Props> = ({ kitId, family, slices, width }
     whenDecoded([...skin.values()]).then(draw);
     return () => { cancelled = true; };
   });
+
+  if (family === 'hint' && skin.size > 0) {
+    // The game's OWN TapHintChip with the fresh slices (share-the-renderer)
+    // — all three live labels at their real text-driven widths, on the
+    // near-black page ground so the baked-in translucency reads honestly.
+    return (
+      <div className="rounded" style={{ background: '#040403', padding: 24 }}>
+        <div className="flex flex-col items-center gap-4">
+          <TapHintChip pieces={skin}>Tap the dungeon to place your hero</TapHintChip>
+          <TapHintChip pieces={skin}>Tap a hero for more info</TapHintChip>
+          <TapHintChip pieces={skin}>Tap an enemy for more info</TapHintChip>
+        </div>
+        <p className="mt-3 text-[11px] text-stone-500 text-center">
+          One 3-slice worn by all three chips at their own text widths — caps
+          fixed, middle tiling between them, the label as DOM text on top.
+          Halo rows carry the outline/aura; alpha in the art is the
+          see-through interior.
+        </p>
+      </div>
+    );
+  }
 
   if (family === 'plaque' && skin.size > 0) {
     // The header rides proud of the plaque top — reserve its reach above

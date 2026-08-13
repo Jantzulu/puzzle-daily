@@ -20,6 +20,7 @@ import { getSavedPuzzles, type SavedPuzzle } from '../../utils/puzzleStorage';
 import { loadTileType, loadCollectible, loadEnemy, loadStatusEffectAsset } from '../../utils/assetStorage';
 import { collectPuzzleAssetUrls } from '../../utils/spritePreload';
 import { HelpButton } from './HelpOverlay';
+import { TapHintChip } from './TapHintChip';
 import { QuestBoxFrame, QuestOrnaments, QuestPlate, QuestDivider, questSkinFrameActive, questSkinOrnamentsActive, questSkinPlateActive, questSkinDividerActive, questFrameBorders, questPlateStraddle, useCrispSnap } from './QuestBoxSkin';
 import { playGameSound, playVictoryMusic, playDefeatMusic, playBackgroundMusic, stopMusic } from '../../utils/gameSounds';
 import { loadThemeAssets, subscribeToThemeAssets, type ThemeAssets } from '../../utils/themeAssets';
@@ -2815,8 +2816,10 @@ export const Game: React.FC<GameProps> = ({
                   // (LINE comments — a {/* */} before the JSX root inside
                   // `return (` is an expression-position parse error; this
                   // exact mistake has now broken the page twice.)
-                  <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-20 px-3 py-1 rounded-pixel bg-stone-900/85 border border-copper-700 hud-label text-copper-300 whitespace-nowrap pointer-events-none">
-                    Tap the dungeon to place your hero
+                  // TapHintChip owns the chip look (CSS or forge-cut art);
+                  // this wrapper keeps only the board positioning.
+                  <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-20 whitespace-nowrap pointer-events-none">
+                    <TapHintChip>Tap the dungeon to place your hero</TapHintChip>
                   </div>
                 );
               })()}

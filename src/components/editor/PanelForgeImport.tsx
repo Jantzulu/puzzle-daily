@@ -78,7 +78,7 @@ export const PanelForgeImport: React.FC<Props> = ({ kit, assembly }) => {
   // game's own draw routines) — PanelNineSlice knows nine-slice anatomy
   // only. Detection mirrors PanelForge's kitFamily precedence: nine-slice
   // ids win, so quest/window kits never land here.
-  const portFamily = useMemo<null | 'rail' | 'gate' | 'nav-gate' | 'stone' | 'plaque'>(() => {
+  const portFamily = useMemo<null | 'rail' | 'gate' | 'nav-gate' | 'stone' | 'plaque' | 'hint'>(() => {
     const ids = new Set(kit.pieces.map(p => p.id));
     if (ids.has('corner-tl') || ids.has('plate-mid')) return null;
     if (ids.has('rail-face')) return 'rail';
@@ -86,6 +86,7 @@ export const PanelForgeImport: React.FC<Props> = ({ kit, assembly }) => {
     if (ids.has('beam-face')) return 'nav-gate';
     if (ids.has('play-button')) return 'stone';
     if (ids.has('plaque-mid')) return 'plaque';
+    if (ids.has('hint-mid')) return 'hint';
     return null;
   }, [kit]);
   const [slices, setSlices] = useState<Slice[]>([]);
@@ -554,6 +555,9 @@ export const PanelForgeImport: React.FC<Props> = ({ kit, assembly }) => {
                 )}
                 {portFamily === 'plaque' && (
                   <span className="text-xs text-stone-500">content-sized — each plaque fits its own text</span>
+                )}
+                {portFamily === 'hint' && (
+                  <span className="text-xs text-stone-500">content-sized — the three live labels at their real widths</span>
                 )}
               </div>
               <PortcullisLive kitId={kit.id} family={portFamily} slices={slices} width={panelW} />

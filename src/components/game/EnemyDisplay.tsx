@@ -5,6 +5,7 @@ import { SpriteThumbnail } from '../editor/SpriteThumbnail';
 import { RichTextRenderer } from '../editor/RichTextEditor';
 import { attributeText, attributeSubItems } from '../../utils/attributeShape';
 import { HelpButton } from './HelpOverlay';
+import { TapHintChip } from './TapHintChip';
 import { GemMesh } from './GemMesh';
 import { LintelMesh } from './LintelMesh';
 import { MovementArrow } from './DirectionArrow';
@@ -484,9 +485,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
           test): the min-h reservation left a dead gap once a card opened. */}
       {!isAllySide && uniqueEnemyIds.length > 0 && selectedEnemyId === null && (
         <div className="mt-1.5 text-center">
-          <span className="inline-block px-3 py-1 rounded-pixel bg-stone-900/85 border border-copper-700 hud-label text-copper-300 whitespace-nowrap">
-            Tap an enemy for more info
-          </span>
+          <TapHintChip>Tap an enemy for more info</TapHintChip>
         </div>
       )}
     </>

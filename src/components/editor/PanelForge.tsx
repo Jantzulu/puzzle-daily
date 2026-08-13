@@ -252,6 +252,18 @@ export const DEFAULT_KITS: KitSpec[] = [
     ],
   },
   {
+    id: 'tap-hint',
+    name: 'Tap Hint Chip',
+    builtIn: true,
+    description:
+      'The instructional chips — the board\'s "Tap the dungeon to place your hero" prompt and the "Tap a hero / Tap an enemy for more info" rows — ONE 3-slice worn by all three at text-driven widths (fixed caps, tiling middle, DOM label on top). WIRED: drop the export at src/assets/panels/tap-hint-slices.json; the empty placeholder = the current CSS chip. Every piece carries 8 art of halo above/below and the caps 8 on their outer sides (the quest plate\'s scheme) — paint the black outline and any corner flourish in the magenta rows. For the translucent interior, bake reduced-opacity fill INTO the art: PNG alpha ships through the slicer and the page shows through in-game.',
+    pieces: [
+      { id: 'hint-cap-l', label: 'Hint Cap L', w: 6, h: 12, repeat: 'fixed', notes: 'Finished left end — corner decoration lives here (and in the outer halo). 12 art tall = 24 CSS, a hair over the old CSS chip\'s 23.' },
+      { id: 'hint-mid', label: 'Hint Middle', w: 12, h: 12, repeat: 'tile-x', notes: 'Tiles behind the label to any text length — keep it seamless or the motif recurs every period. Reduced-opacity fill here = the see-through interior.' },
+      { id: 'hint-cap-r', label: 'Hint Cap R', w: 6, h: 12, repeat: 'fixed' },
+    ],
+  },
+  {
     id: 'play-gem',
     name: 'Play Stone',
     builtIn: true,
@@ -392,7 +404,18 @@ const STORAGE_KEY = 'panel_forge_kits_v1';
 //      single-span tiling (a split would phase-shift committed art).
 //      NOTE: a custom-resized plate-mid width does NOT carry to the
 //      new ids (the v12 merge matches by id) — re-apply manually.
-const DEFAULTS_VERSION = 22;
+// v23: NEW tap-hint kit (user ask, 2026-08-11): the three instructional
+//      chips ("Tap the dungeon…" board prompt + the "Tap a hero/enemy
+//      for more info" rows) share ONE 3-slice at text-driven widths —
+//      hint-cap-l/mid/cap-r, 6/12/6 × 12 art, the quest plate's halo
+//      scheme (8 above/below everywhere + 8 on cap outer sides) for the
+//      black outline + corner flourish the user wants; translucent
+//      interior = reduced-opacity fill baked INTO the art (PNG alpha
+//      ships through the slicer). Drop path
+//      src/assets/panels/tap-hint-slices.json; empty = the CSS chip.
+//      Renderer TapHintChip (game) doubles as the Live preview
+//      (share-the-renderer; PortcullisLive family 'hint').
+const DEFAULTS_VERSION = 23;
 
 function loadKits(): KitSpec[] {
   try {
@@ -702,7 +725,7 @@ export interface Assembly {
   height: number;
 }
 
-type KitFamily = 'nine-slice' | 'nine-slice-capped' | 'quest-box' | 'gate' | 'rail' | 'nav-gate' | 'gem' | 'plaque' | 'buttons';
+type KitFamily = 'nine-slice' | 'nine-slice-capped' | 'quest-box' | 'gate' | 'rail' | 'nav-gate' | 'gem' | 'plaque' | 'buttons' | 'tap-hint';
 
 function kitFamily(kit: KitSpec): KitFamily | null {
   const ids = new Set(kit.pieces.map(p => p.id));
@@ -717,6 +740,7 @@ function kitFamily(kit: KitSpec): KitFamily | null {
   if (ids.has('beam-face')) return 'nav-gate';
   if (ids.has('play-button')) return 'gem';
   if (ids.has('plaque-mid')) return 'plaque';
+  if (ids.has('hint-mid')) return 'tap-hint';
   if (ids.has('btn-normal-mid')) return 'buttons';
   return null;
 }
@@ -1269,6 +1293,39 @@ function assemblePlaque(kit: KitSpec): Assembly | null {
   return { regions, width: x, height: bandH + Math.max(cl.h, m.h, cr.h) };
 }
 
+/**
+ * The tap-hint chip: cap · mid · mid · cap with the QUEST PLATE's halo
+ * scheme — 8 art above/below every cut and on the caps' outer sides, so
+ * the artist can outline the whole silhouette in black and flourish the
+ * corners. The sheet carries HALO margins all around; the second mid is
+ * the seam-check preview (never cut).
+ */
+function assembleTapHint(kit: KitSpec): Assembly | null {
+  const P = (id: string) => kit.pieces.find(p => p.id === id);
+  const cl = P('hint-cap-l');
+  const m = P('hint-mid');
+  const cr = P('hint-cap-r');
+  if (!cl || !m || !cr) return null;
+  const h = Math.max(cl.h, m.h, cr.h);
+  const MIDS = 2;
+  const regions: AssemblyRegion[] = [];
+  const y = HALO;
+  let x = HALO;
+  regions.push({ pieceId: 'hint-cap-l', x, y, w: cl.w, h, rep: 0, halo: { l: HALO, t: HALO, r: 0, b: HALO } });
+  x += cl.w;
+  for (let i = 0; i < MIDS; i++) {
+    // Strict axis rule: the mid tiles in x, so no x halo — its period
+    // stays exact; overflow rides the caps and the top/bottom.
+    regions.push(i === 0
+      ? { pieceId: 'hint-mid', x, y, w: m.w, h, rep: 0, halo: { l: 0, t: HALO, r: 0, b: HALO } }
+      : { pieceId: 'hint-mid', x, y, w: m.w, h, rep: i });
+    x += m.w;
+  }
+  regions.push({ pieceId: 'hint-cap-r', x, y, w: cr.w, h, rep: 0, halo: { l: 0, t: HALO, r: HALO, b: HALO } });
+  x += cr.w;
+  return { regions, width: x + HALO, height: HALO + h + HALO };
+}
+
 function assembleButtons(kit: KitSpec): Assembly | null {
   const states = ['normal', 'hover', 'pressed'];
   const regions: AssemblyRegion[] = [];
@@ -1304,6 +1361,7 @@ export function assembleKit(kit: KitSpec): Assembly | null {
     case 'nav-gate': return assembleNavGate(kit);
     case 'gem': return assembleGem(kit);
     case 'plaque': return assemblePlaque(kit);
+    case 'tap-hint': return assembleTapHint(kit);
     case 'buttons': return assembleButtons(kit);
     default: return null;
   }
