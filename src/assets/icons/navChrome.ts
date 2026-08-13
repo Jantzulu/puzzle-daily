@@ -12,6 +12,12 @@
  *   nav-menu-close.png    — the X (menu open state of the same button)
  * Vite's glob picks the file up (dev reload), the built-in SVG glyph
  * retires, and committing the PNG ships it. Delete the file to revert.
+ *
+ * COLOR REFERENCE (user, 2026-08-11): the built-in glyphs render in the
+ * THEME's colors, not the literal utility classes (index.css hijacks
+ * .text-stone-400/.text-copper-400): resting = Secondary Text, live
+ * value #c69c5d (the site-wide brass — same as the QUEST label base);
+ * hover = Heading Text. Painted PNGs are baked and don't hover-tint.
  */
 const files = import.meta.glob('./nav-*.png', { eager: true, query: '?url', import: 'default' }) as Record<string, string>;
 
