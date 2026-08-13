@@ -100,9 +100,9 @@ function AnimatedLogo({ src, alt, frameCount, frameRate, className }: {
     const frameDuration = 1000 / frameRate;
 
     // Logo sizing (user round 3 — see App.tsx twin): desktop native × 2
-    // pixelated; mobile FITS a 26px cap with smoothing (the sanctioned
+    // pixelated; mobile FITS a 28px cap with smoothing (the sanctioned
     // fractional exception — 1× too small, 2× overflows the dieted bar).
-    const MOBILE_LOGO_H = 26;
+    const MOBILE_LOGO_H = 28;
     const mq = window.matchMedia('(min-width: 768px)');
     const applyScale = () => {
       if (!canvas.width || !canvas.height) return;
@@ -370,7 +370,7 @@ function PlayerNavigation() {
               <span className="nav-sprite-torchlit">
               {(() => {
                 // Static logo shares the sizing rules (App.tsx twin):
-                // desktop native × 2 pixelated, mobile fit-26 smooth.
+                // desktop native × 2 pixelated, mobile fit-28 smooth.
                 const sizeLogoNative = (e: React.SyntheticEvent<HTMLImageElement>) => {
                   const img = e.currentTarget;
                   if (!img.naturalWidth || !img.naturalHeight) return;
@@ -379,8 +379,8 @@ function PlayerNavigation() {
                     img.style.height = `${img.naturalHeight * 2}px`;
                     img.style.imageRendering = 'pixelated';
                   } else {
-                    img.style.width = `${(img.naturalWidth * 26 / img.naturalHeight).toFixed(2)}px`;
-                    img.style.height = '26px';
+                    img.style.width = `${(img.naturalWidth * 28 / img.naturalHeight).toFixed(2)}px`;
+                    img.style.height = '28px';
                     img.style.imageRendering = 'auto';
                   }
                 };

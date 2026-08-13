@@ -138,13 +138,13 @@ function AnimatedLogo({ src, alt, frameCount, frameRate, className }: {
     const frameDuration = 1000 / frameRate;
 
     // Logo sizing (user round 3, 2026-08-11): desktop = native × 2,
-    // integer-crisp with pixelated rendering. Mobile = FIT to a 26px cap
+    // integer-crisp with pixelated rendering. Mobile = FIT to a 28px cap
     // (the dieted bar's text-stack height, so the sprite never drives
     // the bar): 1× read too small, 2× overflows — a FRACTIONAL fit is
     // the user-sanctioned exception to the integer law here, with
     // SMOOTHING instead of pixelated (nearest-neighbor at ~1.2× makes
     // ragged pixel stripes; mild softness is imperceptible this small).
-    const MOBILE_LOGO_H = 26;
+    const MOBILE_LOGO_H = 28;
     const mq = window.matchMedia('(min-width: 768px)');
     const applyScale = () => {
       if (!canvas.width || !canvas.height) return;
@@ -485,8 +485,8 @@ function Navigation() {
                     img.style.height = `${img.naturalHeight * 2}px`;
                     img.style.imageRendering = 'pixelated';
                   } else {
-                    img.style.width = `${(img.naturalWidth * 26 / img.naturalHeight).toFixed(2)}px`;
-                    img.style.height = '26px';
+                    img.style.width = `${(img.naturalWidth * 28 / img.naturalHeight).toFixed(2)}px`;
+                    img.style.height = '28px';
                     img.style.imageRendering = 'auto';
                   }
                 };
