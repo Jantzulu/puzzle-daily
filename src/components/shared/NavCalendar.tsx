@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { NavSheet } from './NavSheet';
 import { PaintedNavIcon } from './PaintedNavIcon';
-import { getThemeAsset, subscribeToThemeAssets } from '../../utils/themeAssets';
+import { navChromeIcon } from '../../assets/icons/navChrome';
 
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -35,12 +35,12 @@ function monthCells(year: number, month: number): (number | null)[] {
  * on desktop, where it replaces the old ghost spacer at the same 44px).
  * Opens a NavSheet with a stone-carved month showing the current date.
  */
+// Hardcoded chrome art (the hearts precedent): drop nav-calendar.png in
+// src/assets/icons/ and the glyph below retires. 12×12 art = 24 CSS at 2×.
+const paintedIcon = navChromeIcon('calendar');
+
 export const NavCalendar: React.FC = () => {
   const [open, setOpen] = useState(false);
-  // Painted icon slot (theme iconNavCalendar): 12×12 art renders 24 CSS
-  // at the page's 2× art scale; empty = the built-in glyph below.
-  const [paintedIcon, setPaintedIcon] = useState<string | undefined>(() => getThemeAsset('iconNavCalendar'));
-  useEffect(() => subscribeToThemeAssets(() => setPaintedIcon(getThemeAsset('iconNavCalendar'))), []);
   const [view, setView] = useState(() => {
     const now = new Date();
     return { y: now.getFullYear(), m: now.getMonth() };

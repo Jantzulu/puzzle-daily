@@ -14,6 +14,7 @@ import { ErrorBoundary } from './components/shared/ErrorBoundary';
 import { applyThemeAssets, subscribeToThemeAssets, loadThemeAssets, fetchThemeAssetsFromCloud, type ThemeAssets } from './utils/themeAssets';
 import { applyNavTorchLight } from './components/shared/navTorchLight';
 import { PaintedNavIcon } from './components/shared/PaintedNavIcon';
+import { navChromeIcon } from './assets/icons/navChrome';
 import { satellitesPaused } from './components/game/frameProfiler';
 import { GateBeamMesh, GateSign } from './components/shared/GateMesh';
 import { PortcullisMesh } from './components/game/PortcullisMesh';
@@ -487,18 +488,18 @@ function PlayerNavigation() {
           className="p-2 text-stone-400 hover:text-copper-400 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center absolute right-3 md:static"
           aria-label="Menu"
         >
-          {/* Painted icon slots (iconNavMenu / iconNavMenuClose) — see
-              App.tsx twin: 12×12 art renders 24 CSS at the 2× scale. */}
+          {/* Hardcoded chrome art (hearts precedent — see App.tsx twin):
+              drop nav-menu.png / nav-menu-close.png in src/assets/icons/. */}
           {mobileMenuOpen ? (
-            themeAssets.iconNavMenuClose ? (
-              <PaintedNavIcon src={themeAssets.iconNavMenuClose} />
+            navChromeIcon('menu-close') ? (
+              <PaintedNavIcon src={navChromeIcon('menu-close')!} />
             ) : (
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             )
-          ) : themeAssets.iconNavMenu ? (
-            <PaintedNavIcon src={themeAssets.iconNavMenu} />
+          ) : navChromeIcon('menu') ? (
+            <PaintedNavIcon src={navChromeIcon('menu')!} />
           ) : (
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
