@@ -90,6 +90,12 @@ export interface ThemeAssets {
   iconNobleHealthBar?: string; // Crown icon shown next to Noble health bars (allies + heroes)
   iconAllyHealthBar?: string;  // Shield icon shown next to ally health bars
   iconDungeonDetails?: string; // Icon for the Dungeon Details divider (between Heroes and info sections)
+  // Nav chrome icons (user ask 2026-08-11): each renders at native × 2
+  // (the page's Z=2 art scale) — draw at 12×12 art for the standard
+  // 24 CSS px footprint. Empty = the built-in SVG glyph.
+  iconNavCalendar?: string;  // Calendar button in the navbar
+  iconNavMenu?: string;      // Hamburger (menu open) button
+  iconNavMenuClose?: string; // The X (menu close) state of the same button
 
   // Compendium Tab Icons (emoji/text)
   iconTabHeroes?: string;       // Icon for Heroes tab (default: ⚔️)
@@ -256,6 +262,9 @@ export const THEME_ASSET_CONFIG: Record<ThemeAssetKey, { label: string; descript
   iconNobleHealthBar: { label: 'Noble Health Bar Icon', description: 'Small crown/icon shown next to Noble health bars — allies and heroes (recommended: 8x8 or 16x16 pixels)', category: 'icons', inputType: 'image' },
   iconAllyHealthBar: { label: 'Ally Health Bar Icon', description: 'Small shield/icon shown next to ally health bars (recommended: 8x8 or 16x16 pixels)', category: 'icons', inputType: 'image' },
   iconDungeonDetails: { label: 'Dungeon Details Icon', description: 'Icon for the divider between Heroes and Dungeon Details sections (recommended: 12x12 or 16x16 pixels)', category: 'icons', inputType: 'image' },
+  iconNavCalendar: { label: 'Nav Calendar Icon', description: 'Calendar button in the navbar. Draw at 12x12 art pixels — renders at 2x (24px), matching the page art. Empty = built-in glyph.', category: 'icons', inputType: 'image' },
+  iconNavMenu: { label: 'Nav Menu Icon', description: 'Hamburger (menu open) button. Draw at 12x12 art pixels — renders at 2x (24px). Empty = built-in glyph.', category: 'icons', inputType: 'image' },
+  iconNavMenuClose: { label: 'Nav Menu Close Icon', description: 'The X shown while the menu is open (same button). Draw at 12x12 art pixels — renders at 2x (24px). Empty = built-in glyph.', category: 'icons', inputType: 'image' },
   iconTabHeroes: { label: 'Heroes Tab Icon', description: 'Icon/emoji for Heroes tab in Compendium (default: ⚔️)', category: 'icons', inputType: 'text' },
   iconTabAllies: { label: 'Allies Tab Icon', description: 'Icon/emoji for Allies tab in Compendium (default: 🛡️)', category: 'icons', inputType: 'text' },
   iconTabEnemies: { label: 'Enemies Tab Icon', description: 'Icon/emoji for Enemies tab in Compendium (default: 👹)', category: 'icons', inputType: 'text' },

@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavSheet } from './NavSheet';
+import { PaintedNavIcon } from './PaintedNavIcon';
+import { getThemeAsset, subscribeToThemeAssets } from '../../utils/themeAssets';
 
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -35,6 +37,10 @@ function monthCells(year: number, month: number): (number | null)[] {
  */
 export const NavCalendar: React.FC = () => {
   const [open, setOpen] = useState(false);
+  // Painted icon slot (theme iconNavCalendar): 12×12 art renders 24 CSS
+  // at the page's 2× art scale; empty = the built-in glyph below.
+  const [paintedIcon, setPaintedIcon] = useState<string | undefined>(() => getThemeAsset('iconNavCalendar'));
+  useEffect(() => subscribeToThemeAssets(() => setPaintedIcon(getThemeAsset('iconNavCalendar'))), []);
   const [view, setView] = useState(() => {
     const now = new Date();
     return { y: now.getFullYear(), m: now.getMonth() };
@@ -65,14 +71,18 @@ export const NavCalendar: React.FC = () => {
         className="p-2 text-stone-400 hover:text-copper-400 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center absolute left-3 md:static shrink-0"
         aria-label="Calendar"
       >
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M8 7V3m8 4V3m-9 8h10m-11 10h12a2 2 0 002-2V7a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-          />
-        </svg>
+        {paintedIcon ? (
+          <PaintedNavIcon src={paintedIcon} />
+        ) : (
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M8 7V3m8 4V3m-9 8h10m-11 10h12a2 2 0 002-2V7a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+            />
+          </svg>
+        )}
       </button>
 
       <NavSheet open={open} onClose={() => setOpen(false)} label="Calendar">

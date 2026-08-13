@@ -10,6 +10,7 @@ import { LoadingRune } from './components/shared/LoadingRune';
 import { ErrorBoundary } from './components/shared/ErrorBoundary';
 import { applyThemeAssets, subscribeToThemeAssets, loadThemeAssets, fetchThemeAssetsFromCloud, type ThemeAssets } from './utils/themeAssets';
 import { applyNavTorchLight } from './components/shared/navTorchLight';
+import { PaintedNavIcon } from './components/shared/PaintedNavIcon';
 import { satellitesPaused } from './components/game/frameProfiler';
 import { GateBeamMesh, GateSign } from './components/shared/GateMesh';
 import { PortcullisMesh } from './components/game/PortcullisMesh';
@@ -619,13 +620,23 @@ function Navigation() {
           onClick={toggleMobileMenu}
           className="absolute right-0 md:static p-2 text-stone-400 hover:text-copper-400 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
         >
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            {mobileMenuOpen ? (
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          {/* Painted icon slots (iconNavMenu / iconNavMenuClose): 12×12
+              art renders 24 CSS at the page's 2× scale; empty = glyph. */}
+          {mobileMenuOpen ? (
+            themeAssets.iconNavMenuClose ? (
+              <PaintedNavIcon src={themeAssets.iconNavMenuClose} />
             ) : (
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            )
+          ) : themeAssets.iconNavMenu ? (
+            <PaintedNavIcon src={themeAssets.iconNavMenu} />
+          ) : (
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-            )}
-          </svg>
+            </svg>
+          )}
         </button>
       </div>
 
