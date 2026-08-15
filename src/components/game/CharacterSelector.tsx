@@ -289,7 +289,14 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
             )
           )}
         </div>
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center">
+        {/* z-[46]: one step above the quest anchor's 45 so a TALL rolled
+            scroll tucked behind the seal hangs BENEATH the title + (?)
+            (user call 2026-08-13). The z must live on THIS wrapper: its
+            centering TRANSFORM makes it a stacking context, so a z-46 on
+            the h3 inside competed only within it and lost to the anchor
+            at page level (probe-diagnosed). Safe for the (?)'s modal —
+            HelpOverlay portals to <body>. */}
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center z-[46]">
           <div className="absolute right-full mr-1">
             {/* (?) wears its section title's color (user call 2026-08-13);
               ! beats the button's own text-stone-400. */}
@@ -300,13 +307,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
               while it keeps its classic carve, medieval face, themed size
               and the purple hero identity. carved-header already carries
               700 weight + 0.05em tracking; the transform is what changes. */}
-          {/* relative z-[46]: one step above the quest anchor's z-45, so
-              a TALL rolled scroll tucked behind the seal hangs BENEATH
-              this title instead of covering it (user call 2026-08-13).
-              Deliberately on the h3 alone — lifting the whole header row
-              would trap the (?)'s fixed help overlay in a z-46 stacking
-              context under the z-50 navbar. */}
-          <h3 className="carved-header carved-header-arcane font-medieval text-lg lg:text-xl uppercase whitespace-nowrap relative z-[46]">Heroes</h3>
+          <h3 className="carved-header carved-header-arcane font-medieval text-lg lg:text-xl uppercase whitespace-nowrap">Heroes</h3>
         </div>
         <div className="flex items-center gap-2">
           {/* Counter in the ramp's registers (user call, 2026-07-31): the
