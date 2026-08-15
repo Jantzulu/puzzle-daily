@@ -248,7 +248,7 @@ export const StatusEffectsDisplay: React.FC<StatusEffectsDisplayProps> = ({ puzz
         <div className="min-w-[60px]" />
         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center">
           <div className="absolute right-full mr-1">
-            <HelpButton sectionId="status_effects" />
+            <HelpButton sectionId="status_effects" className="!text-[#2dd4bf]" />
           </div>
           {/* whitespace-nowrap on ALL these centered section titles: the
               absolute wrapper's shrink-to-fit box caps at HALF the row

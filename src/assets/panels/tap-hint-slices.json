@@ -2,6 +2,46 @@
   "version": 1,
   "kitId": "tap-hint",
   "kitName": "Tap Hint Chip",
-  "cutAt": "",
-  "pieces": []
+  "cutAt": "2026-08-13T03:57:08.646Z",
+  "pieces": [
+    {
+      "id": "hint-cap-l",
+      "w": 14,
+      "h": 28,
+      "empty": false,
+      "halo": {
+        "l": 8,
+        "t": 8,
+        "r": 0,
+        "b": 8
+      },
+      "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA4AAAAcCAYAAABRVo5BAAAAkUlEQVR4AeySMQqAMAxFU8WrOLl7CVc3jyF4BsFjuLl6CXcnryJSm0IlIWBE6NbSH9rSlw+fZPBzJfAluKjhWGcspDnaNi8cBzB1NZMGwnKdHhjX/aBSQXRCwNuSooLkLzsmkMXBL/HC6ecNhqYquR+A6ogjF2BsEKSBBkcO3RCm0kBkjCtCX0DHyZ1AmcnzcgMAAP//yNZIygAAAAZJREFUAwBb2zM5gNzUJAAAAABJRU5ErkJggg=="
+    },
+    {
+      "id": "hint-mid",
+      "w": 12,
+      "h": 28,
+      "empty": false,
+      "halo": {
+        "l": 0,
+        "t": 8,
+        "r": 0,
+        "b": 8
+      },
+      "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAwAAAAcCAYAAABVo158AAAAYElEQVR4AeyQsQ3AIBADPz9MqvRZIiNkjEiZAYkxGIEl6KlYBv43sBsaeP11tmRbhbxtQAbzlboJYTS+tzBoyLUxeCRLhP82IFtNWOl/rpNBv1SEwTscVhbGDabHf0nDAAAA///V0rBvAAAABklEQVQDAFjVYDkJYVhXAAAAAElFTkSuQmCC"
+    },
+    {
+      "id": "hint-cap-r",
+      "w": 14,
+      "h": 28,
+      "empty": false,
+      "halo": {
+        "l": 0,
+        "t": 8,
+        "r": 8,
+        "b": 8
+      },
+      "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA4AAAAcCAYAAABRVo5BAAAAnElEQVR4AexSOQqAMBCMK37Fyt5P2Nr5DME3CD7DztZP2Fv5FRHNSIqF7AY8yojjLuPMQIaQeflEY6C4T+WcNliCpfWXhqY0HJDWaYaBMEwR1M/rxoGQ6dhFMSe9MyIEZi6Sds8oiSQuGqVWHPdfOV1V5O24uFx9EIQcMLkrp7vsH4KQw3LGXbkEuwacEQIJmufmYbyXp59oDDR2AQAA//+sqW14AAAABklEQVQDAHg1MzmRJyleAAAAAElFTkSuQmCC"
+    }
+  ]
 }

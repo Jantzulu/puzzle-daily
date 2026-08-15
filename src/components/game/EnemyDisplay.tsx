@@ -165,19 +165,11 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
       <LintelMesh />
       {/* uppercase: the register pass (2026-08-01) — same treatment as the
           HEROES/ENEMIES titles. */}
+      {/* Center mark retired (user call 2026-08-13): plain DUNGEON
+          DETAILS; the words' gap is the container's own 8px. The
+          iconDungeonDetails theme slot went with it. */}
       <span className="dungeon-lintel-text font-medieval uppercase">
         <span>Dungeon</span>
-        {themeAssets.iconDungeonDetails ? (
-          <img
-            src={themeAssets.iconDungeonDetails}
-            alt=""
-            className="w-4 h-4 flex-shrink-0"
-            style={{ imageRendering: 'pixelated' }}
-            loading="lazy" decoding="async"
-          />
-        ) : (
-          <span className="dungeon-lintel-gem" />
-        )}
         <span>Details</span>
       </span>
     </div>
@@ -193,7 +185,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
         <div className="flex items-center justify-center mb-2">
           <div className="relative flex items-center">
             <div className="absolute right-full mr-1">
-              <HelpButton sectionId="enemies" />
+              <HelpButton sectionId="enemies" className="!text-[#c9564a]" />
             </div>
             <h3 className="carved-header carved-header-blood font-medieval text-lg lg:text-xl uppercase whitespace-nowrap">Enemies</h3>
           </div>
@@ -249,7 +241,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
         </div>
         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center">
           <div className="absolute right-full mr-1">
-            <HelpButton sectionId={isAllySide ? 'allies' : 'enemies'} />
+            <HelpButton sectionId={isAllySide ? 'allies' : 'enemies'} className={isAllySide ? '!text-[#e8cc8a]' : '!text-[#c9564a]'} />
           </div>
           {/* Same register pass as the HEROES title (2026-08-01): uppercase
               transform on the classic carve/face/size; each side keeps its
@@ -348,7 +340,10 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
                   {enemyData.name}
                 </span>
                 {enemyData.title && (
-                  <span className="mt-0.5 text-[10px] italic text-parchment-300/90 text-center line-clamp-1">
+                  // Epithet in the NAME's color (user call 2026-08-13),
+                  // /90 subdued — shared by the ally side until allies
+                  // get their own scheme (undecided).
+                  <span className="mt-0.5 text-[10px] italic text-blood-300/90 text-center line-clamp-1">
                     {enemyData.title}
                   </span>
                 )}

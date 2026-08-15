@@ -245,7 +245,7 @@ export const SpecialTilesDisplay: React.FC<SpecialTilesDisplayProps> = ({ puzzle
         <div className="min-w-[60px]" />
         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center">
           <div className="absolute right-full mr-1">
-            <HelpButton sectionId="special_tiles" />
+            <HelpButton sectionId="special_tiles" className="!text-[#e68f6d]" />
           </div>
           {/* nowrap: see StatusEffectsDisplay — the centered-title box caps
               at half the row and this title is nearly as wide. */}

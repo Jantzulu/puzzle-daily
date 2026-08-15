@@ -89,7 +89,9 @@ export interface ThemeAssets {
   iconBossHealthBar?: string; // Skull icon shown next to boss health bars
   iconNobleHealthBar?: string; // Crown icon shown next to Noble health bars (allies + heroes)
   iconAllyHealthBar?: string;  // Shield icon shown next to ally health bars
-  iconDungeonDetails?: string; // Icon for the Dungeon Details divider (between Heroes and info sections)
+  // (iconDungeonDetails removed 2026-08-13: the center mark between
+  // DUNGEON and DETAILS retired by user call — stored theme JSON
+  // carrying the key is ignored.)
   // (Nav chrome icons — calendar/hamburger/X — are HARDCODED art, not
   // theme knobs: src/assets/icons/navChrome.ts, the hearts precedent.
   // Briefly existed as iconNavCalendar/iconNavMenu/iconNavMenuClose on
@@ -259,7 +261,6 @@ export const THEME_ASSET_CONFIG: Record<ThemeAssetKey, { label: string; descript
   iconBossHealthBar: { label: 'Boss Health Bar Icon', description: 'Small skull/icon shown next to boss health bars (recommended: 8x8 or 16x16 pixels)', category: 'icons', inputType: 'image' },
   iconNobleHealthBar: { label: 'Noble Health Bar Icon', description: 'Small crown/icon shown next to Noble health bars — allies and heroes (recommended: 8x8 or 16x16 pixels)', category: 'icons', inputType: 'image' },
   iconAllyHealthBar: { label: 'Ally Health Bar Icon', description: 'Small shield/icon shown next to ally health bars (recommended: 8x8 or 16x16 pixels)', category: 'icons', inputType: 'image' },
-  iconDungeonDetails: { label: 'Dungeon Details Icon', description: 'Icon for the divider between Heroes and Dungeon Details sections (recommended: 12x12 or 16x16 pixels)', category: 'icons', inputType: 'image' },
   iconTabHeroes: { label: 'Heroes Tab Icon', description: 'Icon/emoji for Heroes tab in Compendium (default: ⚔️)', category: 'icons', inputType: 'text' },
   iconTabAllies: { label: 'Allies Tab Icon', description: 'Icon/emoji for Allies tab in Compendium (default: 🛡️)', category: 'icons', inputType: 'text' },
   iconTabEnemies: { label: 'Enemies Tab Icon', description: 'Icon/emoji for Enemies tab in Compendium (default: 👹)', category: 'icons', inputType: 'text' },

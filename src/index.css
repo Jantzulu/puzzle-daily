@@ -3279,16 +3279,9 @@ body.menu-gate-instant .quest-box-anchor {
     0 1px 0 rgba(255, 235, 200, 0.12);
 }
 
-/* Fallback center mark when no theme icon is set — the same copper
-   diamond the old divider used, now inlaid in the stone */
-.dungeon-lintel-gem {
-  width: 8px;
-  height: 8px;
-  transform: rotate(45deg);
-  background: #a97545;
-  border: 1px solid #c4915c;
-  flex-shrink: 0;
-}
+/* (dungeon-lintel-gem removed 2026-08-13: the center mark between
+   DUNGEON and DETAILS retired by user call, along with the
+   iconDungeonDetails theme slot that could replace it.) */
 
 /* ============================================
    DUNGEON DARK BELOW THE LINTEL

@@ -291,14 +291,22 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
         </div>
         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center">
           <div className="absolute right-full mr-1">
-            <HelpButton sectionId="characters" />
+            {/* (?) wears its section title's color (user call 2026-08-13);
+              ! beats the button's own text-stone-400. */}
+          <HelpButton sectionId="characters" className="!text-[#c084fc]" />
           </div>
           {/* UPPERCASE by user call (2026-07-31): "making titles capital and
               more bold" — the ramp's register applied to the section title
               while it keeps its classic carve, medieval face, themed size
               and the purple hero identity. carved-header already carries
               700 weight + 0.05em tracking; the transform is what changes. */}
-          <h3 className="carved-header carved-header-arcane font-medieval text-lg lg:text-xl uppercase whitespace-nowrap">Heroes</h3>
+          {/* relative z-[46]: one step above the quest anchor's z-45, so
+              a TALL rolled scroll tucked behind the seal hangs BENEATH
+              this title instead of covering it (user call 2026-08-13).
+              Deliberately on the h3 alone — lifting the whole header row
+              would trap the (?)'s fixed help overlay in a z-46 stacking
+              context under the z-50 navbar. */}
+          <h3 className="carved-header carved-header-arcane font-medieval text-lg lg:text-xl uppercase whitespace-nowrap relative z-[46]">Heroes</h3>
         </div>
         <div className="flex items-center gap-2">
           {/* Counter in the ramp's registers (user call, 2026-07-31): the
@@ -457,7 +465,10 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                   {character.name}
                 </span>
                 {character.title && (
-                  <span className="mt-0.5 text-[10px] italic text-parchment-300/90 text-center line-clamp-1">
+                  // Epithet in the NAME's color (user call 2026-08-13:
+                  // "Steve 'the Brave'" — name and title one hue), /90
+                  // keeps it a half-step subdued under the solid name.
+                  <span className="mt-0.5 text-[10px] italic text-arcane-300/90 text-center line-clamp-1">
                     {character.title}
                   </span>
                 )}

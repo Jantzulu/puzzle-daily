@@ -237,7 +237,7 @@ export const ItemsDisplay: React.FC<ItemsDisplayProps> = ({ puzzle, className = 
         <div className="min-w-[60px]" />
         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center">
           <div className="absolute right-full mr-1">
-            <HelpButton sectionId="items" />
+            <HelpButton sectionId="items" className="!text-[#e8cc8a]" />
           </div>
           <h3 className="carved-header carved-header-parchment font-medieval text-lg lg:text-xl uppercase whitespace-nowrap">Items</h3>
         </div>
