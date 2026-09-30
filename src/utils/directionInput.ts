@@ -56,7 +56,8 @@ export function getDirectionInputSpells(character: Character | null | undefined)
 }
 
 /**
- * Caption shown above a compass (and named in the placement-gate warning).
+ * Caption for a direction choice: the picker's tab and cap row, and (with
+ * " Direction" dropped) the hero drawer's note line.
  * Always the spell's display name — "spell" is internal vocabulary (a sword
  * swing is a "spell" to the engine), but the asset name is thematically
  * right by construction: "Cleave Direction", "Fireball Direction".

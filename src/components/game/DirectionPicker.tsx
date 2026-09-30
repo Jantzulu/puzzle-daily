@@ -39,8 +39,8 @@ import { lockBodyScroll } from '../../utils/scrollLock';
  * THE ACCEPTANCE TEST IS PERCEPTUAL AND IT IS CHEAP. Render the four
  * diagonals beside a plain shaft-and-head reference arrow at the same
  * rotation, magnified, and confirm they agree; then confirm all eight
- * bearings still read at 24 / 16 / 14 / 9px, the four call-site sizes
- * (rose cell, picker tab, card row, spell chip). The viewBox and the
+ * bearings still read at 24 / 14 / 12 / 11px, the four call-site sizes
+ * (rose cell, picker tab, cap-row readout, hero drawer note). The viewBox and the
  * rotation map below are unchanged, so every call site keeps its size and
  * bearing, and every vertex is inside r=4.75 of the box centre so no
  * rotation clips.
@@ -111,7 +111,7 @@ interface DirectionPickerProps {
   /**
    * Every entry this hero owes. With two or more the sheet grows a tab per
    * choice, and a spell pick walks on to the next unset entry instead of
-   * dismissing. Omitted = a one-entry sheet with no tabs.
+   * dismissing. With one (or none passed) the sheet has no tab row.
    */
   entries?: DirectionPickerEntry[];
   /** Make another entry the active one (tab tap, or the walk after a pick). */
@@ -377,7 +377,7 @@ export const DirectionPicker: React.FC<DirectionPickerProps> = ({ entry, sprite,
         </div>
 
         {/* TABS — one per choice this hero owes, only when there are two or
-            more. Each is the order pill's own plate (loud brass while unset,
+            more. Each wears the .hero-order plate (loud brass while unset,
             quiet arcane once chosen) with its caption inside, 44px tall; the
             active one carries the gold ring. The row WRAPS and a tab never
             goes below 96px — the width of the word DIRECTION plus the state
@@ -474,7 +474,7 @@ export const DirectionPicker: React.FC<DirectionPickerProps> = ({ entry, sprite,
           })}
         </div>
 
-        {/* PLACE — placement ask only. The order pill's plate again: lit
+        {/* PLACE — placement ask only. The .hero-order plate again: lit
             brass once nothing is owed, recessed and inert until then (its
             label counts what is still to pick). As wide as the rose. */}
         {shownConfirm && (
