@@ -9,8 +9,8 @@ import { lockBodyScroll } from '../../utils/scrollLock';
 /**
  * COMPASS ARROW — one glyph, drawn as SVG so it renders identically on every
  * platform (a rotated system dingbat does not). Lives here because the picker
- * is now the compass's home; the hero panel imports it for the orders pill's
- * "you chose north-east" readout.
+ * is now the compass's home; the hero panel imports it for the drawer
+ * note's "you chose north-east" readout.
  *
  * IT IS A SHAFT AND A HEAD, AND IT TOOK THREE CUTS TO GET THERE. Both
  * earlier attempts were single closed blobs, and both read ~180 deg WRONG on
@@ -40,7 +40,7 @@ import { lockBodyScroll } from '../../utils/scrollLock';
  * diagonals beside a plain shaft-and-head reference arrow at the same
  * rotation, magnified, and confirm they agree; then confirm all eight
  * bearings still read at 24 / 16 / 14 / 9px, the four call-site sizes
- * (rose cell, orders pill, card row, spell chip). The viewBox and the
+ * (rose cell, picker tab, card row, spell chip). The viewBox and the
  * rotation map below are unchanged, so every call site keeps its size and
  * bearing, and every vertex is inside r=4.75 of the box centre so no
  * rotation clips.
@@ -93,9 +93,9 @@ const SPRITE_DIR: Record<string, SpriteDirection> = {
 };
 
 /**
- * Compass initials for compact readouts (the order pill's 84px column can't
- * hold NORTHWEST in a themed face at any legible size). The full bearing
- * stays in this picker's cap row and in aria labels.
+ * Compass initials for compact readouts (the hero drawer's note line lists
+ * every choice on one wrapping line; NORTHWEST three times over would not
+ * fit). The full bearing stays in this picker's cap row and in aria labels.
  */
 export const BEARING_INITIALS: Record<string, string> = {
   north: 'N', northeast: 'NE', east: 'E', southeast: 'SE',
@@ -109,10 +109,9 @@ interface DirectionPickerProps {
   sprite?: CustomSprite;
   onClose: () => void;
   /**
-   * CARD LAYOUT ONLY (?directions=card): every entry this hero owes. With
-   * two or more the sheet grows a tab per choice, and a spell pick walks on
-   * to the next unset entry instead of dismissing. Omitted = the classic
-   * one-entry sheet, unchanged.
+   * Every entry this hero owes. With two or more the sheet grows a tab per
+   * choice, and a spell pick walks on to the next unset entry instead of
+   * dismissing. Omitted = a one-entry sheet with no tabs.
    */
   entries?: DirectionPickerEntry[];
   /** Make another entry the active one (tab tap, or the walk after a pick). */
@@ -120,7 +119,7 @@ interface DirectionPickerProps {
   /** Hero name for the cap row when the tabs already carry the captions. */
   title?: string;
   /**
-   * PLACEMENT ASK (?directions=card): the sheet was opened by a tile tap and
+   * PLACEMENT ASK: the sheet was opened by a tile tap and
    * the hero lands on that tile when the player confirms. Present = a Place
    * button under the rose (enabled once nothing is owed), and NO auto-dismiss
    * on the last pick — one ending for facing and spell entries alike, and a
@@ -349,8 +348,8 @@ export const DirectionPicker: React.FC<DirectionPickerProps> = ({ entry, sprite,
           {shownEntry.current ? (
             // `capitalize` was here and never applied: `.theme-root .hud-label`
             // (0,2,0) outranks the utility (0,1,0), so this always rendered
-            // uppercase. It is gone rather than left as a no-op — the orders
-            // pill is now uppercase too, and one register is the point.
+            // uppercase. It is gone rather than left as a no-op — one
+            // register for every label in the sheet is the point.
             <span className="hud-label text-parchment-300 flex items-center gap-1 whitespace-nowrap">
               <CompassArrow direction={shownEntry.current} size={12} />
               {shownEntry.current}

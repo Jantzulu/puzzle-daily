@@ -14,7 +14,6 @@ import type { ThemeAssets } from '../../utils/themeAssets';
 import { CARD_PIXEL_SCALE, computeCardSpriteAreaHeight } from './cardConstants';
 import { SlidingSelection } from './SlidingSelection';
 import { subscribeToImageLoads } from '../../utils/imageLoader';
-import { DIRECTIONS_LAYOUT } from './directionsLayout';
 
 const MOVEMENT_TYPES = new Set([
   'move_forward', 'move_backward', 'move_left', 'move_right',
@@ -26,12 +25,12 @@ function getMovementInfo(behavior: CharacterAction[]) {
   return moveAction ? { tilesPerMove: moveAction.tilesPerMove || 1 } : null;
 }
 
-// Compass for the card layout's aim control: a ring around a four-point
-// rose, "this hero has directions to aim" without pointing the way an arrow
-// would (an arrow in the stat line reads as the hero's facing). NOT a ring
-// with a diagonal needle — at 12px that read as a "prohibited" sign. The
-// same glyph is repeated inline in the drawer note that tells the player
-// where to tap. A stand-in: this is a natural slot for painted art.
+// Compass for the card's aim control: a ring around a four-point rose, "this
+// hero has directions to aim" without pointing the way an arrow would (an
+// arrow in the stat line reads as the hero's facing). NOT a ring with a
+// diagonal needle — at 12px that read as a "prohibited" sign. The same glyph
+// is repeated inline in the drawer note that tells the player where to tap.
+// A stand-in: this is a natural slot for painted art.
 const CompassGlyph: React.FC<{ size?: number; className?: string }> = ({ size = 12, className = '' }) => (
   <svg width={size} height={size} viewBox="0 0 12 12" aria-hidden="true" className={className}>
     <circle cx="6" cy="6" r="5.3" fill="none" stroke="currentColor" strokeWidth="1" />
@@ -39,9 +38,28 @@ const CompassGlyph: React.FC<{ size?: number; className?: string }> = ({ size = 
   </svg>
 );
 
-// The compass glyph lives with the picker that owns the compass
-// (DirectionPicker.tsx) — the orders pill's "you chose north-east" readout
+// The bearing ARROW lives with the picker that owns the rose
+// (DirectionPicker.tsx) — the drawer note's "you chose north-east" readout
 // and the picker's cells must never drift apart, so both import one arrow.
+
+/**
+ * WHERE A HERO'S DIRECTION CHOICES LIVE (settled 2026-09-30, user call after
+ * comparing three layouts on a phone behind a temporary ?directions= flag).
+ *
+ * They are NOT in the drawer. The drawer is Actions | Attributes, the same
+ * pair the enemy drawer shows, plus one read-only note line that lists each
+ * choice and its state. The choices are made in the DirectionPicker sheet,
+ * which opens two ways:
+ *   - the COMPASS in the selected card's stat line (pre-aim / re-aim);
+ *   - tapping a tile with choices still owed — the parent's placement ask
+ *     (`placementAim`), which adds a Place button to the sheet.
+ *
+ * What this replaced, and must not come back: a Directions column in the
+ * middle of the drawer (84px of a ~340px row — action text wrapped one or
+ * two words a line on phones), and a plate on the sprite's corner (it
+ * covered the hero). A full-width direction row above the text was rejected
+ * back on 2026-07-30 and costs ~50px per extra choice.
+ */
 
 interface CharacterSelectorProps {
   availableCharacterIds: string[];
@@ -60,8 +78,8 @@ interface CharacterSelectorProps {
   onFacingOverride?: (characterId: string, direction: Direction) => void;
   pendingFacingOverrides?: Record<string, Direction>;
   /**
-   * ?directions=card — the parent's "ask, don't refuse": set when the player
-   * tapped a tile with a hero that still owes direction choices. Each ask is
+   * The parent's "ask, don't refuse": set when the player tapped a tile with
+   * a hero that still owes direction choices. Each ask is
    * a NEW object (its identity is the ask); the panel opens the picker for
    * that hero with a Place button, which calls onPlacementAimConfirm once
    * nothing is owed. Dismissing the sheet calls onPlacementAimCancel.
@@ -193,19 +211,11 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
     ];
   };
 
-  // The rendered hero's entries (the Directions column).
+  // The rendered hero's entries (the drawer's note line).
   const directionInputEntries = buildDirectionEntries(renderedCharacter, !!selectedCharacterId);
   const hasDirectionInputs = directionInputEntries.length > 0;
-  // ?directions=card moves the inputs out of the drawer: a compass in the
-  // card's stat line opens the picker, and a tile tap with choices still
-  // owed opens it too (placementAim). ?directions=rail keeps the column's
-  // look but (phones only) parks it at the right edge beside a single text
-  // stack. See directionsLayout.ts.
-  const showDirections = hasDirectionInputs && DIRECTIONS_LAYOUT !== 'card';
-  const railMode = DIRECTIONS_LAYOUT === 'rail' && showDirections && (hasActionSteps || hasAttributes);
-  const railTwoText = railMode && hasActionSteps && hasAttributes;
 
-  // Which order the player is currently aiming, if any. Held as KEYS, not as
+  // Which choice the player is currently aiming, if any. Held as KEYS, not as
   // the entry object: the entries are rebuilt on every render, so an object
   // here would re-latch the picker's open animation on every update.
   // `placing` marks a picker opened by a tile tap (the placement ask): it
@@ -217,13 +227,9 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
   // (getMissingDirectionInputs).
   const owesChoice = (e: DirectionPickerEntry) => !(e.current && e.allowed.includes(e.current));
 
-  // Changing hero (or closing the panel) closes the picker. The sheet
-  // belongs to ONE hero, and a stale sheet would write the new hero's facing
-  // from the old hero's rose. (Card layout: the sheet is modal and always
-  // opened for the hero already selected, so the rendered hero catching up
-  // with the selection is not a reason to close there — the panel going
-  // disabled is.)
-  useEffect(() => { if (DIRECTIONS_LAYOUT !== 'card') setPicker(null); }, [renderedCharId]);
+  // The panel going disabled (a run starts) closes the picker. The sheet is
+  // keyed by its own hero (picker.charId), so it always writes that hero's
+  // choices, whatever the rendered hero is doing.
   useEffect(() => {
     if (!disabled) return;
     setPicker(null);
@@ -257,77 +263,11 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
   }, [placementAim]);
 
   const pickerCharacter = picker ? getCharacter(picker.charId) : null;
-  const pickerEntries = DIRECTIONS_LAYOUT === 'card'
-    ? buildDirectionEntries(pickerCharacter, !disabled)
-    : directionInputEntries;
+  const pickerEntries = buildDirectionEntries(pickerCharacter, !disabled);
   const activePickerEntry = picker
     ? pickerEntries.find(e => e.key === picker.key) ?? null
     : null;
   const pickerOwedCount = pickerEntries.filter(owesChoice).length;
-
-  // The order pill: caption lives above it in the column, so the pill only
-  // carries the value. Loud when unset (the one thing blocking placement),
-  // quiet once chosen; read-only renders the same plate without the button
-  // role. States are .hero-order--open / --done in index.css.
-  const renderOrderPill = (entry: DirectionPickerEntry) => {
-    const isSet = !!entry.current;
-    const canPick = !disabled && !!entry.onPick;
-    // 10px text + px-1.5 (was 11px/px-2): pays for the caption-width column
-    // (user call, 2026-08-01). h-11 stays — the 44px tap height is the
-    // pill's whole reason for existing.
-    const className = `hero-order ${isSet ? 'hero-order--done' : 'hero-order--open'} hud-label w-full h-11 px-1.5 justify-center flex items-center gap-1.5 rounded-pixel border transition-colors`;
-    const body = (
-      <>
-        <span className="flex items-center gap-1.5 flex-shrink-0">
-          {isSet ? (
-            <>
-              <CompassArrow direction={entry.current!} size={16} />
-              {/* Compass INITIALS (84px-column round): NORTHWEST cannot fit
-                  the narrow pill in a themed face at any legible size, and
-                  the arrow already carries the bearing — the letters
-                  confirm it. Full word in `title` + the picker's readout. */}
-              <span title={entry.current}>{BEARING_INITIALS[entry.current!] ?? entry.current}</span>
-            </>
-          ) : (
-            <>
-              {/* Opacity-only pulse (hud-breathe) — the pinned decoration
-                  rule forbids animating filters, shadows or geometry. */}
-              <span className="w-1.5 h-1.5 rounded-full bg-parchment-100 hud-breathe" aria-hidden="true" />
-              {/* "Pick", not "Choose" (84px-column round): the same word the
-                  card's blocking chip uses for the same state — and CHOOSE
-                  overflowed the narrow pill by 16px. */}
-              <span>Pick</span>
-            </>
-          )}
-          {/* Chevron on the UNSET state only (84px-column round): the loud
-              CHOOSE pill keeps its tap affordance; the quiet set state
-              yields those 12px so ARROW + NORTHWEST fits the column. */}
-          {canPick && !isSet && (
-            <svg width="8" height="12" viewBox="0 0 8 12" aria-hidden="true" className="opacity-60">
-              <path d="M2 1L6.5 6L2 11" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="square" />
-            </svg>
-          )}
-        </span>
-      </>
-    );
-    // Inline 10px — the scoped .theme-root .hud-label 11px outranks any
-    // Tailwind text utility, so the size cut must ride the style attribute.
-    if (!canPick) {
-      return <div className={className} style={{ fontSize: '10px' }}>{body}</div>;
-    }
-    return (
-      <button
-        type="button"
-        onClick={(e) => { e.stopPropagation(); if (renderedCharId) setPicker({ charId: renderedCharId, key: entry.key }); }}
-        className={className}
-        style={{ fontSize: '10px' }}
-        aria-haspopup="dialog"
-        aria-expanded={picker?.key === entry.key}
-      >
-        {body}
-      </button>
-    );
-  };
 
   // Slot list for the strip + sliding selection overlay: only ids that
   // resolve to real characters render cards, so the overlay's slot math
@@ -462,14 +402,13 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                 ?? pendingFacingOverrides[character.id])
             : character.defaultFacing;
 
-          // ?directions=card: this hero's direction inputs, for the compass
-          // in the stat line. The compass is LOUD (lit brass, breathing)
+          // This hero's direction inputs, for the compass in the stat line. The compass is LOUD (lit brass, breathing)
           // while any choice is owed and quiet arcane once all are made. It
           // lives in the stat line — never on the sprite (user call
           // 2026-09-30: the first cut, a plate on the art's corner, covered
           // the hero). Five or more cards: the boxed chip no longer fits
           // beside HP and the arrow, so it drops to the bare glyph.
-          const cardEntries = DIRECTIONS_LAYOUT === 'card' ? buildDirectionEntries(character, true) : [];
+          const cardEntries = buildDirectionEntries(character, true);
           const hasAim = cardEntries.length > 0;
           const owed = cardEntries.filter(owesChoice);
           // Never loud while the panel is disabled: during a run a placed
@@ -481,24 +420,26 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
 
           // Card layout ported from the experiment at the user's request
           // (2026-07-31): fixed-height bands (sprite / 38px name+epithet /
-          // 14px stat line), the Pick chip and Set corner plate, art-only dim
-          // for placed cards — with the classic skin kept (copper tint,
-          // divide-x strip, purple hero identity).
+          // 14px stat line), the Set corner plate, art-only dim for placed
+          // cards — with the classic skin kept (copper tint, divide-x strip,
+          // purple hero identity).
           const card = (
             // A real <button>: keyboard-reachable card, correct aria-pressed
             // selection state, the global *:focus-visible ring for free.
-            // Valid because the card contains no interactive children (the
-            // compass lives in the info area below, not on the card).
+            // Valid because the card contains no interactive children — the
+            // compass in its stat line is paint; its tap target is a SIBLING
+            // button (.hero-aim) laid over the card.
             <button
               key={charId}
               type="button"
               aria-pressed={isSelected}
               disabled={cannotSelect}
               onClick={() => !cannotSelect && onSelectCharacter(isSelected ? null : charId)}
-              // Card layout only: min-w-0 here and on the slot wrapper, so
-              // a stat line made wider by the compass can never widen its
-              // card — the slots stay equal and the caret stays centred.
-              className={`flex-1 ${DIRECTIONS_LAYOUT === 'card' ? 'min-w-0' : ''} flex flex-col items-center px-1 pt-0.5 pb-2 relative transition-colors ${
+              // min-w-0 here and on the slot wrapper: a card can never be
+              // widened by its own content (a long name, a stat line with
+              // the compass), so the slots stay equal and the caret stays
+              // centred under its card.
+              className={`flex-1 min-w-0 flex flex-col items-center px-1 pt-0.5 pb-2 relative transition-colors ${
                 cannotSelect
                   ? 'opacity-40 cursor-not-allowed'
                   : isPlaced && isSelected
@@ -565,11 +506,11 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                   the old two-line block needed. */}
               <div className="w-full h-[38px] flex flex-col items-center justify-center overflow-hidden leading-none">
                 <span
-                  // Card layout: slots are equal by construction (min-w-0), so
-                  // a name wider than its slot must be bounded to it for the
-                  // clamp to work — unbounded it was centred and cut on BOTH
-                  // sides ("eflecto").
-                  className={`hud-title text-arcane-300 text-center break-words line-clamp-1 ${DIRECTIONS_LAYOUT === 'card' ? 'max-w-full' : ''}`}
+                  // Slots are equal by construction (min-w-0), so a name wider
+                  // than its slot must be bounded to it for the clamp to
+                  // work — unbounded it was centred and cut on BOTH sides
+                  // ("eflecto").
+                  className="hud-title text-arcane-300 text-center break-words line-clamp-1 max-w-full"
                   title={character.title ? `${character.name} — ${character.title}` : character.name}
                 >
                   {character.name}
@@ -596,8 +537,8 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                 </div>
                 <div className="flex items-center gap-1 text-copper-400">
                   {hasAim ? (
-                    /* Card layout, hero with directions to aim: the heading
-                       (once there is one to show) and then the compass. The
+                    /* Hero with directions to aim: the heading (once there
+                       is one to show) and then the compass. The
                        chip here is PAINT ONLY — the tap target is the
                        .hero-aim button laid over this corner of the card
                        (a card is a <button> and cannot hold another). */
@@ -627,32 +568,18 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                       </span>
                     </>
                   ) : moveInfo ? (
-                    arrowDir ? (
-                      <>
-                        {moveInfo.tilesPerMove > 1 && (
-                          <span className="hud-num">{moveInfo.tilesPerMove}</span>
-                        )}
-                        {/* Always animated — user call (2026-07-31): the
-                            travelling arrow plays on every card, as classic
-                            does, not only the selected one. */}
-                        <MovementArrow
-                          direction={arrowDir}
-                          className={isInputFacing ? 'text-arcane-300' : 'text-copper-400'}
-                          size={13}
-                        />
-                      </>
-                    ) : (
-                      /* A BLOCKING STATE MUST NEVER BE THE SMALLEST THING ON
-                         SCREEN. This was an 11px '?' at 80% opacity — the
-                         least legible mark in the panel standing in for the
-                         one input without which the hero cannot be placed. */
-                      <span
-                        className="hud-label px-1 rounded-pixel bg-black/35 whitespace-nowrap"
-                        style={{ color: 'var(--hud-gold)' }}
-                      >
-                        Pick
-                      </span>
-                    )
+                    <>
+                      {moveInfo.tilesPerMove > 1 && (
+                        <span className="hud-num">{moveInfo.tilesPerMove}</span>
+                      )}
+                      {/* Always animated — user call (2026-07-31): the
+                          travelling arrow plays on every card, as classic
+                          does, not only the selected one. (No hero reaches
+                          here without a heading: a player-chosen facing
+                          takes the compass branch above, and every other
+                          hero has an authored defaultFacing.) */}
+                      <MovementArrow direction={arrowDir ?? character.defaultFacing} className="text-copper-400" size={13} />
+                    </>
                   ) : (
                     <span className="hud-num text-stone-400">—</span>
                   )}
@@ -660,10 +587,8 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
               </div>
             </button>
           );
-          if (DIRECTIONS_LAYOUT !== 'card') return card;
-
-          // AIM CONTROL (?directions=card) — the tap target for the compass
-          // painted in the stat line above. A SIBLING of the card inside one
+          // AIM CONTROL — the tap target for the compass painted in the stat
+          // line above. A SIBLING of the card inside one
           // slot wrapper, never a child (a card is a <button>, and a button
           // cannot hold another button), transparent, 44px tall, laid over
           // the card's bottom-right corner where the compass sits, and later
@@ -714,10 +639,9 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
         <div style={{ overflow: 'hidden', minHeight: 0 }}>
         {/* THE DRAWER — natural height, page grows with wordy heroes
             (unbounded 2026-08-01 by user call: no nested scroll region on
-            a phone). Layout is the classic three columns with dashed
-            dividers; the Directions column carries the new order pill,
-            which opens the 56px picker sheet ("keep the direction
-            selector looking the same"). */}
+            a phone). Actions | Attributes with a dashed divider, the same
+            pair the enemy drawer shows; direction choices are NOT here
+            (see the note at the top of this file). */}
         <div
           // Box padding comes from .hero-drawer (6px top and bottom) — it is
           // unlayered CSS and outranks any padding utility placed here.
@@ -730,14 +654,13 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
               : 'opacity 0.2s ease-in, transform 0.3s ease-in',
           }}
         >
-          {/* DIRECTIONS NOTE (?directions=card) — one read-only line where
-              the Directions column used to be. While a choice is owed it
-              tells the player where to make it (the inline glyph IS the
+          {/* DIRECTIONS NOTE — one read-only line. While a choice is owed
+              it tells the player where to make it (the inline glyph IS the
               compass on the card above); either way it lists every choice
               with its state, so what was picked for a spell stays visible
-              on the page and not only inside the picker. Wording is a
+              on the page and not only inside the picker. The wording is a
               first pass — the user asked for "something like" this. */}
-          {DIRECTIONS_LAYOUT === 'card' && hasDirectionInputs && (
+          {hasDirectionInputs && (
             <div className="hud-label px-2 flex flex-wrap items-center justify-center gap-x-2.5 gap-y-1 text-center">
               {directionInputEntries.some(owesChoice) ? (
                 <span className="inline-flex items-center gap-1" style={{ color: 'var(--hud-gold)' }}>
@@ -765,17 +688,10 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
             </div>
           )}
 
-          {/* RAIL MODE (?directions=rail, phones only): a grid — one text
-              stack in column 1 (Actions above Attributes), the Directions
-              column spanning both rows at the right edge. From 640px the
-              same nodes fall back to the classic flex row, where the grid
-              placement classes are inert. */}
-          {(hasActionSteps || hasAttributes || showDirections) && (
-          <div className={railMode
-            ? `grid grid-cols-[minmax(0,1fr)_auto_auto] ${railTwoText ? 'grid-rows-[auto_1fr] gap-y-2' : ''} sm:flex mb-2 px-2`
-            : `flex mb-2 px-2 ${[hasActionSteps, showDirections, hasAttributes].filter(Boolean).length === 1 ? 'justify-center' : 'gap-0'}`}>
+          {(hasActionSteps || hasAttributes) && (
+          <div className={`flex mb-2 px-2 ${hasActionSteps && hasAttributes ? 'gap-0' : 'justify-center'}`}>
               {hasActionSteps && (
-                <div className={railMode ? 'col-start-1 min-w-0 sm:flex-1' : `${hasAttributes || showDirections ? 'flex-1 min-w-0' : 'w-full'}`}>
+                <div className={hasAttributes ? 'flex-1 min-w-0' : 'w-full'}>
                   <p className="hud-label text-stone-400 mb-1 text-center">Actions</p>
                   <ol className="hud-body text-stone-300 space-y-1">
                     {renderedCharacter.actionSteps!.map((step, idx) => (
@@ -807,45 +723,11 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                   </ol>
                 </div>
               )}
-              {hasActionSteps && (showDirections || hasAttributes) && (
-                <div className={`self-stretch mx-2 flex-shrink-0 border-l border-dashed border-stone-600/40 ${railMode ? 'hidden sm:block' : ''}`} />
-              )}
-              {railMode && (
-                <div aria-hidden className={`col-start-2 row-start-1 ${railTwoText ? 'row-span-2' : ''} ml-2 mr-1 border-l border-dashed border-stone-600/40 sm:hidden`} />
-              )}
-
-              {/* DIRECTIONS — the new selector in the classic column: each
-                  entry is its caption plus a compact order pill (loud brass
-                  when unset — the blocking state — quiet arcane outline once
-                  chosen). Tapping the pill opens the DirectionPicker sheet,
-                  whose 56px cells are why the 17px in-panel compass could
-                  retire. */}
-              {showDirections && (
-                // 84px HARD (user call round 2, 2026-08-01: "shrink even
-                // further, even if FACING DIRECTION wraps to two lines") —
-                // real action/attribute sentences were wrapping 6 deep while
-                // this column held one short pill. 84 = the SET pill's floor
-                // (arrow + NORTHWEST at 10px, chevron dropped in that
-                // state); captions wrap freely above it.
-                <div className={`flex-shrink-0 px-1 ${railMode ? `col-start-3 row-start-1 ${railTwoText ? 'row-span-2' : ''}` : ''}`} style={{ width: '84px' }}>
-                  <p className="hud-label text-stone-400 mb-1 text-center">Directions</p>
-                  {directionInputEntries.map(entry => (
-                    <div key={entry.key} className="mb-1.5 last:mb-0">
-                      {/* 10px (inline — .theme-root .hud-label's 11px outranks
-                          utilities): the size cut that pays for the narrower
-                          column, caption and pill text together. */}
-                      <p className="hud-label text-arcane-300 text-center mb-1 leading-tight break-words" style={{ fontSize: '10px' }}>{entry.caption}</p>
-                      {renderOrderPill(entry)}
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {showDirections && hasAttributes && (
-                <div className={`self-stretch mx-2 flex-shrink-0 border-l border-dashed border-stone-600/40 ${railMode ? 'hidden sm:block' : ''}`} />
+              {hasActionSteps && hasAttributes && (
+                <div className="self-stretch mx-2 flex-shrink-0 border-l border-dashed border-stone-600/40" />
               )}
               {hasAttributes && (
-                <div className={railMode ? 'col-start-1 min-w-0 sm:flex-1' : `${hasActionSteps || showDirections ? 'flex-1 min-w-0' : 'w-full'}`}>
+                <div className={hasActionSteps ? 'flex-1 min-w-0' : 'w-full'}>
                   <p className="hud-label text-stone-400 mb-1 text-center">Attributes</p>
                   <ul className="hud-body text-stone-300 space-y-1">
                     {renderedCharacter.attributes!.map((attr, idx) => (
@@ -876,9 +758,9 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
       {/* The picker sheet — portalled to <body>, one entry at a time. */}
       <DirectionPicker
         entry={activePickerEntry}
-        // Card layout only: every entry the hero owes, so the sheet can show
-        // one tab per choice and walk to the next unset one after a pick.
-        entries={DIRECTIONS_LAYOUT === 'card' ? pickerEntries : undefined}
+        // Every entry the hero owes, so the sheet can show one tab per
+        // choice and walk to the next unset one after a pick.
+        entries={pickerEntries}
         onSwitch={(key) => setPicker(p => (p ? { ...p, key } : p))}
         title={pickerCharacter?.name}
         sprite={(pickerCharacter ?? renderedCharacter)?.customSprite}

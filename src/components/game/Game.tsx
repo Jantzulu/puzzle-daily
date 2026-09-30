@@ -35,7 +35,6 @@ import { fetchTodaysPuzzle as fetchCloudTodaysPuzzle } from '../../services/supa
 import { loadCachedDailyPuzzle, saveCachedDailyPuzzle } from '../../utils/dailyPuzzleCache';
 import { saveSetupState, loadSetupState, clearSetupState } from '../../utils/setupRecovery';
 import { getMissingDirectionInputs } from '../../utils/directionInput';
-import { DIRECTIONS_LAYOUT } from './directionsLayout';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { lockBodyScroll } from '../../utils/scrollLock';
 import { submitCompletion } from '../../services/statsService';
@@ -440,8 +439,8 @@ export const Game: React.FC<GameProps> = ({
     message: '',
   });
 
-  // ?directions=card: a tile tap with an un-aimed hero ASKS instead of
-  // refusing — the hero panel opens its direction picker for this hero, and
+  // A tile tap with an un-aimed hero ASKS instead of refusing (it used to
+  // raise "Hold On!") — the hero panel opens its direction picker for this hero, and
   // on confirm the same tile click is simply replayed (so every placement
   // rule above the gate is re-checked against current state). Null = no ask
   // in flight.
@@ -1141,17 +1140,9 @@ export const Game: React.FC<GameProps> = ({
         pendingSpellDirectionOverrides[selectedCharacterId]
       );
       if (missingInputs.length > 0) {
-        if (DIRECTIONS_LAYOUT === 'card') {
-          // Ask in place: the picker opens for this hero and the hero lands
-          // on this tile once every choice is made (see placementAim).
-          setPlacementAim({ charId: selectedCharacterId, x, y });
-          return;
-        }
-        playGameSound('error');
-        setWarningModal({
-          isOpen: true,
-          message: `Choose a ${missingInputs.join(' and ')} for ${charData.name} first.`,
-        });
+        // Ask, don't refuse: the picker opens for this hero and the hero
+        // lands on this tile once every choice is made (see placementAim).
+        setPlacementAim({ charId: selectedCharacterId, x, y });
         return;
       }
 

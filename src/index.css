@@ -3425,9 +3425,13 @@ body.menu-gate-instant .quest-box-anchor {
 }
 
 /* ============================================
-   THE ORDERS PILL + THE DIRECTION PICKER — ported from the experiment at
+   THE ORDER PLATE + THE DIRECTION PICKER — ported from the experiment at
    the user's request (2026-07-31): "keep the direction selector looking the
-   same". The 3x3 in-panel compass it replaces was 17x17px cells on an
+   same". .hero-order began as a pill in the hero drawer's Directions
+   column; that column is gone (2026-09-30 — see CharacterSelector.tsx) and
+   the plate's two states now dress the picker's TABS and its Place button,
+   and the card's compass chip borrows the same colours.
+   The 3x3 in-panel compass the picker replaced was 17x17px cells on an
    18.3px pitch — the page's only outright WCAG 2.5.8 failure, on an input
    the player is REQUIRED to give before certain heroes can be placed.
    Hit-slop cannot fix that (a 44px ring at an 18.3px pitch overlaps all
@@ -3475,7 +3479,7 @@ body.menu-gate-instant .quest-box-anchor {
   box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.5);
 }
 
-/* ---- Compass + picker tabs (?directions=card comparison layout) ----
+/* ---- The hero card's compass + the picker's tabs and Place button ----
    Two pieces, because a hero card is a <button> and cannot hold another:
 
    .hero-aim-chip is PAINT ONLY — the compass in the card's stat line, in
