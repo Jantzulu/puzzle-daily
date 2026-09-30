@@ -423,7 +423,11 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
           const cardEntries = DIRECTIONS_LAYOUT === 'card' ? buildDirectionEntries(character, true) : [];
           const hasAim = cardEntries.length > 0;
           const owed = cardEntries.filter(owesChoice);
-          const aimLoud = owed.length > 0;
+          // Never loud while the panel is disabled: during a run a placed
+          // hero's live facing can turn outside the creator's allowed subset,
+          // which would read as "a choice is owed" on a panel where nothing
+          // can be chosen.
+          const aimLoud = !disabled && owed.length > 0;
           const stripSize = stripCharacterIds.length;
 
           // Card layout ported from the experiment at the user's request
@@ -442,7 +446,10 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
               aria-pressed={isSelected}
               disabled={cannotSelect}
               onClick={() => !cannotSelect && onSelectCharacter(isSelected ? null : charId)}
-              className={`flex-1 flex flex-col items-center px-1 pt-0.5 pb-2 relative transition-colors ${
+              // Card layout only: min-w-0 here and on the slot wrapper, so
+              // a stat line made wider by the compass can never widen its
+              // card — the slots stay equal and the caret stays centred.
+              className={`flex-1 ${DIRECTIONS_LAYOUT === 'card' ? 'min-w-0' : ''} flex flex-col items-center px-1 pt-0.5 pb-2 relative transition-colors ${
                 cannotSelect
                   ? 'opacity-40 cursor-not-allowed'
                   : isPlaced && isSelected
@@ -509,7 +516,11 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                   the old two-line block needed. */}
               <div className="w-full h-[38px] flex flex-col items-center justify-center overflow-hidden leading-none">
                 <span
-                  className="hud-title text-arcane-300 text-center break-words line-clamp-1"
+                  // Card layout: slots are equal by construction (min-w-0), so
+                  // a name wider than its slot must be bounded to it for the
+                  // clamp to work — unbounded it was centred and cut on BOTH
+                  // sides ("eflecto").
+                  className={`hud-title text-arcane-300 text-center break-words line-clamp-1 ${DIRECTIONS_LAYOUT === 'card' ? 'max-w-full' : ''}`}
                   title={character.title ? `${character.name} — ${character.title}` : character.name}
                 >
                   {character.name}
@@ -612,7 +623,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
           // owed. It never reaches the sprite.
           const canAim = hasAim && !disabled && !cannotSelect;
           return (
-            <div key={charId} className="flex-1 relative flex">
+            <div key={charId} className="flex-1 min-w-0 relative flex">
               {card}
               {canAim && (
                 <button

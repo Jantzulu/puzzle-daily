@@ -3486,7 +3486,7 @@ body.menu-gate-instant .quest-box-anchor {
 
    .hero-aim is the FINGER BOX — a transparent sibling button laid over the
    card's bottom-right corner, from the card's centre line out to at most
-   56px, 44px tall. The stat line is centred with HP on the left, so the
+   72px, 44px tall. The stat line is centred with HP on the left, so the
    compass always falls inside that span; the sprite band above is never
    covered (the first cut put a plate on the art's corner — user call
    2026-09-30: it hid the hero). */
@@ -3532,15 +3532,18 @@ body.menu-gate-instant .quest-box-anchor {
   color: var(--hud-gold);
 }
 
-/* Geometry: on a roomy card the box runs from the centre line 56px to the
-   right (the compass is always within 42px of centre). On a narrow card
-   half the width is under 44px, so the box pins to the right edge and
-   grows leftward to 44px instead — never wider than the card itself. */
+/* Geometry: on a roomy card the box runs from the centre line 72px to the
+   right. The compass's right edge is centre + half the stat line's width,
+   which depends on the theme face: about 52px in Inter for the widest line
+   (two-digit HP, tiles count, arrow, chip with count), about 65px in the
+   pixel face — 72 covers both. On a narrow card half the width is under
+   44px, so the box pins to the right edge and grows leftward to 44px
+   instead — never wider than the card itself. */
 .hero-aim {
   position: absolute;
-  right: max(0px, calc(50% - 56px));
+  right: max(0px, calc(50% - 72px));
   bottom: 0;
-  width: min(max(50%, 44px), 56px, 100%);
+  width: min(max(50%, 44px), 72px, 100%);
   height: 44px;
   border-radius: 2px;
 }
