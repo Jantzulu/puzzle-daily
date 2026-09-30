@@ -33,9 +33,9 @@ const CARET_PATH = 'M6 0h4v2h2v2h2v2h2v2H0V6h2V4h2V2h2z';
  * design record below).
  *
  * Render as the first child of a `relative` wrapper around the strip, and
- * pass that wrapper's measured width. At rest the caret sits on WHOLE pixels
- * (centred on the slot between the same rounded boundaries the strip's
- * dividers use), so the stepped shape stays crisp; it glides by transform.
+ * pass that wrapper's measured width. At rest the caret sits on the 2px ART
+ * GRID (centred on its slot between the same boundaries the strip's posts
+ * use), so the stepped shape stays crisp; it glides by transform.
  */
 export const SlidingSelection: React.FC<SlidingSelectionProps> = ({ slotCount, selectedIndex, caretClass, width }) => {
   // The last slot that was actually SHOWN. Updated only while something is
@@ -53,7 +53,8 @@ export const SlidingSelection: React.FC<SlidingSelectionProps> = ({ slotCount, s
   // While fading out, hold the last shown slot so the exit happens in place.
   const anchor = Math.min(visible ? selectedIndex : lastShown, slotCount - 1);
   const b = slotBoundaries(width, slotCount);
-  const x = Math.round((b[anchor] + b[anchor + 1]) / 2) - CARET_W / 2;
+  // Left edge on the 2px art grid, as near the slot's centre as the grid allows.
+  const x = 2 * Math.round(((b[anchor] + b[anchor + 1]) / 2 - CARET_W / 2) / 2);
 
   // The transition is UNCONDITIONAL. The first version enabled the
   // transform transition only on the render that changed the selection —
@@ -75,7 +76,13 @@ export const SlidingSelection: React.FC<SlidingSelectionProps> = ({ slotCount, s
           crossfades between cards via their transition-colors. Only the
           CARET glides, because it has no bounds to expose. Do not
           reintroduce a moving highlight rectangle here. */}
+      {/* KEYED BY GEOMETRY: a resize, a rotation or a slot count change
+          (a summon adding an ally card mid-run) remounts the caret already
+          at its new x, so it moves WITH the cards. Kept, the px transform
+          would change and the 300ms glide would trail the cards across the
+          strip. Selection changes keep the key, so they still glide. */}
       <div
+        key={`${width}:${slotCount}`}
         aria-hidden
         className="absolute bottom-0 left-0 z-10 pointer-events-none transition-[transform,opacity] duration-300 ease-out"
         style={{ transform: `translateX(${x}px)`, opacity: visible ? 1 : 0 }}

@@ -1,4 +1,5 @@
 import { useCallback, useLayoutEffect, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 
 /**
  * The live content-box width of one element, in CSS px (0 until measured).
@@ -17,15 +18,19 @@ export function useElementWidth<T extends HTMLElement>(): [(el: T | null) => voi
 
   useLayoutEffect(() => {
     if (!el) return;
-    const read = () => {
+    const read = (sync: boolean) => {
       const w = el.clientWidth;
       if (w !== lastRef.current) {
         lastRef.current = w;
-        setWidth(w);
+        // From the observer, commit before this frame paints: a plain
+        // setState there lands a frame late, and the overlays would sit on
+        // the old boundaries for one frame of every resize.
+        if (sync) flushSync(() => setWidth(w));
+        else setWidth(w);
       }
     };
-    read();
-    const ro = new ResizeObserver(read);
+    read(false);
+    const ro = new ResizeObserver(() => read(true));
     ro.observe(el);
     return () => ro.disconnect();
   }, [el]);
@@ -34,13 +39,15 @@ export function useElementWidth<T extends HTMLElement>(): [(el: T | null) => voi
 }
 
 /**
- * Whole-pixel boundaries of `count` equal slots across `width`:
- * b[0] = 0, b[count] = width, b[i] = round(i * width / count). Shared by the
- * card strip's dividers and its selection caret so both land on the same
- * pixels (the slots themselves are fractional — 353 / 3 = 117.67).
+ * Boundaries of `count` equal slots across `width`, on the 2px ART GRID
+ * (Z=2) anchored at the strip's left edge: b[0] = 0, b[count] = width,
+ * b[i] = 2 * round(i * width / count / 2). Shared by the card strip's
+ * posts, its selection caret and the selection shape, so all of them land
+ * on the same whole art pixels (the slots themselves are fractional —
+ * 353 / 3 = 117.67).
  */
 export function slotBoundaries(width: number, count: number): number[] {
   const out: number[] = [];
-  for (let i = 0; i <= count; i++) out.push(i === count ? width : Math.round((i * width) / count));
+  for (let i = 0; i <= count; i++) out.push(i === count ? width : 2 * Math.round((i * width) / count / 2));
   return out;
 }

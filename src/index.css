@@ -3791,6 +3791,58 @@ body.menu-gate-instant .quest-box-anchor {
   padding: 6px 0;
 }
 
+/* ---- Posts between entity cards (StripDividers.tsx) ----
+   2 art px wide on the Z=2 grid: a lit left column and a shaded right one
+   (vertical stock is lit from the left in the user's gate bars), a lit cap
+   row on top and a heavier row at the foot (their iron is bottom-heavy by
+   one row). Dark on purpose — quieter than the selection tint — so the
+   colours are tokens: the lit face must still read against whatever ground
+   the strip sits on (the Game page's dark ground by default; the lighter
+   .dungeon-panel stone in Training Grounds gets a step up, where the
+   default face was the ground's own colour). Floats 8px clear of the
+   strip's top and of the seam. Opacity is the only thing that ever
+   changes. A placeholder: a painted post can take this rectangle. */
+.strip-post {
+  --post-lit: #2d261d;
+  --post-shade: #1a1511;
+  --post-cap: #3b3226;
+  --post-foot: #14100d;
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  width: 4px;
+  background: linear-gradient(90deg, var(--post-lit) 0 2px, var(--post-shade) 2px 4px);
+  transition: opacity 150ms ease-out;
+}
+
+.dungeon-panel .strip-post {
+  --post-lit: #3d3224;
+  --post-cap: #4a3d2c;
+}
+
+.strip-post::before,
+.strip-post::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+}
+
+.strip-post::before {
+  top: 0;
+  background: var(--post-cap);
+}
+
+.strip-post::after {
+  bottom: 0;
+  background: var(--post-foot);
+}
+
+.strip-post--yield {
+  opacity: 0;
+}
+
 /* ============================================
    .hit-44 — TAP-TARGET SLOP (WCAG 2.5.8 / iOS 44pt / Android 48dp)
    An invisible, absolutely-positioned ::after centred on the control, grown

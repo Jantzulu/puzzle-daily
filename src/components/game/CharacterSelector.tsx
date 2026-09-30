@@ -13,6 +13,7 @@ import { DirectionPicker, CompassArrow, BEARING_INITIALS, type DirectionPickerEn
 import type { ThemeAssets } from '../../utils/themeAssets';
 import { CARD_PIXEL_SCALE, computeCardSpriteAreaHeight } from './cardConstants';
 import { SlidingSelection } from './SlidingSelection';
+import { StripDividers } from './StripDividers';
 import { useElementWidth } from '../../hooks/useElementWidth';
 import { subscribeToImageLoads } from '../../utils/imageLoader';
 
@@ -275,8 +276,8 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
   // must index within the same filtered list.
   const stripCharacterIds = availableCharacterIds.filter((id) => !!getCharacter(id));
   const selectedStripIndex = selectedCharacterId ? stripCharacterIds.indexOf(selectedCharacterId) : -1;
-  // The strip's measured width: the caret places itself on whole-pixel
-  // slot boundaries.
+  // The strip's measured width: the caret and the posts both place
+  // themselves on the same art-grid slot boundaries.
   const [stripRef, stripWidth] = useElementWidth<HTMLDivElement>();
 
   const content = (
@@ -372,10 +373,10 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
         </div>
       </div>
 
-      {/* Hero strip — equal-width slots separated by vertical dividers.
-          The caret (SlidingSelection) is an overlay in this relative
-          wrapper, placed from its measured width, and glides between slots
-          instead of snapping card-to-card. */}
+      {/* Hero strip — equal-width slots. The caret (SlidingSelection) and
+          the posts between cards (StripDividers, under the cards) are overlays
+          in this relative wrapper, both placed from its measured width; the caret
+          glides between slots instead of snapping card-to-card. */}
       <div ref={stripRef} className="relative">
       <SlidingSelection
         slotCount={stripCharacterIds.length}
@@ -383,7 +384,8 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
         caretClass="text-copper-400"
         width={stripWidth}
       />
-      <div className="flex divide-x divide-stone-700">
+      <StripDividers slotCount={stripCharacterIds.length} selectedIndex={selectedStripIndex} width={stripWidth} />
+      <div className="flex">
         {stripCharacterIds.map((charId) => {
           const character = getCharacter(charId);
           if (!character) return null;
@@ -425,8 +427,8 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
           // Card layout ported from the experiment at the user's request
           // (2026-07-31): fixed-height bands (sprite / 38px name+epithet /
           // 14px stat line), the Set corner plate, art-only dim for placed
-          // cards — with the classic skin kept (copper tint, divide-x strip,
-          // purple hero identity).
+          // cards — with the classic skin kept (copper tint, purple hero
+          // identity).
           const card = (
             // A real <button>: keyboard-reachable card, correct aria-pressed
             // selection state, the global *:focus-visible ring for free.

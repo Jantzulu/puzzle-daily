@@ -12,6 +12,7 @@ import { MovementArrow } from './DirectionArrow';
 import type { ThemeAssets } from '../../utils/themeAssets';
 import { CARD_PIXEL_SCALE, computeCardSpriteAreaHeight } from './cardConstants';
 import { SlidingSelection } from './SlidingSelection';
+import { StripDividers } from './StripDividers';
 import { useElementWidth } from '../../hooks/useElementWidth';
 import { subscribeToImageLoads } from '../../utils/imageLoader';
 
@@ -117,8 +118,8 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
   // selection overlay's slot math must index within this same list.
   const stripEnemyIds = uniqueEnemyIds.filter((id) => !!getEnemy(id));
   const selectedStripIndex = selectedEnemyId ? stripEnemyIds.indexOf(selectedEnemyId) : -1;
-  // The strip's measured width: the caret places itself on whole-pixel
-  // slot boundaries.
+  // The strip's measured width: the caret and the posts both place
+  // themselves on the same art-grid slot boundaries.
   const [stripRef, stripWidth] = useElementWidth<HTMLDivElement>();
 
   // Uniform card sprite-area height across the enemy row — derived from the
@@ -269,11 +270,11 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
         </span>
       </div>
 
-      {/* Enemy strip — equal-width slots separated by vertical dividers.
-          The caret (SlidingSelection) is an overlay in this relative
-          wrapper, placed from its measured width, and glides between slots.
-          Slot math must index the same filtered list the cards render
-          from. */}
+      {/* Enemy strip — equal-width slots. The caret (SlidingSelection) and
+          the posts between cards (StripDividers, under the cards) are overlays
+          in this relative wrapper, both placed from its measured width; the caret
+          glides between slots. Slot math must index the same filtered list
+          the cards render from. */}
       <div ref={stripRef} className="relative">
       <SlidingSelection
         slotCount={stripEnemyIds.length}
@@ -281,7 +282,8 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
         caretClass={isAllySide ? 'text-copper-400' : 'text-blood-400'}
         width={stripWidth}
       />
-      <div className="flex divide-x divide-stone-700">
+      <StripDividers slotCount={stripEnemyIds.length} selectedIndex={selectedStripIndex} width={stripWidth} />
+      <div className="flex">
         {stripEnemyIds.map((enemyId) => {
           const enemyData = getEnemy(enemyId);
           if (!enemyData) return null;
