@@ -35,16 +35,24 @@ export function allowedSpellDirections(spell: SpellAsset): Direction[] {
  * redirectAcceptsUserInput (the input aims the target's NEW facing) and any
  * other spell with directionAcceptsUserInput (the input aims the cast
  * direction). Both store their choice in spellDirectionOverrides.
+ *
+ * ONE ENTRY PER SPELL, in first-cast order. The choice is stored per spell
+ * id, so a hero whose loop casts the same aimed spell twice (move, cast,
+ * move, cast) owes ONE choice — without the dedupe it showed the same
+ * compass twice under one React key, named the input twice in the placement
+ * gate's message, and made the solver permute the same key 8 x 8 times.
  */
 export function getDirectionInputSpells(character: Character | null | undefined): SpellAsset[] {
   if (!character) return [];
+  const seen = new Set<string>();
   return character.behavior
     .filter(a => a.type === 'spell' && a.spellId)
     .map(a => loadSpellAsset(a.spellId!))
     .filter((s): s is SpellAsset => !!s && (
       (s.templateType === 'redirect' && !!s.redirectAcceptsUserInput) ||
       (s.templateType !== 'redirect' && !!s.directionAcceptsUserInput)
-    ));
+    ))
+    .filter(s => (seen.has(s.id) ? false : (seen.add(s.id), true)));
 }
 
 /**

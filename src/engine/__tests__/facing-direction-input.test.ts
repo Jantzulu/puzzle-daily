@@ -27,7 +27,7 @@ import { Direction, ActionType, SpellTemplate } from '../../types/game';
 import type { GameState } from '../../types/game';
 import { executeTurn } from '../simulation';
 import { solvePuzzle } from '../puzzleSolver';
-import { getMissingDirectionInputs } from '../../utils/directionInput';
+import { getMissingDirectionInputs, getDirectionInputSpells } from '../../utils/directionInput';
 
 const normalize = (gs: GameState) => ({
   enemies: gs.puzzle.enemies.map(e => ({
@@ -199,5 +199,27 @@ describe('allowedInputDirections — creator-restricted spell compass', () => {
     // Stale choices outside the (narrowed) subsets → still gated
     expect(getMissingDirectionInputs(watchman, Direction.EAST, { 'aim-bolt': Direction.WEST }))
       .toEqual(['Facing Direction', 'Aim Bolt Direction']);
+  });
+
+  it('a hero that casts the same aimed spell twice owes ONE choice', () => {
+    registerAimedBolt();
+    // move-cast-move-cast loops are the natural way to author a hero; the
+    // choice is stored per spell id, so the second cast is not a second input.
+    const twice = createTestCharacterDef({
+      id: 'aimer', health: 10,
+      defaultFacing: Direction.EAST,
+      behavior: [
+        { type: ActionType.SPELL, spellId: 'aim-bolt' },
+        { type: ActionType.SPELL, spellId: 'aim-bolt' },
+        { type: ActionType.REPEAT },
+      ] as never,
+    });
+    regChar(twice);
+    expect(getDirectionInputSpells(twice).map(s => s.id)).toEqual(['aim-bolt']);
+    expect(getMissingDirectionInputs(twice, undefined, undefined)).toEqual(['Aim Bolt Direction']);
+    // The solver still finds the one aim that works.
+    const result = solvePuzzle(aimCorridor(), { maxSimulationTurns: 10, maxCombinations: 10000 });
+    expect(result.solvable).toBe(true);
+    expect(result.solutionFound?.placements[0].spellDirectionOverrides?.['aim-bolt']).toBe(Direction.NORTH);
   });
 });
