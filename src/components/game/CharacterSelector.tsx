@@ -14,6 +14,8 @@ import type { ThemeAssets } from '../../utils/themeAssets';
 import { CARD_PIXEL_SCALE, computeCardSpriteAreaHeight } from './cardConstants';
 import { SlidingSelection } from './SlidingSelection';
 import { StripDividers } from './StripDividers';
+import { SelectionStrip, SelectionDrawer } from './SelectionShape';
+import { SELECTION_SHAPED, DRAWER_SLIDE_EASE, shapedSlotStyle } from './selectionFinish';
 import { useElementWidth } from '../../hooks/useElementWidth';
 import { subscribeToImageLoads } from '../../utils/imageLoader';
 
@@ -279,6 +281,22 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
   // The strip's measured width: the caret and the posts both place
   // themselves on the same art-grid slot boundaries.
   const [stripRef, stripWidth] = useElementWidth<HTMLDivElement>();
+  // The selection shape (?selection=): the drawer half follows the RENDERED
+  // hero (it outlives the selection through the close animation), and a
+  // selected hero with nothing to show opens no drawer, so its card closes.
+  const renderedStripIndex = renderedCharId ? stripCharacterIds.indexOf(renderedCharId) : -1;
+  const selectedCharacter = selectedCharacterId ? getCharacter(selectedCharacterId) : null;
+  const selectedHasDrawer = !!selectedCharacter && (
+    (selectedCharacter.actionSteps?.length ?? 0) > 0
+    || (selectedCharacter.attributes?.length ?? 0) > 0
+    || buildDirectionEntries(selectedCharacter, false).length > 0
+  );
+  // The drawer's own mount condition (below). On a deselect it stays true
+  // through the 300ms close, so the fading card half stays open over it.
+  const drawerShown = !!renderedCharacter && (hasActionSteps || hasAttributes || hasDirectionInputs);
+  // Shaped only while the drawer's hero still has a slot (the roster can
+  // change under an open drawer); otherwise it keeps the flat wash.
+  const drawerShaped = SELECTION_SHAPED && renderedStripIndex >= 0;
 
   const content = (
     <>
@@ -378,15 +396,18 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
           in this relative wrapper, both placed from its measured width; the caret
           glides between slots instead of snapping card-to-card. */}
       <div ref={stripRef} className="relative">
+      <SelectionStrip ids={stripCharacterIds} selectedIndex={selectedStripIndex} width={stripWidth} tone="copper" hasDrawer={selectedHasDrawer || drawerShown} />
+      {/* The caret points at the drawer: a hero with nothing to show opens
+          none, so it gets no caret (it used to poke into the hint row). */}
       <SlidingSelection
         slotCount={stripCharacterIds.length}
-        selectedIndex={selectedStripIndex}
+        selectedIndex={selectedHasDrawer ? selectedStripIndex : -1}
         caretClass="text-copper-400"
         width={stripWidth}
       />
       <StripDividers slotCount={stripCharacterIds.length} selectedIndex={selectedStripIndex} width={stripWidth} />
       <div className="flex">
-        {stripCharacterIds.map((charId) => {
+        {stripCharacterIds.map((charId, slot) => {
           const character = getCharacter(charId);
           if (!character) return null;
 
@@ -455,8 +476,9 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                   // bg-copper-900/15 so card + info read as ONE surface;
                   // transition-colors crossfades it between cards (the
                   // tint deliberately does not slide — see the design
-                  // record in SlidingSelection).
-                  ? 'cursor-pointer bg-copper-900/15'
+                  // record in SlidingSelection). Shaped (?selection=), the
+                  // wash is the selection shape's own.
+                  ? `cursor-pointer ${SELECTION_SHAPED ? '' : 'bg-copper-900/15'}`
                   : isPlaced
                   // Placed but NOT viewed: dim only the ART (sprite wrapper
                   // below) — "already placed" is a fact about the unit, not
@@ -464,7 +486,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                   // Set corner plate says it in words.
                   ? 'cursor-pointer [@media(hover:hover)]:hover:bg-stone-700/30'
                   : isSelected
-                  ? 'bg-copper-900/15 cursor-pointer'
+                  ? `${SELECTION_SHAPED ? '' : 'bg-copper-900/15'} cursor-pointer`
                   : '[@media(hover:hover)]:hover:bg-stone-700/30 cursor-pointer'
               }`}
             >
@@ -609,7 +631,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
           // tapping a tile with choices owed opens the same picker.
           const canAim = hasAim && isSelected && !disabled && !cannotSelect;
           return (
-            <div key={charId} className="flex-1 min-w-0 relative flex">
+            <div key={charId} className="flex-1 min-w-0 relative flex" style={shapedSlotStyle(stripWidth, stripCharacterIds.length, slot)}>
               {card}
               {canAim && (
                 <button
@@ -651,15 +673,20 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
         <div
           // Box padding comes from .hero-drawer (6px top and bottom) — it is
           // unlayered CSS and outranks any padding utility placed here.
-          className="hero-drawer bg-copper-900/15 rounded-b-pixel-md"
+          // relative: the selection shape's drawer half anchors here (and
+          // paints under the text: the drawer's transform makes it a
+          // stacking context). Shaped, the wash and the corners are the
+          // shape's own.
+          className={`hero-drawer relative ${drawerShaped ? '' : 'bg-copper-900/15 rounded-b-pixel-md'}`}
           style={{
             opacity: isOpen ? 1 : 0,
             transform: isOpen ? 'translateY(0)' : 'translateY(-8px)',
             transition: isOpen
-              ? 'opacity 0.45s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.55s cubic-bezier(0.34, 1.56, 0.64, 1)'
+              ? `opacity 0.45s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.55s ${DRAWER_SLIDE_EASE}`
               : 'opacity 0.2s ease-in, transform 0.3s ease-in',
           }}
         >
+          <SelectionDrawer ids={stripCharacterIds} index={renderedStripIndex} width={stripWidth} tone="copper" />
           {/* DIRECTIONS NOTE — one read-only line. While a choice is owed
               it tells the player where to make it (the inline glyph IS the
               compass on the card above); either way it lists every choice

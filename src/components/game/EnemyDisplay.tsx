@@ -13,6 +13,8 @@ import type { ThemeAssets } from '../../utils/themeAssets';
 import { CARD_PIXEL_SCALE, computeCardSpriteAreaHeight } from './cardConstants';
 import { SlidingSelection } from './SlidingSelection';
 import { StripDividers } from './StripDividers';
+import { SelectionStrip, SelectionDrawer } from './SelectionShape';
+import { SELECTION_SHAPED, DRAWER_SLIDE_EASE, shapedSlotStyle } from './selectionFinish';
 import { useElementWidth } from '../../hooks/useElementWidth';
 import { subscribeToImageLoads } from '../../utils/imageLoader';
 
@@ -121,6 +123,12 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
   // The strip's measured width: the caret and the posts both place
   // themselves on the same art-grid slot boundaries.
   const [stripRef, stripWidth] = useElementWidth<HTMLDivElement>();
+  // The selection shape (?selection=): the drawer half follows the RENDERED
+  // entity, and stays shaped only while that entity still has a slot (a
+  // type can leave the strip mid-run under an open drawer — it then keeps
+  // the flat wash rather than losing its background).
+  const renderedStripIndex = renderedEnemyId ? stripEnemyIds.indexOf(renderedEnemyId) : -1;
+  const drawerShaped = SELECTION_SHAPED && renderedStripIndex >= 0;
 
   // Uniform card sprite-area height across the enemy row — derived from the
   // tallest native sprite × CARD_PIXEL_SCALE. Prevents clipping of the
@@ -276,6 +284,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
           glides between slots. Slot math must index the same filtered list
           the cards render from. */}
       <div ref={stripRef} className="relative">
+      <SelectionStrip ids={stripEnemyIds} selectedIndex={selectedStripIndex} width={stripWidth} tone={isAllySide ? 'copper' : 'blood'} hasDrawer />
       <SlidingSelection
         slotCount={stripEnemyIds.length}
         selectedIndex={selectedStripIndex}
@@ -284,7 +293,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
       />
       <StripDividers slotCount={stripEnemyIds.length} selectedIndex={selectedStripIndex} width={stripWidth} />
       <div className="flex">
-        {stripEnemyIds.map((enemyId) => {
+        {stripEnemyIds.map((enemyId, slot) => {
           const enemyData = getEnemy(enemyId);
           if (!enemyData) return null;
 
@@ -314,6 +323,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
               type="button"
               aria-pressed={isSelected}
               onClick={() => setSelectedEnemyId(isSelected ? null : enemyId)}
+              style={shapedSlotStyle(stripWidth, stripEnemyIds.length, slot)}
               // min-w-0: a card can never be widened by its own content (a
               // long name, a visit line), so the slots stay equal and the
               // caret and posts stay on their boundaries.
@@ -322,7 +332,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
                   // Flat tint matching the info panel's wash — one surface;
                   // transition-colors crossfades it between cards (the tint
                   // deliberately does not slide — see SlidingSelection).
-                  ? (isAllySide ? 'bg-copper-900/15' : 'bg-blood-900/15')
+                  ? (SELECTION_SHAPED ? '' : isAllySide ? 'bg-copper-900/15' : 'bg-blood-900/15')
                   : '[@media(hover:hover)]:hover:bg-stone-700/30'
               } ${allDead ? 'opacity-50' : scheduledOnly ? 'opacity-60' : ''}`}
             >
@@ -423,15 +433,22 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
             // ally drawer used to open blood-red under a copper card.
             // Same box as the hero drawer (.hero-drawer: 6px top and bottom);
             // this one had drifted to 10px/12px.
-            className={`hero-drawer ${isAllySide ? 'bg-copper-900/15' : 'bg-blood-900/15'} rounded-b-pixel-md`}
+            // relative + shaped: see the hero drawer (CharacterSelector).
+            className={`hero-drawer relative ${drawerShaped ? '' : `${isAllySide ? 'bg-copper-900/15' : 'bg-blood-900/15'} rounded-b-pixel-md`}`}
             style={{
               opacity: isOpen ? 1 : 0,
               transform: isOpen ? 'translateY(0)' : 'translateY(-8px)',
               transition: isOpen
-                ? 'opacity 0.45s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.55s cubic-bezier(0.34, 1.56, 0.64, 1)'
+                ? `opacity 0.45s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.55s ${DRAWER_SLIDE_EASE}`
                 : 'opacity 0.2s ease-in, transform 0.3s ease-in',
             }}
           >
+            <SelectionDrawer
+              ids={stripEnemyIds}
+              index={renderedStripIndex}
+              width={stripWidth}
+              tone={isAllySide ? 'copper' : 'blood'}
+            />
             {(hasActionSteps || hasAttributes) && (
               <div className={`flex mb-2 px-2 ${hasActionSteps && hasAttributes ? 'gap-0' : 'justify-center'}`}>
                 {hasActionSteps && (

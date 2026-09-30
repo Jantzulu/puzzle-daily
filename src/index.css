@@ -3795,12 +3795,10 @@ body.menu-gate-instant .quest-box-anchor {
    2 art px wide on the Z=2 grid: a lit left column and a shaded right one
    (vertical stock is lit from the left in the user's gate bars), a lit cap
    row on top and a heavier row at the foot (their iron is bottom-heavy by
-   one row). Dark on purpose — quieter than the selection tint — so the
-   colours are tokens: the lit face must still read against whatever ground
-   the strip sits on (the Game page's dark ground by default; the lighter
-   .dungeon-panel stone in Training Grounds gets a step up, where the
-   default face was the ground's own colour). Floats 8px clear of the
-   strip's top and of the seam. Opacity is the only thing that ever
+   one row). Dark on purpose — quieter than the selection tint — and tuned
+   for the Play page's ground (Training Grounds is styled separately, by
+   user call). Colours are tokens for a surface that needs its own. Floats
+   8px clear of the strip's top and of the seam. Opacity is the only thing that ever
    changes. A placeholder: a painted post can take this rectangle. */
 .strip-post {
   --post-lit: #2d261d;
@@ -3813,11 +3811,6 @@ body.menu-gate-instant .quest-box-anchor {
   width: 4px;
   background: linear-gradient(90deg, var(--post-lit) 0 2px, var(--post-shade) 2px 4px);
   transition: opacity 150ms ease-out;
-}
-
-.dungeon-panel .strip-post {
-  --post-lit: #3d3224;
-  --post-cap: #4a3d2c;
 }
 
 .strip-post::before,
