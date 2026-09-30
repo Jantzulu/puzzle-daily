@@ -59,6 +59,22 @@ export const CompassArrow: React.FC<{ direction: string; size?: number; classNam
 };
 
 /**
+ * THE CARD'S COMPASS GLYPH: a ring around a four-point rose, "this hero has
+ * directions to aim" without pointing the way an arrow would (an arrow in the
+ * card's stat line reads as the hero's facing). NOT a ring with a diagonal
+ * needle — at 12px that read as a "prohibited" sign. It appears in three
+ * places that must look like one control: the chip on the hero card, the
+ * hero drawer's note ("Tap [glyph] above to …"), and this picker's
+ * change-it-later line. A stand-in: this is a natural slot for painted art.
+ */
+export const CompassGlyph: React.FC<{ size?: number; className?: string }> = ({ size = 12, className = '' }) => (
+  <svg width={size} height={size} viewBox="0 0 12 12" aria-hidden="true" className={className}>
+    <circle cx="6" cy="6" r="5.3" fill="none" stroke="currentColor" strokeWidth="1" />
+    <path d="M6 1.7L7.1 4.9L10.3 6L7.1 7.1L6 10.3L4.9 7.1L1.7 6L4.9 4.9Z" fill="currentColor" />
+  </svg>
+);
+
+/**
  * The rose, in reading order, with the hub punched out of the middle. Keeping
  * the SPATIAL arrangement is the whole reason this is a rose and not a row of
  * eight chips: "north-west" is up-and-left on the board and up-and-left here.
@@ -478,14 +494,24 @@ export const DirectionPicker: React.FC<DirectionPickerProps> = ({ entry, sprite,
             brass once nothing is owed, recessed and inert until then (its
             label counts what is still to pick). As wide as the rose. */}
         {shownConfirm && (
-          <button
-            type="button"
-            disabled={!open || !shownConfirm.enabled}
-            onClick={() => { if (confirm?.enabled) confirm.onConfirm(); }}
-            className={`dir-confirm hero-order ${shownConfirm.enabled ? 'hero-order--open' : 'hero-order--done'} hud-label rounded-pixel border`}
-          >
-            {shownConfirm.label}
-          </button>
+          <>
+            <button
+              type="button"
+              disabled={!open || !shownConfirm.enabled}
+              onClick={() => { if (confirm?.enabled) confirm.onConfirm(); }}
+              className={`dir-confirm hero-order ${shownConfirm.enabled ? 'hero-order--open' : 'hero-order--done'} hud-label rounded-pixel border`}
+            >
+              {shownConfirm.label}
+            </button>
+            {/* A player who met this sheet by tapping the board never saw
+                the compass on the card, and re-placing the hero will not
+                bring the sheet back (the choices are kept). So the sheet
+                says where they live from now on — with the card chip's own
+                glyph, in its "all chosen" colour (user report 2026-09-30). */}
+            <p className="dir-later hud-label">
+              Change later with <CompassGlyph size={11} className="dir-later__glyph" /> on the hero&apos;s card
+            </p>
+          </>
         )}
       </div>
     </div>,

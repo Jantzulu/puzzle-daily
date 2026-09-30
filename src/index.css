@@ -3575,6 +3575,26 @@ body.menu-gate-instant .quest-box-anchor {
   cursor: default;
 }
 
+/* Under the Place button: where the choices live once the sheet is gone.
+   Quiet stone text; the glyph wears the card chip's "all chosen" colour
+   (.hero-aim-chip--done) so the player can match it to the card. */
+.dir-later {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 8px auto 0;
+  max-width: 260px;
+  text-align: center;
+  color: #9a8a6e; /* stone-400 */
+}
+
+.dir-later__glyph {
+  color: #a98ad6;
+  flex-shrink: 0;
+}
+
 /* Keyboard focus on a tab is parchment and sits further out: the active mark
    above is the same gold and width as the global focus ring, so without this
    a focused tab and the active tab were indistinguishable. */

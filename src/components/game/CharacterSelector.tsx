@@ -9,7 +9,7 @@ import { attributeText, attributeSubItems } from '../../utils/attributeShape';
 import { HelpButton } from './HelpOverlay';
 import { TapHintChip } from './TapHintChip';
 import { MovementArrow } from './DirectionArrow';
-import { DirectionPicker, CompassArrow, BEARING_INITIALS, type DirectionPickerEntry } from './DirectionPicker';
+import { DirectionPicker, CompassArrow, CompassGlyph, BEARING_INITIALS, type DirectionPickerEntry } from './DirectionPicker';
 import type { ThemeAssets } from '../../utils/themeAssets';
 import { CARD_PIXEL_SCALE, computeCardSpriteAreaHeight } from './cardConstants';
 import { StripDividers } from './StripDividers';
@@ -42,18 +42,6 @@ function hasDrawerContent(character: Character | null | undefined): boolean {
   );
 }
 
-// Compass for the card's aim control: a ring around a four-point rose, "this
-// hero has directions to aim" without pointing the way an arrow would (an
-// arrow in the stat line reads as the hero's facing). NOT a ring with a
-// diagonal needle — at 12px that read as a "prohibited" sign. The same glyph
-// is repeated inline in the drawer note that tells the player where to tap.
-// A stand-in: this is a natural slot for painted art.
-const CompassGlyph: React.FC<{ size?: number; className?: string }> = ({ size = 12, className = '' }) => (
-  <svg width={size} height={size} viewBox="0 0 12 12" aria-hidden="true" className={className}>
-    <circle cx="6" cy="6" r="5.3" fill="none" stroke="currentColor" strokeWidth="1" />
-    <path d="M6 1.7L7.1 4.9L10.3 6L7.1 7.1L6 10.3L4.9 7.1L1.7 6L4.9 4.9Z" fill="currentColor" />
-  </svg>
-);
 
 // The bearing ARROW lives with the picker that owns the rose
 // (DirectionPicker.tsx) — the drawer note's "you chose north-east" readout
@@ -245,6 +233,9 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
 
   // The rendered hero's entries (the drawer's note line).
   const directionInputEntries = buildDirectionEntries(renderedCharacter, !!selectedCharacterId);
+  // Whether the note can point at the compass: the chip's tap target exists
+  // only on a selected card in an enabled panel, with a way to store a pick.
+  const canChangeDirections = !disabled && directionInputEntries.some(e => !!e.onPick);
   const hasDirectionInputs = directionInputEntries.length > 0;
 
   // Which choice the player is currently aiming, if any. Held as KEYS, not as
@@ -711,6 +702,15 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
               {directionInputEntries.some(owesChoice) ? (
                 <span className="inline-flex items-center gap-1" style={{ color: 'var(--hud-gold)' }}>
                   Tap <CompassGlyph size={11} /> above to pick directions:
+                </span>
+              ) : canChangeDirections ? (
+                // All chosen, still changeable: keep naming the compass (it
+                // said only "Directions:" — a player who chose through the
+                // placement ask had never been told where the choices live;
+                // user report 2026-09-30). Quiet stone, with the glyph in the
+                // card chip's "all chosen" arcane.
+                <span className="inline-flex items-center gap-1 text-stone-400">
+                  Tap <CompassGlyph size={11} className="text-arcane-400" /> above to change directions:
                 </span>
               ) : (
                 <span className="text-stone-400">Directions:</span>
