@@ -59,6 +59,16 @@ interface CharacterSelectorProps {
   pendingSpellDirectionOverrides?: Record<string, Record<string, Direction>>;
   onFacingOverride?: (characterId: string, direction: Direction) => void;
   pendingFacingOverrides?: Record<string, Direction>;
+  /**
+   * ?directions=card — the parent's "ask, don't refuse": set when the player
+   * tapped a tile with a hero that still owes direction choices. Each ask is
+   * a NEW object (its identity is the ask); the panel opens the picker for
+   * that hero with a Place button, which calls onPlacementAimConfirm once
+   * nothing is owed. Dismissing the sheet calls onPlacementAimCancel.
+   */
+  placementAim?: { charId: string } | null;
+  onPlacementAimConfirm?: () => void;
+  onPlacementAimCancel?: () => void;
 }
 
 export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
@@ -77,6 +87,9 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
   pendingSpellDirectionOverrides = {},
   onFacingOverride,
   pendingFacingOverrides = {},
+  placementAim = null,
+  onPlacementAimConfirm,
+  onPlacementAimCancel,
 }) => {
   const effectiveMaxPlaceable = maxPlaceable ?? availableCharacterIds.length;
   const isAtMaxPlaced = placedCharacterIds.length >= effectiveMaxPlaceable;
@@ -183,9 +196,11 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
   // The rendered hero's entries (the Directions column).
   const directionInputEntries = buildDirectionEntries(renderedCharacter, !!selectedCharacterId);
   const hasDirectionInputs = directionInputEntries.length > 0;
-  // ?directions=card moves the inputs out of the drawer onto the card's aim
-  // plate; ?directions=rail keeps the column's look but (phones only) parks
-  // it at the right edge beside a single text stack. See directionsLayout.ts.
+  // ?directions=card moves the inputs out of the drawer: a compass in the
+  // card's stat line opens the picker, and a tile tap with choices still
+  // owed opens it too (placementAim). ?directions=rail keeps the column's
+  // look but (phones only) parks it at the right edge beside a single text
+  // stack. See directionsLayout.ts.
   const showDirections = hasDirectionInputs && DIRECTIONS_LAYOUT !== 'card';
   const railMode = DIRECTIONS_LAYOUT === 'rail' && showDirections && (hasActionSteps || hasAttributes);
   const railTwoText = railMode && hasActionSteps && hasAttributes;
@@ -193,15 +208,44 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
   // Which order the player is currently aiming, if any. Held as KEYS, not as
   // the entry object: the entries are rebuilt on every render, so an object
   // here would re-latch the picker's open animation on every update.
-  const [picker, setPicker] = useState<{ charId: string; key: string } | null>(null);
+  // `placing` marks a picker opened by a tile tap (the placement ask): it
+  // carries the Place button, and closing it any other way cancels the ask.
+  const [picker, setPicker] = useState<{ charId: string; key: string; placing?: boolean } | null>(null);
+
+  // An entry still owes a choice when nothing is stored OR the stored choice
+  // is outside the creator's allowed subset — the placement gate's own rule
+  // (getMissingDirectionInputs).
+  const owesChoice = (e: DirectionPickerEntry) => !(e.current && e.allowed.includes(e.current));
 
   // Changing hero (or closing the panel) closes the picker. The sheet
   // belongs to ONE hero, and a stale sheet would write the new hero's facing
-  // from the old hero's rose. (Card layout: the aim plate SELECTS its hero
-  // and opens the sheet in one tap, so the hero changing is not a reason to
-  // close there — the panel going disabled is.)
+  // from the old hero's rose. (Card layout: the sheet is modal and always
+  // opened for the hero already selected, so the rendered hero catching up
+  // with the selection is not a reason to close there — the panel going
+  // disabled is.)
   useEffect(() => { if (DIRECTIONS_LAYOUT !== 'card') setPicker(null); }, [renderedCharId]);
-  useEffect(() => { if (disabled) setPicker(null); }, [disabled]);
+  useEffect(() => {
+    if (!disabled) return;
+    setPicker(null);
+    if (placementAim) onPlacementAimCancel?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reacts to the panel going disabled only
+  }, [disabled]);
+
+  // THE PLACEMENT ASK. A new placementAim object = the player tapped a tile
+  // with this hero still owing choices: open the picker on the first one
+  // owed. The parent clearing it (confirmed, or cancelled) closes a picker
+  // that was opened this way — and only that kind.
+  useEffect(() => {
+    if (!placementAim) {
+      setPicker(p => (p?.placing ? null : p));
+      return;
+    }
+    const entries = buildDirectionEntries(getCharacter(placementAim.charId), true);
+    const first = entries.find(owesChoice) ?? entries[0];
+    if (first) setPicker({ charId: placementAim.charId, key: first.key, placing: true });
+    else onPlacementAimCancel?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fires once per ask (the object's identity)
+  }, [placementAim]);
 
   const pickerCharacter = picker ? getCharacter(picker.charId) : null;
   const pickerEntries = DIRECTIONS_LAYOUT === 'card'
@@ -210,11 +254,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
   const activePickerEntry = picker
     ? pickerEntries.find(e => e.key === picker.key) ?? null
     : null;
-
-  // An entry still owes a choice when nothing is stored OR the stored choice
-  // is outside the creator's allowed subset — the placement gate's own rule
-  // (getMissingDirectionInputs).
-  const owesChoice = (e: DirectionPickerEntry) => !(e.current && e.allowed.includes(e.current));
+  const pickerOwedCount = pickerEntries.filter(owesChoice).length;
 
   // The order pill: caption lives above it in the column, so the pill only
   // carries the value. Loud when unset (the one thing blocking placement),
@@ -618,10 +658,16 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
           // slot wrapper, never a child (a card is a <button>, and a button
           // cannot hold another button), transparent, 44px tall, laid over
           // the card's bottom-right corner where the compass sits, and later
-          // in the DOM so it wins the tap over the card beneath it. One tap
-          // selects the hero and opens the picker on the first choice still
-          // owed. It never reaches the sprite.
-          const canAim = hasAim && !disabled && !cannotSelect;
+          // in the DOM so it wins the tap over the card beneath it. It opens
+          // the picker on the first choice still owed, and never reaches the
+          // sprite.
+          //
+          // ONLY ON THE SELECTED CARD (user call 2026-09-30): on any other
+          // card that corner is just the card, so "I meant to tap the hero
+          // and hit their compass" cannot happen — the first tap always
+          // selects. A player who never finds the compass is still asked:
+          // tapping a tile with choices owed opens the same picker.
+          const canAim = hasAim && isSelected && !disabled && !cannotSelect;
           return (
             <div key={charId} className="flex-1 min-w-0 relative flex">
               {card}
@@ -634,10 +680,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                   aria-label={aimLoud
                     ? `Pick directions for ${character.name}, ${owed.length} of ${cardEntries.length} remaining`
                     : `Change directions for ${character.name}`}
-                  onClick={() => {
-                    if (!isSelected) onSelectCharacter(charId);
-                    setPicker({ charId, key: (owed[0] ?? cardEntries[0]).key });
-                  }}
+                  onClick={() => setPicker({ charId, key: (owed[0] ?? cardEntries[0]).key })}
                 />
               )}
             </div>
@@ -830,7 +873,18 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
         onSwitch={(key) => setPicker(p => (p ? { ...p, key } : p))}
         title={pickerCharacter?.name}
         sprite={(pickerCharacter ?? renderedCharacter)?.customSprite}
-        onClose={() => setPicker(null)}
+        // Placement ask: the sheet carries the Place button and waits for it
+        // (no auto-dismiss on the last pick); dismissing cancels the ask.
+        confirm={picker?.placing ? {
+          enabled: pickerOwedCount === 0,
+          label: pickerOwedCount === 0 ? 'Place hero' : `${pickerOwedCount} to pick`,
+          onConfirm: () => onPlacementAimConfirm?.(),
+        } : undefined}
+        onClose={() => {
+          const wasPlacing = picker?.placing;
+          setPicker(null);
+          if (wasPlacing) onPlacementAimCancel?.();
+        }}
       />
 
       {/* Hint row — UNMOUNTS when the hint hides (user call, 2026-08-01

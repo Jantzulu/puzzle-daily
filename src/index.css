@@ -3554,6 +3554,22 @@ body.menu-gate-instant .quest-box-anchor {
   outline-offset: 1px;
 }
 
+/* The placement ask's Place button, under the rose and as wide as it. */
+.dir-confirm {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 184px;
+  max-width: 100%;
+  height: 44px;
+  margin: 12px auto 0;
+}
+
+.dir-confirm:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
 /* Keyboard focus on a tab is parchment and sits further out: the active mark
    above is the same gold and width as the global focus ring, so without this
    a focused tab and the active tab were indistinguishable. */

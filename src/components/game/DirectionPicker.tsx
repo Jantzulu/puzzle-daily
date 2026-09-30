@@ -119,6 +119,15 @@ interface DirectionPickerProps {
   onSwitch?: (key: string) => void;
   /** Hero name for the cap row when the tabs already carry the captions. */
   title?: string;
+  /**
+   * PLACEMENT ASK (?directions=card): the sheet was opened by a tile tap and
+   * the hero lands on that tile when the player confirms. Present = a Place
+   * button under the rose (enabled once nothing is owed), and NO auto-dismiss
+   * on the last pick — one ending for facing and spell entries alike, and a
+   * stray double tap can never place a hero with an aim the player did not
+   * see. Dismissing the sheet any other way cancels the placement.
+   */
+  confirm?: { label: string; enabled: boolean; onConfirm: () => void };
 }
 
 // Matches the .dir-picker__sheet transition in index.css.
@@ -160,7 +169,7 @@ const owes = (e: DirectionPickerEntry) => !(e.current && e.allowed.includes(e.cu
  * exist, and getMissingDirectionInputs still gates placement. Only WHERE the
  * player expresses the choice changed.
  */
-export const DirectionPicker: React.FC<DirectionPickerProps> = ({ entry, sprite, onClose, entries, onSwitch, title }) => {
+export const DirectionPicker: React.FC<DirectionPickerProps> = ({ entry, sprite, onClose, entries, onSwitch, title, confirm }) => {
   const open = !!entry;
   const entryKey = entry?.key ?? null;
 
@@ -180,6 +189,18 @@ export const DirectionPicker: React.FC<DirectionPickerProps> = ({ entry, sprite,
   const [lastTitle, setLastTitle] = useState(title);
   useEffect(() => { if (open) setLastTitle(title); }, [open, title]);
   const shownTitle = open ? title : lastTitle;
+  // ...and so is the Place button's face, so the sheet does not lose its
+  // foot mid-slide. (Only the label and state are latched — a button drawn
+  // during the exit is inert.)
+  const confirmLabel = confirm?.label ?? null;
+  const confirmEnabled = !!confirm?.enabled;
+  const [lastConfirm, setLastConfirm] = useState<{ label: string; enabled: boolean } | null>(null);
+  useEffect(() => {
+    if (open) setLastConfirm(confirmLabel === null ? null : { label: confirmLabel, enabled: confirmEnabled });
+  }, [open, confirmLabel, confirmEnabled]);
+  const shownConfirm = open
+    ? (confirmLabel === null ? null : { label: confirmLabel, enabled: confirmEnabled })
+    : lastConfirm;
   const guardUntilRef = useRef(0);
 
   // Keep the last entry so the sheet can draw its own exit animation after the
@@ -261,6 +282,9 @@ export const DirectionPicker: React.FC<DirectionPickerProps> = ({ entry, sprite,
     // (excluding the one just picked — this closure predates the pick).
     const next = onSwitch ? entries?.find(e => e.key !== entry.key && owes(e))?.key : undefined;
     if (pickRef.current) clearTimeout(pickRef.current);
+    // Placement ask with nothing left to walk to: stay up — the Place button
+    // under the rose is the way forward, never an automatic dismiss.
+    if (!next && confirm) return;
     pickRef.current = setTimeout(next
       ? () => { guardUntilRef.current = performance.now() + SWITCH_GUARD_MS; onSwitch!(next); }
       : onClose, PICK_LINGER_MS);
@@ -429,6 +453,20 @@ export const DirectionPicker: React.FC<DirectionPickerProps> = ({ entry, sprite,
             );
           })}
         </div>
+
+        {/* PLACE — placement ask only. The order pill's plate again: lit
+            brass once nothing is owed, recessed and inert until then (its
+            label counts what is still to pick). As wide as the rose. */}
+        {shownConfirm && (
+          <button
+            type="button"
+            disabled={!open || !shownConfirm.enabled}
+            onClick={() => { if (confirm?.enabled) confirm.onConfirm(); }}
+            className={`dir-confirm hero-order ${shownConfirm.enabled ? 'hero-order--open' : 'hero-order--done'} hud-label rounded-pixel border`}
+          >
+            {shownConfirm.label}
+          </button>
+        )}
       </div>
     </div>,
     document.body

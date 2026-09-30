@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import type { Direction, GameState, PlacedCharacter, Puzzle } from '../../types/game';
 import { TURN_INTERVAL_MS } from '../../types/game';
 import { getMissingDirectionInputs } from '../../utils/directionInput';
+import { DIRECTIONS_LAYOUT } from '../game/directionsLayout';
 import { WarningModal } from '../shared/WarningModal';
 import { getAllPuzzles } from '../../data/puzzles';
 import { getAllCharacters, getCharacter, isOfficialCharacter } from '../../data/characters';
@@ -101,6 +102,9 @@ export const TrainingGrounds: React.FC<TrainingGroundsProps> = ({ playerReveal }
   const [pendingSpellDirectionOverrides, setPendingSpellDirectionOverrides] = useState<Record<string, Record<string, Direction>>>({});
   const [pendingFacingOverrides, setPendingFacingOverrides] = useState<Record<string, Direction>>({});
   const [warningModal, setWarningModal] = useState<{ isOpen: boolean; message: string }>({ isOpen: false, message: '' });
+  // ?directions=card: a tile tap with an un-aimed hero asks instead of
+  // refusing — same mechanism as the daily (see placementAim in Game.tsx).
+  const [placementAim, setPlacementAim] = useState<{ charId: string; x: number; y: number } | null>(null);
 
   // -- Replay state --
   const [replayMode, setReplayMode] = useState(false);
@@ -217,6 +221,10 @@ export const TrainingGrounds: React.FC<TrainingGroundsProps> = ({ playerReveal }
         pendingSpellDirectionOverrides[selectedCharacterId]
       );
       if (missingInputs.length > 0) {
+        if (DIRECTIONS_LAYOUT === 'card') {
+          setPlacementAim({ charId: selectedCharacterId, x, y });
+          return;
+        }
         playGameSound('error');
         setWarningModal({
           isOpen: true,
@@ -687,6 +695,13 @@ export const TrainingGrounds: React.FC<TrainingGroundsProps> = ({ playerReveal }
                   ),
                 }));
               } : undefined}
+              placementAim={placementAim}
+              onPlacementAimConfirm={() => {
+                const aim = placementAim;
+                setPlacementAim(null);
+                if (aim) handleTileClick(aim.x, aim.y);
+              }}
+              onPlacementAimCancel={() => setPlacementAim(null)}
             />
           </div>
         )}
