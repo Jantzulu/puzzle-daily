@@ -26,11 +26,16 @@ function getMovementInfo(behavior: CharacterAction[]) {
   return moveAction ? { tilesPerMove: moveAction.tilesPerMove || 1 } : null;
 }
 
-// Four-point rose for the card-layout aim plate: "this hero has directions
-// to aim" without pointing any one way (an arrow there reads as a facing).
-const AimGlyph: React.FC<{ className?: string }> = ({ className = '' }) => (
-  <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" className={className}>
-    <path d="M6 0L7.6 4.4L12 6L7.6 7.6L6 12L4.4 7.6L0 6L4.4 4.4Z" fill="currentColor" />
+// Compass for the card layout's aim control: a ring around a four-point
+// rose, "this hero has directions to aim" without pointing the way an arrow
+// would (an arrow in the stat line reads as the hero's facing). NOT a ring
+// with a diagonal needle — at 12px that read as a "prohibited" sign. The
+// same glyph is repeated inline in the drawer note that tells the player
+// where to tap. A stand-in: this is a natural slot for painted art.
+const CompassGlyph: React.FC<{ size?: number; className?: string }> = ({ size = 12, className = '' }) => (
+  <svg width={size} height={size} viewBox="0 0 12 12" aria-hidden="true" className={className}>
+    <circle cx="6" cy="6" r="5.3" fill="none" stroke="currentColor" strokeWidth="1" />
+    <path d="M6 1.7L7.1 4.9L10.3 6L7.1 7.1L6 10.3L4.9 7.1L1.7 6L4.9 4.9Z" fill="currentColor" />
   </svg>
 );
 
@@ -408,6 +413,19 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                 ?? pendingFacingOverrides[character.id])
             : character.defaultFacing;
 
+          // ?directions=card: this hero's direction inputs, for the compass
+          // in the stat line. The compass is LOUD (lit brass, breathing)
+          // while any choice is owed and quiet arcane once all are made. It
+          // lives in the stat line — never on the sprite (user call
+          // 2026-09-30: the first cut, a plate on the art's corner, covered
+          // the hero). Five or more cards: the boxed chip no longer fits
+          // beside HP and the arrow, so it drops to the bare glyph.
+          const cardEntries = DIRECTIONS_LAYOUT === 'card' ? buildDirectionEntries(character, true) : [];
+          const hasAim = cardEntries.length > 0;
+          const owed = cardEntries.filter(owesChoice);
+          const aimLoud = owed.length > 0;
+          const stripSize = stripCharacterIds.length;
+
           // Card layout ported from the experiment at the user's request
           // (2026-07-31): fixed-height bands (sprite / 38px name+epithet /
           // 14px stat line), the Pick chip and Set corner plate, art-only dim
@@ -509,7 +527,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
               {/* STAT LINE — one 14px row. The border-r rule between HP and
                   movement is gone (one divider language per strip); a real
                   12px gap does the separating. */}
-              <div className="flex items-center justify-center gap-3 w-full h-[14px]">
+              <div className={`flex items-center justify-center ${hasAim ? (stripSize >= 5 ? 'gap-1' : 'gap-2') : 'gap-3'} w-full h-[14px]`}>
                 <div className="flex items-center gap-1">
                   <span className="hud-label text-copper-400">HP</span>
                   <span className="hud-num" style={{ color: 'var(--hud-vital)' }}>
@@ -517,7 +535,38 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                   </span>
                 </div>
                 <div className="flex items-center gap-1 text-copper-400">
-                  {moveInfo ? (
+                  {hasAim ? (
+                    /* Card layout, hero with directions to aim: the heading
+                       (once there is one to show) and then the compass. The
+                       chip here is PAINT ONLY — the tap target is the
+                       .hero-aim button laid over this corner of the card
+                       (a card is a <button> and cannot hold another). */
+                    <>
+                      {moveInfo && arrowDir && (
+                        <>
+                          {moveInfo.tilesPerMove > 1 && (
+                            <span className="hud-num">{moveInfo.tilesPerMove}</span>
+                          )}
+                          <MovementArrow
+                            direction={arrowDir}
+                            className={isInputFacing ? 'text-arcane-300' : 'text-copper-400'}
+                            size={13}
+                          />
+                        </>
+                      )}
+                      <span
+                        aria-hidden="true"
+                        className={`hero-aim-chip ${aimLoud ? 'hero-aim-chip--owed' : 'hero-aim-chip--done'} ${stripSize >= 5 ? 'hero-aim-chip--bare' : ''}`}
+                      >
+                        <CompassGlyph className={aimLoud ? 'hud-breathe' : ''} />
+                        {/* How many are still owed, once there is more than
+                            one to owe and the strip has room for a digit. */}
+                        {aimLoud && cardEntries.length > 1 && stripSize <= 3 && (
+                          <span className="hud-num">{owed.length}</span>
+                        )}
+                      </span>
+                    </>
+                  ) : moveInfo ? (
                     arrowDir ? (
                       <>
                         {moveInfo.tilesPerMove > 1 && (
@@ -532,11 +581,6 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                           size={13}
                         />
                       </>
-                    ) : DIRECTIONS_LAYOUT === 'card' ? (
-                      /* Card layout: the aim plate on the sprite is the loud
-                         "needs you" mark, so this slot only holds the place
-                         of a heading that is not known yet. */
-                      <span className="hud-num" style={{ color: 'var(--hud-gold)' }}>?</span>
                     ) : (
                       /* A BLOCKING STATE MUST NEVER BE THE SMALLEST THING ON
                          SCREEN. This was an 11px '?' at 80% opacity — the
@@ -558,53 +602,32 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
           );
           if (DIRECTIONS_LAYOUT !== 'card') return card;
 
-          // AIM PLATE (?directions=card) — the card-level direction control.
-          // A SIBLING of the card inside one slot wrapper, never a child: a
-          // card is a <button>, and a button cannot hold another button. It
-          // is a 44px-tall finger box in the card's top-right corner (where
-          // the enemy cards carry their count badge), later in the DOM so it
-          // wins the tap over the card beneath it. One tap selects the hero
-          // and opens the picker on the first choice still owed.
-          const aimEntries = disabled || cannotSelect ? [] : buildDirectionEntries(character, true);
-          const owed = aimEntries.filter(owesChoice);
-          const loud = owed.length > 0;
-          // Four or more cards: the word no longer fits beside the art.
-          const compact = stripCharacterIds.length >= 4;
+          // AIM CONTROL (?directions=card) — the tap target for the compass
+          // painted in the stat line above. A SIBLING of the card inside one
+          // slot wrapper, never a child (a card is a <button>, and a button
+          // cannot hold another button), transparent, 44px tall, laid over
+          // the card's bottom-right corner where the compass sits, and later
+          // in the DOM so it wins the tap over the card beneath it. One tap
+          // selects the hero and opens the picker on the first choice still
+          // owed. It never reaches the sprite.
+          const canAim = hasAim && !disabled && !cannotSelect;
           return (
             <div key={charId} className="flex-1 relative flex">
               {card}
-              {aimEntries.length > 0 && (
+              {canAim && (
                 <button
                   type="button"
                   className="hero-aim"
                   aria-haspopup="dialog"
                   aria-expanded={picker?.charId === charId}
-                  aria-label={loud
-                    ? `Pick directions for ${character.name}, ${owed.length} of ${aimEntries.length} remaining`
+                  aria-label={aimLoud
+                    ? `Pick directions for ${character.name}, ${owed.length} of ${cardEntries.length} remaining`
                     : `Change directions for ${character.name}`}
                   onClick={() => {
                     if (!isSelected) onSelectCharacter(charId);
-                    setPicker({ charId, key: (owed[0] ?? aimEntries[0]).key });
+                    setPicker({ charId, key: (owed[0] ?? cardEntries[0]).key });
                   }}
-                >
-                  <span
-                    className={`hero-aim__plate hero-order ${loud ? 'hero-order--open' : 'hero-order--done'} hud-label rounded-pixel border`}
-                    style={{ fontSize: '10px' }}
-                  >
-                    {loud && !compact ? (
-                      <>
-                        <span className="w-1.5 h-1.5 rounded-full bg-parchment-100 hud-breathe" aria-hidden="true" />
-                        <span>Pick</span>
-                        {/* How many are still owed, once there is more than
-                            one to owe — the plate must not look the same for
-                            one choice and for three. */}
-                        {aimEntries.length > 1 && <span>{owed.length}</span>}
-                      </>
-                    ) : (
-                      <AimGlyph className={loud ? 'hud-breathe' : ''} />
-                    )}
-                  </span>
-                </button>
+                />
               )}
             </div>
           );
@@ -617,7 +640,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
           hero used to open an empty tinted box holding just the placement
           hint, expanding the panel at selection (read as the trash button
           displacing the layout). The hint now lives in a static row below. */}
-      {renderedCharId && renderedCharacter && (hasActionSteps || hasAttributes || showDirections) && (
+      {renderedCharId && renderedCharacter && (hasActionSteps || hasAttributes || hasDirectionInputs) && (
         <div style={{
           display: 'grid',
           gridTemplateRows: isOpen ? '1fr' : '0fr',
@@ -644,11 +667,47 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
               : 'opacity 0.2s ease-in, transform 0.3s ease-in',
           }}
         >
+          {/* DIRECTIONS NOTE (?directions=card) — one read-only line where
+              the Directions column used to be. While a choice is owed it
+              tells the player where to make it (the inline glyph IS the
+              compass on the card above); either way it lists every choice
+              with its state, so what was picked for a spell stays visible
+              on the page and not only inside the picker. Wording is a
+              first pass — the user asked for "something like" this. */}
+          {DIRECTIONS_LAYOUT === 'card' && hasDirectionInputs && (
+            <div className="hud-label px-2 flex flex-wrap items-center justify-center gap-x-2.5 gap-y-1 text-center">
+              {directionInputEntries.some(owesChoice) ? (
+                <span className="inline-flex items-center gap-1" style={{ color: 'var(--hud-gold)' }}>
+                  Tap <CompassGlyph size={11} /> above to pick directions:
+                </span>
+              ) : (
+                <span className="text-stone-400">Directions:</span>
+              )}
+              {directionInputEntries.map(e => (
+                <span key={e.key} className="inline-flex items-center gap-1 text-arcane-300">
+                  <span className="min-w-0 break-words">{e.caption.replace(/ Direction$/, '')}</span>
+                  {owesChoice(e) ? (
+                    <>
+                      <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: 'var(--hud-gold)' }} aria-hidden="true" />
+                      <span className="sr-only">not picked</span>
+                    </>
+                  ) : (
+                    <span className="inline-flex items-center gap-0.5 text-parchment-300 flex-shrink-0">
+                      <CompassArrow direction={e.current!} size={11} />
+                      {BEARING_INITIALS[e.current!] ?? e.current}
+                    </span>
+                  )}
+                </span>
+              ))}
+            </div>
+          )}
+
           {/* RAIL MODE (?directions=rail, phones only): a grid — one text
               stack in column 1 (Actions above Attributes), the Directions
               column spanning both rows at the right edge. From 640px the
               same nodes fall back to the classic flex row, where the grid
               placement classes are inert. */}
+          {(hasActionSteps || hasAttributes || showDirections) && (
           <div className={railMode
             ? `grid grid-cols-[minmax(0,1fr)_auto_auto] ${railTwoText ? 'grid-rows-[auto_1fr] gap-y-2' : ''} sm:flex mb-2 px-2`
             : `flex mb-2 px-2 ${[hasActionSteps, showDirections, hasAttributes].filter(Boolean).length === 1 ? 'justify-center' : 'gap-0'}`}>
@@ -744,6 +803,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                 </div>
               )}
           </div>
+          )}
 
         </div>
         </div>

@@ -8,9 +8,11 @@
  *   ?directions=rail   'rail'    phones only: Directions keeps its look but sits at
  *                                the right edge, Actions stacked above Attributes
  *                                beside it (640px and up stays 'column')
- *   ?directions=card   'card'    Directions leaves the drawer; an aim plate on the
- *                                hero card opens the picker sheet, which carries
- *                                one tab per choice
+ *   ?directions=card   'card'    Directions leaves the drawer; a compass in the hero
+ *                                card's stat line (never on the sprite) opens the
+ *                                picker sheet, which carries one tab per choice,
+ *                                and one note line in the drawer says where to tap
+ *                                and lists each choice with its state
  *
  * Read once at module load; anything else falls back to 'column'. Delete this
  * file and the losing branches once one layout wins.
