@@ -22,6 +22,7 @@ import { wallAOEnabled, drawWallAO, AO_VOID_OCCLUDES } from './wallAO';
 import { staticBakeEnabled } from './staticBake';
 import { atmosphereEnabled } from './atmosphere';
 import { profFrameStart, profPhase, profFrameEnd, drawFreezeEnabled } from './frameProfiler';
+import { staleMidGameWalkIns, indicesBeyond } from './boardIndexPrune';
 
 // Movement action types - entities with these actions should show direction arrow
 const MOVEMENT_ACTIONS = new Set([
@@ -832,6 +833,7 @@ interface WalkInState {
   durationMs: number;
   points: Array<{ x: number; y: number }>; // off-grid corridor cell → … → home tile
   midGame?: boolean; // Scheduled-visitor arrival: the walk plays DURING play (the draw's !gameStarted gate is bypassed for these)
+  spawnTurn?: number; // midGame only: the entity's spawnedOnTurn — lets a retry/replay drop the entry (boardIndexPrune.ts)
 }
 
 /** Position + travel vector along the walk path at t ∈ [0,1]. */
@@ -1732,6 +1734,19 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
     const newDeathAnimations = new Map(enemyDeathAnimationsRef.current);
     let hasChanges = false;
 
+    // Records for indices the array no longer has (retry / reset / replay
+    // step-back to before an appended entity existed) belong to entities
+    // that are gone: drop them, or the next entity appended at that index
+    // (a scheduled visitor's copy lands at the same index every run) would
+    // read as a corpse coming back — a spurious RESURRECT soul descent.
+    const enemyCount = gameState.puzzle.enemies.length;
+    for (const idx of indicesBeyond(prevEnemyDeadStateRef.current.keys(), enemyCount)) prevEnemyDeadStateRef.current.delete(idx);
+    for (const idx of indicesBeyond(enemySoulReturnsRef.current.keys(), enemyCount)) enemySoulReturnsRef.current.delete(idx);
+    for (const idx of indicesBeyond(newDeathAnimations.keys(), enemyCount)) {
+      newDeathAnimations.delete(idx);
+      hasChanges = true;
+    }
+
     gameState.puzzle.enemies.forEach((enemy, idx) => {
       const wasDeadBefore = prevEnemyDeadStateRef.current.get(idx) || false;
       const isDeadNow = enemy.dead || false;
@@ -1822,7 +1837,13 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
     // opening while the game plays on. Same construction as the pre-game
     // entrance walk-ins, minus door beats and file-out staggers (arrivals
     // are singular). Once created, the entry persists and the draw falls
-    // through to the normal sprite when the walk completes.
+    // through to the normal sprite when the walk completes — until it goes
+    // stale: a retry, reset or replay step-back drops it, so the next run's
+    // copy (same index, deterministic) walks in again instead of appearing
+    // on its tile (user report 2026-09-30; see boardIndexPrune.ts).
+    for (const idx of staleMidGameWalkIns(enemyWalkInsRef.current, gameState.puzzle.enemies, gameState.currentTurn)) {
+      enemyWalkInsRef.current.delete(idx);
+    }
     gameState.puzzle.enemies.forEach((enemy, index) => {
       if (enemy.spawnedOnTurn === undefined || enemy.spawnedOnTurn !== gameState.currentTurn) return;
       if (enemyWalkInsRef.current.has(index)) return;
@@ -1837,6 +1858,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
         durationMs: (points.length - 1) * WALK_IN_MS_PER_TILE,
         points,
         midGame: true,
+        spawnTurn: enemy.spawnedOnTurn,
       });
     });
   }, [gameState]);
