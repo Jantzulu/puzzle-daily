@@ -563,7 +563,11 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                   <ol className="hud-body text-stone-300 space-y-1">
                     {renderedCharacter.actionSteps!.map((step, idx) => (
                       <li key={idx} className="flex items-baseline gap-1">
-                        <span className="font-semibold text-stone-400 flex-shrink-0">{idx + 1}.</span>
+                        {/* min-w-[1em]: the themed face's digits are not tabular
+                            ("1." is 8.6px, "2." is 12.7px measured), so without
+                            one shared gutter each step's text started at a
+                            different x. */}
+                        <span className="font-semibold text-stone-400 flex-shrink-0 min-w-[1em]">{idx + 1}.</span>
                         {/* min-w-0 + break-words on every text cell in the
                             drawer: a flex item will not shrink below its
                             longest word, so one long word used to spill out

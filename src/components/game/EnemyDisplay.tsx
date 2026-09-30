@@ -429,7 +429,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
                     <ol className="hud-body text-stone-300 space-y-1">
                       {actionSteps.map((step, idx) => (
                         <li key={idx} className="flex items-baseline gap-1">
-                          <span className="font-semibold text-stone-400 flex-shrink-0">{idx + 1}.</span>
+                          <span className="font-semibold text-stone-400 flex-shrink-0 min-w-[1em]">{idx + 1}.</span>
                           {/* min-w-0 + break-words: see the hero drawer —
                               a long word breaks instead of spilling out. */}
                           <span className="min-w-0 break-words">
