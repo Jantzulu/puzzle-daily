@@ -173,6 +173,11 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
         <span>Details</span>
       </span>
     </div>
+  ) : noPanel ? (
+    // The ally instance opens with the same chiseled seam Items / Status
+    // Effects / Dungeon Tiles use — its title used to start flush against
+    // the enemy drawer's bottom edge with no separation at all.
+    <div className="dungeon-seam" />
   ) : null;
 
   // Empty state. No allies is the NORM — the ally instance disappears
