@@ -204,7 +204,7 @@ export const TrainingGrounds: React.FC<TrainingGroundsProps> = ({ playerReveal }
           if (coll?.preventPlacement) { playGameSound('error'); return; }
         }
       }
-      if (gameState.puzzle.enemies.some(e => e.x === x && e.y === y && !e.dead)) { playGameSound('error'); return; }
+      if (gameState.puzzle.enemies.some(e => e.x === x && e.y === y && !e.dead && !e.despawned)) { playGameSound('error'); return; }
       if (gameState.placedCharacters.some(c => c.x === x && c.y === y && !c.dead)) { playGameSound('error'); return; }
       if (gameState.placedCharacters.some(c => c.characterId === selectedCharacterId)) { playGameSound('error'); return; }
       const maxP = gameState.puzzle.maxPlaceableCharacters ?? gameState.puzzle.maxCharacters;

@@ -13,10 +13,32 @@ import { Direction } from '../types/game';
  */
 export function isEntityFunctional(entity: { dead: boolean; pendingProjectileDeath?: boolean; despawned?: boolean }): boolean {
   // despawned added 2026-07-17 (the "third condition" this helper was built
-  // to absorb): a noble that ESCAPED through an opening is alive-despawned —
-  // off the board, so it can't act, be targeted, or block. Every other
-  // despawned entity is also dead, so this only bites the escape state.
+  // to absorb): an ALIVE-despawned entity is off the board, so it can't act,
+  // be targeted, or block. Three states are alive-despawned: a noble that
+  // ESCAPED through an opening, a 'standing' escort exit, and a scheduled
+  // visitor's TEMPLATE (inert placement, never on the board — see isOnBoard).
   return !entity.dead && !entity.pendingProjectileDeath && !entity.despawned;
+}
+
+/**
+ * True if an entity OCCUPIES its tile as a living thing: not dead and not
+ * despawned. Every tile lookup that asks "who is standing here?" — attack
+ * targeting, movement collision and wall checks, projectile hits,
+ * occupancy — must use this rather than a bare `!e.dead`.
+ *
+ * Why (2026-09-30 user report): a scheduled visitor's TEMPLATE stays in
+ * puzzle.enemies on its arrival tile, alive and despawned, and the arriving
+ * copy is appended after it on the SAME tile. `!dead`-only lookups found
+ * the invisible template first: a 1-HP visitor took two melee hits (the
+ * first killed the template), and the empty-looking tile was a wall and a
+ * projectile sponge from turn 0.
+ *
+ * Deliberately NOT isEntityFunctional: pendingProjectileDeath is set only
+ * in the real (visual) path, so skipping it in engine lookups would make
+ * real and headless disagree.
+ */
+export function isOnBoard(entity: { dead: boolean; despawned?: boolean }): boolean {
+  return !entity.dead && !entity.despawned;
 }
 
 /**

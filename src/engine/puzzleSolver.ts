@@ -51,7 +51,10 @@ function findValidPlacementTiles(puzzle: Puzzle): ValidTile[] {
       if (tile.type === 'wall' as TileType) continue;
 
       // Can't place on tiles with enemies
-      const hasEnemy = puzzle.enemies.some(e => e.x === x && e.y === y && !e.dead);
+      // Scheduled-visitor templates (recurrence) are off the board: the raw
+      // puzzle has not stamped them despawned yet, so test the field itself
+      // (the live placement check runs on the initialized state).
+      const hasEnemy = puzzle.enemies.some(e => e.x === x && e.y === y && !e.dead && !e.despawned && !e.recurrence);
       if (hasEnemy) continue;
 
       // Can't place on custom tiles that have preventPlacement enabled
@@ -614,7 +617,8 @@ export function quickValidate(puzzle: Puzzle): { valid: boolean; issues: string[
 
   // Check for defeat_all_enemies condition with no enemies
   const hasDefeatAllCondition = puzzle.winConditions?.some(c => c.type === 'defeat_all_enemies');
-  if (hasDefeatAllCondition && (!puzzle.enemies || puzzle.enemies.length === 0)) {
+  // Visitor templates (and their copies) are win-exempt, so they do not count.
+  if (hasDefeatAllCondition && !(puzzle.enemies ?? []).some(e => !e.recurrence)) {
     issues.push('Win condition requires defeating enemies, but no enemies exist');
   }
 
@@ -750,7 +754,7 @@ export function quickValidate(puzzle: Puzzle): { valid: boolean; issues: string[
 
     // Check enemies reachability
     if (puzzle.enemies) {
-      const unreachableEnemies = puzzle.enemies.filter(e => !reachable.has(`${e.x},${e.y}`));
+      const unreachableEnemies = puzzle.enemies.filter(e => !e.recurrence && !reachable.has(`${e.x},${e.y}`));
       if (unreachableEnemies.length > 0 && hasDefeatAllCondition) {
         warnings.push(`${unreachableEnemies.length} enemy/enemies unreachable from placement area (defeat_all_enemies will fail)`);
       } else if (unreachableEnemies.length > 0) {

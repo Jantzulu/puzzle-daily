@@ -6,7 +6,7 @@ import { getEnemy } from '../data/enemies';
 import { executeAction, executeAOEAttack, evaluateTriggers, executeDeathTriggers, applyDamageToEntity, applyDamageToEntityNoDeflect, placeCollectibleFromSpell, checkTriggerCondition, mergeHitStamps, stampDealtHit, stampHitLanded, isEntityStealthed } from './actions';
 import { loadStatusEffectAsset, loadSpellAsset, loadCollectible, loadEnemy, loadCharacter, loadTileType, loadVessel } from '../utils/assetStorage';
 import { spawnEnemyMidGame } from './spawning';
-import { turnLeft, turnRight, turnAround, getDirectionOffset, calculateDirectionTo, calculateDistance, isAttackFromBehind, isEntityFunctional } from './utils';
+import { turnLeft, turnRight, turnAround, getDirectionOffset, calculateDirectionTo, calculateDistance, isAttackFromBehind, isEntityFunctional, isOnBoard } from './utils';
 import { entityParty } from './party';
 // Opening validity — pure geometry over the puzzle's tiles, shared with the
 // renderer/editor so the noble-escape exit rule can't drift from what the
@@ -523,19 +523,19 @@ function reflectProjectile(
     let casterEntity: { x: number; y: number } | undefined;
     let casterIndex: number | undefined;
     if (proj.sourceCharacterId) {
-      casterEntity = gameState.placedCharacters.find(c => c.characterId === proj.sourceCharacterId && !c.dead);
+      casterEntity = gameState.placedCharacters.find(c => c.characterId === proj.sourceCharacterId && isOnBoard(c));
     } else if (proj.sourceEnemyId) {
       // Use sourceEnemyIndex to find the exact enemy instance (duplicate enemies share IDs)
       if (proj.sourceEnemyIndex !== undefined && gameState.puzzle.enemies[proj.sourceEnemyIndex]) {
         const enemy = gameState.puzzle.enemies[proj.sourceEnemyIndex];
-        if (!enemy.dead) {
+        if (isOnBoard(enemy)) {
           casterEntity = enemy;
           casterIndex = proj.sourceEnemyIndex;
         }
       }
       // Fallback to ID-based lookup if index didn't work
       if (!casterEntity) {
-        casterEntity = gameState.puzzle.enemies.find(e => e.enemyId === proj.sourceEnemyId && !e.dead);
+        casterEntity = gameState.puzzle.enemies.find(e => e.enemyId === proj.sourceEnemyId && isOnBoard(e));
       }
     }
     if (casterEntity) {
@@ -628,7 +628,7 @@ function findProjectileAttacker(
     return gameState.placedCharacters.find(c => c.characterId === proj.sourceCharacterId);
   }
   if (proj.sourceEnemyId) {
-    return gameState.puzzle.enemies.find(e => e.enemyId === proj.sourceEnemyId && !e.dead);
+    return gameState.puzzle.enemies.find(e => e.enemyId === proj.sourceEnemyId && isOnBoard(e));
   }
   return undefined;
 }
@@ -656,9 +656,9 @@ function applyProjectileDamageWithDeflect(
     let sourceEntity: PlacedCharacter | PlacedEnemy | undefined;
 
     if (sourceCharacterId) {
-      sourceEntity = gameState.placedCharacters.find(c => c.characterId === sourceCharacterId && !c.dead);
+      sourceEntity = gameState.placedCharacters.find(c => c.characterId === sourceCharacterId && isOnBoard(c));
     } else if (sourceEnemyId) {
-      sourceEntity = gameState.puzzle.enemies.find(e => e.enemyId === sourceEnemyId && !e.dead);
+      sourceEntity = gameState.puzzle.enemies.find(e => e.enemyId === sourceEnemyId && isOnBoard(e));
     }
 
     if (sourceEntity) {
@@ -1531,7 +1531,7 @@ function applyStatusEffectFromProjectile(
 function processAllStatusEffectsTurnStart(gameState: GameState): void {
   // Process characters
   for (let i = 0; i < gameState.placedCharacters.length; i++) {
-    const wasAlive = !gameState.placedCharacters[i].dead;
+    const wasAlive = isOnBoard(gameState.placedCharacters[i]);
     if (wasAlive) {
       gameState.placedCharacters[i] = processEntityStatusEffects(
         gameState.placedCharacters[i],
@@ -1549,7 +1549,7 @@ function processAllStatusEffectsTurnStart(gameState: GameState): void {
 
   // Process enemies
   for (let i = 0; i < gameState.puzzle.enemies.length; i++) {
-    const wasAlive = !gameState.puzzle.enemies[i].dead;
+    const wasAlive = isOnBoard(gameState.puzzle.enemies[i]);
     if (wasAlive) {
       gameState.puzzle.enemies[i] = processEntityStatusEffects(
         gameState.puzzle.enemies[i],
@@ -1572,7 +1572,7 @@ function processAllStatusEffectsTurnStart(gameState: GameState): void {
 function processAllStatusEffectsTurnEnd(gameState: GameState): void {
   // Process characters
   for (let i = 0; i < gameState.placedCharacters.length; i++) {
-    const wasAlive = !gameState.placedCharacters[i].dead;
+    const wasAlive = isOnBoard(gameState.placedCharacters[i]);
     if (wasAlive) {
       gameState.placedCharacters[i] = processEntityStatusEffects(
         gameState.placedCharacters[i],
@@ -1590,7 +1590,7 @@ function processAllStatusEffectsTurnEnd(gameState: GameState): void {
 
   // Process enemies
   for (let i = 0; i < gameState.puzzle.enemies.length; i++) {
-    const wasAlive = !gameState.puzzle.enemies[i].dead;
+    const wasAlive = isOnBoard(gameState.puzzle.enemies[i]);
     if (wasAlive) {
       gameState.puzzle.enemies[i] = processEntityStatusEffects(
         gameState.puzzle.enemies[i],
@@ -2047,7 +2047,11 @@ export function executeTurn(gameState: GameState): GameState {
   // This allows enemies following each other to move together without blocking
   gameState.tilesBeingVacated = new Set<string>();
   for (const enemy of gameState.puzzle.enemies) {
-    if (enemy.dead) continue;
+    // Off-board entities (scheduled-visitor templates, escapes) never move,
+    // and neither does a copy on its arrival turn (spawnedOnTurn idle):
+    // flagging their tiles as vacated let walkers stack onto them.
+    if (!isOnBoard(enemy)) continue;
+    if (enemy.spawnedOnTurn === gameState.currentTurn) continue;
     const enemyData = getEnemy(enemy.enemyId);
     if (!enemyData || !enemyData.behavior || enemyData.behavior.type !== 'active') continue;
     if (!enemy.active) continue;
@@ -2354,7 +2358,7 @@ export function executeTurn(gameState: GameState): GameState {
   for (const enemy of gameState.puzzle.enemies) {
     // Entities spawned this turn stay idle: no actions AND no own triggers
     // until next turn (they can still be hit / block tiles — that's passive).
-    if (!enemy.dead && enemy.spawnedOnTurn !== gameState.currentTurn) {
+    if (isOnBoard(enemy) && enemy.spawnedOnTurn !== gameState.currentTurn) {
       pendingEnemyTriggers.push(enemy);
     }
   }
@@ -2765,7 +2769,8 @@ function processNobleExits(gameState: GameState): void {
 function getEscortDesignated(gameState: GameState, ids: string[]): Array<PlacedCharacter | PlacedEnemy> {
   return [
     ...gameState.placedCharacters.filter(c => ids.includes(c.characterId)),
-    ...gameState.puzzle.enemies.filter(e => ids.includes(e.enemyId)),
+    // A scheduled visitor's TEMPLATE is not a designee — its copies are.
+    ...gameState.puzzle.enemies.filter(e => ids.includes(e.enemyId) && !e.recurrence),
   ];
 }
 
@@ -2871,10 +2876,10 @@ function processVesselTransforms(gameState: GameState): void {
       gameState.puzzle.enemies.some(e =>
         e !== entity &&
         Math.floor(e.x) === vx && Math.floor(e.y) === vy &&
-        (!e.dead || isFreshlyDeadEntity(e, gameState.currentTurn))) ||
+        !e.despawned && (!e.dead || isFreshlyDeadEntity(e, gameState.currentTurn))) ||
       gameState.placedCharacters.some(c =>
         Math.floor(c.x) === vx && Math.floor(c.y) === vy &&
-        (!c.dead || isFreshlyDeadEntity(c, gameState.currentTurn)));
+        !c.despawned && (!c.dead || isFreshlyDeadEntity(c, gameState.currentTurn)));
     if (blockedByEntity) continue;
 
     const emerged = spawnEnemyMidGame(gameState, {
@@ -2911,7 +2916,9 @@ function isFreshlyDeadEntity(entity: PlacedCharacter | PlacedEnemy, currentTurn:
  */
 function processSummonExpiry(gameState: GameState): void {
   for (const enemy of gameState.puzzle.enemies) {
-    if (enemy.dead) continue;
+    // An ESCAPED summon (alive-despawned) already left: expiring it would
+    // kill it and turn its escape into a defeat.
+    if (enemy.dead || enemy.despawned) continue;
     if (enemy.despawnOnTurn === undefined || gameState.currentTurn < enemy.despawnOnTurn) continue;
 
     enemy.dead = true;
@@ -2966,6 +2973,7 @@ function getPlacedNobles(gameState: GameState): Array<PlacedCharacter | PlacedEn
   }
   for (const enemy of gameState.puzzle.enemies) {
     if (entityParty(enemy, gameState) !== 'hero') continue;
+    if (enemy.recurrence) continue; // a visitor template is not a Noble; its copies are
     if (loadEnemy(enemy.enemyId)?.isNoble) nobles.push(enemy);
   }
   return nobles;
@@ -4115,14 +4123,14 @@ function findEntityAtTile(
   // enemies by array index so duplicate enemyIds all get hit).
   const side: EntityParty = targetEnemies ? 'enemy' : 'hero';
   const char = gameState.placedCharacters.find(
-    c => !c.dead && (!excludePendingDeath || !c.pendingProjectileDeath) &&
+    c => isOnBoard(c) && (!excludePendingDeath || !c.pendingProjectileDeath) &&
          Math.floor(c.x) === x && Math.floor(c.y) === y &&
          !(proj.hitEntityIds?.includes(c.characterId)) &&
          entityParty(c, gameState) === side
   );
   if (char) return char;
   const idx = gameState.puzzle.enemies.findIndex(
-    (e, i) => !e.dead && (!excludePendingDeath || !e.pendingProjectileDeath) &&
+    (e, i) => isOnBoard(e) && (!excludePendingDeath || !e.pendingProjectileDeath) &&
          Math.floor(e.x) === x && Math.floor(e.y) === y &&
          !(proj.hitEnemyIndices?.includes(i)) &&
          entityParty(e, gameState) === side
@@ -4140,14 +4148,14 @@ function findHealTargetAtTile(
 ): PlacedCharacter | PlacedEnemy | null {
   const side: EntityParty = targetEnemies ? 'enemy' : 'hero';
   const char = gameState.placedCharacters.find(
-    c => !c.dead && Math.floor(c.x) === x && Math.floor(c.y) === y &&
+    c => isOnBoard(c) && Math.floor(c.x) === x && Math.floor(c.y) === y &&
          c.characterId !== proj.sourceCharacterId &&
          !(proj.hitEntityIds?.includes(c.characterId)) &&
          entityParty(c, gameState) === side
   );
   if (char) return char;
   const idx = gameState.puzzle.enemies.findIndex(
-    (e, i) => !e.dead && Math.floor(e.x) === x && Math.floor(e.y) === y &&
+    (e, i) => isOnBoard(e) && Math.floor(e.x) === x && Math.floor(e.y) === y &&
          i !== proj.sourceEnemyIndex &&
          !(proj.hitEnemyIndices?.includes(i)) &&
          entityParty(e, gameState) === side
@@ -6681,7 +6689,7 @@ function processPersistentAreaEffects(gameState: GameState): void {
       ...gameState.puzzle.enemies,
     ];
     candidates.forEach(target => {
-      if (target.dead) return;
+      if (!isOnBoard(target)) return;
       if (entityParty(target, gameState) === zoneParty) return; // own side stands in it safely
 
       const distance = Math.sqrt(

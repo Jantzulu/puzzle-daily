@@ -1100,7 +1100,7 @@ export const Game: React.FC<GameProps> = ({
         }
       }
 
-      const tileHasEnemy = gameState.puzzle.enemies.some((e) => e.x === x && e.y === y && !e.dead);
+      const tileHasEnemy = gameState.puzzle.enemies.some((e) => e.x === x && e.y === y && !e.dead && !e.despawned);
 
       if (tileHasEnemy) {
         playGameSound('error');
@@ -3623,7 +3623,7 @@ export const Game: React.FC<GameProps> = ({
                               .filter(e => {
                                 if (entityParty(e, gameState) !== 'enemy' || e.excludeFromWinConditions) return false;
                                 const enemy = loadEnemy(e.enemyId);
-                                return enemy?.isBoss && !e.dead;
+                                return enemy?.isBoss && !e.dead && !e.despawned;
                               })
                               .map(e => loadEnemy(e.enemyId)!);
                             const bossCount = bossEnemies.length;

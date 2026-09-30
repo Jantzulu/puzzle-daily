@@ -12,6 +12,7 @@ import {
   clearAllRegistries,
   registerTestCharacter as regChar,
   registerTestEnemy as regEnemy,
+  registerTestSpell,
   createTestPuzzle,
   createTestCharacterDef,
   createTestEnemyDef,
@@ -19,7 +20,7 @@ import {
   createTestEnemy,
   createTestGameState,
 } from './helpers';
-import { Direction, ActionType } from '../../types/game';
+import { Direction, ActionType, SpellTemplate } from '../../types/game';
 import type { GameState } from '../../types/game';
 import { executeTurn, initializeGameState, checkVictoryConditions } from '../simulation';
 
@@ -151,6 +152,141 @@ describe('scheduled arrivals', () => {
     executeTurn(gs); // turn 3: cadence beat (1 + 2) — visitor arrives
     expect(visitors(gs)).toHaveLength(1);
     expect(visitors(gs)[0].spawnedOnTurn).toBe(3);
+  });
+
+  // ── The invisible template (user report 2026-09-30) ──────────────────────
+  // The template stays on its arrival tile, alive and despawned, and the
+  // copy lands on the SAME tile after it in the array. Tile lookups that
+  // tested only !dead found the template first: a 1-HP visitor took two
+  // melee hits, and the empty-looking tile was a wall and a projectile
+  // sponge from turn 0. Built the way the real game builds a run
+  // (initializeGameState on a copy of the puzzle), both modes side by side.
+  describe('the template is never on the board', () => {
+    const base = { description: '', thumbnailIcon: '', sprites: {} };
+    beforeEach(() => {
+      regEnemy(createTestEnemyDef({
+        id: 'statue', health: 1,
+        behavior: { type: 'static', pattern: [], defaultFacing: Direction.SOUTH },
+      }));
+      regEnemy(createTestEnemyDef({ id: 'dummy', health: 5 }));
+      registerTestSpell('jab', {
+        id: 'jab', name: 'Jab', ...base,
+        templateType: SpellTemplate.MELEE, directionMode: 'current_facing', damage: 1,
+      });
+      registerTestSpell('dart', {
+        id: 'dart', name: 'Dart', ...base,
+        templateType: SpellTemplate.LINEAR, directionMode: 'current_facing',
+        damage: 1, projectileSpeed: 4, range: 8,
+      });
+    });
+
+    const statueTemplate = (firstTurn: number) =>
+      createTestEnemy({ enemyId: 'statue', x: 4, y: 2, currentHealth: 1, recurrence: { firstTurn } } as never);
+
+    const run = (opts: {
+      firstTurn: number;
+      hero: { x: number; y: number; behavior: unknown[] };
+      extraEnemies?: ReturnType<typeof createTestEnemy>[];
+      turns: number;
+    }) => {
+      regChar(createTestCharacterDef({ id: 'striker', health: 10, behavior: opts.hero.behavior as never }));
+      const build = () => {
+        const puzzle = createTestPuzzle({
+          width: 8, height: 6,
+          enemies: [statueTemplate(opts.firstTurn), ...(opts.extraEnemies ?? [])],
+          winConditions: [{ type: 'defeat_all_enemies' }],
+        });
+        const gs = initializeGameState(JSON.parse(JSON.stringify(puzzle)));
+        gs.placedCharacters = [createTestCharacter({
+          characterId: 'striker', x: opts.hero.x, y: opts.hero.y, facing: Direction.NORTH,
+          currentHealth: 10, actionIndex: 0, active: true,
+        })];
+        gs.gameStatus = 'running';
+        gs.testMode = true;
+        return gs;
+      };
+      const visual = build();
+      const headless = build();
+      headless.headlessMode = true;
+      const probe = (g: GameState) => ({
+        hero: { x: g.placedCharacters[0].x, y: g.placedCharacters[0].y },
+        enemies: g.puzzle.enemies.map(e => ({
+          id: e.enemyId, x: e.x, y: e.y, hp: e.currentHealth,
+          dead: !!(e.dead || e.pendingProjectileDeath), despawned: !!e.despawned,
+          spawnedOnTurn: e.spawnedOnTurn, hit: !!e.hitStamps,
+        })),
+      });
+      for (let t = 0; t < opts.turns; t++) { executeTurn(visual); executeTurn(headless); }
+      expect(probe(visual)).toEqual(probe(headless));
+      return visual;
+    };
+
+    it('one strike kills an arrived 1-HP visitor, and never lands on the template', () => {
+      const gs = run({
+        firstTurn: 2,
+        hero: { x: 4, y: 3, behavior: [
+          { type: ActionType.WAIT }, { type: ActionType.WAIT }, { type: ActionType.WAIT },
+          { type: ActionType.SPELL, spellId: 'jab' }, { type: ActionType.WAIT },
+        ] },
+        turns: 4,
+      });
+      const [template] = gs.puzzle.enemies;
+      const copy = visitors(gs)[0];
+      expect(copy.dead).toBe(true);
+      expect(copy.diedOnTurn).toBe(4);
+      expect(template.dead).toBe(false);
+      expect(template.currentHealth).toBe(1);
+      expect(template.hitStamps).toBeUndefined();
+    });
+
+    it('a strike on the arrival turn itself kills the copy that morning', () => {
+      const gs = run({
+        firstTurn: 2,
+        hero: { x: 4, y: 3, behavior: [{ type: ActionType.WAIT }, { type: ActionType.SPELL, spellId: 'jab' }] },
+        turns: 2,
+      });
+      expect(visitors(gs)[0].dead).toBe(true);
+      expect(visitors(gs)[0].diedOnTurn).toBe(2);
+      expect(gs.puzzle.enemies[0].dead).toBe(false);
+    });
+
+    it('the arrival tile is not a wall before the visitor arrives', () => {
+      const gs = run({
+        firstTurn: 6,
+        hero: { x: 4, y: 3, behavior: [{ type: ActionType.MOVE_FORWARD }, { type: ActionType.WAIT }] },
+        turns: 1,
+      });
+      expect(gs.placedCharacters[0]).toMatchObject({ x: 4, y: 2 });
+    });
+
+    it('auto-targeting picks the nearest REAL enemy, never the template', () => {
+      // The template (4,2) is 3 tiles north of the hero; the dummy (0,5) is
+      // 4 tiles west. A nearest-enemy cast must go west.
+      const gs = run({
+        firstTurn: 9,
+        hero: { x: 4, y: 5, behavior: [
+          { type: ActionType.SPELL, spellId: 'dart', autoTargetNearestEnemy: true }, { type: ActionType.WAIT },
+        ] },
+        extraEnemies: [createTestEnemy({ enemyId: 'dummy', x: 0, y: 5, currentHealth: 5 })],
+        turns: 3,
+      });
+      const [template, dummy] = gs.puzzle.enemies;
+      expect(dummy.currentHealth).toBe(4);
+      expect(template.hitStamps).toBeUndefined();
+    });
+
+    it('a bolt flies through the empty arrival tile to what lies beyond', () => {
+      const gs = run({
+        firstTurn: 9,
+        hero: { x: 4, y: 5, behavior: [{ type: ActionType.SPELL, spellId: 'dart' }, { type: ActionType.WAIT }] },
+        extraEnemies: [createTestEnemy({ enemyId: 'dummy', x: 4, y: 0, currentHealth: 5 })],
+        turns: 3,
+      });
+      const [template, dummy] = gs.puzzle.enemies;
+      expect(dummy.currentHealth).toBe(4);
+      expect(template.dead).toBe(false);
+      expect(template.hitStamps).toBeUndefined();
+    });
   });
 
   it('visitors never block victory: defeat_all_enemies completes with a visitor on the board', () => {

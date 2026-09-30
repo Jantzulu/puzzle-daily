@@ -32,7 +32,7 @@ import {
 } from '../types/game';
 import { getCharacter } from '../data/characters';
 import { getEnemy } from '../data/enemies';
-import { getDirectionOffset, turnLeft, turnRight, turnAround, isInBounds, calculateDistance, calculateDirectionTo, isAttackFromBehind, isEntityFunctional } from './utils';
+import { getDirectionOffset, turnLeft, turnRight, turnAround, isInBounds, calculateDistance, calculateDirectionTo, isAttackFromBehind, isEntityFunctional, isOnBoard } from './utils';
 import { loadSpellAsset, loadTileType, loadStatusEffectAsset, loadCollectible } from '../utils/assetStorage';
 import { isEntityCharmed, effectiveParty, entityParty, isAttackTarget, combatId } from './party';
 import { spawnEnemyMidGame } from './spawning';
@@ -701,7 +701,7 @@ function processIceBehavior(
 
     // Check for blocking entities
     const blockingChar = gameState.placedCharacters.find(
-      c => c.x === nextX && c.y === nextY && !c.dead && c !== updatedChar
+      c => c.x === nextX && c.y === nextY && isOnBoard(c) && c !== updatedChar
     );
     if (blockingChar) {
       if (!isGhost(blockingChar)) {
@@ -710,7 +710,7 @@ function processIceBehavior(
     }
 
     const blockingEnemy = gameState.puzzle.enemies.find(
-      e => e.x === nextX && e.y === nextY && !e.dead
+      e => e.x === nextX && e.y === nextY && isOnBoard(e)
     );
     if (blockingEnemy) {
       if (!isGhost(blockingEnemy)) {
@@ -795,7 +795,7 @@ function processPressurePlateBehavior(
       case 'despawn_enemy':
         if (effect.targetX !== undefined && effect.targetY !== undefined) {
           const enemy = gameState.puzzle.enemies.find(
-            e => e.x === effect.targetX && e.y === effect.targetY && !e.dead
+            e => e.x === effect.targetX && e.y === effect.targetY && isOnBoard(e)
           );
           if (enemy) {
             enemy.dead = true;
@@ -1138,13 +1138,13 @@ function moveCharacter(
   if (!willHitWall && isInBounds(firstX, firstY, gameState.puzzle.width, gameState.puzzle.height)) {
     // Check for living character/enemy with wall trait
     const wallCharacter = gameState.placedCharacters.find(
-      (c) => c.x === firstX && c.y === firstY && !c.dead && c !== updatedChar
+      (c) => c.x === firstX && c.y === firstY && isOnBoard(c) && c !== updatedChar
     );
     if (wallCharacter && isWallAlive(wallCharacter)) willHitWall = true;
 
     if (!willHitWall) {
       const wallEnemy = gameState.puzzle.enemies.find(
-        (e) => e.x === firstX && e.y === firstY && !e.dead
+        (e) => e.x === firstX && e.y === firstY && isOnBoard(e)
       );
       if (wallEnemy && isWallAlive(wallEnemy)) willHitWall = true;
     }
@@ -1241,7 +1241,7 @@ function moveCharacter(
 
     // Check for other living characters
     const otherCharacter = gameState.placedCharacters.find(
-      (c) => c.x === newX && c.y === newY && !c.dead && c !== updatedChar
+      (c) => c.x === newX && c.y === newY && isOnBoard(c) && c !== updatedChar
     );
     if (otherCharacter) {
       // Ghost mode — either entity being a ghost allows passing through
@@ -1389,7 +1389,7 @@ function moveCharacter(
 
     // Check for living enemy at target position
     const enemyAtTarget = gameState.puzzle.enemies.find(
-      (e) => e.x === newX && e.y === newY && !e.dead
+      (e) => e.x === newX && e.y === newY && isOnBoard(e)
     );
 
     if (enemyAtTarget) {
@@ -1532,13 +1532,13 @@ function moveCharacter(
     // Also check for entities that behave like walls
     if (!willHitWallNext && isInBounds(nextX, nextY, gameState.puzzle.width, gameState.puzzle.height)) {
       const wallCharNext = gameState.placedCharacters.find(
-        (c) => c.x === nextX && c.y === nextY && !c.dead && c !== updatedChar
+        (c) => c.x === nextX && c.y === nextY && isOnBoard(c) && c !== updatedChar
       );
       if (wallCharNext && isWallAlive(wallCharNext)) willHitWallNext = true;
 
       if (!willHitWallNext) {
         const wallEnemyNext = gameState.puzzle.enemies.find(
-          (e) => e.x === nextX && e.y === nextY && !e.dead
+          (e) => e.x === nextX && e.y === nextY && isOnBoard(e)
         );
         if (wallEnemyNext && isWallAlive(wallEnemyNext)) willHitWallNext = true;
       }
@@ -1603,7 +1603,7 @@ function handleIfWall(
     : null;
 
   const blockingCharacter = gameState.placedCharacters.find(
-    (c) => c.x === checkX && c.y === checkY && !c.dead && c !== character
+    (c) => c.x === checkX && c.y === checkY && isOnBoard(c) && c !== character
   );
   const blockingDeadEnemy = gameState.puzzle.enemies.find(
     (e) => e.x === checkX && e.y === checkY && e.dead
@@ -2184,10 +2184,10 @@ function executeSpellInDirection(
       const blockedByEntity =
         gameState.puzzle.enemies.some(e =>
           Math.floor(e.x) === spawnX && Math.floor(e.y) === spawnY &&
-          (!e.dead || isFreshlyDead(e, gameState.currentTurn))) ||
+          !e.despawned && (!e.dead || isFreshlyDead(e, gameState.currentTurn))) ||
         gameState.placedCharacters.some(c =>
           Math.floor(c.x) === spawnX && Math.floor(c.y) === spawnY &&
-          (!c.dead || isFreshlyDead(c, gameState.currentTurn)));
+          !c.despawned && (!c.dead || isFreshlyDead(c, gameState.currentTurn)));
       if (blockedByEntity) break;
 
       // Facing override — relative modes resolve against the summoner NOW,
@@ -2282,12 +2282,12 @@ function spawnProjectile(
       const idx = effectiveHomingTarget.targetEnemyIndex;
       if (idx !== undefined) {
         const indexed = gameState.puzzle.enemies[idx];
-        if (indexed && indexed.enemyId === effectiveHomingTarget.targetEntityId && !indexed.dead) {
+        if (indexed && indexed.enemyId === effectiveHomingTarget.targetEntityId && isOnBoard(indexed)) {
           targetEntity = indexed;
         }
       }
       if (!targetEntity) {
-        targetEntity = gameState.puzzle.enemies.find(e => e.enemyId === effectiveHomingTarget!.targetEntityId && !e.dead);
+        targetEntity = gameState.puzzle.enemies.find(e => e.enemyId === effectiveHomingTarget!.targetEntityId && isOnBoard(e));
       }
     } else {
       targetEntity = gameState.placedCharacters.find(c => c.characterId === effectiveHomingTarget!.targetEntityId);
@@ -2338,7 +2338,7 @@ function spawnProjectile(
   const isEnemy = gameState.puzzle.enemies.some(e => e.enemyId === character.characterId);
   // Store enemy array index for reflect targeting (duplicate enemies share the same ID)
   const sourceEnemyIndex = isEnemy
-    ? gameState.puzzle.enemies.findIndex(e => e.enemyId === character.characterId && e.x === character.x && e.y === character.y)
+    ? gameState.puzzle.enemies.findIndex(e => e.enemyId === character.characterId && e.x === character.x && e.y === character.y && isOnBoard(e))
     : undefined;
   // Charmed entities fire with teamSwapped so getEffectiveTeams() hits their structural team
   const casterIsCharmed = isEntityCharmed(character);
@@ -2472,8 +2472,8 @@ function findAttackTargetAt(
   gameState: GameState
 ): PlacedCharacter | PlacedEnemy | undefined {
   return (
-    gameState.placedCharacters.find(c => c.x === x && c.y === y && !c.dead && isAttackTarget(caster, c, gameState)) ??
-    gameState.puzzle.enemies.find(e => e.x === x && e.y === y && !e.dead && isAttackTarget(caster, e, gameState))
+    gameState.placedCharacters.find(c => c.x === x && c.y === y && isOnBoard(c) && isAttackTarget(caster, c, gameState)) ??
+    gameState.puzzle.enemies.find(e => e.x === x && e.y === y && isOnBoard(e) && isAttackTarget(caster, e, gameState))
   );
 }
 
@@ -2738,7 +2738,7 @@ export function executeAOEAttack(
     if (isHeal) {
       // Heal allies in radius — everyone on the caster's effective side.
       candidates.forEach(ally => {
-        if (ally.dead) return;
+        if (!isOnBoard(ally)) return;
         // Self-exclusion: a hero caster IS its list element (reference);
         // a wrapped enemy caster is a copy, so match its id instead.
         if (ally === character) return;
@@ -2768,7 +2768,7 @@ export function executeAOEAttack(
       // self-exclusion, matching the old branches: a charmed enemy's blast
       // can catch its own base side — itself included.
       candidates.forEach(target => {
-        if (target.dead) return;
+        if (!isOnBoard(target)) return;
         if (!isAttackTarget(character, target, gameState)) return;
 
         const distance = Math.sqrt(
@@ -3426,7 +3426,7 @@ export function placeCollectibleFromSpell(
   // Check if any entity is standing on the landing tile for immediate pickup
   // Check characters
   for (const char of gameState.placedCharacters) {
-    if (char.x === x && char.y === y && char.currentHealth > 0) {
+    if (char.x === x && char.y === y && isOnBoard(char) && char.currentHealth > 0) {
       processCollectiblePickup(char, false, x, y, gameState);
       break;
     }
@@ -3434,7 +3434,7 @@ export function placeCollectibleFromSpell(
   // Check enemies (if not already collected)
   if (!placedItem.collected) {
     for (const enemy of gameState.puzzle.enemies) {
-      if (enemy.x === x && enemy.y === y && enemy.currentHealth > 0) {
+      if (enemy.x === x && enemy.y === y && isOnBoard(enemy) && enemy.currentHealth > 0) {
         processCollectiblePickup(enemy, true, x, y, gameState);
         break;
       }
@@ -3745,7 +3745,7 @@ function findNearestTeamMembers(
     ...gameState.placedCharacters.map(c => ({ entity: c as PlacedCharacter | PlacedEnemy, enemyIndex: -1 })),
     ...gameState.puzzle.enemies.map((e, i) => ({ entity: e as PlacedCharacter | PlacedEnemy, enemyIndex: i })),
   ].filter(({ entity: e }) => {
-    if (e.dead) return false;
+    if (!isOnBoard(e)) return false;
     // Exclude pendingProjectileDeath: the entity is logically dead — a
     // hit has resolved but the visual hasn't caught up. Without this
     // filter, a second homing spell fired the same turn would pick this
@@ -3917,7 +3917,7 @@ function executePushSpell(
 
     // Check for enemies at this position
     for (const enemy of gameState.puzzle.enemies) {
-      if (enemy.dead) continue;
+      if (!isOnBoard(enemy)) continue;
       const enemyTileX = Math.floor(enemy.x);
       const enemyTileY = Math.floor(enemy.y);
       if (enemyTileX === checkX && enemyTileY === checkY) {
@@ -3928,7 +3928,7 @@ function executePushSpell(
 
     // Check for characters at this position (if spell can push allies)
     for (const char of gameState.placedCharacters) {
-      if (char.dead) continue;
+      if (!isOnBoard(char)) continue;
       if (char.characterId === caster.characterId) continue; // Don't push self
       const charTileX = Math.floor(char.x);
       const charTileY = Math.floor(char.y);
@@ -4017,7 +4017,7 @@ function executePushSpell(
       // Check for other entities at this position (can't push into occupied tile)
       let tileOccupied = false;
       for (const enemy of gameState.puzzle.enemies) {
-        if (enemy.dead || enemy === target) continue;
+        if (!isOnBoard(enemy) || enemy === target) continue;
         if (Math.floor(enemy.x) === Math.floor(nextX) && Math.floor(enemy.y) === Math.floor(nextY)) {
           tileOccupied = true;
           break;
@@ -4025,7 +4025,7 @@ function executePushSpell(
       }
       if (!tileOccupied) {
         for (const char of gameState.placedCharacters) {
-          if (char.dead || char === target) continue;
+          if (!isOnBoard(char) || char === target) continue;
           if (Math.floor(char.x) === Math.floor(nextX) && Math.floor(char.y) === Math.floor(nextY)) {
             tileOccupied = true;
             break;
@@ -4172,10 +4172,10 @@ function executeNecromancy(
       gameState.puzzle.enemies.some(e =>
         e !== corpse &&
         Math.floor(e.x) === Math.floor(corpse.x) && Math.floor(e.y) === Math.floor(corpse.y) &&
-        (!e.dead || isFreshlyDead(e, gameState.currentTurn))) ||
+        !e.despawned && (!e.dead || isFreshlyDead(e, gameState.currentTurn))) ||
       gameState.placedCharacters.some(c =>
         Math.floor(c.x) === Math.floor(corpse.x) && Math.floor(c.y) === Math.floor(corpse.y) &&
-        (!c.dead || isFreshlyDead(c, gameState.currentTurn)));
+        !c.despawned && (!c.dead || isFreshlyDead(c, gameState.currentTurn)));
     if (blockedByEntity) continue;
 
     // Facing override — the "spawn axis" for relative modes is the line
