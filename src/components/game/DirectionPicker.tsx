@@ -174,6 +174,12 @@ export const DirectionPicker: React.FC<DirectionPickerProps> = ({ entry, sprite,
     // eslint-disable-next-line react-hooks/exhaustive-deps -- entriesSig is the stable stand-in for `entries`
   }, [open, entriesSig]);
   const tabs = open ? (entries ?? []) : lastEntries;
+  // The cap-row title is latched with them — the parent drops it on the same
+  // render it drops the entry, and the cap would flip from the hero's name
+  // to the entry caption for the whole slide-out.
+  const [lastTitle, setLastTitle] = useState(title);
+  useEffect(() => { if (open) setLastTitle(title); }, [open, title]);
+  const shownTitle = open ? title : lastTitle;
   const guardUntilRef = useRef(0);
 
   // Keep the last entry so the sheet can draw its own exit animation after the
@@ -293,7 +299,7 @@ export const DirectionPicker: React.FC<DirectionPickerProps> = ({ entry, sprite,
         <div className="flex items-center gap-2 h-7 mb-2.5">
           {/* With tabs the captions live on the tabs, so the cap names the
               hero being aimed instead of repeating the active caption. */}
-          <span className="hud-label text-arcane-300 truncate">{tabs.length > 1 && title ? title : shownEntry.caption}</span>
+          <span className="hud-label text-arcane-300 truncate">{tabs.length > 1 && shownTitle ? shownTitle : shownEntry.caption}</span>
           <span className="hero-cap__groove" aria-hidden="true" />
           {shownEntry.current ? (
             // `capitalize` was here and never applied: `.theme-root .hud-label`
@@ -329,9 +335,12 @@ export const DirectionPicker: React.FC<DirectionPickerProps> = ({ entry, sprite,
         {/* TABS — one per choice this hero owes, only when there are two or
             more. Each is the order pill's own plate (loud brass while unset,
             quiet arcane once chosen) with its caption inside, 44px tall; the
-            active one carries the gold ring. */}
+            active one carries the gold ring. The row WRAPS and a tab never
+            goes below 96px — the width of the word DIRECTION plus the state
+            mark — so three tabs on a 320px phone or in the 288px desktop
+            popover lay out 2 + 1 instead of breaking every caption mid-word. */}
         {tabs.length > 1 && (
-          <div className="flex gap-2 mb-3" role="group" aria-label="Choices">
+          <div className="flex flex-wrap gap-2 mb-3" role="group" aria-label="Choices">
             {tabs.map(t => {
               const active = t.key === shownEntry.key;
               return (
@@ -341,7 +350,7 @@ export const DirectionPicker: React.FC<DirectionPickerProps> = ({ entry, sprite,
                   onClick={() => handleTab(t.key)}
                   aria-pressed={active}
                   aria-label={`${t.caption}: ${t.current ?? 'not set'}`}
-                  className={`dir-tab hero-order ${owes(t) ? 'hero-order--open' : 'hero-order--done'} ${active ? 'dir-tab--active' : ''} hud-label flex-1 min-w-0 min-h-[44px] px-1.5 py-1 flex items-center justify-center gap-1.5 rounded-pixel border`}
+                  className={`dir-tab hero-order ${owes(t) ? 'hero-order--open' : 'hero-order--done'} ${active ? 'dir-tab--active' : ''} hud-label flex-1 min-w-[96px] min-h-[44px] px-1.5 py-1 flex items-center justify-center gap-1.5 rounded-pixel border`}
                   style={{ fontSize: '10px' }}
                 >
                   <span className="min-w-0 break-words text-center leading-tight">{t.caption}</span>

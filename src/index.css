@@ -3523,6 +3523,14 @@ body.menu-gate-instant .quest-box-anchor {
   outline-offset: 1px;
 }
 
+/* Keyboard focus on a tab is parchment and sits further out: the active mark
+   above is the same gold and width as the global focus ring, so without this
+   a focused tab and the active tab were indistinguishable. */
+.dir-tab:focus-visible {
+  outline: 2px solid #fdf8eb;
+  outline-offset: 3px;
+}
+
 /* Recessed well + hairline groove — the picker's cap-row furniture (the
    experiment's cap-rail vocabulary, ported ONLY for the picker; main has no
    cap rail, so the band-height hit cap that lived here is deliberately
@@ -3582,6 +3590,12 @@ body.menu-gate-instant .quest-box-anchor {
   right: 0;
   bottom: 0;
   z-index: 59;
+  /* Never taller than the screen: with the card layout's tab row the sheet
+     outgrows a landscape phone, and a fixed sheet taller than the viewport
+     pushes its own cap row (and the way out) off the top. */
+  max-height: 100dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 12px 16px 50px;
   padding-bottom: calc(50px + env(safe-area-inset-bottom));
   background-color: var(--theme-bg-secondary, #2a2118);

@@ -712,7 +712,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                       {/* 10px (inline — .theme-root .hud-label's 11px outranks
                           utilities): the size cut that pays for the narrower
                           column, caption and pill text together. */}
-                      <p className="hud-label text-arcane-300 text-center mb-1 leading-tight" style={{ fontSize: '10px' }}>{entry.caption}</p>
+                      <p className="hud-label text-arcane-300 text-center mb-1 leading-tight break-words" style={{ fontSize: '10px' }}>{entry.caption}</p>
                       {renderOrderPill(entry)}
                     </div>
                   ))}
