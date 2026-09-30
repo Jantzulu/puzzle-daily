@@ -3667,7 +3667,8 @@ body.menu-gate-instant .quest-box-anchor {
    panel on a phone, and page scroll for wordy heroes is fine). The 190px
    ceiling + internal scroll this replaced lived here briefly; don't bring
    them back. Skin stays classic (the copper wash lives on the element's
-   own classes in CharacterSelector).
+   own classes in CharacterSelector). The enemy/ally drawer in EnemyDisplay
+   wears this same box, so the three drawers cannot drift apart again.
    ============================================ */
 .hero-drawer {
   display: flex;

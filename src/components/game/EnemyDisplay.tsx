@@ -403,7 +403,9 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
             // The wash matches the selected card's tint (copper for allies,
             // blood for enemies) so card + drawer read as ONE surface — the
             // ally drawer used to open blood-red under a copper card.
-            className={`pt-2.5 pb-3 mt-0 ${isAllySide ? 'bg-copper-900/15' : 'bg-blood-900/15'} rounded-b-pixel-md`}
+            // Same box as the hero drawer (.hero-drawer: 6px top and bottom);
+            // this one had drifted to 10px/12px.
+            className={`hero-drawer ${isAllySide ? 'bg-copper-900/15' : 'bg-blood-900/15'} rounded-b-pixel-md`}
             style={{
               opacity: isOpen ? 1 : 0,
               transform: isOpen ? 'translateY(0)' : 'translateY(-8px)',
