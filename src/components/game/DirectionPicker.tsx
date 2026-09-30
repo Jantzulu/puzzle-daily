@@ -267,6 +267,27 @@ export const DirectionPicker: React.FC<DirectionPickerProps> = ({ entry, sprite,
     };
   }, [open, onClose]);
 
+  // PLACEMENT ASK ONLY — the sheet is opened BY a tap on the board, so the
+  // second half of a double tap arrives on a sheet that did not exist for
+  // the first: on the scrim it would cancel the ask it just opened, on the
+  // desktop popover it could land on a rose cell. Swallow scrim and rose
+  // input for the guard window after opening (Escape and the close control
+  // still work).
+  const hasConfirm = confirmLabel !== null;
+  useEffect(() => {
+    if (open && hasConfirm) guardUntilRef.current = performance.now() + SWITCH_GUARD_MS;
+  }, [open, hasConfirm]);
+
+  // When the Place button lights, make sure it can be seen: on a short
+  // (landscape) screen the sheet scrolls inside itself and the button sits
+  // below the fold, and in this mode the last pick does not dismiss — the
+  // player would have made every choice and seen nothing change. Scrolls the
+  // sheet only; a no-op whenever the sheet fits.
+  useEffect(() => {
+    const panel = panelRef.current;
+    if (open && confirmEnabled && panel) panel.scrollTop = panel.scrollHeight;
+  }, [open, confirmEnabled, panelRef]);
+
   if (!mounted || !shownEntry) return null;
 
   const handlePick = (d: Direction) => {
@@ -306,7 +327,7 @@ export const DirectionPicker: React.FC<DirectionPickerProps> = ({ entry, sprite,
     <div className="theme-root dir-picker">
       <div
         className={`dir-picker__scrim ${shown ? 'dir-picker__scrim--in' : ''}`}
-        onClick={onClose}
+        onClick={() => { if (performance.now() >= guardUntilRef.current) onClose(); }}
         aria-hidden="true"
       />
       <div

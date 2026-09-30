@@ -136,6 +136,7 @@ export const TrainingGrounds: React.FC<TrainingGroundsProps> = ({ playerReveal }
     setGameState(state);
     setIsSimulating(false);
     setSelectedCharacterId(null);
+    setPlacementAim(null); // an ask remembers a tile on the arena being left
     setPlayStartCharacters([]);
     setReplayMode(false);
     turnHistoryRef.current = [];
@@ -156,6 +157,7 @@ export const TrainingGrounds: React.FC<TrainingGroundsProps> = ({ playerReveal }
     setGameState(null);
     setIsSimulating(false);
     setSelectedCharacterId(null);
+    setPlacementAim(null);
     setPlayStartCharacters([]);
     setReplayMode(false);
     setReplayPlaying(false);
@@ -699,7 +701,7 @@ export const TrainingGrounds: React.FC<TrainingGroundsProps> = ({ playerReveal }
               onPlacementAimConfirm={() => {
                 const aim = placementAim;
                 setPlacementAim(null);
-                if (aim) handleTileClick(aim.x, aim.y);
+                if (aim && aim.charId === selectedCharacterId) handleTileClick(aim.x, aim.y);
               }}
               onPlacementAimCancel={() => setPlacementAim(null)}
             />

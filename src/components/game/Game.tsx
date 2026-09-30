@@ -610,6 +610,8 @@ export const Game: React.FC<GameProps> = ({
         }
         setOriginalPuzzle(JSON.parse(JSON.stringify(cloudPuzzle)));
         setGameState(initializeGameState(cloudPuzzle));
+        // A placement ask remembers a tile on the board being replaced.
+        setPlacementAim(null);
         return cloudPuzzle;
       });
     }).catch(() => {
@@ -3825,10 +3827,12 @@ export const Game: React.FC<GameProps> = ({
                     // in the pending maps, so it passes the gate and places —
                     // and if anything else changed meanwhile, the same rules
                     // refuse it exactly as a fresh tap would.
+                    // Only for the hero the ask was opened for:
+                    // handleTileClick places whoever is selected NOW.
                     onPlacementAimConfirm={() => {
                       const aim = placementAim;
                       setPlacementAim(null);
-                      if (aim) handleTileClick(aim.x, aim.y);
+                      if (aim && aim.charId === selectedCharacterId) handleTileClick(aim.x, aim.y);
                     }}
                     onPlacementAimCancel={() => setPlacementAim(null)}
                   />

@@ -231,6 +231,15 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- reacts to the panel going disabled only
   }, [disabled]);
 
+  // The ask belongs to the hero it was opened for. The sheet is modal to a
+  // finger but not to a keyboard, so the selection CAN move under it; the
+  // moment it does, the ask is off (the parent also refuses to place for a
+  // hero other than the one asked about).
+  useEffect(() => {
+    if (placementAim && selectedCharacterId !== placementAim.charId) onPlacementAimCancel?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reacts to the selection changing only
+  }, [selectedCharacterId]);
+
   // THE PLACEMENT ASK. A new placementAim object = the player tapped a tile
   // with this hero still owing choices: open the picker on the first one
   // owed. The parent clearing it (confirmed, or cancelled) closes a picker
