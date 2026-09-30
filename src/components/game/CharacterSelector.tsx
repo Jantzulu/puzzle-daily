@@ -558,9 +558,9 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
         >
           <div className={`flex mb-2 px-2 ${[hasActionSteps, hasDirectionInputs, hasAttributes].filter(Boolean).length === 1 ? 'justify-center' : 'gap-0'}`}>
               {hasActionSteps && (
-                <div className={`${hasAttributes || hasDirectionInputs ? 'flex-1 min-w-0 pr-2' : 'w-full'}`}>
+                <div className={`${hasAttributes || hasDirectionInputs ? 'flex-1 min-w-0' : 'w-full'}`}>
                   <p className="hud-label text-stone-400 mb-1 text-center">Actions</p>
-                  <ol className="hud-body text-stone-300 space-y-1 pl-2">
+                  <ol className="hud-body text-stone-300 space-y-1">
                     {renderedCharacter.actionSteps!.map((step, idx) => (
                       <li key={idx} className="flex items-baseline gap-1">
                         <span className="font-semibold text-stone-400 flex-shrink-0">{idx + 1}.</span>
@@ -621,7 +621,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                 <div className="self-stretch mx-2 flex-shrink-0 border-l border-dashed border-stone-600/40" />
               )}
               {hasAttributes && (
-                <div className={`${hasActionSteps || hasDirectionInputs ? 'flex-1 min-w-0 pl-2' : 'w-full'}`}>
+                <div className={`${hasActionSteps || hasDirectionInputs ? 'flex-1 min-w-0' : 'w-full'}`}>
                   <p className="hud-label text-stone-400 mb-1 text-center">Attributes</p>
                   <ul className="hud-body text-stone-300 space-y-1">
                     {renderedCharacter.attributes!.map((attr, idx) => (

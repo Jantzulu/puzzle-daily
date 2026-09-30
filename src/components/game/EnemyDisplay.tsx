@@ -422,11 +422,11 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
             {(hasActionSteps || hasAttributes) && (
               <div className={`flex mb-2 px-2 ${hasActionSteps && hasAttributes ? 'gap-0' : 'justify-center'}`}>
                 {hasActionSteps && (
-                  <div className={`${hasAttributes ? 'flex-1 min-w-0 pr-2' : 'w-full'}`}>
+                  <div className={`${hasAttributes ? 'flex-1 min-w-0' : 'w-full'}`}>
                     {/* Drawer typography = the hero drawer's HUD ramp
                         (2026-08-01): hud-label headers, hud-body copy. */}
                     <p className="hud-label text-stone-400 mb-1 text-center">Actions</p>
-                    <ol className="hud-body text-stone-300 space-y-1 pl-2">
+                    <ol className="hud-body text-stone-300 space-y-1">
                       {actionSteps.map((step, idx) => (
                         <li key={idx} className="flex items-baseline gap-1">
                           <span className="font-semibold text-stone-400 flex-shrink-0">{idx + 1}.</span>
@@ -454,7 +454,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
                   <div className="self-stretch mx-2 flex-shrink-0 border-l border-dashed border-stone-600/40" />
                 )}
                 {hasAttributes && (
-                  <div className={`${hasActionSteps ? 'flex-1 min-w-0 pl-2' : 'w-full'}`}>
+                  <div className={`${hasActionSteps ? 'flex-1 min-w-0' : 'w-full'}`}>
                     <p className="hud-label text-stone-400 mb-1 text-center">Attributes</p>
                     <ul className="hud-body text-stone-300 space-y-1">
                       {renderedEnemyData.attributes!.map((attr, idx) => (
