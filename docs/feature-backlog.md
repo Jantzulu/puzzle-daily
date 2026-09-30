@@ -566,6 +566,18 @@ the visual items: baked, event-driven, or transform/opacity only.
     their assigned opening during play; this is the deferred-waves
     opener future wave features build on. 6 pins in
     scheduled-arrivals.test.ts. AWAITING USER TEST.
+  - [ ] **OPEN DESIGN — what an occupied arrival tile does** (captured
+    2026-09-30; user: "it will be a while before I fully utilize visitor
+    enemies, so we can tackle the exact rules on their behavior then").
+    Until 2026-09-30 the template made its arrival tile an invisible
+    wall, so "occupied → visit skipped" was unreachable; since the
+    off-board fix (`4d1657f`) the tile is walkable and placeable, so a
+    hero standing there at firstTurn cancels a one-shot visit. Options:
+    keep skip-on-blocked (the deliveries rule), queue the visit to the
+    next free turn, or telegraph the arrival tile (ghost + badge, as
+    deliveries do) so players can plan around it. Related polish: the
+    mid-game walk-in (~1.8s) shows the visitor in the corridor for about
+    two turns while it is logically on its tile and targetable.
 
 - [x] **FEATURE — Deliveries — ✅ SHIPPED 2026-07-21** (engine
   `cfa97c0` + 9 pins in deliveries.test.ts, render `e8ba121`, editor
