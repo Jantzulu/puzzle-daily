@@ -154,7 +154,8 @@ function isSideQuestCompleted(
 
     case 'no_deaths':
       // No characters died during the puzzle
-      return gameState.placedCharacters.every(isEntityFunctional);
+      // An escaped hero (despawned, alive) left the board — it did not die.
+      return gameState.placedCharacters.every(c => isEntityFunctional(c) || (!!c.despawned && !c.dead));
 
     case 'custom':
       // Custom quests cannot be auto-checked

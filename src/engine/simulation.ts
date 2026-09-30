@@ -1936,7 +1936,7 @@ export function executeTurn(gameState: GameState): GameState {
         Object.assign(newCharacter, updatedCharacter);
 
         // Execute linkedToNext chain — same-turn semantics as everywhere else
-        while (charData.behavior[newCharacter.actionIndex]?.linkedToNext) {
+        while (!newCharacter.despawned && charData.behavior[newCharacter.actionIndex]?.linkedToNext) {
           newCharacter.actionIndex++;
           const linkedAction = charData.behavior[newCharacter.actionIndex];
           if (linkedAction && linkedAction.executionMode !== 'parallel') {
@@ -1973,7 +1973,7 @@ export function executeTurn(gameState: GameState): GameState {
           Object.assign(newCharacter, updatedCharacter);
 
           // Execute linkedToNext chain
-          while (charData.behavior[newCharacter.actionIndex]?.linkedToNext) {
+          while (!newCharacter.despawned && charData.behavior[newCharacter.actionIndex]?.linkedToNext) {
             newCharacter.actionIndex++;
             const linkedAction = charData.behavior[newCharacter.actionIndex];
             if (linkedAction && linkedAction.executionMode !== 'parallel') {
@@ -1991,7 +1991,7 @@ export function executeTurn(gameState: GameState): GameState {
       Object.assign(newCharacter, updatedCharacter);
 
       // Execute linkedToNext chain — linked actions fire on the same turn
-      while (charData.behavior[newCharacter.actionIndex]?.linkedToNext) {
+      while (!newCharacter.despawned && charData.behavior[newCharacter.actionIndex]?.linkedToNext) {
         newCharacter.actionIndex++;
         const linkedAction = charData.behavior[newCharacter.actionIndex];
         if (linkedAction && linkedAction.executionMode !== 'parallel') {
@@ -2236,7 +2236,7 @@ export function executeTurn(gameState: GameState): GameState {
 
     // Helper: execute linkedToNext chain for enemy
     const executeEnemyLinkedChain = () => {
-      while (pattern[newEnemy.actionIndex!]?.linkedToNext) {
+      while (!newEnemy.despawned && pattern[newEnemy.actionIndex!]?.linkedToNext) {
         newEnemy.actionIndex = (newEnemy.actionIndex || 0) + 1;
         const linkedAction = pattern[newEnemy.actionIndex!];
         if (linkedAction && linkedAction.executionMode !== 'parallel') {
@@ -3076,7 +3076,9 @@ export function checkVictoryConditions(gameState: GameState): boolean {
       case 'characters_alive':
         // Must have at least X characters alive at the end
         const minAlive = condition.params?.characterCount ?? 1;
-        const aliveCount = gameState.placedCharacters.filter(isEntityFunctional).length;
+        // An escaped hero (a Noble or escort that left through an opening)
+        // is alive, not lost.
+        const aliveCount = gameState.placedCharacters.filter(c => isEntityFunctional(c) || hasEscapedBoard(c)).length;
         if (aliveCount < minAlive) return false;
         break;
 
@@ -3179,7 +3181,7 @@ function checkDefeatConditions(gameState: GameState): boolean {
       case 'characters_alive':
         // Can't possibly have enough characters alive anymore
         const minAliveDefeat = condition.params?.characterCount ?? 1;
-        const aliveCountDefeat = gameState.placedCharacters.filter(isEntityFunctional).length;
+        const aliveCountDefeat = gameState.placedCharacters.filter(c => isEntityFunctional(c) || hasEscapedBoard(c)).length;
         if (aliveCountDefeat < minAliveDefeat) return true;
         break;
 

@@ -780,7 +780,7 @@ function processPressurePlateBehavior(
         // Find dormant enemy at target location and activate it
         if (effect.targetX !== undefined && effect.targetY !== undefined) {
           const enemy = gameState.puzzle.enemies.find(
-            e => e.x === effect.targetX && e.y === effect.targetY && e.dead
+            e => e.x === effect.targetX && e.y === effect.targetY && e.dead && !e.despawned
           );
           if (enemy) {
             enemy.dead = false;
@@ -1152,14 +1152,14 @@ function moveCharacter(
     // Check for dead entity with wall-dead trait
     if (!willHitWall) {
       const deadWallEnemy = gameState.puzzle.enemies.find(
-        (e) => e.x === firstX && e.y === firstY && e.dead
+        (e) => e.x === firstX && e.y === firstY && e.dead && !e.despawned
       );
       if (deadWallEnemy && isWallDead(deadWallEnemy)) willHitWall = true;
     }
 
     if (!willHitWall) {
       const deadWallChar = gameState.placedCharacters.find(
-        (c) => c.x === firstX && c.y === firstY && c.dead
+        (c) => c.x === firstX && c.y === firstY && c.dead && !c.despawned
       );
       if (deadWallChar && isWallDead(deadWallChar)) willHitWall = true;
     }
@@ -1545,14 +1545,14 @@ function moveCharacter(
 
       if (!willHitWallNext) {
         const deadWallEnemyNext = gameState.puzzle.enemies.find(
-          (e) => e.x === nextX && e.y === nextY && e.dead
+          (e) => e.x === nextX && e.y === nextY && e.dead && !e.despawned
         );
         if (deadWallEnemyNext && isWallDead(deadWallEnemyNext)) willHitWallNext = true;
       }
 
       if (!willHitWallNext) {
         const deadWallCharNext = gameState.placedCharacters.find(
-          (c) => c.x === nextX && c.y === nextY && c.dead
+          (c) => c.x === nextX && c.y === nextY && c.dead && !c.despawned
         );
         if (deadWallCharNext && isWallDead(deadWallCharNext)) willHitWallNext = true;
       }
@@ -1606,7 +1606,7 @@ function handleIfWall(
     (c) => c.x === checkX && c.y === checkY && isOnBoard(c) && c !== character
   );
   const blockingDeadEnemy = gameState.puzzle.enemies.find(
-    (e) => e.x === checkX && e.y === checkY && e.dead
+    (e) => e.x === checkX && e.y === checkY && e.dead && !e.despawned
   );
 
   const movingIsGhost = isGhost(character);
@@ -1632,6 +1632,7 @@ function handleIfWall(
     // Execute the "then" actions
     let updatedChar = { ...character };
     for (const thenAction of action.params.then) {
+      if (updatedChar.despawned) break; // left the board mid-sequence
       updatedChar = executeAction(updatedChar, thenAction, gameState);
     }
     return updatedChar;
@@ -4457,6 +4458,10 @@ export function evaluateTriggers(
 
   // Check each action for event-based triggers
   behaviorActions.forEach((action: CharacterAction) => {
+    // A triggered action that took the entity off the board (an exit or a
+    // departure) ends its turn: later triggered actions must not fire from
+    // the tile it left.
+    if (character.despawned) return;
     if (action.trigger?.mode === 'on_event' && action.trigger.event) {
       const triggered = checkTriggerCondition(
         character,

@@ -23,6 +23,7 @@ import {
 import { Direction, ActionType } from '../../types/game';
 import type { GameState, WinCondition } from '../../types/game';
 import { executeTurn, checkVictoryConditions } from '../simulation';
+import { checkSideQuests } from '../scoring';
 
 const HALL_EAST = { x: 7, y: 2, side: 'right' as const };
 const HALL_NORTH = { x: 4, y: 0, side: 'top' as const };
@@ -191,5 +192,73 @@ describe('noble_escapes', () => {
     executeTurn(won); // king reaches (7,2) and exits; both conditions satisfied
     expect(won.placedCharacters[0].despawned).toBe(true);
     expect(won.gameStatus).toBe('victory');
+  });
+});
+
+// Found by the 2026-09-30 off-board sweep (the scheduled-visitor bug's
+// neighbours): an escaped hero is alive-despawned, and two places treated
+// that as lost.
+describe('an escaped hero is not a lost hero', () => {
+  it('characters_alive counts the escaped Noble — the escape wins, it does not defeat', () => {
+    const gs = expectParity(() => buildState({
+      winConditions: [{ type: 'noble_escapes' }, { type: 'characters_alive', params: { characterCount: 2 } } as WinCondition],
+      characters: [
+        createTestCharacter({ characterId: 'king', x: 6, y: 2, facing: Direction.EAST, currentHealth: 10, actionIndex: 0, active: true }),
+        createTestCharacter({ characterId: 'guard', x: 1, y: 1, facing: Direction.EAST, currentHealth: 10, actionIndex: 0, active: true }),
+      ],
+      testMode: false,
+    }), 1, g => ({ status: g.gameStatus, escaped: !!g.placedCharacters[0].despawned }));
+    expect(gs.placedCharacters[0].despawned).toBe(true);
+    expect(gs.gameStatus).toBe('victory');
+  });
+
+  it('the no_deaths side quest is kept when a hero escapes', () => {
+    const gs = buildState({
+      winConditions: [{ type: 'noble_escapes' }],
+      characters: [createTestCharacter({ characterId: 'king', x: 6, y: 2, facing: Direction.EAST, currentHealth: 10, actionIndex: 0, active: true })],
+    });
+    gs.puzzle.sideQuests = [{ id: 'nd', type: 'no_deaths', title: 'No deaths', description: '', bonusPoints: 10 }] as never;
+    executeTurn(gs);
+    expect(gs.placedCharacters[0].despawned).toBe(true);
+    expect(checkSideQuests(gs)).toEqual(['nd']);
+  });
+
+  // walk_through escorts leave DURING the move, so a linked action after it
+  // used to run from the opening tile (a hero's and an enemy's chain alike).
+  const walkThrough = (ids: string[]): WinCondition =>
+    ({ type: 'entity_escapes', params: { escortEntityIds: ids, escapeRule: 'walk_through' } } as WinCondition);
+  const exitThenTurn = [
+    { type: ActionType.MOVE_FORWARD, linkedToNext: true },
+    { type: ActionType.FACE_DIRECTION, faceDirection: Direction.SOUTH },
+    { type: ActionType.REPEAT },
+  ];
+
+  it('a hero that steps out through the mouth does not run its linked action', () => {
+    regChar(createTestCharacterDef({ id: 'runner', health: 10, behavior: exitThenTurn as never }));
+    const gs = buildState({
+      winConditions: [walkThrough(['runner'])],
+      hallways: [HALL_NORTH],
+      characters: [createTestCharacter({ characterId: 'runner', x: 4, y: 0, facing: Direction.NORTH, currentHealth: 10, actionIndex: 0, active: true })],
+    });
+    executeTurn(gs);
+    const runner = gs.placedCharacters[0];
+    expect(runner.despawned).toBe(true);
+    expect(runner.facing).toBe(Direction.NORTH); // the linked turn-south never ran
+  });
+
+  it('an enemy-side escort that steps out does not run its linked action', () => {
+    regEnemy(createTestEnemyDef({
+      id: 'rat', health: 5,
+      behavior: { type: 'active', pattern: exitThenTurn as never, defaultFacing: Direction.NORTH },
+    }));
+    const gs = buildState({
+      winConditions: [walkThrough(['rat'])],
+      hallways: [HALL_NORTH],
+      enemies: [createTestEnemy({ enemyId: 'rat', x: 4, y: 0, currentHealth: 5, actionIndex: 0, active: true, facing: Direction.NORTH })],
+    });
+    executeTurn(gs);
+    const rat = gs.puzzle.enemies[0];
+    expect(rat.despawned).toBe(true);
+    expect(rat.facing).toBe(Direction.NORTH);
   });
 });
