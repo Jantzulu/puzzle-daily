@@ -1531,7 +1531,7 @@ function applyStatusEffectFromProjectile(
 function processAllStatusEffectsTurnStart(gameState: GameState): void {
   // Process characters
   for (let i = 0; i < gameState.placedCharacters.length; i++) {
-    const wasAlive = isOnBoard(gameState.placedCharacters[i]);
+    const wasAlive = isEntityFunctional(gameState.placedCharacters[i]);
     if (wasAlive) {
       gameState.placedCharacters[i] = processEntityStatusEffects(
         gameState.placedCharacters[i],
@@ -1549,7 +1549,7 @@ function processAllStatusEffectsTurnStart(gameState: GameState): void {
 
   // Process enemies
   for (let i = 0; i < gameState.puzzle.enemies.length; i++) {
-    const wasAlive = isOnBoard(gameState.puzzle.enemies[i]);
+    const wasAlive = isEntityFunctional(gameState.puzzle.enemies[i]);
     if (wasAlive) {
       gameState.puzzle.enemies[i] = processEntityStatusEffects(
         gameState.puzzle.enemies[i],
@@ -1572,7 +1572,7 @@ function processAllStatusEffectsTurnStart(gameState: GameState): void {
 function processAllStatusEffectsTurnEnd(gameState: GameState): void {
   // Process characters
   for (let i = 0; i < gameState.placedCharacters.length; i++) {
-    const wasAlive = isOnBoard(gameState.placedCharacters[i]);
+    const wasAlive = isEntityFunctional(gameState.placedCharacters[i]);
     if (wasAlive) {
       gameState.placedCharacters[i] = processEntityStatusEffects(
         gameState.placedCharacters[i],
@@ -1590,7 +1590,7 @@ function processAllStatusEffectsTurnEnd(gameState: GameState): void {
 
   // Process enemies
   for (let i = 0; i < gameState.puzzle.enemies.length; i++) {
-    const wasAlive = isOnBoard(gameState.puzzle.enemies[i]);
+    const wasAlive = isEntityFunctional(gameState.puzzle.enemies[i]);
     if (wasAlive) {
       gameState.puzzle.enemies[i] = processEntityStatusEffects(
         gameState.puzzle.enemies[i],
@@ -2050,7 +2050,7 @@ export function executeTurn(gameState: GameState): GameState {
     // Off-board entities (scheduled-visitor templates, escapes) never move,
     // and neither does a copy on its arrival turn (spawnedOnTurn idle):
     // flagging their tiles as vacated let walkers stack onto them.
-    if (!isOnBoard(enemy)) continue;
+    if (!isEntityFunctional(enemy)) continue; // dead, off the board, or a real-mode pending death
     if (enemy.spawnedOnTurn === gameState.currentTurn) continue;
     const enemyData = getEnemy(enemy.enemyId);
     if (!enemyData || !enemyData.behavior || enemyData.behavior.type !== 'active') continue;
@@ -2912,13 +2912,17 @@ function isFreshlyDeadEntity(entity: PlacedCharacter | PlacedEnemy, currentTurn:
  * corpse. The entity stays in the array (append-only invariant — removal
  * would shift every index-keyed system) marked dead+despawned; diedOnTurn
  * stays unset so the tile frees immediately. A summon KILLED before expiry
- * never reaches this (dead check) and dies fully via the normal path.
+ * never reaches this (dead / pending-death check) and dies fully via the
+ * normal path.
  */
 function processSummonExpiry(gameState: GameState): void {
   for (const enemy of gameState.puzzle.enemies) {
     // An ESCAPED summon (alive-despawned) already left: expiring it would
-    // kill it and turn its escape into a defeat.
-    if (enemy.dead || enemy.despawned) continue;
+    // kill it and turn its escape into a defeat. A summon struck down this
+    // turn died before it could expire (real mode defers its dead flag via
+    // pendingProjectileDeath; headless has it dead already) — it keeps a
+    // normal corpse in both modes.
+    if (enemy.dead || enemy.pendingProjectileDeath || enemy.despawned) continue;
     if (enemy.despawnOnTurn === undefined || gameState.currentTurn < enemy.despawnOnTurn) continue;
 
     enemy.dead = true;
@@ -6691,7 +6695,7 @@ function processPersistentAreaEffects(gameState: GameState): void {
       ...gameState.puzzle.enemies,
     ];
     candidates.forEach(target => {
-      if (!isOnBoard(target)) return;
+      if (!isEntityFunctional(target)) return; // incl. a real-mode pending death (dead in headless)
       if (entityParty(target, gameState) === zoneParty) return; // own side stands in it safely
 
       const distance = Math.sqrt(

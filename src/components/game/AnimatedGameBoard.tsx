@@ -1707,9 +1707,12 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
         if (newDeathAnimations.delete(char.characterId)) hasChanges = true;
         // Soul-return: a MID-RUN revival is a RESURRECT — play the departing
         // soul's inverse. Retry/reset flips arrive with the game back in
-        // setup, so they stay silent; a resurrect landing on the finishing
-        // turn arrives as victory/defeat and still plays.
-        if (gameState.gameStatus !== 'setup') {
+        // setup or at turn 0 (a replay entry, a showcase loop, a game-over
+        // reset), so they stay silent — executeTurn advances the turn before
+        // anything acts, so a real resurrect is always at turn 1 or later; a
+        // resurrect landing on the finishing turn arrives as victory/defeat
+        // and still plays.
+        if (gameState.gameStatus !== 'setup' && gameState.currentTurn > 0) {
           characterSoulReturnsRef.current.set(char.characterId, { startTime: now });
         }
       }
@@ -1724,9 +1727,9 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
     if (hasChanges) {
       setCharacterDeathAnimations(newDeathAnimations);
     }
-    // gameStatus is in the deps for the soul-return gate; extra firings are
-    // no-ops (unchanged dead-state diffs do nothing).
-  }, [gameState.placedCharacters, gameState.gameStatus]);
+    // gameStatus and currentTurn are in the deps for the soul-return gate;
+    // extra firings are no-ops (unchanged dead-state diffs do nothing).
+  }, [gameState.placedCharacters, gameState.gameStatus, gameState.currentTurn]);
 
   // Detect enemy deaths and trigger death animations
   useEffect(() => {
@@ -1766,7 +1769,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
         // starts fresh from frame 0 (no mid-animation flash on the next attempt).
         if (newDeathAnimations.delete(idx)) hasChanges = true;
         // Soul-return: mid-run revival = RESURRECT (see character twin).
-        if (gameState.gameStatus !== 'setup') {
+        if (gameState.gameStatus !== 'setup' && gameState.currentTurn > 0) {
           enemySoulReturnsRef.current.set(idx, { startTime: now });
         }
       }
@@ -1780,8 +1783,8 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
     if (hasChanges) {
       setEnemyDeathAnimations(newDeathAnimations);
     }
-    // gameStatus: see the character twin above.
-  }, [gameState.puzzle.enemies, gameState.gameStatus]);
+    // gameStatus / currentTurn: see the character twin above.
+  }, [gameState.puzzle.enemies, gameState.gameStatus, gameState.currentTurn]);
 
   // Exit walk-outs (2026-07-17): when an enemy leaves the board this turn —
   // escapedOnTurn (escapes-on-defeat, ghostly fade) or departedOnTurn
@@ -1793,6 +1796,12 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
   // it cleanly.
   useEffect(() => {
     const now = Date.now();
+    // Walk-outs for indices the array no longer has (retry, reset, replay
+    // seek to before an appended entity existed) are stale — see
+    // boardIndexPrune.ts.
+    for (const idx of indicesBeyond(enemyGhostWalksRef.current.keys(), gameState.puzzle.enemies.length)) {
+      enemyGhostWalksRef.current.delete(idx);
+    }
     gameState.puzzle.enemies.forEach((enemy, index) => {
       const exitTurn = enemy.escapedOnTurn ?? enemy.departedOnTurn ?? enemy.ejectedOnTurn;
       if (exitTurn === undefined) {

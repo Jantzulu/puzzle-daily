@@ -218,6 +218,29 @@ describe('headless/visual parity', () => {
     expect(final.collectibles).toHaveLength(1); // gold dropped in both modes
   });
 
+  // 2026-09-30 review of the off-board fix: a timed summon killed by a bolt
+  // on its expiry turn. Real mode holds the kill as pendingProjectileDeath
+  // until the bolt visibly lands; summon expiry used to stamp that pending
+  // body dead+despawned (no corpse) while headless kept a normal corpse, and
+  // the corpse-aware movement/occupancy checks then disagreed.
+  it('summon expiry: a summon shot down on its last turn leaves the same corpse', () => {
+    regChar(createTestCharacterDef({
+      id: 'archer', health: 10,
+      behavior: [{ type: ActionType.SPELL, spellId: 'bolt' }, { type: ActionType.WAIT }] as never,
+    }));
+    const final = expectParity(() => baseState({
+      enemies: [createTestEnemy({
+        enemyId: 'goblin-1', x: 3, y: 0, currentHealth: 1, facing: Direction.SOUTH,
+        spawnedOnTurn: 0, despawnOnTurn: 1,
+      } as never)],
+      heroes: [createTestCharacter({
+        characterId: 'archer', x: 3, y: 3, facing: Direction.NORTH,
+        currentHealth: 10, actionIndex: 0, active: true,
+      })],
+    }), 1);
+    expect(final.enemies[0]).toMatchObject({ dead: true, despawned: false });
+  });
+
   it('death drops: melee and projectile kills drop identically', () => {
     regEnemy(createTestEnemyDef({ id: 'loot-goblin', health: 2, droppedCollectibleId: 'gold' }));
     regChar(createTestCharacterDef({
