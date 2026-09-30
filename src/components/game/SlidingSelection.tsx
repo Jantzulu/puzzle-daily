@@ -1,4 +1,5 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useState } from 'react';
+import { slotBoundaries } from '../../hooks/useElementWidth';
 
 interface SlidingSelectionProps {
   /** Number of equal-width slots in the strip (count of cards actually rendered). */
@@ -7,47 +8,61 @@ interface SlidingSelectionProps {
   selectedIndex: number;
   /** Tailwind text class for the caret, e.g. 'text-copper-400'. */
   caretClass: string;
+  /**
+   * The strip's measured width in CSS px (useElementWidth on the same
+   * `relative` wrapper). 0 = not measured yet: nothing renders.
+   */
+  width: number;
 }
+
+// The caret: a stepped chevron on the 2px art grid — 8x4 art px, a flat
+// 2-art apex and a 1:1 stair, the same slope as the quest box's ornament and
+// the play frame's finials. It replaced a smooth vector triangle whose 7:8
+// slope sat on no pixel grid (2026-09-30).
+const CARET_W = 16;
+const CARET_H = 8;
+const CARET_PATH = 'M6 0h4v2h2v2h2v2h2v2H0V6h2V4h2V2h2z';
 
 /**
  * Sliding selection caret for an equal-width card strip: the up-pointing
- * caret straddling the strip's bottom edge, translating smoothly from the
- * previous selection to the new one instead of snapping. Transform/opacity
- * only — the page-decoration rendering rule (never animate layout,
- * filters, or geometry). The selection TINT is deliberately NOT here — it
- * lives on the cards and crossfades (see the design record below).
+ * caret straddling the strip's bottom edge (half above, half below, into the
+ * drawer), gliding from the previous selection to the new one instead of
+ * snapping. Transform/opacity only — the page-decoration rendering rule
+ * (never animate layout, filters, or geometry). The selection TINT is
+ * deliberately NOT here — it lives on the cards and crossfades (see the
+ * design record below).
  *
- * Render as the first child of a `relative` wrapper around the strip.
- * Width and translateX are both in slot units (the element is one slot
- * wide, so translateX(100%) is one slot over), keeping the math free of
- * pixel measurement. Selecting from nothing fades in; deselecting fades
- * out in place.
+ * Render as the first child of a `relative` wrapper around the strip, and
+ * pass that wrapper's measured width. At rest the caret sits on WHOLE pixels
+ * (centred on the slot between the same rounded boundaries the strip's
+ * dividers use), so the stepped shape stays crisp; it glides by transform.
  */
-export const SlidingSelection: React.FC<SlidingSelectionProps> = ({ slotCount, selectedIndex, caretClass }) => {
-  const lastIndexRef = useRef(selectedIndex);
-  const prev = lastIndexRef.current;
-  useEffect(() => { lastIndexRef.current = selectedIndex; });
+export const SlidingSelection: React.FC<SlidingSelectionProps> = ({ slotCount, selectedIndex, caretClass, width }) => {
+  // The last slot that was actually SHOWN. Updated only while something is
+  // selected: re-renders while nothing is selected used to overwrite it with
+  // -1 (parking the caret on slot 0), so a deselect drifted toward the first
+  // card as it faded and a select-from-none flew in from the first card.
+  // (State adjusted during render — React's pattern for "remember the last
+  // prop value", with no ref read in render.)
+  const [lastShown, setLastShown] = useState(selectedIndex >= 0 ? selectedIndex : 0);
+  if (selectedIndex >= 0 && selectedIndex !== lastShown) setLastShown(selectedIndex);
 
-  if (slotCount <= 0) return null;
+  if (slotCount <= 0 || width <= 0) return null;
 
   const visible = selectedIndex >= 0;
-  // While fading out, hold the last selected slot so the exit happens in place.
-  const anchor = visible ? selectedIndex : prev >= 0 ? prev : 0;
+  // While fading out, hold the last shown slot so the exit happens in place.
+  const anchor = Math.min(visible ? selectedIndex : lastShown, slotCount - 1);
+  const b = slotBoundaries(width, slotCount);
+  const x = Math.round((b[anchor] + b[anchor + 1]) / 2) - CARET_W / 2;
+
   // The transition is UNCONDITIONAL. The first version enabled the
   // transform transition only on the render that changed the selection —
   // but the strips re-render again immediately (the info panel's
   // open/render state cascades right behind the selection change), which
   // flipped the class back and CANCELLED the in-flight slide, so switches
   // snapped. With the classes constant, no re-render can kill the motion.
-  // Select-from-none simply fades in while gliding from the last anchor —
-  // continuity, not a glitch (the overlay is transparent when it starts).
-  const transition = 'transition-[transform,opacity] duration-300 ease-out';
-  const slotStyle: React.CSSProperties = {
-    width: `${100 / slotCount}%`,
-    transform: `translateX(${anchor * 100}%)`,
-    opacity: visible ? 1 : 0,
-  };
-
+  // Select-from-none simply fades in while gliding from the last shown
+  // slot — continuity, not a glitch (the caret is transparent as it starts).
   return (
     <>
       {/* Design record (2026-07-16, four iterations with the user): the
@@ -60,18 +75,22 @@ export const SlidingSelection: React.FC<SlidingSelectionProps> = ({ slotCount, s
           crossfades between cards via their transition-colors. Only the
           CARET glides, because it has no bounds to expose. Do not
           reintroduce a moving highlight rectangle here. */}
-      <div aria-hidden className={`absolute bottom-0 left-0 z-10 pointer-events-none ${transition}`} style={slotStyle}>
-        {/* Same caret the cards used to own: centered in the slot, half
-            below the strip edge so it straddles into the info area. */}
+      <div
+        aria-hidden
+        className="absolute bottom-0 left-0 z-10 pointer-events-none transition-[transform,opacity] duration-300 ease-out"
+        style={{ transform: `translateX(${x}px)`, opacity: visible ? 1 : 0 }}
+      >
         <svg
-          width="14" height="8" viewBox="0 0 14 8" fill="currentColor"
-          className={`mx-auto block ${caretClass}`}
+          width={CARET_W}
+          height={CARET_H}
+          viewBox={`0 0 ${CARET_W} ${CARET_H}`}
+          shapeRendering="crispEdges"
+          className={`block ${caretClass}`}
           style={{ transform: 'translateY(50%)' }}
         >
-          <path d="M7 0L14 8H0z" />
+          <path d={CARET_PATH} fill="currentColor" />
         </svg>
       </div>
     </>
   );
 };
-

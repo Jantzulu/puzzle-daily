@@ -3450,7 +3450,8 @@ body.menu-gate-instant .quest-box-anchor {
    filled object in the panel, so VALUE carries the difference rather than
    hue (copper-on-copper sank; arcane-on-copper out-shouted it). Text is
    parchment on the copper body: 5.3:1, clear of AA at 11px/600. The outer
-   glow is STATIC — the breathing dot (opacity only) is what moves. */
+   glow is STATIC — the only thing that breathes is the card's compass glyph
+   (opacity only). */
 .hero-order--open {
   border-color: var(--hud-gold);
   color: #fdf8eb;
@@ -3483,7 +3484,7 @@ body.menu-gate-instant .quest-box-anchor {
    Two pieces, because a hero card is a <button> and cannot hold another:
 
    .hero-aim-chip is PAINT ONLY — the compass in the card's stat line, in
-   the order pill's two states (lit brass while a choice is owed, quiet
+   the order plate's two colourings (lit brass while a choice is owed, quiet
    arcane once all are made). 18px in a 14px row: it overhangs 2px top and
    bottom without moving the row. --bare (five or more cards) drops the box
    and keeps the glyph, because HP + arrow + a boxed chip no longer fit.
@@ -3641,8 +3642,8 @@ body.menu-gate-instant .quest-box-anchor {
   right: 0;
   bottom: 0;
   z-index: 59;
-  /* Never taller than the screen: with the card layout's tab row the sheet
-     outgrows a landscape phone, and a fixed sheet taller than the viewport
+  /* Never taller than the screen: with a tab row (and the Place button) the
+     sheet outgrows a landscape phone, and a fixed sheet taller than the viewport
      pushes its own cap row (and the way out) off the top. */
   max-height: 100dvh;
   overflow-y: auto;

@@ -13,6 +13,7 @@ import { DirectionPicker, CompassArrow, BEARING_INITIALS, type DirectionPickerEn
 import type { ThemeAssets } from '../../utils/themeAssets';
 import { CARD_PIXEL_SCALE, computeCardSpriteAreaHeight } from './cardConstants';
 import { SlidingSelection } from './SlidingSelection';
+import { useElementWidth } from '../../hooks/useElementWidth';
 import { subscribeToImageLoads } from '../../utils/imageLoader';
 
 const MOVEMENT_TYPES = new Set([
@@ -274,6 +275,9 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
   // must index within the same filtered list.
   const stripCharacterIds = availableCharacterIds.filter((id) => !!getCharacter(id));
   const selectedStripIndex = selectedCharacterId ? stripCharacterIds.indexOf(selectedCharacterId) : -1;
+  // The strip's measured width: the caret places itself on whole-pixel
+  // slot boundaries.
+  const [stripRef, stripWidth] = useElementWidth<HTMLDivElement>();
 
   const content = (
     <>
@@ -369,15 +373,15 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
       </div>
 
       {/* Hero strip — equal-width slots separated by vertical dividers.
-          The selection tint + caret live in a SlidingSelection overlay (in a
-          relative wrapper OUTSIDE the divide-x flex row, so the dividers
-          don't paint borders on the overlay divs) and glide between slots
+          The caret (SlidingSelection) is an overlay in this relative
+          wrapper, placed from its measured width, and glides between slots
           instead of snapping card-to-card. */}
-      <div className="relative">
+      <div ref={stripRef} className="relative">
       <SlidingSelection
         slotCount={stripCharacterIds.length}
         selectedIndex={selectedStripIndex}
         caretClass="text-copper-400"
+        width={stripWidth}
       />
       <div className="flex divide-x divide-stone-700">
         {stripCharacterIds.map((charId) => {

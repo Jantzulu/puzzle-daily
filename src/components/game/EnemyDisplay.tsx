@@ -12,6 +12,7 @@ import { MovementArrow } from './DirectionArrow';
 import type { ThemeAssets } from '../../utils/themeAssets';
 import { CARD_PIXEL_SCALE, computeCardSpriteAreaHeight } from './cardConstants';
 import { SlidingSelection } from './SlidingSelection';
+import { useElementWidth } from '../../hooks/useElementWidth';
 import { subscribeToImageLoads } from '../../utils/imageLoader';
 
 const MOVEMENT_TYPES = new Set([
@@ -115,6 +116,10 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
   // Only ids that resolve to real assets render cards — the sliding
   // selection overlay's slot math must index within this same list.
   const stripEnemyIds = uniqueEnemyIds.filter((id) => !!getEnemy(id));
+  const selectedStripIndex = selectedEnemyId ? stripEnemyIds.indexOf(selectedEnemyId) : -1;
+  // The strip's measured width: the caret places itself on whole-pixel
+  // slot boundaries.
+  const [stripRef, stripWidth] = useElementWidth<HTMLDivElement>();
 
   // Uniform card sprite-area height across the enemy row — derived from the
   // tallest native sprite × CARD_PIXEL_SCALE. Prevents clipping of the
@@ -265,15 +270,16 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
       </div>
 
       {/* Enemy strip — equal-width slots separated by vertical dividers.
-          Selection tint + caret ride the SlidingSelection overlay (in a
-          relative wrapper OUTSIDE the divide-x row so the dividers don't
-          border the overlay divs) and glide between slots. Slot math must
-          index the same filtered list the cards render from. */}
-      <div className="relative">
+          The caret (SlidingSelection) is an overlay in this relative
+          wrapper, placed from its measured width, and glides between slots.
+          Slot math must index the same filtered list the cards render
+          from. */}
+      <div ref={stripRef} className="relative">
       <SlidingSelection
         slotCount={stripEnemyIds.length}
-        selectedIndex={selectedEnemyId ? stripEnemyIds.indexOf(selectedEnemyId) : -1}
+        selectedIndex={selectedStripIndex}
         caretClass={isAllySide ? 'text-copper-400' : 'text-blood-400'}
+        width={stripWidth}
       />
       <div className="flex divide-x divide-stone-700">
         {stripEnemyIds.map((enemyId) => {
@@ -306,7 +312,10 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
               type="button"
               aria-pressed={isSelected}
               onClick={() => setSelectedEnemyId(isSelected ? null : enemyId)}
-              className={`flex-1 flex flex-col items-center px-1 pt-0.5 pb-2 relative transition-colors cursor-pointer ${
+              // min-w-0: a card can never be widened by its own content (a
+              // long name, a visit line), so the slots stay equal and the
+              // caret and posts stay on their boundaries.
+              className={`flex-1 min-w-0 flex flex-col items-center px-1 pt-0.5 pb-2 relative transition-colors cursor-pointer ${
                 isSelected
                   // Flat tint matching the info panel's wash — one surface;
                   // transition-colors crossfades it between cards (the tint
@@ -339,7 +348,9 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
                   clamped line each, full text in `title`. */}
               <div className="w-full h-[38px] flex flex-col items-center justify-center overflow-hidden leading-none">
                 <span
-                  className="hud-title text-blood-300 text-center break-words line-clamp-1"
+                  // Bounded to its (equal) slot so the clamp cuts one end,
+                  // not both (the hero strip's "eflecto" fix).
+                  className="hud-title text-blood-300 text-center break-words line-clamp-1 max-w-full"
                   title={enemyData.title ? `${enemyData.name} — ${enemyData.title}` : enemyData.name}
                 >
                   {enemyData.name}
