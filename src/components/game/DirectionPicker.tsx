@@ -108,6 +108,17 @@ interface DirectionPickerProps {
   /** The hero being aimed — drawn in the rose's hub. */
   sprite?: CustomSprite;
   onClose: () => void;
+  /**
+   * CARD LAYOUT ONLY (?directions=card): every entry this hero owes. With
+   * two or more the sheet grows a tab per choice, and a spell pick walks on
+   * to the next unset entry instead of dismissing. Omitted = the classic
+   * one-entry sheet, unchanged.
+   */
+  entries?: DirectionPickerEntry[];
+  /** Make another entry the active one (tab tap, or the walk after a pick). */
+  onSwitch?: (key: string) => void;
+  /** Hero name for the cap row when the tabs already carry the captions. */
+  title?: string;
 }
 
 // Matches the .dir-picker__sheet transition in index.css.
@@ -115,6 +126,14 @@ const EXIT_MS = 200;
 // Long enough for the pressed cell to light up before the sheet leaves, short
 // enough that it never feels like a second step.
 const PICK_LINGER_MS = 140;
+// After the sheet walks to the next entry the rose re-skins IN PLACE, so a
+// double tap would land on the same cell of a different choice. Swallow rose
+// input for this long after a walk.
+const SWITCH_GUARD_MS = 260;
+
+// A choice counts only if it is inside the creator's allowed subset — the
+// placement gate's own rule (getMissingDirectionInputs).
+const owes = (e: DirectionPickerEntry) => !(e.current && e.allowed.includes(e.current));
 
 /**
  * DIRECTION PICKER — the 3x3 compass, evacuated from the hero card.
@@ -141,9 +160,21 @@ const PICK_LINGER_MS = 140;
  * exist, and getMissingDirectionInputs still gates placement. Only WHERE the
  * player expresses the choice changed.
  */
-export const DirectionPicker: React.FC<DirectionPickerProps> = ({ entry, sprite, onClose }) => {
+export const DirectionPicker: React.FC<DirectionPickerProps> = ({ entry, sprite, onClose, entries, onSwitch, title }) => {
   const open = !!entry;
   const entryKey = entry?.key ?? null;
+
+  // The tab row is latched like the entry below, so the sheet keeps its
+  // height while it slides away. The signature stands in for the array,
+  // which the parent rebuilds on every render.
+  const entriesSig = (entries ?? []).map(e => `${e.key}:${e.current ?? ''}`).join('|');
+  const [lastEntries, setLastEntries] = useState<DirectionPickerEntry[]>(entries ?? []);
+  useEffect(() => {
+    if (open) setLastEntries(entries ?? []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- entriesSig is the stable stand-in for `entries`
+  }, [open, entriesSig]);
+  const tabs = open ? (entries ?? []) : lastEntries;
+  const guardUntilRef = useRef(0);
 
   // Keep the last entry so the sheet can draw its own exit animation after the
   // parent has already dropped it. State rather than a ref because it is read
@@ -213,14 +244,26 @@ export const DirectionPicker: React.FC<DirectionPickerProps> = ({ entry, sprite,
 
   const handlePick = (d: Direction) => {
     if (!entry?.onPick) return;
+    if (performance.now() < guardUntilRef.current) return;
     entry.onPick(d);
     // Facing: the sheet stays up — the lit cell, the cap-row readout and the
     // hub hero turning ARE the feedback, and the player closes when done.
     if (entry.isFacing) return;
     // Spell aims: let the chosen cell light before the sheet leaves —
     // otherwise the only feedback for a required input is the sheet vanishing.
+    // With tabs, walk to the next entry that still owes a choice instead
+    // (excluding the one just picked — this closure predates the pick).
+    const next = onSwitch ? entries?.find(e => e.key !== entry.key && owes(e))?.key : undefined;
     if (pickRef.current) clearTimeout(pickRef.current);
-    pickRef.current = setTimeout(onClose, PICK_LINGER_MS);
+    pickRef.current = setTimeout(next
+      ? () => { guardUntilRef.current = performance.now() + SWITCH_GUARD_MS; onSwitch!(next); }
+      : onClose, PICK_LINGER_MS);
+  };
+
+  const handleTab = (key: string) => {
+    // A pending walk/dismiss belongs to the entry being left.
+    if (pickRef.current) clearTimeout(pickRef.current);
+    onSwitch?.(key);
   };
 
   const readOnly = !entry?.onPick;
@@ -248,7 +291,9 @@ export const DirectionPicker: React.FC<DirectionPickerProps> = ({ entry, sprite,
             way out. Same vocabulary as the plate's right cap: engraved label,
             a groove, then a recessed well for the control. */}
         <div className="flex items-center gap-2 h-7 mb-2.5">
-          <span className="hud-label text-arcane-300 truncate">{shownEntry.caption}</span>
+          {/* With tabs the captions live on the tabs, so the cap names the
+              hero being aimed instead of repeating the active caption. */}
+          <span className="hud-label text-arcane-300 truncate">{tabs.length > 1 && title ? title : shownEntry.caption}</span>
           <span className="hero-cap__groove" aria-hidden="true" />
           {shownEntry.current ? (
             // `capitalize` was here and never applied: `.theme-root .hud-label`
@@ -280,6 +325,34 @@ export const DirectionPicker: React.FC<DirectionPickerProps> = ({ entry, sprite,
             </svg>
           </button>
         </div>
+
+        {/* TABS — one per choice this hero owes, only when there are two or
+            more. Each is the order pill's own plate (loud brass while unset,
+            quiet arcane once chosen) with its caption inside, 44px tall; the
+            active one carries the gold ring. */}
+        {tabs.length > 1 && (
+          <div className="flex gap-2 mb-3" role="group" aria-label="Choices">
+            {tabs.map(t => {
+              const active = t.key === shownEntry.key;
+              return (
+                <button
+                  key={t.key}
+                  type="button"
+                  onClick={() => handleTab(t.key)}
+                  aria-pressed={active}
+                  aria-label={`${t.caption}: ${t.current ?? 'not set'}`}
+                  className={`dir-tab hero-order ${owes(t) ? 'hero-order--open' : 'hero-order--done'} ${active ? 'dir-tab--active' : ''} hud-label flex-1 min-w-0 min-h-[44px] px-1.5 py-1 flex items-center justify-center gap-1.5 rounded-pixel border`}
+                  style={{ fontSize: '10px' }}
+                >
+                  <span className="min-w-0 break-words text-center leading-tight">{t.caption}</span>
+                  {owes(t)
+                    ? <span className="w-1.5 h-1.5 rounded-full bg-parchment-100 flex-shrink-0" aria-hidden="true" />
+                    : <CompassArrow direction={t.current!} size={14} className="flex-shrink-0" />}
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {/* THE ROSE. 56x56 cells with 8px gaps — no hit-slop anywhere, because
             slop between adjacent targets is exactly the failure mode this
