@@ -420,14 +420,16 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
                       {actionSteps.map((step, idx) => (
                         <li key={idx} className="flex items-baseline gap-1">
                           <span className="font-semibold text-stone-400 flex-shrink-0">{idx + 1}.</span>
-                          <span>
+                          {/* min-w-0 + break-words: see the hero drawer —
+                              a long word breaks instead of spilling out. */}
+                          <span className="min-w-0 break-words">
                             <RichTextRenderer html={step.text} />
                             {step.subSteps && step.subSteps.length > 0 && (
                               <ul className="mt-0.5 space-y-1 text-stone-400">
                                 {step.subSteps.map((sub, subIdx) => (
                                   <li key={subIdx} className="flex items-baseline gap-1">
                                     <span className="flex-shrink-0">•</span>
-                                    <RichTextRenderer html={sub} />
+                                    <RichTextRenderer html={sub} className="min-w-0 break-words" />
                                   </li>
                                 ))}
                               </ul>
@@ -449,12 +451,12 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
                         <li key={idx}>
                           <div className="flex items-baseline gap-1">
                             <span className="text-stone-400 flex-shrink-0">•</span>
-                            <RichTextRenderer html={attributeText(attr)} />
+                            <RichTextRenderer html={attributeText(attr)} className="min-w-0 break-words" />
                           </div>
                           {(attributeSubItems(attr) || []).map((sub, subIdx) => (
                             <div key={subIdx} className="flex items-baseline gap-1 ml-3 mt-0.5">
                               <span className="text-stone-500 flex-shrink-0">◦</span>
-                              <RichTextRenderer html={sub} />
+                              <RichTextRenderer html={sub} className="min-w-0 break-words" />
                             </div>
                           ))}
                         </li>

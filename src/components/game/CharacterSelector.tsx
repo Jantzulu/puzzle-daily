@@ -545,7 +545,9 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
             which opens the 56px picker sheet ("keep the direction
             selector looking the same"). */}
         <div
-          className="hero-drawer pt-2.5 pb-0 mt-0 bg-copper-900/15 rounded-b-pixel-md"
+          // Box padding comes from .hero-drawer (6px top and bottom) — it is
+          // unlayered CSS and outranks any padding utility placed here.
+          className="hero-drawer bg-copper-900/15 rounded-b-pixel-md"
           style={{
             opacity: isOpen ? 1 : 0,
             transform: isOpen ? 'translateY(0)' : 'translateY(-8px)',
@@ -554,7 +556,6 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
               : 'opacity 0.2s ease-in, transform 0.3s ease-in',
           }}
         >
-          <div>
           <div className={`flex mb-2 px-2 ${[hasActionSteps, hasDirectionInputs, hasAttributes].filter(Boolean).length === 1 ? 'justify-center' : 'gap-0'}`}>
               {hasActionSteps && (
                 <div className={`${hasAttributes || hasDirectionInputs ? 'flex-1 min-w-0 pr-2' : 'w-full'}`}>
@@ -563,14 +564,18 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                     {renderedCharacter.actionSteps!.map((step, idx) => (
                       <li key={idx} className="flex items-baseline gap-1">
                         <span className="font-semibold text-stone-400 flex-shrink-0">{idx + 1}.</span>
-                        <span>
+                        {/* min-w-0 + break-words on every text cell in the
+                            drawer: a flex item will not shrink below its
+                            longest word, so one long word used to spill out
+                            of a narrow column instead of breaking. */}
+                        <span className="min-w-0 break-words">
                           <RichTextRenderer html={step.text} />
                           {step.subSteps && step.subSteps.length > 0 && (
                             <ul className="mt-0.5 space-y-1 text-stone-400">
                               {step.subSteps.map((sub, subIdx) => (
                                 <li key={subIdx} className="flex items-baseline gap-1">
                                   <span className="flex-shrink-0">•</span>
-                                  <RichTextRenderer html={sub} />
+                                  <RichTextRenderer html={sub} className="min-w-0 break-words" />
                                 </li>
                               ))}
                             </ul>
@@ -623,12 +628,12 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                       <li key={idx}>
                         <div className="flex items-baseline gap-1">
                           <span className="text-stone-400 flex-shrink-0">•</span>
-                          <RichTextRenderer html={attributeText(attr)} />
+                          <RichTextRenderer html={attributeText(attr)} className="min-w-0 break-words" />
                         </div>
                         {(attributeSubItems(attr) || []).map((sub, subIdx) => (
                           <div key={subIdx} className="flex items-baseline gap-1 ml-3 mt-0.5">
                             <span className="text-stone-500 flex-shrink-0">◦</span>
-                            <RichTextRenderer html={sub} />
+                            <RichTextRenderer html={sub} className="min-w-0 break-words" />
                           </div>
                         ))}
                       </li>
@@ -636,7 +641,6 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                   </ul>
                 </div>
               )}
-          </div>
           </div>
 
         </div>
