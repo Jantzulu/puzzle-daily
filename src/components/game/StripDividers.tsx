@@ -17,7 +17,7 @@ interface StripDividersProps {
  * with dead enemies) and matched nothing the user paints.
  *
  * A post is 2 art px wide (4 CSS px) on the same art-grid slot boundaries
- * the selection caret uses, sitting in the 8px gutter between two cards'
+ * the cards and the selection shape use, sitting in the 8px gutter between two cards'
  * padding. It floats — 8px clear of the strip top and 8px clear of the
  * seam — so it never T-junctions into the drawer. Drawn in the user's own
  * painted recipe as a placeholder: flat two-tone stock lit from the left
@@ -25,8 +25,8 @@ interface StripDividersProps {
  * (iron is bottom-heavy by one row). A painted 2x12 tile + caps can later
  * replace it at the same rectangle.
  *
- * The two posts beside the selected card yield (fade out): the selection's
- * own edge separates it from its neighbours.
+ * The two posts beside the selected card yield (fade out): the selection
+ * shape's outline separates it from its neighbours.
  *
  * One overlay per strip, laid UNDER the card row (render it BEFORE the row:
  * the cards are positioned, so tree order puts them on top). Anything a card

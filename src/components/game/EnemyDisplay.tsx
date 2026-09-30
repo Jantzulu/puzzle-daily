@@ -11,12 +11,13 @@ import { LintelMesh } from './LintelMesh';
 import { MovementArrow } from './DirectionArrow';
 import type { ThemeAssets } from '../../utils/themeAssets';
 import { CARD_PIXEL_SCALE, computeCardSpriteAreaHeight } from './cardConstants';
-import { SlidingSelection } from './SlidingSelection';
 import { StripDividers } from './StripDividers';
 import { SelectionStrip, SelectionDrawer } from './SelectionShape';
-import { SELECTION_SHAPED, DRAWER_SLIDE_EASE, shapedSlotStyle } from './selectionFinish';
-import { useElementWidth } from '../../hooks/useElementWidth';
+import { useElementWidth, artGridSlotStyle } from '../../hooks/useElementWidth';
 import { subscribeToImageLoads } from '../../utils/imageLoader';
+
+// Every enemy/ally opens a drawer (its info panel always renders).
+const alwaysOpensDrawer = () => true;
 
 const MOVEMENT_TYPES = new Set([
   'move_forward', 'move_backward', 'move_left', 'move_right',
@@ -116,19 +117,19 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
     }
   }
   const uniqueEnemyIds = Array.from(enemyGroups.keys());
-  // Only ids that resolve to real assets render cards — the sliding
-  // selection overlay's slot math must index within this same list.
+  // Only ids that resolve to real assets render cards — the strip
+  // overlays' slot math must index within this same list.
   const stripEnemyIds = uniqueEnemyIds.filter((id) => !!getEnemy(id));
   const selectedStripIndex = selectedEnemyId ? stripEnemyIds.indexOf(selectedEnemyId) : -1;
-  // The strip's measured width: the caret and the posts both place
-  // themselves on the same art-grid slot boundaries.
+  // The strip's measured width: the cards, the posts and the selection
+  // shape all sit on the same art-grid slot boundaries.
   const [stripRef, stripWidth] = useElementWidth<HTMLDivElement>();
-  // The selection shape (?selection=): the drawer half follows the RENDERED
-  // entity, and stays shaped only while that entity still has a slot (a
-  // type can leave the strip mid-run under an open drawer — it then keeps
-  // the flat wash rather than losing its background).
+  // The selection shape: the drawer half follows the RENDERED entity, and
+  // stays shaped only while that entity still has a slot (a type can leave
+  // the strip mid-run under an open drawer — it then falls back to a plain
+  // wash rather than losing its background).
   const renderedStripIndex = renderedEnemyId ? stripEnemyIds.indexOf(renderedEnemyId) : -1;
-  const drawerShaped = SELECTION_SHAPED && renderedStripIndex >= 0;
+  const drawerShaped = renderedStripIndex >= 0;
 
   // Uniform card sprite-area height across the enemy row — derived from the
   // tallest native sprite × CARD_PIXEL_SCALE. Prevents clipping of the
@@ -278,19 +279,14 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
         </span>
       </div>
 
-      {/* Enemy strip — equal-width slots. The caret (SlidingSelection) and
-          the posts between cards (StripDividers, under the cards) are overlays
-          in this relative wrapper, both placed from its measured width; the caret
-          glides between slots. Slot math must index the same filtered list
-          the cards render from. */}
+      {/* Enemy strip — equal-width slots on the art grid. The selection
+          shape's card half (SelectionStrip) and the posts between cards
+          (StripDividers) are overlays in this relative wrapper, placed from
+          its measured width and rendered BEFORE the card row so the cards
+          paint over them. Slot math must index the same filtered list the
+          cards render from. */}
       <div ref={stripRef} className="relative">
-      <SelectionStrip ids={stripEnemyIds} selectedIndex={selectedStripIndex} width={stripWidth} tone={isAllySide ? 'copper' : 'blood'} hasDrawer />
-      <SlidingSelection
-        slotCount={stripEnemyIds.length}
-        selectedIndex={selectedStripIndex}
-        caretClass={isAllySide ? 'text-copper-400' : 'text-blood-400'}
-        width={stripWidth}
-      />
+      <SelectionStrip ids={stripEnemyIds} selectedIndex={selectedStripIndex} width={stripWidth} tone={isAllySide ? 'copper' : 'blood'} opensDrawer={alwaysOpensDrawer} />
       <StripDividers slotCount={stripEnemyIds.length} selectedIndex={selectedStripIndex} width={stripWidth} />
       <div className="flex">
         {stripEnemyIds.map((enemyId, slot) => {
@@ -323,16 +319,17 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
               type="button"
               aria-pressed={isSelected}
               onClick={() => setSelectedEnemyId(isSelected ? null : enemyId)}
-              style={shapedSlotStyle(stripWidth, stripEnemyIds.length, slot)}
+              style={artGridSlotStyle(stripWidth, stripEnemyIds.length, slot)}
               // min-w-0: a card can never be widened by its own content (a
-              // long name, a visit line), so the slots stay equal and the
-              // caret and posts stay on their boundaries.
+              // long name, a visit line), so the slots stay equal and on the
+              // boundaries the selection shape and the posts use.
               className={`flex-1 min-w-0 flex flex-col items-center px-1 pt-0.5 pb-2 relative transition-colors cursor-pointer ${
                 isSelected
-                  // Flat tint matching the info panel's wash — one surface;
-                  // transition-colors crossfades it between cards (the tint
-                  // deliberately does not slide — see SlidingSelection).
-                  ? (SELECTION_SHAPED ? '' : isAllySide ? 'bg-copper-900/15' : 'bg-blood-900/15')
+                  // No background of its own: the selected look is the
+                  // selection shape laid under the row (SelectionShape) —
+                  // outside the card, so a dead enemy's dimming leaves it
+                  // at full strength.
+                  ? ''
                   : '[@media(hover:hover)]:hover:bg-stone-700/30'
               } ${allDead ? 'opacity-50' : scheduledOnly ? 'opacity-60' : ''}`}
             >
@@ -409,8 +406,8 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
               )}
 
               {/* No per-card "more info" affordance — mirrors the hero
-                  strip: the first tap teaches that cards open; the selected
-                  amber caret rides the SlidingSelection overlay. */}
+                  strip: the first tap teaches that cards open, and the
+                  selection shape joins the card to its drawer. */}
             </button>
           );
         })}
@@ -428,18 +425,18 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
         }}>
         <div style={{ overflow: 'hidden', minHeight: 0 }}>
           <div
-            // The wash matches the selected card's tint (copper for allies,
-            // blood for enemies) so card + drawer read as ONE surface — the
-            // ally drawer used to open blood-red under a copper card.
-            // Same box as the hero drawer (.hero-drawer: 6px top and bottom);
-            // this one had drifted to 10px/12px.
-            // relative + shaped: see the hero drawer (CharacterSelector).
+            // The wash is the selection shape's (copper for allies, blood
+            // for enemies — the ally drawer once opened blood-red under a
+            // copper card); the plain wash here is only the fallback for an
+            // entity that has left the strip. Same box as the hero drawer
+            // (.hero-drawer: 6px top and bottom); relative + the slide
+            // easing: see the hero drawer (CharacterSelector).
             className={`hero-drawer relative ${drawerShaped ? '' : `${isAllySide ? 'bg-copper-900/15' : 'bg-blood-900/15'} rounded-b-pixel-md`}`}
             style={{
               opacity: isOpen ? 1 : 0,
               transform: isOpen ? 'translateY(0)' : 'translateY(-8px)',
               transition: isOpen
-                ? `opacity 0.45s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.55s ${DRAWER_SLIDE_EASE}`
+                ? 'opacity 0.45s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.55s cubic-bezier(0.22, 1, 0.36, 1)'
                 : 'opacity 0.2s ease-in, transform 0.3s ease-in',
             }}
           >

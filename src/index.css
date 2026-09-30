@@ -3780,8 +3780,10 @@ body.menu-gate-instant .quest-box-anchor {
    by user call: a nested scroll region is a trap when flinging past the
    panel on a phone, and page scroll for wordy heroes is fine). The 190px
    ceiling + internal scroll this replaced lived here briefly; don't bring
-   them back. Skin stays classic (the copper wash lives on the element's
-   own classes in CharacterSelector). The enemy/ally drawer in EnemyDisplay
+   them back. The wash and its outline are the selection shape's
+   (SelectionShape.tsx, laid inside the drawer); the element's own bg class
+   is only the fallback for an entity that has left the strip. The
+   enemy/ally drawer in EnemyDisplay
    wears this same box, so the three drawers cannot drift apart again.
    ============================================ */
 .hero-drawer {
