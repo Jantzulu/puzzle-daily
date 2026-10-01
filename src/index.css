@@ -3292,8 +3292,34 @@ body.menu-gate-instant .quest-box-anchor {
    2026-07-06 and rejected as ever-present noise).
    ============================================ */
 .dungeon-below {
-  background: #0d0a09;
+  /* FEATHERED (user call 2026-10-01: the flat dark "ends sharply against
+     the background"): the ground lives on ::before, masked so it melts into
+     the page over the last --dungeon-feather on the sides and bottom. The
+     top runs under the lintel's opaque stone, so it needs no fade. Only the
+     ground fades — the content above it stays at full strength. `isolation`
+     keeps the z-index:-1 layer inside this box (nothing in here draws
+     outside it). */
+  --dungeon-feather: 24px;
+  position: relative;
+  isolation: isolate;
   padding-bottom: 10px;
+}
+
+.dungeon-below::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: #0d0a09;
+  pointer-events: none;
+  -webkit-mask-image:
+    linear-gradient(to right, transparent, #000 var(--dungeon-feather), #000 calc(100% - var(--dungeon-feather)), transparent),
+    linear-gradient(to bottom, #000 calc(100% - var(--dungeon-feather)), transparent);
+  -webkit-mask-composite: source-in;
+  mask-image:
+    linear-gradient(to right, transparent, #000 var(--dungeon-feather), #000 calc(100% - var(--dungeon-feather)), transparent),
+    linear-gradient(to bottom, #000 calc(100% - var(--dungeon-feather)), transparent);
+  mask-composite: intersect;
 }
 
 /* Section headers carved into the page in the medieval face, using the
@@ -3337,6 +3363,10 @@ body.menu-gate-instant .quest-box-anchor {
   border-top: 1px solid rgba(0, 0, 0, 0.6);
   border-bottom: 1px solid rgba(255, 235, 200, 0.05);
   margin: 6px 0;
+  /* The groove fades out with the feathered ground it is cut into
+     (.dungeon-below), instead of running on past it to a hard end. */
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 var(--dungeon-feather, 0px), #000 calc(100% - var(--dungeon-feather, 0px)), transparent);
+  mask-image: linear-gradient(to right, transparent, #000 var(--dungeon-feather, 0px), #000 calc(100% - var(--dungeon-feather, 0px)), transparent);
 }
 
 /* ============================================
