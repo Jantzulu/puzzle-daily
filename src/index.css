@@ -3356,7 +3356,7 @@ body.menu-gate-instant .quest-box-anchor {
 }
 
 /* Hover on a hero / enemy / ally card: a soft glow behind the art that
-   fades out well inside the cell (user call 2026-10-01 — it replaces a flat
+   has fully faded by the cell's edges (user call 2026-10-01 — it replaces a flat
    stone-700/30 square that ended sharply at the cell's edges). Behind the
    content via z-index:-1 inside the card's own stacking context
    (`isolation`), so names and stat lines stay crisp on top. Fades on
@@ -3372,7 +3372,18 @@ body.menu-gate-instant .quest-box-anchor {
     position: absolute;
     inset: 0;
     z-index: -1;
-    background: radial-gradient(ellipse 58% 52% at 50% 42%, rgba(120, 98, 70, 0.34), rgba(120, 98, 70, 0.12) 55%, transparent 100%);
+    /* `closest-side`: the ellipse's edge sits ON the card's nearest edges
+       (left, right and top), so the glow has fully faded where the card
+       ends. A fixed-percentage ellipse ran past the box and the card's
+       bounds cut it into a hard line (user report 2026-10-01). It can't
+       spill past the card instead: it would paint over the text of the
+       card before it. Eased stops, so the falloff shows no ring. */
+    background: radial-gradient(closest-side at 50% 45%,
+      rgba(120, 98, 70, 0.34),
+      rgba(120, 98, 70, 0.2) 30%,
+      rgba(120, 98, 70, 0.1) 55%,
+      rgba(120, 98, 70, 0.035) 78%,
+      transparent 100%);
     opacity: 0;
     transition: opacity 180ms ease-out;
     pointer-events: none;
