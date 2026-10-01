@@ -1476,8 +1476,10 @@ function flagProjectileDeathVisual(
  */
 function holdProjectileDeathVisuals(gameState: GameState, closedAtDawn: Set<string>): void {
   if (gameState.headlessMode) return;
+  // A despawning bolt is fizzling out, not flying to its victim: it will
+  // never land there, so it cannot carry a hold.
   const inFlight = new Set(
-    (gameState.activeProjectiles ?? []).filter(p => p.active).map(p => p.id)
+    (gameState.activeProjectiles ?? []).filter(p => p.active && !p.despawning).map(p => p.id)
   );
   const hold = (e: PlacedCharacter | PlacedEnemy, key: string) => {
     const killedThisTurn = e.projectileKillTurn === gameState.currentTurn;
@@ -3844,6 +3846,7 @@ export function updateProjectiles(
 
   for (const proj of gameState.activeProjectiles) {
     if (!proj.active) {
+      flushProjectileVisualRecords(gameState, proj);
       projectilesToRemove.push(proj.id);
       continue;
     }
@@ -3857,6 +3860,7 @@ export function updateProjectiles(
     if (proj.despawning && proj.despawnStartTime !== undefined) {
       const elapsed = now - proj.despawnStartTime;
       if (elapsed >= TARGET_LOST_LINGER_MS) {
+        flushProjectileVisualRecords(gameState, proj);
         proj.active = false;
         projectilesToRemove.push(proj.id);
       }
@@ -4341,6 +4345,26 @@ function commitDeferredVisualDamage(
       char.pendingVisualDamage = undefined;
       if (isHomingDebug()) console.log(`[DEATH-MUT char] id=${char.characterId.slice(-6)}@(${char.x},${char.y}) → dead (deferred, from proj=${projId.slice(-6)})`);
     }
+  }
+}
+
+/**
+ * A bolt leaving the board WITHOUT its normal landing consume (it fizzled
+ * out after its despawn linger, or was deactivated elsewhere) shows
+ * whatever it still owed: its pass-through decrements and any unconsumed
+ * hit record. Without this a death it caused would stay held for the board
+ * forever once no later dawn runs (the game ended). The normal consume
+ * clears both records as it commits them, so nothing commits twice.
+ */
+function flushProjectileVisualRecords(gameState: GameState, proj: Projectile): void {
+  for (const dec of proj.pendingVisualDecrements ?? []) {
+    commitDeferredVisualDamage(gameState, proj.id, dec.targetEntityId, dec.targetIsEnemy, dec.targetIndex, dec.damage);
+  }
+  proj.pendingVisualDecrements = undefined;
+  const hr = proj.hitResult;
+  if (hr?.deferredDeathEntityId) {
+    commitDeferredVisualDamage(gameState, proj.id, hr.deferredDeathEntityId, hr.deferredDeathIsEnemy ?? false, hr.deferredDeathIndex, hr.damage ?? 0);
+    proj.hitResult = undefined;
   }
 }
 
@@ -5769,6 +5793,20 @@ function resolveProjectiles(gameState: GameState): void {
                 if (step.type === 'travel' || step.type === 'wall') {
                   reflectedTiles.push({ x: step.x, y: step.y });
                 } else if (step.type === 'hit') {
+                  // A piercing return leg can hit several entities; only the
+                  // last becomes the hitResult. Stage each earlier one as a
+                  // pass-through decrement (as resolveReflectedPath does), or
+                  // its death would never be shown when the bolt crosses it.
+                  if (proj.hitResult?.deferredDeathEntityId && (proj.hitResult.damage ?? 0) > 0) {
+                    if (!proj.pendingVisualDecrements) proj.pendingVisualDecrements = [];
+                    proj.pendingVisualDecrements.push({
+                      targetEntityId: proj.hitResult.deferredDeathEntityId,
+                      targetIsEnemy: proj.hitResult.deferredDeathIsEnemy ?? false,
+                      targetIndex: proj.hitResult.deferredDeathIndex,
+                      damage: proj.hitResult.damage ?? 0,
+                      hitTileIndex: proj.hitResult.hitTileIndex,
+                    });
+                  }
                   const combinedSoFar = [...approachTiles, ...reflectedTiles];
                   proj.hitResult = {
                     hitTileIndex: combinedSoFar.length - 1,
@@ -5832,6 +5870,11 @@ function resolveProjectiles(gameState: GameState): void {
                   hitTileIndex: proj.hitResult?.hitTileIndex ?? (combinedPath.length - 1),
                   hitVfxSprite: proj.hitResult?.vfxSprite,
                   damage: proj.hitResult?.damage ?? 0,
+                  // The death fields too, so replay can show a return-leg kill
+                  // (its hitResult and its past-turn fix-up both key on them).
+                  deferredDeathEntityId: proj.hitResult?.deferredDeathEntityId,
+                  deferredDeathIsEnemy: proj.hitResult?.deferredDeathIsEnemy,
+                  deferredDeathIndex: proj.hitResult?.deferredDeathIndex,
                 });
               }
 

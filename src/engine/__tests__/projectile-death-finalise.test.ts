@@ -467,6 +467,79 @@ describe('allies', () => {
   });
 });
 
+// ==========================================
+// Check round (2026-09-30): bolts that leave without landing; reflected legs
+// ==========================================
+
+describe('a bolt that leaves the board without landing still shows the deaths it caused', () => {
+  const heldGoblin = () => createTestEnemy({
+    enemyId: 'goblin-1', x: 4, y: 2, currentHealth: -1,
+    dead: false, pendingProjectileDeath: true, projectileKilledBy: 'p1', projectileKillTurn: 1,
+  } as never);
+
+  it('a fizzling (despawning) bolt shows its pass-through kill when it finishes', () => {
+    regEnemy(createTestEnemyDef());
+    const gs = stateOf([heldGoblin()], []);
+    gs.activeProjectiles = [{
+      id: 'p1', active: true, despawning: true, despawnStartTime: 0,
+      logicalX: 6, logicalY: 2, attackData: { damage: 3 },
+      pendingVisualDecrements: [{ targetEntityId: 'goblin-1', targetIsEnemy: true, targetIndex: 0, damage: 3, hitTileIndex: 2 }],
+    }] as never;
+    updateProjectiles(gs, new Map());
+    expect(gs.puzzle.enemies[0]).toMatchObject({ dead: true, pendingProjectileDeath: false });
+    expect(gs.activeProjectiles ?? []).toHaveLength(0);
+  });
+
+  it('a despawning bolt cannot carry a hold past the dawn (it will never land on the victim)', () => {
+    regBiter();
+    regLateArcher();
+    const gs = stateOf(
+      [createTestEnemy({ enemyId: 'biter', x: 3, y: 3, currentHealth: 1, facing: Direction.WEST })],
+      [hero('archer', 2, 3, Direction.EAST)],
+    );
+    executeTurn(gs);
+    executeTurn(gs); // turn 2: the bolt kills; held for the board
+    for (const p of gs.activeProjectiles ?? []) { p.despawning = true; p.despawnStartTime = Date.now(); }
+    executeTurn(gs); // dawn 3 closes it; its bolt is fizzling, so no carry
+    expect(gs.puzzle.enemies[0]).toMatchObject({ dead: true, pendingProjectileDeath: false });
+  });
+});
+
+describe('a homing bolt reflected back through several targets', () => {
+  it('shows each pass-through kill on the return leg, and replay gets the death fields', () => {
+    registerTestStatusEffect('reflect-status', {
+      id: 'reflect-status', name: 'Reflect', description: '', type: StatusEffectType.REFLECT,
+      defaultDuration: 9, stackingBehavior: 'refresh',
+    });
+    registerTestSpell('pierce-homing', {
+      id: 'pierce-homing', name: 'Pierce Homing', ...base, templateType: SpellTemplate.LINEAR, directionMode: 'current_facing',
+      damage: 3, range: 8, projectileSpeed: 4, pierceEnemies: true,
+    });
+    regChar(createTestCharacterDef({
+      id: 'mage', health: 10,
+      behavior: [{ type: ActionType.SPELL, spellId: 'pierce-homing', autoTargetNearestEnemy: true, homing: true, homingPathStyle: 'grid' }, ...W(4)] as never,
+    }));
+    regChar(createTestCharacterDef({ id: 'squire', health: 1, droppedCollectibleId: 'gold', behavior: [...W(6)] as never }));
+    regEnemy(createTestEnemyDef({ id: 'mirror', health: 10 }));
+    const reflect = {
+      id: 'reflect-1', type: StatusEffectType.REFLECT, statusAssetId: 'reflect-status', duration: 9,
+      currentStacks: 1, appliedOnTurn: 0, sourceEntityId: 'initial', sourceIsEnemy: false, movementSkipCounter: 0,
+    } as StatusEffectInstance;
+    const gs = stateOf(
+      [createTestEnemy({ enemyId: 'mirror', x: 4, y: 2, currentHealth: 10, facing: Direction.WEST, statusEffects: [reflect] })],
+      [hero('mage', 0, 2, Direction.EAST), hero('squire', 2, 2, Direction.EAST, 1)],
+    );
+    gs.projectileTimeline = [];
+    executeTurn(gs); // the bolt bounces off the mirror and pierces the squire on its way back
+    const squire = gs.placedCharacters[1];
+    expect(squire.dead || squire.pendingProjectileDeath).toBe(true);
+    const hitEvents = (gs.projectileTimeline ?? []).filter(e => e.type === 'hit');
+    expect(hitEvents.some(e => e.deferredDeathEntityId !== undefined)).toBe(true);
+    renderCommit(gs); // the bolt lands: every death it caused is shown
+    expect(squire).toMatchObject({ dead: true, pendingProjectileDeath: false });
+  });
+});
+
 describe('drop reveal', () => {
   it('an earlier drop stays visible when its owner is raised and shot again', () => {
     regEnemy(createTestEnemyDef({ id: 'x', health: 2, droppedCollectibleId: 'gold' }));

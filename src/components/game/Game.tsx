@@ -340,6 +340,10 @@ export const Game: React.FC<GameProps> = ({
   // during that wait cancel the beat.
   const gameStatusRef = useRef(gameState.gameStatus);
   useEffect(() => { gameStatusRef.current = gameState.gameStatus; }, [gameState.gameStatus]);
+  // True while the outcome waits for its killing bolt: the defeat shake and
+  // the lost-life heart wait with the beat (UI only — livesRemaining and the
+  // daily lock already updated at trigger time).
+  const [outcomeBoltWait, setOutcomeBoltWait] = useState(false);
 
   // Overlay dismiss animation state
   const [dismissingOverlay, setDismissingOverlay] = useState(false);
@@ -962,6 +966,7 @@ export const Game: React.FC<GameProps> = ({
       // bolt still gets its beat. Scoring, daily lock and analytics already
       // ran at trigger time (determinism rule) — this is presentation only.
       const playOutcomeBeat = (endedOutcome: 'victory' | 'defeat') => {
+        setOutcomeBoltWait(false);
         beginOutcomeOverlayHold();
         if (endedOutcome === 'victory') {
           vibrate('victory');
@@ -989,13 +994,20 @@ export const Game: React.FC<GameProps> = ({
       if (outcome === 'victory' || outcome === 'defeat') {
         const endedOutcome = outcome;
         const endedState = capturedPostTurnState as GameState | null;
+        // A bolt still owes a visual if its landing (hitResult) or a
+        // pass-through kill on its way (pierce / along-path decrement) has
+        // not been shown yet.
         const boltStillFlying = () =>
-          (endedState?.activeProjectiles ?? []).some(p => p.active && p.hitResult);
+          (endedState?.activeProjectiles ?? []).some(p => p.active && (p.hitResult || p.pendingVisualDecrements?.length));
         setOutcomeOverlayHeld(true); // keep the overlay off the board while the bolt flies
+        setOutcomeBoltWait(boltStillFlying());
         const waitStart = Date.now();
         const waitForBolt = () => {
           if (gameStatusRef.current === 'setup' || gameStatusRef.current === 'running') {
-            outcomeHoldTimerRef.current = null; // reset during the wait: no beat
+            // Reset during the wait: no beat, and no hold left behind.
+            outcomeHoldTimerRef.current = null;
+            setOutcomeOverlayHeld(false);
+            setOutcomeBoltWait(false);
             return;
           }
           if (boltStillFlying() && Date.now() - waitStart < OUTCOME_BOLT_WAIT_CAP_MS) {
@@ -1407,6 +1419,12 @@ export const Game: React.FC<GameProps> = ({
   // Concede current attempt - lose a life and show defeat panel with buttons
   const handleConcede = () => {
     setShowConcedeConfirm(false);
+    // Concede only ends a LIVE run. Once the engine has decided an outcome
+    // (possibly still in its bolt wait or overlay hold), conceding would cost
+    // a second life, overwrite the daily lock, and let the deferred outcome
+    // beat replay stale sounds after concede's own. (Read the ref: the
+    // confirm fires this after a delay, and the run can end in that gap.)
+    if (gameStatusRef.current !== 'running') return;
     setIsSimulating(false);
     setDefeatReason('damage'); // Conceding counts as damage death
 
@@ -2569,7 +2587,9 @@ export const Game: React.FC<GameProps> = ({
 
                         const hearts = [];
                         for (let i = 0; i < puzzleLives; i++) {
-                          const isFilled = i < livesRemaining;
+                          // While a defeat waits for its killing bolt, the lost heart
+                          // still shows full (UI only; livesRemaining already moved).
+                          const isFilled = i < livesRemaining + (outcomeBoltWait && gameState.gameStatus === 'defeat' ? 1 : 0);
                           // Hardcoded 7×7 art at native × 2 (the rail's Z)
                           // — never fit-to-box (the native-size sprite
                           // law). The lost state is its own painting, so
@@ -2813,7 +2833,7 @@ export const Game: React.FC<GameProps> = ({
                 (board-rise needs vertical clipping); in normal play only
                 the x-axis clips, so hallway corridors may bleed above and
                 below the board's layout box (intended illusion). */}
-            <div className={`relative top-1.5 lg:top-[7px] z-10 w-full max-w-[900px] board-rise ${(replayMode || enteringReplay) ? 'overflow-hidden board-rise-collapsed ' : 'overflow-x-clip '}${gameState.gameStatus === 'defeat' ? 'animate-screen-shake' : ''}`}>
+            <div className={`relative top-1.5 lg:top-[7px] z-10 w-full max-w-[900px] board-rise ${(replayMode || enteringReplay) ? 'overflow-hidden board-rise-collapsed ' : 'overflow-x-clip '}${gameState.gameStatus === 'defeat' && !outcomeBoltWait ? 'animate-screen-shake' : ''}`}>
               <div
                 ref={boardFadeRef}
                 className={`transition-[opacity,transform] duration-700 ease-out ${spritesReady ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
