@@ -4199,18 +4199,22 @@ function zoneKillsProjectileAt(proj: Projectile, x: number, y: number, gameState
  * Reflected bolts are always hostile — reflect flipped targetIsEnemy to
  * point back at the original caster's team, but the bolt stays damage-only
  * (see Task 5 retro). Otherwise: hostile iff the firer's base party differs
- * from the homing target's side. Party-aware via sourceParty (id-field
- * fallback, like getEffectiveTeams); charm steered target SELECTION
- * upstream and deliberately does not re-enter here. Shared by
- * resolveProjectiles and updateProjectilesHeadless so the visual and
- * headless classifications cannot drift.
+ * from the TARGET's base party (entityParty). Not proj.targetIsEnemy: that
+ * is the target's SHAPE, and an ally is enemy-shaped but hero-party — by
+ * shape an enemy's damage bolt "healed" it and a hero's heal bolt "struck"
+ * it. Party-aware via sourceParty (id-field fallback, like
+ * getEffectiveTeams); charm steered target SELECTION upstream and
+ * deliberately does not re-enter here (the target's charm is ignored too,
+ * like isAttackTarget). Shared by resolveProjectiles and
+ * updateProjectilesHeadless so the visual and headless classifications
+ * cannot drift.
  */
-function isHostileHomingHit(proj: Projectile): boolean {
+function isHostileHomingHit(proj: Projectile, target: PlacedCharacter | PlacedEnemy, gameState: GameState): boolean {
   if (proj.reflected) return true;
   const sourceParty: EntityParty | undefined = proj.sourceParty
     ?? (proj.sourceCharacterId ? 'hero' : proj.sourceEnemyId ? 'enemy' : undefined);
   if (!sourceParty) return false;
-  return sourceParty !== (proj.targetIsEnemy ? 'enemy' : 'hero');
+  return sourceParty !== entityParty(target, gameState);
 }
 
 /** Check if a tile is blocked (wall, void, or out of bounds) */
@@ -4547,10 +4551,14 @@ function applyEntityHit(
 /**
  * Apply healing when a friendly projectile hits an ally.
  * Returns the VFX sprite to display.
+ *
+ * The target's KIND by shape, like applyEntityHit: a hero-party ally or
+ * summon is enemy-shaped, so its cap comes from its enemy asset. Callers
+ * used to pass a side flag here, and a hero healing an ally looked it up
+ * as a character, found nothing, and capped the heal at current health.
  */
 function applyHealingHit(
   target: PlacedCharacter | PlacedEnemy,
-  targetIsEnemy: boolean,
   proj: Projectile,
   gameState: GameState,
   applyStatusEffect: boolean
@@ -4563,7 +4571,7 @@ function applyHealingHit(
 
   const healing = proj.attackData.healing ?? 0;
   if (healing > 0) {
-    if (targetIsEnemy) {
+    if ('enemyId' in target) {
       const enemyData = getEnemy((target as PlacedEnemy).enemyId) || loadEnemy((target as PlacedEnemy).enemyId) || { health: target.currentHealth };
       const maxHealth = enemyData?.health || target.currentHealth;
       target.currentHealth = Math.min(target.currentHealth + healing, maxHealth);
@@ -4574,10 +4582,11 @@ function applyHealingHit(
     }
   }
   if (applyStatusEffect && proj.spellAssetId && !target.dead) {
-    const sourceId = targetIsEnemy
-      ? (proj.sourceEnemyId || 'unknown')
-      : (proj.sourceCharacterId || 'unknown');
-    const sourceIsEnemy = targetIsEnemy;
+    // Attributed to the firer, whichever id field it fired with (the same
+    // answer the old target-side guess gave whenever firer and target
+    // shared a shape).
+    const sourceIsEnemy = !!proj.sourceEnemyId;
+    const sourceId = (sourceIsEnemy ? proj.sourceEnemyId : proj.sourceCharacterId) || 'unknown';
     applyStatusEffectFromProjectile(target, proj.spellAssetId,
       sourceId, sourceIsEnemy, gameState.currentTurn);
   }
@@ -4836,11 +4845,13 @@ function walkNonHomingTick(
 
     if (targetsEnemies) {
       if (isHealingProjectile) {
-        // charFired healing targets allied characters.
-        const hitAlly = findHealTargetAtTile(checkX, checkY, gameState, proj, false) as PlacedCharacter | null;
+        // charFired healing targets allied characters (and hero-party
+        // allies/summons — enemy-shaped, so pierce dedup goes by shape).
+        const hitAlly = findHealTargetAtTile(checkX, checkY, gameState, proj, false);
         if (hitAlly) {
-          proj.hitEntityIds.push(hitAlly.characterId);
-          const vfxSprite = applyHealingHit(hitAlly, false, proj, gameState, true);
+          if ('enemyId' in hitAlly) recordEnemyHit(proj, hitAlly, gameState.puzzle.enemies);
+          else proj.hitEntityIds.push(hitAlly.characterId);
+          const vfxSprite = applyHealingHit(hitAlly, proj, gameState, true);
           hitSomething = true;
           steps.push({
             kind: 'healing_hit', x: checkX, y: checkY, dist: segDist,
@@ -4882,7 +4893,7 @@ function walkNonHomingTick(
           });
         }
       } else {
-        const hitChar = findEntityAtTile(checkX, checkY, gameState, proj, false, true) as PlacedCharacter | null;
+        const hitChar = findEntityAtTile(checkX, checkY, gameState, proj, false, true);
         if (hitChar) {
           const entityHitResult = applyEntityHit(hitChar, false, proj, gameState, mode);
           if (entityHitResult.reflected) {
@@ -4890,7 +4901,11 @@ function walkNonHomingTick(
             steps.push({ kind: 'reflect', x: checkX, y: checkY, dist: segDist, target: hitChar, targetIsEnemy: false });
             break;
           }
-          proj.hitEntityIds.push(hitChar.characterId);
+          // Pierce dedup by shape: a hero-party ally is enemy-shaped (no
+          // characterId), so it is recorded by array index — pushing its
+          // characterId recorded undefined and a bounced bolt struck it twice.
+          if ('enemyId' in hitChar) recordEnemyHit(proj, hitChar, gameState.puzzle.enemies);
+          else proj.hitEntityIds.push(hitChar.characterId);
           hitSomething = true;
           steps.push({
             kind: 'hostile_hit', x: checkX, y: checkY, dist: segDist,
@@ -5748,7 +5763,7 @@ function resolveProjectiles(gameState: GameState): void {
             checkHomingPathForHits(proj, plan.reachTiles, gameState, 'visual');
           }
 
-          const isHostileHit = isHostileHomingHit(proj);
+          const isHostileHit = isHostileHomingHit(proj, targetEntity, gameState);
 
           if (isHostileHit) {
             const targetIsEnemy = !!proj.targetIsEnemy;
@@ -5891,9 +5906,8 @@ function resolveProjectiles(gameState: GameState): void {
             damageForHit = hitResult.damageApplied ?? 0;
           } else {
             // Friendly homing heal/buff
-            const targetIsEnemy = !!(proj.sourceEnemyId && proj.targetIsEnemy);
             vfxSprite = applyHealingHit(
-              targetEntity as (PlacedCharacter | PlacedEnemy), targetIsEnemy,
+              targetEntity as (PlacedCharacter | PlacedEnemy),
               proj, gameState, true);
           }
 
@@ -6514,7 +6528,7 @@ function updateProjectilesHeadless(gameState: GameState): void {
             checkHomingPathForHits(proj, plan.reachTiles, gameState, 'headless');
           }
 
-          const isHostileHit = isHostileHomingHit(proj);
+          const isHostileHit = isHostileHomingHit(proj, targetEntity, gameState);
 
           if (isHostileHit) {
             const targetIsEnemy = !!proj.targetIsEnemy;
@@ -6549,9 +6563,8 @@ function updateProjectilesHeadless(gameState: GameState): void {
             });
           } else {
             // Friendly homing heal/buff
-            const targetIsEnemy = !!(proj.sourceEnemyId && proj.targetIsEnemy);
             applyHealingHit(
-              targetEntity as (PlacedCharacter | PlacedEnemy), targetIsEnemy,
+              targetEntity as (PlacedCharacter | PlacedEnemy),
               proj, gameState, true);
             recordProjectileEvent(gameState, {
               type: 'hit',
