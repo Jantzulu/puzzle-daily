@@ -247,7 +247,11 @@ describe('break-open toggle', () => {
     executeTurn(gs);
     executeTurn(gs);
     expect(spiderEmerged(gs)).toHaveLength(1);
-    expect(vessel(gs).dead).toBe(true);
+    // Logically dead. (Real mode with no render loop: the killing bolt never
+    // visibly lands, so between turns the board still HOLDS the death —
+    // dead=false + pendingProjectileDeath; see simulation.ts "PROJECTILE
+    // DEATHS". Every turn's logic sees it dead.)
+    expect(vessel(gs).dead || vessel(gs).pendingProjectileDeath).toBe(true);
     expect(vessel(gs).despawned).toBeUndefined(); // break path: corpse debris stays
   });
 

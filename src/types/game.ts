@@ -464,7 +464,8 @@ export interface PlacedEnemy {
   spellCooldowns?: Record<string, number>; // Spell ID -> turns remaining on cooldown
   spellUseCounts?: Record<string, number>; // Spell ID -> number of times used this game (for maxUsesPerGame)
   pendingProjectileDeath?: boolean; // Deferred death: entity is logically dead but waiting for projectile visual to arrive
-  projectileKillTurn?: number; // Real mode: the turn a projectile killed it — the engine holds the death VISUAL (dead=false + pendingProjectileDeath) only between that turn and the next dawn (holdProjectileDeathVisuals / finalizeProjectileDeaths)
+  projectileKillTurn?: number; // Real mode: the turn a projectile killed it — the engine holds the death VISUAL (dead=false + pendingProjectileDeath) between turns until the killing bolt lands (holdProjectileDeathVisuals / finalizeProjectileDeaths)
+  projectileKilledBy?: string; // Real mode: id of the projectile whose hit killed it — only THAT bolt's landing shows the death (commitDeferredVisualDamage)
   pendingVisualDamage?: number; // Sum of damage from hits that have landed logically but haven't reached visually yet. Bar displays currentHealth + pendingVisualDamage, so each visual arrival drops the bar by exactly that hit's damage.
   diedOnTurn?: number; // Turn when this entity died logically (damage took HP to 0). Stamped once at first death, survives pending→dead→pending flips. Movement blockers treat `dead && currentTurn <= diedOnTurn + 1` as still-occupying so the tile stays blocked through the next turn's action phase — prevents the determinism race where the deferred pending→dead visual commit can flip tile passability between runs depending on animation frame timing.
 }
@@ -946,7 +947,8 @@ export interface PlacedCharacter {
   spellUseCounts?: Record<string, number>; // Spell ID -> number of times used this game (for maxUsesPerGame)
   spellDirectionOverrides?: Record<string, Direction>; // User-chosen directions set during setup — redirect direction for redirect spells, fired direction for directionAcceptsUserInput spells
   pendingProjectileDeath?: boolean; // Deferred death: entity is logically dead but waiting for projectile visual to arrive
-  projectileKillTurn?: number; // Real mode: the turn a projectile killed it — the engine holds the death VISUAL (dead=false + pendingProjectileDeath) only between that turn and the next dawn (holdProjectileDeathVisuals / finalizeProjectileDeaths)
+  projectileKillTurn?: number; // Real mode: the turn a projectile killed it — the engine holds the death VISUAL (dead=false + pendingProjectileDeath) between turns until the killing bolt lands (holdProjectileDeathVisuals / finalizeProjectileDeaths)
+  projectileKilledBy?: string; // Real mode: id of the projectile whose hit killed it — only THAT bolt's landing shows the death (commitDeferredVisualDamage)
   pendingVisualDamage?: number; // Sum of damage from hits that have landed logically but haven't reached visually yet. Bar displays currentHealth + pendingVisualDamage, so each visual arrival drops the bar by exactly that hit's damage.
   diedOnTurn?: number; // See PlacedEnemy.diedOnTurn — deterministic death-turn stamp used by movement blockers to keep tile occupied through the next turn.
   despawned?: boolean; // See PlacedEnemy.despawned — left the board (no corpse). Transports DEPART results through the enemy wrappers (heroes shouldn't author DEPART); corpse-finders filter the union on it. Was declared twice by the 2026-07-17 noble-escape and DEPART sessions — keep it single.

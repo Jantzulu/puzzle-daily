@@ -27,6 +27,14 @@ function enemyName(id: string): string {
 }
 
 /**
+ * Dead, including a projectile death the board is still holding for its
+ * bolt (dead=false + pendingProjectileDeath between turns): the engine
+ * killed it at the hit, so the log reports it on the kill turn whether or
+ * not the board's commit has landed yet — and only once.
+ */
+const isDead = (e: { dead: boolean; pendingProjectileDeath?: boolean }) => e.dead || !!e.pendingProjectileDeath;
+
+/**
  * Diff two game states and produce log entries for a single turn.
  */
 export function diffTurn(before: GameState, after: GameState): CombatLogEntry[] {
@@ -42,7 +50,7 @@ export function diffTurn(before: GameState, after: GameState): CombatLogEntry[] 
 
     // Movement
     if (charBefore.x !== charAfter.x || charBefore.y !== charAfter.y) {
-      if (!charAfter.dead) {
+      if (!isDead(charAfter)) {
         entries.push({ turn, type: 'move', icon: '\u27A1', text: `${name} moved to (${charAfter.x + 1}, ${charAfter.y + 1})` });
       }
     }
@@ -60,7 +68,7 @@ export function diffTurn(before: GameState, after: GameState): CombatLogEntry[] 
     }
 
     // Death
-    if (!charBefore.dead && charAfter.dead) {
+    if (!isDead(charBefore) && isDead(charAfter)) {
       entries.push({ turn, type: 'death', icon: '\uD83D\uDC80', text: `${name} was defeated` });
     }
   }
@@ -77,7 +85,7 @@ export function diffTurn(before: GameState, after: GameState): CombatLogEntry[] 
 
     // Movement
     if (eBefore.x !== eAfter.x || eBefore.y !== eAfter.y) {
-      if (!eAfter.dead) {
+      if (!isDead(eAfter)) {
         entries.push({ turn, type: 'move', icon: '\u27A1', text: `${name} moved to (${eAfter.x + 1}, ${eAfter.y + 1})` });
       }
     }
@@ -89,7 +97,7 @@ export function diffTurn(before: GameState, after: GameState): CombatLogEntry[] 
     }
 
     // Death
-    if (!eBefore.dead && eAfter.dead) {
+    if (!isDead(eBefore) && isDead(eAfter)) {
       entries.push({ turn, type: 'death', icon: '\u2620', text: `${name} was defeated!` });
     }
   }

@@ -255,7 +255,7 @@ function checkHomingPathForHits(proj: Projectile, tiles: Array<{x: number; y: nu
           hitEnemy.diedOnTurn = gameState.currentTurn + 1;
           const drop = handleEntityDeathDrop(hitEnemy, true, gameState);
           if (mode === 'visual') {
-            flagProjectileDeathVisual(hitEnemy, true, hitEnemyIndex, drop, gameState);
+            flagProjectileDeathVisual(hitEnemy, true, hitEnemyIndex, drop, proj, gameState);
             if (isHomingDebug()) console.log(`[DEATH-MUT enemy] idx=${hitEnemyIndex} id=${hitEnemy.enemyId.slice(-6)}@(${hitEnemy.x},${hitEnemy.y}) → killed, visual held (from checkEntityCollisions, proj=${proj.id.slice(-6)})`);
           }
         }
@@ -332,7 +332,7 @@ function checkHomingPathForHits(proj: Projectile, tiles: Array<{x: number; y: nu
           hitChar.diedOnTurn = gameState.currentTurn + 1;
           const drop = handleEntityDeathDrop(hitChar, false, gameState);
           if (mode === 'visual') {
-            flagProjectileDeathVisual(hitChar, false, gameState.placedCharacters.indexOf(hitChar), drop, gameState);
+            flagProjectileDeathVisual(hitChar, false, gameState.placedCharacters.indexOf(hitChar), drop, proj, gameState);
           }
         }
         if (mode === 'visual') {
@@ -1445,39 +1445,51 @@ export function handleEntityDeathDrop(
 // accident (re-running on_death and dropping again), a held enemy could
 // fire its own triggers once more, and a held hero never finalised at all.
 
-/** Real mode, at the killing hit: remember the kill turn; tag the drop. */
+/** Real mode, at the killing hit: remember the kill turn and the killing bolt; tag the drop. */
 function flagProjectileDeathVisual(
   entity: PlacedCharacter | PlacedEnemy,
   isEnemy: boolean,
   index: number,
   drop: PlacedCollectible | null,
+  proj: Projectile,
   gameState: GameState
 ): void {
   // A turn stamp, NOT pendingProjectileDeath: a victim revived later this
   // same turn (an on_death RESURRECT, a spawn plate) must read as alive to
   // every reader that follows, exactly as in headless.
   entity.projectileKillTurn = gameState.currentTurn;
+  // Only this bolt's landing shows the death: an earlier bolt that merely
+  // damaged the victim may land later, and must not reveal it early.
+  entity.projectileKilledBy = proj.id;
   if (drop && index >= 0) drop.revealWithDeathOf = { isEnemy, index, turn: gameState.currentTurn };
 }
 
 /**
- * End of a real-mode executeTurn: this turn's projectile kills that are
- * still standing corpses go back to the board's between-turn contract
- * (dead=false + pendingProjectileDeath) — their bolts have not visibly
- * landed yet. Safe to run twice: a held body is no longer dead, so it is
- * left as it is.
+ * End of a real-mode executeTurn: projectile kills that are still standing
+ * corpses go back to the board's between-turn contract (dead=false +
+ * pendingProjectileDeath) while their killing bolt has not visibly landed:
+ * this turn's kills, and any death this dawn closed whose killing bolt is
+ * STILL in flight (a reflected return leg or a long homing reach can fly
+ * well past the next tick — showing the death at that dawn would play it
+ * before the bolt arrives). Safe to run twice: a held body is no longer
+ * dead, so it is left as it is.
  */
-function holdProjectileDeathVisuals(gameState: GameState): void {
+function holdProjectileDeathVisuals(gameState: GameState, closedAtDawn: Set<string>): void {
   if (gameState.headlessMode) return;
-  const hold = (e: PlacedCharacter | PlacedEnemy) => {
-    if (e.projectileKillTurn !== gameState.currentTurn) return;
+  const inFlight = new Set(
+    (gameState.activeProjectiles ?? []).filter(p => p.active).map(p => p.id)
+  );
+  const hold = (e: PlacedCharacter | PlacedEnemy, key: string) => {
+    const killedThisTurn = e.projectileKillTurn === gameState.currentTurn;
+    const carried = closedAtDawn.has(key) && !!e.projectileKilledBy && inFlight.has(e.projectileKilledBy);
+    if (!killedThisTurn && !carried) return;
     if (e.dead && !e.despawned) {
       e.dead = false;
       e.pendingProjectileDeath = true;
     }
   };
-  gameState.placedCharacters.forEach(hold);
-  gameState.puzzle.enemies.forEach(hold);
+  gameState.placedCharacters.forEach(c => hold(c, `c:${c.characterId}`));
+  gameState.puzzle.enemies.forEach((e, i) => hold(e, `e:${i}`));
 }
 
 /**
@@ -1487,28 +1499,34 @@ function holdProjectileDeathVisuals(gameState: GameState): void {
  * hit. Keyed on pendingProjectileDeath, so this and
  * commitDeferredVisualDamage are each a no-op once the other has run.
  */
-function finalizeProjectileDeaths(gameState: GameState): void {
-  const close = (e: PlacedCharacter | PlacedEnemy) => {
+function finalizeProjectileDeaths(gameState: GameState): Set<string> {
+  // Returns what it closed (heroes by id, enemies by array index — the
+  // arrays are rebuilt each turn, so identity cannot key it) so the end of
+  // the turn can re-hold a death whose killing bolt is still flying.
+  const closed = new Set<string>();
+  const close = (e: PlacedCharacter | PlacedEnemy, key: string) => {
     if (!e.pendingProjectileDeath) return;
     e.dead = true;
     e.pendingProjectileDeath = false;
     e.pendingVisualDamage = undefined;
+    closed.add(key);
   };
-  gameState.placedCharacters.forEach(close);
-  gameState.puzzle.enemies.forEach(close);
+  gameState.placedCharacters.forEach(c => close(c, `c:${c.characterId}`));
+  gameState.puzzle.enemies.forEach((e, i) => close(e, `e:${i}`));
+  return closed;
 }
 
 /**
  * Board: a projectile kill's drop exists logically from the hit, but stays
- * hidden until the death itself is shown (the bolt lands, or the next
- * dawn). Keyed to that one kill's turn, so a drop from an earlier death of
- * a revived-then-shot-again entity never blinks out.
+ * hidden while that death is still held for the board (until its killing
+ * bolt lands). Keyed to that one kill, so a drop from an earlier death of a
+ * revived-then-shot-again entity never blinks out.
  */
 export function isDropAwaitingDeathVisual(c: PlacedCollectible, gameState: GameState): boolean {
   const src = c.revealWithDeathOf;
-  if (!src || src.turn !== gameState.currentTurn) return false;
+  if (!src) return false;
   const e = src.isEnemy ? gameState.puzzle.enemies[src.index] : gameState.placedCharacters[src.index];
-  return !!e?.pendingProjectileDeath;
+  return !!e?.pendingProjectileDeath && e.projectileKillTurn === src.turn;
 }
 
 /**
@@ -1879,7 +1897,7 @@ export function executeTurn(gameState: GameState): GameState {
 
   // Last turn's projectile kills are dead from this dawn on, whether or not
   // the render commit has landed — before anything this turn can read them.
-  finalizeProjectileDeaths(gameState);
+  const closedAtDawn = finalizeProjectileDeaths(gameState);
 
   // Scheduled visitors (passerby v2) arrive at the dawn of their turn —
   // on the board and blocking tiles before anyone acts, idle until next
@@ -2633,7 +2651,7 @@ export function executeTurn(gameState: GameState): GameState {
     const maxTurns = gameState.puzzle.maxTurns || 1000; // Default to 1000 if not specified
     if (gameState.currentTurn >= maxTurns && gameState.gameStatus === 'running') {
       gameState.gameStatus = 'defeat';
-      holdProjectileDeathVisuals(gameState);
+      holdProjectileDeathVisuals(gameState, closedAtDawn);
       return gameState;
     }
 
@@ -2651,7 +2669,7 @@ export function executeTurn(gameState: GameState): GameState {
 
   // Every logical decision of this turn saw this turn's projectile kills as
   // dead; now re-open them for the board until their bolts visibly land.
-  holdProjectileDeathVisuals(gameState);
+  holdProjectileDeathVisuals(gameState, closedAtDawn);
   return gameState;
 }
 
@@ -4277,7 +4295,7 @@ type HitMode = 'visual' | 'headless';
  */
 function commitDeferredVisualDamage(
   gameState: GameState,
-  projIdForLog: string,
+  projId: string,
   entityId: string,
   isEnemy: boolean,
   index: number | undefined,
@@ -4293,15 +4311,17 @@ function commitDeferredVisualDamage(
     enemy.pendingVisualDamage = newPending > 0 ? newPending : undefined;
     if (isHomingDebug()) {
       console.log(
-        `[VDMG-DECREMENT ${projIdForLog.slice(-6)}] enemy=${enemy.enemyId.slice(-6)}@(${enemy.x},${enemy.y}) ` +
+        `[VDMG-DECREMENT ${projId.slice(-6)}] enemy=${enemy.enemyId.slice(-6)}@(${enemy.x},${enemy.y}) ` +
         `pendingVisDmg=${priorPending}→${enemy.pendingVisualDamage ?? 0} hitDmg=${damage}; bar now shows ${enemy.currentHealth + (enemy.pendingVisualDamage ?? 0)}`
       );
     }
-    if (enemy.pendingProjectileDeath) {
+    // Only the bolt that killed it shows the death (projectileKilledBy);
+    // a record without that stamp (older state) keeps the old behaviour.
+    if (enemy.pendingProjectileDeath && (!enemy.projectileKilledBy || enemy.projectileKilledBy === projId)) {
       enemy.dead = true;
       enemy.pendingProjectileDeath = false;
       enemy.pendingVisualDamage = undefined;
-      if (isHomingDebug()) console.log(`[DEATH-MUT enemy] id=${enemy.enemyId.slice(-6)}@(${enemy.x},${enemy.y}) → dead (deferred, from proj=${projIdForLog.slice(-6)} hit visual arrival)`);
+      if (isHomingDebug()) console.log(`[DEATH-MUT enemy] id=${enemy.enemyId.slice(-6)}@(${enemy.x},${enemy.y}) → dead (deferred, from proj=${projId.slice(-6)} hit visual arrival)`);
     }
   } else {
     const char = gameState.placedCharacters.find(c => c.characterId === entityId);
@@ -4311,15 +4331,15 @@ function commitDeferredVisualDamage(
     char.pendingVisualDamage = newPending > 0 ? newPending : undefined;
     if (isHomingDebug()) {
       console.log(
-        `[VDMG-DECREMENT ${projIdForLog.slice(-6)}] char=${char.characterId.slice(-6)}@(${char.x},${char.y}) ` +
+        `[VDMG-DECREMENT ${projId.slice(-6)}] char=${char.characterId.slice(-6)}@(${char.x},${char.y}) ` +
         `pendingVisDmg=${priorPending}→${char.pendingVisualDamage ?? 0} hitDmg=${damage}; bar now shows ${char.currentHealth + (char.pendingVisualDamage ?? 0)}`
       );
     }
-    if (char.pendingProjectileDeath) {
+    if (char.pendingProjectileDeath && (!char.projectileKilledBy || char.projectileKilledBy === projId)) {
       char.dead = true;
       char.pendingProjectileDeath = false;
       char.pendingVisualDamage = undefined;
-      if (isHomingDebug()) console.log(`[DEATH-MUT char] id=${char.characterId.slice(-6)}@(${char.x},${char.y}) → dead (deferred, from proj=${projIdForLog.slice(-6)})`);
+      if (isHomingDebug()) console.log(`[DEATH-MUT char] id=${char.characterId.slice(-6)}@(${char.x},${char.y}) → dead (deferred, from proj=${projId.slice(-6)})`);
     }
   }
 }
@@ -4354,6 +4374,14 @@ function applyEntityHit(
       `hp=${target.currentHealth} pendingVisDmg=${target.pendingVisualDamage ?? 0} pendingDeath=${target.pendingProjectileDeath ?? false}`
     );
   }
+
+  // 0. A target already dead this phase is a corpse: no second on_death,
+  // no second drop. The homing reach leg resolves its target WITHOUT a
+  // liveness check after scanning the path, and a bystander struck on the
+  // path can kill the target first (its on_death AOE or push). Both modes
+  // resolve the reach through here, so the guard keeps them agreeing; inside
+  // executeTurn no entity is ever pending, so this is the dead check.
+  if (!isEntityFunctional(target)) return { reflected: false };
 
   // 1. Reflect check
   if (hasReflect(target) && !proj.reflected && canReflectDirection(target, proj.direction)) {
@@ -4455,7 +4483,7 @@ function applyEntityHit(
         const idx = shapeIsEnemy
           ? gameState.puzzle.enemies.indexOf(target as PlacedEnemy)
           : gameState.placedCharacters.indexOf(target as PlacedCharacter);
-        flagProjectileDeathVisual(target, shapeIsEnemy, idx, drop, gameState);
+        flagProjectileDeathVisual(target, shapeIsEnemy, idx, drop, proj, gameState);
         if (isHomingDebug()) {
           const id = shapeIsEnemy ? (target as PlacedEnemy).enemyId : (target as PlacedCharacter).characterId;
           console.log(`[DEATH-MUT ${shapeIsEnemy ? 'enemy' : 'char'}] id=${id.slice(-6)}@(${target.x},${target.y}) → killed, visual held (from applyEntityHit, proj=${proj.id.slice(-6)} dmg=${damage})`);

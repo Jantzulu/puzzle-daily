@@ -60,6 +60,9 @@ type TestMode = 'none' | 'enemies' | 'characters';
 // How long the victory/defeat overlays wait after the outcome triggers
 // before covering the board (UI-only beat; see outcomeOverlayHeld).
 const OUTCOME_OVERLAY_HOLD_MS = 1500;
+// Longest the outcome beat waits for a killing bolt still in flight (a
+// reflected return leg can outlast a turn; a hidden tab never lands one).
+const OUTCOME_BOLT_WAIT_CAP_MS = 4000;
 
 // Distinct display names of every placed Noble (Noble-marked heroes +
 // hero-party allies), joined for quest text: "the King", "the King and
@@ -331,6 +334,12 @@ export const Game: React.FC<GameProps> = ({
   useEffect(() => () => {
     if (outcomeHoldTimerRef.current !== null) clearTimeout(outcomeHoldTimerRef.current);
   }, []);
+  // The outcome BEAT (overlay hold + sounds) waits for the killing bolt to
+  // visibly land: the engine decides the outcome at the hit, and the board
+  // animates bolts after the game ends. The latest status lets a reset made
+  // during that wait cancel the beat.
+  const gameStatusRef = useRef(gameState.gameStatus);
+  useEffect(() => { gameStatusRef.current = gameState.gameStatus; }, [gameState.gameStatus]);
 
   // Overlay dismiss animation state
   const [dismissingOverlay, setDismissingOverlay] = useState(false);
@@ -945,31 +954,60 @@ export const Game: React.FC<GameProps> = ({
         onTurnExecuted(capturedPreTurnState as GameState, capturedPostTurnState as GameState);
       }
 
-      // Fire side effects (haptics, sounds) outside the state updater
-      if (outcome !== 'running') {
+      // Fire side effects (haptics, sounds) outside the state updater — the
+      // overlay hold and the outcome sounds as one BEAT that starts when the
+      // killing bolt has visibly landed (the engine decided the outcome at the
+      // hit; until 2026-09-30 an extra turn ran instead, which could change the
+      // outcome). Capped, so a hidden tab whose render loop never lands the
+      // bolt still gets its beat. Scoring, daily lock and analytics already
+      // ran at trigger time (determinism rule) — this is presentation only.
+      const playOutcomeBeat = (endedOutcome: 'victory' | 'defeat') => {
         beginOutcomeOverlayHold();
-      }
-      if (outcome === 'victory') {
-        vibrate('victory');
-        playGameSound('victory');
-        playVictoryMusic();
-      } else if (outcome === 'defeat') {
-        vibrate('defeat');
-        playGameSound('defeat');
+        if (endedOutcome === 'victory') {
+          vibrate('victory');
+          playGameSound('victory');
+          playVictoryMusic();
+        } else {
+          vibrate('defeat');
+          playGameSound('defeat');
 
-        const puzzleLives = currentPuzzle.lives ?? 3;
-        const isUnlimitedLives = puzzleLives === 0;
+          const puzzleLives = currentPuzzle.lives ?? 3;
+          const isUnlimitedLives = puzzleLives === 0;
 
-        if (!isUnlimitedLives) {
-          const newLives = livesRemaining - 1;
-          if (newLives <= 0) {
-            playDefeatMusic();
-          } else {
-            playGameSound('life_lost');
-            vibrate('lifeLost');
-            // Defeat panel stays visible with "Watch Replay" / "Try Again" buttons
+          if (!isUnlimitedLives) {
+            const newLives = livesRemaining - 1;
+            if (newLives <= 0) {
+              playDefeatMusic();
+            } else {
+              playGameSound('life_lost');
+              vibrate('lifeLost');
+              // Defeat panel stays visible with "Watch Replay" / "Try Again" buttons
+            }
           }
         }
+      };
+      if (outcome === 'victory' || outcome === 'defeat') {
+        const endedOutcome = outcome;
+        const endedState = capturedPostTurnState as GameState | null;
+        const boltStillFlying = () =>
+          (endedState?.activeProjectiles ?? []).some(p => p.active && p.hitResult);
+        setOutcomeOverlayHeld(true); // keep the overlay off the board while the bolt flies
+        const waitStart = Date.now();
+        const waitForBolt = () => {
+          if (gameStatusRef.current === 'setup' || gameStatusRef.current === 'running') {
+            outcomeHoldTimerRef.current = null; // reset during the wait: no beat
+            return;
+          }
+          if (boltStillFlying() && Date.now() - waitStart < OUTCOME_BOLT_WAIT_CAP_MS) {
+            outcomeHoldTimerRef.current = window.setTimeout(waitForBolt, 50);
+            return;
+          }
+          outcomeHoldTimerRef.current = null;
+          playOutcomeBeat(endedOutcome);
+        };
+        if (outcomeHoldTimerRef.current !== null) clearTimeout(outcomeHoldTimerRef.current);
+        if (boltStillFlying()) outcomeHoldTimerRef.current = window.setTimeout(waitForBolt, 50);
+        else playOutcomeBeat(endedOutcome);
       }
 
       // Track run for bug reporting (guard against duplicate tracking)
@@ -2119,7 +2157,10 @@ export const Game: React.FC<GameProps> = ({
         const idx = event.deferredDeathIndex;
         if (idx === undefined) return;
         const e = copy.puzzle?.enemies?.[idx];
-        if (e && e.enemyId === event.deferredDeathEntityId && !e.dead && e.pendingProjectileDeath) {
+        // Only the KILLING bolt's event shows the death (an earlier hit that
+        // merely damaged it must not reveal it, or its drop, early).
+        if (e && e.enemyId === event.deferredDeathEntityId && !e.dead && e.pendingProjectileDeath
+            && (!e.projectileKilledBy || e.projectileKilledBy === event.projId)) {
           e.dead = true;
           e.pendingProjectileDeath = false;
           e.pendingVisualDamage = 0;
@@ -2129,7 +2170,8 @@ export const Game: React.FC<GameProps> = ({
         const c = copy.placedCharacters?.find(
           (pc: any) => pc.characterId === event.deferredDeathEntityId
         );
-        if (c && !c.dead && c.pendingProjectileDeath) {
+        if (c && !c.dead && c.pendingProjectileDeath
+            && (!c.projectileKilledBy || c.projectileKilledBy === event.projId)) {
           c.dead = true;
           c.pendingProjectileDeath = false;
           c.pendingVisualDamage = 0;
@@ -3183,7 +3225,9 @@ export const Game: React.FC<GameProps> = ({
                     {(() => {
                       if (defeatReason === 'turns') return '\u23F3';
                       const fallen = gameState.placedCharacters
-                        .filter(c => c.dead && !c.despawned)
+                        // A hero whose projectile death is still held for the board
+                        // (its bolt not yet landed) has fallen too.
+                        .filter(c => (c.dead || c.pendingProjectileDeath) && !c.despawned)
                         .sort((a, b) => (a.diedOnTurn ?? 0) - (b.diedOnTurn ?? 0))
                         .pop();
                       const sprite = fallen ? getCharacter(fallen.characterId)?.customSprite : undefined;

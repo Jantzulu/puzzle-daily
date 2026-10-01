@@ -2,13 +2,15 @@
  * Projectile kills: one logical death, whatever the render clock does.
  *
  * Real (visual) mode holds a projectile kill as pendingProjectileDeath
- * (dead=false) between turns until the bolt visibly lands; the board's
- * render commit (updateProjectiles → commitDeferredVisualDamage) races the
- * turn tick, loses at the end of a turn's reach, and never runs in a hidden
- * tab or in these tests. The engine therefore owns the whole death:
+ * (dead=false) between turns until the killing bolt visibly lands; the
+ * board's render commit (updateProjectiles → commitDeferredVisualDamage)
+ * races the turn tick, loses at the end of a turn's reach, and never runs in
+ * a hidden tab or in these tests. The engine therefore owns the whole death:
  *   - at the hit, both modes do the same thing (dead for the rest of the
  *     turn, on_death fired, drop placed, diedOnTurn = N+1);
- *   - at the dawn of N+1 it closes the pending flag itself.
+ *   - at every dawn it closes the hold, so no turn's logic meets a held
+ *     body; the end of the turn re-holds it only while its killing bolt is
+ *     still in flight.
  * Every pin runs the same scenario under four clocks and expects the
  * headless series:
  *   headless     — validator path;
@@ -287,19 +289,49 @@ describe('real mode keeps the deferred-visual contract between turns', () => {
     expect(isDropAwaitingDeathVisual(gs.puzzle.collectibles[0], gs)).toBe(false);
   });
 
-  it('no commit: the next dawn closes the death itself, flags only', () => {
+  it('no commit: every turn\'s logic sees it dead; the board keeps holding it until its bolt lands', () => {
     regBiter();
     regLateArcher();
     const gs = build();
     executeTurn(gs);
     executeTurn(gs);
-    executeTurn(gs); // no render commit ran
+    executeTurn(gs); // no render commit ran: the killing bolt has not visibly landed
     const biter = gs.puzzle.enemies[0];
-    expect(biter).toMatchObject({ dead: true, pendingProjectileDeath: false, diedOnTurn: 3, currentHealth: -2 });
+    // Dead at this dawn (nothing in turn 3 met a live body), then re-held for
+    // the board because its killing bolt is still in flight.
+    expect(biter).toMatchObject({ dead: false, pendingProjectileDeath: true, diedOnTurn: 3, currentHealth: -2 });
+    expect(isDropAwaitingDeathVisual(gs.puzzle.collectibles[0], gs)).toBe(true);
+    expect(gs.puzzle.collectibles).toHaveLength(1); // nothing ran twice
+    expect(spawnlings(gs)).toBe(1);
+    renderCommit(gs); // the bolt finally lands: the death shows
+    expect(biter).toMatchObject({ dead: true, pendingProjectileDeath: false });
     expect(isDropAwaitingDeathVisual(gs.puzzle.collectibles[0], gs)).toBe(false);
-    renderCommit(gs); // the late commit is a no-op
     expect(gs.puzzle.collectibles).toHaveLength(1);
     expect(spawnlings(gs)).toBe(1);
+  });
+
+  it('a bolt that only damaged it, landing late, does not reveal the death — only the killing bolt does', () => {
+    regEnemy(createTestEnemyDef({ id: 'v', health: 6, droppedCollectibleId: 'gold' }));
+    registerTestSpell('slow-bolt', { id: 'slow-bolt', name: 'Slow Bolt', ...base, templateType: SpellTemplate.LINEAR, directionMode: 'current_facing', damage: 3, projectileSpeed: 2, range: 6 });
+    regChar(createTestCharacterDef({ id: 'a1', health: 10, behavior: [{ type: ActionType.SPELL, spellId: 'bolt' }, ...W(6)] as never }));
+    regChar(createTestCharacterDef({ id: 'a2', health: 10, behavior: [{ type: ActionType.WAIT }, { type: ActionType.SPELL, spellId: 'slow-bolt' }, ...W(6)] as never }));
+    const gs = stateOf(
+      [createTestEnemy({ enemyId: 'v', x: 4, y: 2, currentHealth: 6 })],
+      [hero('a1', 0, 2, Direction.EAST), hero('a2', 4, 0, Direction.SOUTH)],
+    );
+    executeTurn(gs); // turn 1: a1's bolt hits for 3 (no render commit: it has not visibly landed)
+    const firstBolt = (gs.activeProjectiles ?? []).find(p => p.active && p.hitResult)!;
+    expect(firstBolt).toBeDefined();
+    executeTurn(gs); // turn 2: a2's bolt kills
+    const v = gs.puzzle.enemies[0];
+    expect(v.pendingProjectileDeath).toBe(true);
+    expect(v.projectileKilledBy).not.toBe(firstBolt.id);
+    renderCommit(gs, new Set([firstBolt.id])); // the FIRST bolt lands late
+    expect(v.pendingProjectileDeath).toBe(true); // still held
+    expect(isDropAwaitingDeathVisual(gs.puzzle.collectibles[0], gs)).toBe(true);
+    renderCommit(gs); // the killing bolt lands
+    expect(v).toMatchObject({ dead: true, pendingProjectileDeath: false });
+    expect(isDropAwaitingDeathVisual(gs.puzzle.collectibles[0], gs)).toBe(false);
   });
 
   it('headless never flags a drop', () => {
@@ -377,6 +409,38 @@ describe('a victim revived later the same turn is alive for every later reader',
     const ref = expectClockParity(raiseScene({ third: true }), 2,
       gs => ({ xDead: logicallyDead(gs.puzzle.enemies[0]), xHP: gs.puzzle.enemies[0].currentHealth, drops: drops(gs).length }));
     expect(ref.final).toMatchObject({ xDead: true, drops: 2 });
+  });
+});
+
+describe('a corpse takes no second hit', () => {
+  it('a homing bolt whose target died on the way (a bystander\'s on_death) does not kill it again', () => {
+    // The bolt crosses a stealthed barrel on its reach leg; the barrel's
+    // on_death PUSH kills the goblin before the bolt lands on it. The reach
+    // hit then finds a corpse: no second on_death nova, no second drop.
+    registerTestSpell('push5', { id: 'push5', name: 'Push', ...base, templateType: SpellTemplate.PUSH, directionMode: 'current_facing', damage: 5, pushDistance: 1, range: 1 });
+    registerTestSpell('nova', { id: 'nova', name: 'Nova', ...base, templateType: SpellTemplate.AOE, directionMode: 'current_facing', radius: 9, aoeCenteredOnCaster: true, damage: 1 });
+    registerTestSpell('path-bolt', { id: 'path-bolt', name: 'Path Bolt', ...base, templateType: SpellTemplate.LINEAR, directionMode: 'current_facing', damage: 2, projectileSpeed: 4, range: 8, cooldown: 10 });
+    regEnemy(createTestEnemyDef({
+      id: 'barrel', health: 1,
+      behavior: { type: 'static', pattern: [{ type: ActionType.SPELL, spellId: 'push5', executionMode: 'parallel', trigger: { mode: 'on_event', event: 'on_death' } }] as never, defaultFacing: Direction.EAST },
+    }));
+    regEnemy(createTestEnemyDef({
+      id: 'goblin', health: 2, droppedCollectibleId: 'gold',
+      behavior: { type: 'static', pattern: [{ type: ActionType.SPELL, spellId: 'nova', executionMode: 'parallel', trigger: { mode: 'on_event', event: 'on_death' } }] as never },
+    }));
+    regChar(createTestCharacterDef({
+      id: 'mage', health: 10,
+      behavior: [{ type: ActionType.SPELL, spellId: 'path-bolt', autoTargetNearestEnemy: true, homing: true, homingPathStyle: 'grid', homingHitAlongPath: true }, { type: ActionType.REPEAT }] as never,
+    }));
+    const stealth = { id: 'stealth-1', type: StatusEffectType.STEALTH, statusAssetId: 'stealth-asset', duration: 99, appliedOnTurn: 0 };
+    const ref = expectClockParity(() => stateOf(
+      [
+        createTestEnemy({ enemyId: 'goblin', x: 4, y: 2, currentHealth: 2 }),
+        createTestEnemy({ enemyId: 'barrel', x: 3, y: 2, currentHealth: 1, facing: Direction.EAST, statusEffects: [stealth as never] }),
+      ],
+      [hero('mage', 0, 2, Direction.EAST)],
+    ), 2, gs => ({ goblinDead: logicallyDead(gs.puzzle.enemies[0]), mageHP: gs.placedCharacters[0].currentHealth, drops: drops(gs).length }));
+    expect(ref.final).toEqual({ goblinDead: true, mageHP: 9, drops: 1 });
   });
 });
 

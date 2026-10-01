@@ -109,6 +109,25 @@ describe('diffTurn', () => {
     expect(entries.some(e => e.type === 'death')).toBe(true);
   });
 
+  it('logs a projectile kill on its kill turn while the board still holds the death, and only once', () => {
+    // Real mode: between turns a projectile kill reads dead=false +
+    // pendingProjectileDeath until its bolt visibly lands.
+    const before = createTestGameState({
+      currentTurn: 0,
+      puzzle: createTestPuzzle({ enemies: [createTestEnemy({ dead: false })] }),
+    });
+    const held = createTestGameState({
+      currentTurn: 1,
+      puzzle: createTestPuzzle({ enemies: [createTestEnemy({ dead: false, pendingProjectileDeath: true })] }),
+    });
+    const landed = createTestGameState({
+      currentTurn: 2,
+      puzzle: createTestPuzzle({ enemies: [createTestEnemy({ dead: true })] }),
+    });
+    expect(diffTurn(before, held).filter(e => e.type === 'death')).toHaveLength(1);
+    expect(diffTurn(held, landed).filter(e => e.type === 'death')).toHaveLength(0);
+  });
+
   it('detects collectible pickup', () => {
     regCollectible('gem-1', { name: 'Ruby' });
 
