@@ -235,7 +235,12 @@ export const DirectionPicker: React.FC<DirectionPickerProps> = ({ entry, sprite,
 
   const [mounted, setMounted] = useState(open);
   const [shown, setShown] = useState(false);
-  const panelRef = useFocusTrap<HTMLDivElement>(open);
+  // `&& mounted`: on the render where `open` flips true the sheet is not in
+  // the DOM yet (mounted is set by the effect below), and a trap keyed on
+  // `open` alone ran against a null ref and never ran again. The dialog
+  // itself takes focus, not its first control: that is the close chevron,
+  // and on a placement ask an Enter landing there would cancel the ask.
+  const panelRef = useFocusTrap<HTMLDivElement>(open && mounted, { focusContainer: true });
   const rafRef = useRef<number | null>(null);
   const exitRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pickRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -481,7 +486,7 @@ export const DirectionPicker: React.FC<DirectionPickerProps> = ({ entry, sprite,
                 type="button"
                 onClick={(e) => { e.stopPropagation(); handlePick(dir); }}
                 className={`dir-cell ${isCurrent ? 'dir-cell--on' : ''}`}
-                aria-label={`Face ${dir}`}
+                aria-label={`${shownEntry.isFacing ? 'Face' : 'Aim'} ${dir}`}
                 aria-pressed={isCurrent}
               >
                 <CompassArrow direction={dir} size={24} />

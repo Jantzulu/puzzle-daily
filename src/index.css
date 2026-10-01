@@ -3694,6 +3694,13 @@ body.menu-gate-instant .quest-box-anchor {
   opacity: 1;
 }
 
+/* The sheet takes focus on open (useFocusTrap's focusContainer) so an Enter
+   cannot land on the close chevron. It is not a control: no ring around the
+   whole sheet after a keyboard open — the controls inside keep theirs. */
+.dir-picker__sheet:focus {
+  outline: none;
+}
+
 /* At lg+ the same object becomes a centred popover: full border, closed
    radius, the 50/50 field above and below the rose kept. */
 @media (min-width: 1024px) {

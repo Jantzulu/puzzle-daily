@@ -7,13 +7,21 @@ const FOCUSABLE =
  * Traps keyboard focus inside a modal panel while `active` is true.
  *
  * - Moves focus to the first focusable element on open (falls back to the
- *   container itself — give it tabIndex={-1}).
+ *   container itself — give it tabIndex={-1}). `focusContainer` focuses the
+ *   container instead, for panels whose first control is a close/cancel that
+ *   an Enter pressed right after opening must not hit.
  * - Tab / Shift+Tab cycle within the panel instead of escaping to the page.
  * - Restores focus to the previously focused element on close.
  *
- * Attach the returned ref to the dialog panel element.
+ * Attach the returned ref to the dialog panel element. The panel must be in
+ * the DOM on the render where `active` turns true — the effect only re-runs
+ * when `active` changes, so a panel that mounts a render later never gets
+ * trapped. Fold the mount state into `active` for panels that do.
  */
-export function useFocusTrap<T extends HTMLElement>(active: boolean) {
+export function useFocusTrap<T extends HTMLElement>(
+  active: boolean,
+  { focusContainer = false }: { focusContainer?: boolean } = {},
+) {
   const containerRef = useRef<T | null>(null);
 
   useEffect(() => {
@@ -23,8 +31,8 @@ export function useFocusTrap<T extends HTMLElement>(active: boolean) {
 
     const previouslyFocused = document.activeElement as HTMLElement | null;
 
-    const first = container.querySelector<HTMLElement>(FOCUSABLE);
-    (first ?? container).focus({ preventScroll: true });
+    const initial = focusContainer ? container : container.querySelector<HTMLElement>(FOCUSABLE);
+    (initial ?? container).focus({ preventScroll: true });
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key !== 'Tab') return;
@@ -39,7 +47,10 @@ export function useFocusTrap<T extends HTMLElement>(active: boolean) {
       const lastEl = focusables[focusables.length - 1];
       const activeEl = document.activeElement;
       if (e.shiftKey) {
-        if (activeEl === firstEl || !container.contains(activeEl)) {
+        // The container itself counts as "before the first": it holds focus
+        // after a focusContainer open or a click on the panel's background,
+        // and the browser's Shift+Tab from there leaves the panel.
+        if (activeEl === firstEl || activeEl === container || !container.contains(activeEl)) {
           e.preventDefault();
           lastEl.focus();
         }
@@ -54,7 +65,7 @@ export function useFocusTrap<T extends HTMLElement>(active: boolean) {
       document.removeEventListener('keydown', handleKeyDown);
       previouslyFocused?.focus?.({ preventScroll: true });
     };
-  }, [active]);
+  }, [active, focusContainer]);
 
   return containerRef;
 }
