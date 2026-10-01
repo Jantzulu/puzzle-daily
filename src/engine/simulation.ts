@@ -250,21 +250,13 @@ function checkHomingPathForHits(proj: Projectile, tiles: Array<{x: number; y: nu
           if (attacker) stampDealtHit(attacker, 'projectile', gameState);
         }
         if (hitEnemy.dead) {
+          // ONE logical death in both modes (see applyEntityHit): it
+          // commits now, drop included; the death-VISUAL turn is next turn.
+          hitEnemy.diedOnTurn = gameState.currentTurn + 1;
+          const drop = handleEntityDeathDrop(hitEnemy, true, gameState);
           if (mode === 'visual') {
-            hitEnemy.dead = false;
-            hitEnemy.pendingProjectileDeath = true;
-            // Bump diedOnTurn to the turn the visual death will play
-            // (one turn later, since the bolt takes a turn to arrive).
-            // applyDamageToEntityNoDeflect stamped `currentTurn`; override
-            // now that we know this is a deferred death.
-            hitEnemy.diedOnTurn = gameState.currentTurn + 1;
-            if (isHomingDebug()) console.log(`[DEATH-MUT enemy] idx=${hitEnemyIndex} id=${hitEnemy.enemyId.slice(-6)}@(${hitEnemy.x},${hitEnemy.y}) → pendingDeath (from checkEntityCollisions, proj=${proj.id.slice(-6)})`);
-          } else {
-            // Headless: death commits immediately, but the death-VISUAL
-            // turn is still next turn — same stamp as applyEntityHit's
-            // headless branch (audit sweep 7).
-            hitEnemy.diedOnTurn = gameState.currentTurn + 1;
-            handleEntityDeathDrop(hitEnemy, true, gameState);
+            flagProjectileDeathVisual(hitEnemy, true, hitEnemyIndex, drop, gameState);
+            if (isHomingDebug()) console.log(`[DEATH-MUT enemy] idx=${hitEnemyIndex} id=${hitEnemy.enemyId.slice(-6)}@(${hitEnemy.x},${hitEnemy.y}) → killed, visual held (from checkEntityCollisions, proj=${proj.id.slice(-6)})`);
           }
         }
         if (mode === 'visual') {
@@ -337,13 +329,10 @@ function checkHomingPathForHits(proj: Projectile, tiles: Array<{x: number; y: nu
           if (attacker) stampDealtHit(attacker, 'projectile', gameState);
         }
         if (hitChar.dead) {
+          hitChar.diedOnTurn = gameState.currentTurn + 1;
+          const drop = handleEntityDeathDrop(hitChar, false, gameState);
           if (mode === 'visual') {
-            hitChar.dead = false;
-            hitChar.pendingProjectileDeath = true;
-            hitChar.diedOnTurn = gameState.currentTurn + 1;
-          } else {
-            hitChar.diedOnTurn = gameState.currentTurn + 1;
-            handleEntityDeathDrop(hitChar, false, gameState);
+            flagProjectileDeathVisual(hitChar, false, gameState.placedCharacters.indexOf(hitChar), drop, gameState);
           }
         }
         if (mode === 'visual') {
@@ -916,7 +905,9 @@ export function executeParallelActions(gameState: GameState): void {
 
   // Process characters
   for (const character of gameState.placedCharacters) {
-    if (!character.active || character.dead) {
+    // isEntityFunctional: a hero whose projectile death is held for the
+    // board between turns (dead=false + pendingProjectileDeath) is dead.
+    if (!character.active || !isEntityFunctional(character)) {
       continue;
     }
 
@@ -1390,7 +1381,7 @@ export function handleEntityDeathDrop(
   entity: PlacedCharacter | PlacedEnemy,
   isEnemy: boolean,
   gameState: GameState
-): void {
+): PlacedCollectible | null {
   // Get the entity's data to check for droppedCollectibleId
   let droppedCollectibleId: string | undefined;
 
@@ -1404,21 +1395,21 @@ export function handleEntityDeathDrop(
 
   // No collectible to drop
   if (!droppedCollectibleId) {
-    return;
+    return null;
   }
 
   // Load the collectible data to make sure it exists
   const collectibleData = loadCollectible(droppedCollectibleId);
   if (!collectibleData) {
     console.warn(`Death drop collectible not found: ${droppedCollectibleId}`);
-    return;
+    return null;
   }
 
   // Find a valid drop position
   const dropPos = findDropPosition(entity.x, entity.y, gameState);
   if (!dropPos) {
     console.warn(`No valid drop position found for collectible near (${entity.x}, ${entity.y})`);
-    return;
+    return null;
   }
 
   // Create the new collectible instance
@@ -1432,6 +1423,92 @@ export function handleEntityDeathDrop(
 
   // Add to puzzle collectibles
   gameState.puzzle.collectibles.push(newCollectible);
+  return newCollectible;
+}
+
+// ============================================================================
+// PROJECTILE DEATHS: hit → hold → dawn (2026-09-30)
+// ============================================================================
+// A projectile kill is ONE logical death in both modes, at the hit: dead,
+// on_death fired, drop placed, diedOnTurn = N+1 (the death-visual turn).
+// Every reader for the rest of turn N therefore agrees with the headless
+// validator. Real mode only delays the PRESENTATION until the bolt visibly
+// lands: at the end of executeTurn the death is re-opened as the board's
+// between-turn contract (dead=false + pendingProjectileDeath), and it is
+// closed again by the render commit (commitDeferredVisualDamage, when the
+// bolt lands) or, if that loses the race or never runs (hidden tab, tests),
+// at the next dawn (finalizeProjectileDeaths) — whichever comes first; the
+// other is then a no-op. No engine logic ever meets a held body.
+//
+// Before this, real mode held the death from the hit itself and the engine
+// had no finaliser: the next turn's trigger pass finalised enemies by
+// accident (re-running on_death and dropping again), a held enemy could
+// fire its own triggers once more, and a held hero never finalised at all.
+
+/** Real mode, at the killing hit: remember the kill turn; tag the drop. */
+function flagProjectileDeathVisual(
+  entity: PlacedCharacter | PlacedEnemy,
+  isEnemy: boolean,
+  index: number,
+  drop: PlacedCollectible | null,
+  gameState: GameState
+): void {
+  // A turn stamp, NOT pendingProjectileDeath: a victim revived later this
+  // same turn (an on_death RESURRECT, a spawn plate) must read as alive to
+  // every reader that follows, exactly as in headless.
+  entity.projectileKillTurn = gameState.currentTurn;
+  if (drop && index >= 0) drop.revealWithDeathOf = { isEnemy, index, turn: gameState.currentTurn };
+}
+
+/**
+ * End of a real-mode executeTurn: this turn's projectile kills that are
+ * still standing corpses go back to the board's between-turn contract
+ * (dead=false + pendingProjectileDeath) — their bolts have not visibly
+ * landed yet. Safe to run twice: a held body is no longer dead, so it is
+ * left as it is.
+ */
+function holdProjectileDeathVisuals(gameState: GameState): void {
+  if (gameState.headlessMode) return;
+  const hold = (e: PlacedCharacter | PlacedEnemy) => {
+    if (e.projectileKillTurn !== gameState.currentTurn) return;
+    if (e.dead && !e.despawned) {
+      e.dead = false;
+      e.pendingProjectileDeath = true;
+    }
+  };
+  gameState.placedCharacters.forEach(hold);
+  gameState.puzzle.enemies.forEach(hold);
+}
+
+/**
+ * Dawn of every turn: close any held projectile death the render commit
+ * has not (it races the turn tick, and never runs in a hidden tab or a
+ * test). Flags only — every logical effect of the death happened at the
+ * hit. Keyed on pendingProjectileDeath, so this and
+ * commitDeferredVisualDamage are each a no-op once the other has run.
+ */
+function finalizeProjectileDeaths(gameState: GameState): void {
+  const close = (e: PlacedCharacter | PlacedEnemy) => {
+    if (!e.pendingProjectileDeath) return;
+    e.dead = true;
+    e.pendingProjectileDeath = false;
+    e.pendingVisualDamage = undefined;
+  };
+  gameState.placedCharacters.forEach(close);
+  gameState.puzzle.enemies.forEach(close);
+}
+
+/**
+ * Board: a projectile kill's drop exists logically from the hit, but stays
+ * hidden until the death itself is shown (the bolt lands, or the next
+ * dawn). Keyed to that one kill's turn, so a drop from an earlier death of
+ * a revived-then-shot-again entity never blinks out.
+ */
+export function isDropAwaitingDeathVisual(c: PlacedCollectible, gameState: GameState): boolean {
+  const src = c.revealWithDeathOf;
+  if (!src || src.turn !== gameState.currentTurn) return false;
+  const e = src.isEnemy ? gameState.puzzle.enemies[src.index] : gameState.placedCharacters[src.index];
+  return !!e?.pendingProjectileDeath;
 }
 
 /**
@@ -1800,6 +1877,10 @@ export function executeTurn(gameState: GameState): GameState {
 
   gameState.currentTurn++;
 
+  // Last turn's projectile kills are dead from this dawn on, whether or not
+  // the render commit has landed — before anything this turn can read them.
+  finalizeProjectileDeaths(gameState);
+
   // Scheduled visitors (passerby v2) arrive at the dawn of their turn —
   // on the board and blocking tiles before anyone acts, idle until next
   // turn via the standard spawnedOnTurn guard.
@@ -2038,7 +2119,7 @@ export function executeTurn(gameState: GameState): GameState {
   // Collect all pending character triggers (defer evaluation for melee priority)
   const pendingCharacterTriggers: PlacedCharacter[] = [];
   for (const character of gameState.placedCharacters) {
-    if (!character.dead && character.active) {
+    if (isEntityFunctional(character) && character.active) {
       pendingCharacterTriggers.push(character);
     }
   }
@@ -2358,7 +2439,7 @@ export function executeTurn(gameState: GameState): GameState {
   for (const enemy of gameState.puzzle.enemies) {
     // Entities spawned this turn stay idle: no actions AND no own triggers
     // until next turn (they can still be hit / block tiles — that's passive).
-    if (isOnBoard(enemy) && enemy.spawnedOnTurn !== gameState.currentTurn) {
+    if (isEntityFunctional(enemy) && enemy.spawnedOnTurn !== gameState.currentTurn) {
       pendingEnemyTriggers.push(enemy);
     }
   }
@@ -2552,6 +2633,7 @@ export function executeTurn(gameState: GameState): GameState {
     const maxTurns = gameState.puzzle.maxTurns || 1000; // Default to 1000 if not specified
     if (gameState.currentTurn >= maxTurns && gameState.gameStatus === 'running') {
       gameState.gameStatus = 'defeat';
+      holdProjectileDeathVisuals(gameState);
       return gameState;
     }
 
@@ -2567,6 +2649,9 @@ export function executeTurn(gameState: GameState): GameState {
     }
   }
 
+  // Every logical decision of this turn saw this turn's projectile kills as
+  // dead; now re-open them for the board until their bolts visibly land.
+  holdProjectileDeathVisuals(gameState);
   return gameState;
 }
 
@@ -4182,10 +4267,13 @@ type HitMode = 'visual' | 'headless';
 
 /**
  * Commit a single deferred-visual-damage record on visual arrival:
- * decrements pendingVisualDamage by `damage`, and if the entity is in
- * pendingProjectileDeath, flips it to dead and fires the drop handler.
- * Shared by the landing target (from hitResult.deferredDeath*) and every
- * pierce pass-through (from proj.pendingVisualDecrements).
+ * decrements pendingVisualDamage by `damage`, and if the entity's death is
+ * still held (pendingProjectileDeath), shows it: flips it to dead. VISUAL
+ * ONLY — the drop and every other death effect happened at the hit
+ * (headless parity), and finalizeProjectileDeaths closes the same flag at
+ * the next dawn if this commit loses the race; each is a no-op once the
+ * other has run. Shared by the landing target (from hitResult.deferredDeath*)
+ * and every pierce pass-through (from proj.pendingVisualDecrements).
  */
 function commitDeferredVisualDamage(
   gameState: GameState,
@@ -4214,7 +4302,6 @@ function commitDeferredVisualDamage(
       enemy.pendingProjectileDeath = false;
       enemy.pendingVisualDamage = undefined;
       if (isHomingDebug()) console.log(`[DEATH-MUT enemy] id=${enemy.enemyId.slice(-6)}@(${enemy.x},${enemy.y}) → dead (deferred, from proj=${projIdForLog.slice(-6)} hit visual arrival)`);
-      handleEntityDeathDrop(enemy, true, gameState);
     }
   } else {
     const char = gameState.placedCharacters.find(c => c.characterId === entityId);
@@ -4233,7 +4320,6 @@ function commitDeferredVisualDamage(
       char.pendingProjectileDeath = false;
       char.pendingVisualDamage = undefined;
       if (isHomingDebug()) console.log(`[DEATH-MUT char] id=${char.characterId.slice(-6)}@(${char.x},${char.y}) → dead (deferred, from proj=${projIdForLog.slice(-6)})`);
-      handleEntityDeathDrop(char, false, gameState);
     }
   }
 }
@@ -4349,35 +4435,39 @@ function applyEntityHit(
       }
     }
     applyDamageToEntityNoDeflect(target, damage, gameState, 'projectile');
+    // The entity's KIND by shape, not by targetIsEnemy: the walkers pass
+    // targetIsEnemy=false for anything on the hero side, which includes
+    // ALLIES — enemy-shaped entities in puzzle.enemies. Deciding by the
+    // flag dropped nothing for a shot ally (its asset is an enemy asset)
+    // and left the board unable to find it to show its death.
+    const shapeIsEnemy = 'enemyId' in target;
     if (target.dead) {
+      // ONE logical death in both modes: it commits now (dead for the rest
+      // of this turn, on_death already fired, drop placed now), but the
+      // death-VISUAL turn is next turn — diedOnTurn stamps N+1 or every
+      // diedOnTurn consumer (corpse movement blocking, vessel transforms,
+      // escapes) runs a full turn early (audit sweep 7). Real mode also
+      // marks the death so the board waits for the bolt (see
+      // "PROJECTILE DEATHS: hit → hold → dawn").
+      target.diedOnTurn = gameState.currentTurn + 1;
+      const drop = handleEntityDeathDrop(target, shapeIsEnemy, gameState);
       if (mode === 'visual') {
-        target.dead = false;
-        target.pendingProjectileDeath = true;
-        // Bump diedOnTurn to the visual-death turn (one turn later, when
-        // the projectile visual arrives). applyDamageToEntityNoDeflect
-        // stamped `currentTurn` for the immediate-death case; override
-        // now that we know this is deferred.
-        target.diedOnTurn = gameState.currentTurn + 1;
+        const idx = shapeIsEnemy
+          ? gameState.puzzle.enemies.indexOf(target as PlacedEnemy)
+          : gameState.placedCharacters.indexOf(target as PlacedCharacter);
+        flagProjectileDeathVisual(target, shapeIsEnemy, idx, drop, gameState);
         if (isHomingDebug()) {
-          const id = targetIsEnemy ? (target as PlacedEnemy).enemyId : (target as PlacedCharacter).characterId;
-          console.log(`[DEATH-MUT ${targetIsEnemy ? 'enemy' : 'char'}] id=${id.slice(-6)}@(${target.x},${target.y}) → pendingDeath (from applyEntityHit, proj=${proj.id.slice(-6)} dmg=${damage})`);
+          const id = shapeIsEnemy ? (target as PlacedEnemy).enemyId : (target as PlacedCharacter).characterId;
+          console.log(`[DEATH-MUT ${shapeIsEnemy ? 'enemy' : 'char'}] id=${id.slice(-6)}@(${target.x},${target.y}) → killed, visual held (from applyEntityHit, proj=${proj.id.slice(-6)} dmg=${damage})`);
         }
-      } else {
-        // Headless: the death commits immediately, but the death-VISUAL
-        // turn is still next turn — stamp diedOnTurn to match the visual
-        // mode's deferred stamp, or every diedOnTurn consumer (corpse
-        // movement blocking, vessel transforms) runs a full turn early in
-        // the validator (audit sweep 7).
-        target.diedOnTurn = gameState.currentTurn + 1;
-        handleEntityDeathDrop(target, targetIsEnemy, gameState);
       }
     }
-    const entityId = targetIsEnemy
+    const entityId = shapeIsEnemy
       ? (target as PlacedEnemy).enemyId
       : (target as PlacedCharacter).characterId;
     deferredDeathEntityId = entityId;
-    deferredDeathIsEnemy = targetIsEnemy;
-    if (targetIsEnemy) {
+    deferredDeathIsEnemy = shapeIsEnemy;
+    if (shapeIsEnemy) {
       deferredDeathIndex = gameState.puzzle.enemies.indexOf(target as PlacedEnemy);
     }
   }

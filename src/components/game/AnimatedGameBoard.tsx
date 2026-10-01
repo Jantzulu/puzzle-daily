@@ -13,7 +13,7 @@ import { getThemeAsset } from '../../utils/themeAssets';
 import { isPlacedObjectVisible } from '../../utils/objectSchedule';
 import { hasDeliverySchedule, deliveryWindowLength, nextDeliveryTurn } from '../../utils/deliverySchedule';
 import type { Tile } from '../../types/game';
-import { updateProjectiles, updateParticles, executeParallelActions, findPathBFS, DESPAWN_SHRINK_MS, TARGET_LOST_LINGER_MS } from '../../engine/simulation';
+import { updateProjectiles, updateParticles, executeParallelActions, findPathBFS, DESPAWN_SHRINK_MS, TARGET_LOST_LINGER_MS, isDropAwaitingDeathVisual } from '../../engine/simulation';
 import { isTileActiveOnTurn } from '../../engine/actions';
 import { subscribeToImageLoads, loadImage, isImageReady } from '../../utils/imageLoader';
 import { blobShadowsEnabled, drawBlobShadow, drawDeathBlobShadow, drawProjectileBlobShadow } from './blobShadows';
@@ -2252,7 +2252,11 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
         sched.lastTurn = gameState.currentTurn;
         gameState.puzzle.collectibles.forEach((collectible, ci) => {
           if (!hasDeliverySchedule(collectible)) {
-            if (!collectible.collected) drawCollectible(ctx, collectible, imageCache.current, now);
+            // A projectile kill's drop exists from the hit (headless parity)
+            // but appears with the death itself — when the bolt lands.
+            if (!collectible.collected && !isDropAwaitingDeathVisual(collectible, gameState)) {
+              drawCollectible(ctx, collectible, imageCache.current, now);
+            }
             return;
           }
           if (collectible.collected) return;

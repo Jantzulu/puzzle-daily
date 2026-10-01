@@ -832,16 +832,15 @@ export const Game: React.FC<GameProps> = ({
         const newState = executeTurn(stateCopy);
         capturedPostTurnState = newState;
 
-        // Stop simulation if game ended (only in normal mode)
-        // If there are pending projectile deaths, defer the game-over state
-        // so the visual can show the projectile hitting before the overlay appears
-        const hasPendingDeaths = newState.activeProjectiles?.some(
-          (p: any) => p.active && p.hitResult?.deferredDeathEntityId
-        );
-        if (hasPendingDeaths && newState.gameStatus !== 'running') {
-          // Revert to running — the next tick will finalize deaths and re-check
-          newState.gameStatus = 'running';
-        }
+        // Stop simulation if game ended (only in normal mode). The engine's
+        // outcome stands as decided: a projectile kill is a full logical
+        // death at the hit (see simulation.ts "PROJECTILE DEATHS"), so the
+        // validator and this turn agree. (A former revert to 'running' while
+        // a killing bolt was still in flight ran an EXTRA turn that could
+        // change the outcome — e.g. a defeat the validator saw becoming a
+        // victory. The bolt still lands on screen: the board animates
+        // projectiles after the game ends, and the outcome overlay holds
+        // OUTCOME_OVERLAY_HOLD_MS before covering it.)
         if (testMode === 'none' && newState.gameStatus !== 'running') {
           setIsSimulating(false);
           outcome = newState.gameStatus as 'victory' | 'defeat';

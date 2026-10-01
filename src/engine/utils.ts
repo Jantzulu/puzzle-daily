@@ -33,17 +33,14 @@ export function isEntityFunctional(entity: { dead: boolean; pendingProjectileDea
  * first killed the template), and the empty-looking tile was a wall and a
  * projectile sponge from turn 0.
  *
- * Deliberately NOT isEntityFunctional for OCCUPANCY: in the real (visual)
- * path a projectile kill is held as pendingProjectileDeath until the bolt
- * visibly lands, while headless marks it dead at once — the tile stays
- * held either way (freshly-dead corpses block), so lookups that decide who
- * stands on a tile keep this predicate. The opposite holds for anything
- * that DAMAGES or TICKS the entity after projectiles resolve (status ticks,
- * zones, summon expiry, the vacated-tiles pre-pass): those use
- * isEntityFunctional, because headless already treats the pending entity as
- * dead and real mode must agree. (The trigger-loop gates are the known
- * exception: the trigger pass is also where a pending death is finalised —
- * drops, vessel hatches — so they cannot simply skip it; open follow-up.)
+ * Why not isEntityFunctional: since 2026-09-30 a projectile kill is a full
+ * logical death at the hit in both modes, and real mode holds only its
+ * PRESENTATION (dead=false + pendingProjectileDeath) BETWEEN turns, closed
+ * at the next dawn (simulation.ts "PROJECTILE DEATHS: hit → hold → dawn").
+ * So inside executeTurn no entity is ever pending, and the two predicates
+ * agree there. isEntityFunctional stays on the paths that also run BETWEEN
+ * turns or read the board's held state (wall-clock interval actions,
+ * replay, the UI), where a held body must count as dead.
  */
 export function isOnBoard(entity: { dead: boolean; despawned?: boolean }): boolean {
   return !entity.dead && !entity.despawned;

@@ -3183,6 +3183,12 @@ export function applyDamageToEntity(
   source?: PlacedCharacter | PlacedEnemy,  // Who dealt the damage (for deflect + dealtStamps)
   deliveryKind?: Exclude<HitStampKind, 'any'>  // Hit-stamp kind; undefined deliveries stamp 'any' only
 ): void {
+  // A body whose projectile death is HELD for the board between turns
+  // (dead=false + pendingProjectileDeath) is already dead: nothing that runs
+  // between turns — a wall-clock interval action — may strike it again (a
+  // second on_death, a second drop). Never true inside executeTurn: the
+  // death is held only after the turn ends and closed at the next dawn.
+  if (!target.dead && target.pendingProjectileDeath) return;
   // Hit stamps record CONNECTION — before invulnerability and deflect, so
   // mitigated hits still stamp both sides (see stampHitLanded). The
   // damage > 0 gate keeps the combined-lethality applyDamageToEntity(x, 0)
@@ -3310,6 +3316,12 @@ export function applyDamageToEntityNoDeflect(
   gameState: GameState,
   deliveryKind?: Exclude<HitStampKind, 'any'>  // Hit-stamp kind; undefined deliveries stamp 'any' only
 ): void {
+  // A body whose projectile death is HELD for the board between turns
+  // (dead=false + pendingProjectileDeath) is already dead: nothing that runs
+  // between turns — a wall-clock interval action — may strike it again (a
+  // second on_death, a second drop). Never true inside executeTurn: the
+  // death is held only after the turn ends and closed at the next dawn.
+  if (!target.dead && target.pendingProjectileDeath) return;
   // Victim-side hit stamp — before invulnerability, since stamps record
   // connection, not damage-got-through. Attacker dealtStamps for projectile
   // deliveries are handled at the applyEntityHit call sites (the caster
