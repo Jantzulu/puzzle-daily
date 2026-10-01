@@ -330,7 +330,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
                   // outside the card, so a dead enemy's dimming leaves it
                   // at full strength.
                   ? ''
-                  : '[@media(hover:hover)]:hover:bg-stone-700/30'
+                  : 'unit-card-glow'
               } ${allDead ? 'opacity-50' : scheduledOnly ? 'opacity-60' : ''}`}
             >
               {/* Sprite — takes full card width, uniform height across the row */}

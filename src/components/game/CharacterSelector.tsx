@@ -485,10 +485,10 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                   // below) — "already placed" is a fact about the unit, not
                   // a reason to make its name and HP harder to read; the
                   // Set corner plate says it in words.
-                  ? 'cursor-pointer [@media(hover:hover)]:hover:bg-stone-700/30'
+                  ? 'cursor-pointer unit-card-glow'
                   : isSelected
                   ? 'cursor-pointer'
-                  : '[@media(hover:hover)]:hover:bg-stone-700/30 cursor-pointer'
+                  : 'unit-card-glow cursor-pointer'
               }`}
             >
               {/* Sprite — takes full card width, uniform height across the row */}

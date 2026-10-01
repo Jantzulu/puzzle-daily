@@ -3355,6 +3355,34 @@ body.menu-gate-instant .quest-box-anchor {
   color: #e68f6d;
 }
 
+/* Hover on a hero / enemy / ally card: a soft glow behind the art that
+   fades out well inside the cell (user call 2026-10-01 — it replaces a flat
+   stone-700/30 square that ended sharply at the cell's edges). Behind the
+   content via z-index:-1 inside the card's own stacking context
+   (`isolation`), so names and stat lines stay crisp on top. Fades on
+   OPACITY only (page decoration animates transform/opacity, never
+   backgrounds). Pointer devices only: phones never hover. */
+.unit-card-glow {
+  isolation: isolate;
+}
+
+@media (hover: hover) {
+  .unit-card-glow::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: radial-gradient(ellipse 58% 52% at 50% 42%, rgba(120, 98, 70, 0.34), rgba(120, 98, 70, 0.12) 55%, transparent 100%);
+    opacity: 0;
+    transition: opacity 180ms ease-out;
+    pointer-events: none;
+  }
+
+  .unit-card-glow:hover::before {
+    opacity: 1;
+  }
+}
+
 /* Chiseled seam between the dungeon's informational sections — a groove
    cut into the dark ground, quieter than the lintel above it. Dark cut
    on top, faint lit lip below: the same top-left light as everything. */
