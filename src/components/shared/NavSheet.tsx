@@ -23,13 +23,19 @@ const EXIT_MS = 250;
  * swallows outside clicks so they can't land on the full-width gate links.
  */
 export const NavSheet: React.FC<NavSheetProps> = ({ open, onClose, label, children }) => {
-  const panelRef = useFocusTrap<HTMLDivElement>(open);
-
   // Linger after close so the exit animation can play. `open` flipping false
   // (any path: backdrop, Escape, or a button inside) switches the classes to
   // the -out pair; unmount follows once they've run. Covers every close path
   // without consumers doing anything.
   const [rendered, setRendered] = useState(open);
+
+  // `&& rendered`: on the render where `open` flips true the sheet is not in
+  // the DOM yet (rendered is set by the effect below), and a trap keyed on
+  // `open` alone ran against a null ref and never ran again. The panel itself
+  // takes focus, not its first control: in the cloud sheet that is Push to
+  // Cloud, which has no confirm step for an Enter to land on.
+  const panelRef = useFocusTrap<HTMLDivElement>(open && rendered, { focusContainer: true });
+
   useEffect(() => {
     if (open) {
       setRendered(true);
@@ -80,7 +86,9 @@ export const NavSheet: React.FC<NavSheetProps> = ({ open, onClose, label, childr
       <div
         ref={panelRef}
         tabIndex={-1}
-        className={`w-full max-w-xs max-h-[85vh] overflow-y-auto dungeon-panel rounded-lg shadow-xl ${open ? 'animate-panel-scale-in' : 'animate-panel-scale-out'}`}
+        // focus:outline-none: the panel takes focus on open but is not a
+        // control — no ring around the whole sheet after a keyboard open.
+        className={`w-full max-w-xs max-h-[85vh] overflow-y-auto dungeon-panel rounded-lg shadow-xl focus:outline-none ${open ? 'animate-panel-scale-in' : 'animate-panel-scale-out'}`}
         onClick={e => e.stopPropagation()}
       >
         {children}
