@@ -3552,21 +3552,19 @@ body.menu-gate-instant .quest-box-anchor {
 /* ---- The hero card's compass + the picker's tabs and Place button ----
    Two pieces, because a hero card is a <button> and cannot hold another:
 
-   .hero-aim-chip is PAINT ONLY — the compass in the card's stat line: the
-   user's painted icon on its own, no button box (user call 2026-10-03). 26px
-   (2× its 13px art) in a 14px row: it overhangs 6px top and bottom without
-   moving the row. While a choice is OWED a warm glow breathes behind it to
-   draw the eye; once all are made it dims and the glow goes. --bare (five
-   or more cards) shows it at 1×, because HP + arrow + a 26px icon no
-   longer fit.
+   .hero-aim-chip is PAINT ONLY — the user's painted compass on its own, no
+   button box, in the sprite band's TOP-RIGHT corner where an enemy card
+   wears its count badge (user calls 2026-10-03: in the stat line the 26px
+   icon crowded the name). 26px = 2× its 13px art; --bare (five or more
+   cards) shows it at 1×. While a choice is OWED a warm glow breathes behind
+   it to draw the eye; once all are made it dims and the glow goes.
 
-   .hero-aim is the FINGER BOX — a transparent sibling button laid over the
-   card's bottom-right corner, from the card's centre line out to at most
-   72px, 44px tall. The stat line is centred with HP on the left, so the
-   compass always falls inside that span; the sprite band above is never
-   covered (the first cut put a plate on the art's corner — user call
-   2026-09-30: it hid the hero). */
+   .hero-aim is the FINGER BOX — a transparent 44px sibling button laid over
+   the slot's top-right corner, covering the compass (selected card only). */
 .hero-aim-chip {
+  position: absolute;
+  top: -4px;
+  right: -4px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -3621,18 +3619,11 @@ body.menu-gate-instant .quest-box-anchor {
   flex-shrink: 0;
 }
 
-/* Geometry: on a roomy card the box runs from the centre line 72px to the
-   right. The compass's right edge is centre + half the stat line's width,
-   which depends on the theme face: about 52px in Inter for the widest line
-   (two-digit HP, tiles count, arrow, chip with count), about 65px in the
-   pixel face — 72 covers both. On a narrow card half the width is under
-   44px, so the box pins to the right edge and grows leftward to 44px
-   instead — never wider than the card itself. */
 .hero-aim {
   position: absolute;
-  right: max(0px, calc(50% - 72px));
-  bottom: 0;
-  width: min(max(50%, 44px), 72px, 100%);
+  top: 0;
+  right: 0;
+  width: min(44px, 100%);
   height: 44px;
   border-radius: 2px;
 }

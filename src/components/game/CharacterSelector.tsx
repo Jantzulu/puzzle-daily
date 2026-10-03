@@ -526,6 +526,28 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                     Set
                   </span>
                 )}
+                {hasAim && (
+                  /* The compass: the sprite band's top-right corner, where
+                     an enemy card wears its count badge (user call
+                     2026-10-03 — in the stat line the 26px icon crowded the
+                     name). PAINT ONLY: the tap target is the .hero-aim
+                     button laid over this corner (a card is a <button> and
+                     cannot hold another). Outside the placed-dim wrapper,
+                     so it stays at full strength on a placed hero. */
+                  <span
+                    aria-hidden="true"
+                    className={`hero-aim-chip ${aimLoud ? 'hero-aim-chip--owed' : 'hero-aim-chip--done'} ${stripSize >= 5 ? 'hero-aim-chip--bare' : ''}`}
+                  >
+                    {/* How many are still owed, once there is more than
+                        one to owe and the strip has room for a digit. */}
+                    {aimLoud && cardEntries.length > 1 && stripSize <= 3 && (
+                      <span className="hud-num">{owed.length}</span>
+                    )}
+                    <span className="hero-aim-icon">
+                      <CompassGlyph size={stripSize >= 5 ? COMPASS_ART_PX : COMPASS_ART_PX * 2} />
+                    </span>
+                  </span>
+                )}
               </div>
 
               {/* NAME + epithet — a FIXED 38px box, one clamped line each,
@@ -557,7 +579,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
               {/* STAT LINE — one 14px row. The border-r rule between HP and
                   movement is gone (one divider language per strip); a real
                   12px gap does the separating. */}
-              <div className={`flex items-center justify-center ${hasAim ? (stripSize >= 5 ? 'gap-1' : 'gap-2') : 'gap-3'} w-full h-[14px]`}>
+              <div className={`flex items-center justify-center gap-3 w-full h-[14px]`}>
                 <div className="flex items-center gap-1">
                   <span className="hud-label text-copper-400">HP</span>
                   <span className="hud-num" style={{ color: 'var(--hud-vital)' }}>
@@ -566,38 +588,23 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                 </div>
                 <div className="flex items-center gap-1 text-copper-400">
                   {hasAim ? (
-                    /* Hero with directions to aim: the heading (once there
-                       is one to show) and then the compass. The
-                       chip here is PAINT ONLY — the tap target is the
-                       .hero-aim button laid over this corner of the card
-                       (a card is a <button> and cannot hold another). */
-                    <>
-                      {moveInfo && arrowDir && (
-                        <>
-                          {moveInfo.tilesPerMove > 1 && (
-                            <span className="hud-num">{moveInfo.tilesPerMove}</span>
-                          )}
-                          <MovementArrow
-                            direction={arrowDir}
-                            className={isInputFacing ? 'text-arcane-300' : 'text-copper-400'}
-                            size={13}
-                          />
-                        </>
-                      )}
-                      <span
-                        aria-hidden="true"
-                        className={`hero-aim-chip ${aimLoud ? 'hero-aim-chip--owed' : 'hero-aim-chip--done'} ${stripSize >= 5 ? 'hero-aim-chip--bare' : ''}`}
-                      >
-                        <span className="hero-aim-icon">
-                          <CompassGlyph size={stripSize >= 5 ? COMPASS_ART_PX : COMPASS_ART_PX * 2} />
-                        </span>
-                        {/* How many are still owed, once there is more than
-                            one to owe and the strip has room for a digit. */}
-                        {aimLoud && cardEntries.length > 1 && stripSize <= 3 && (
-                          <span className="hud-num">{owed.length}</span>
+                    /* Hero with directions to aim: the heading, once there
+                       is one to show (the compass itself sits in the sprite
+                       band's top-right corner). */
+                    moveInfo && arrowDir ? (
+                      <>
+                        {moveInfo.tilesPerMove > 1 && (
+                          <span className="hud-num">{moveInfo.tilesPerMove}</span>
                         )}
-                      </span>
-                    </>
+                        <MovementArrow
+                          direction={arrowDir}
+                          className={isInputFacing ? 'text-arcane-300' : 'text-copper-400'}
+                          size={13}
+                        />
+                      </>
+                    ) : (
+                      <span className="hud-num text-stone-400">—</span>
+                    )
                   ) : moveInfo ? (
                     <>
                       {moveInfo.tilesPerMove > 1 && (
@@ -618,14 +625,13 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
               </div>
             </button>
           );
-          // AIM CONTROL — the tap target for the compass painted in the stat
-          // line above. A SIBLING of the card inside one
+          // AIM CONTROL — the tap target for the compass painted in the sprite
+          // band's top-right corner. A SIBLING of the card inside one
           // slot wrapper, never a child (a card is a <button>, and a button
           // cannot hold another button), transparent, 44px tall, laid over
-          // the card's bottom-right corner where the compass sits, and later
+          // the card's top-right corner where the compass sits, and later
           // in the DOM so it wins the tap over the card beneath it. It opens
-          // the picker on the first choice still owed, and never reaches the
-          // sprite.
+          // the picker on the first choice still owed.
           //
           // ONLY ON THE SELECTED CARD (user call 2026-09-30): on any other
           // card that corner is just the card, so "I meant to tap the hero
