@@ -9,7 +9,7 @@ import { attributeText, attributeSubItems } from '../../utils/attributeShape';
 import { HelpButton } from './HelpOverlay';
 import { TapHintChip } from './TapHintChip';
 import { MovementArrow } from './DirectionArrow';
-import { DirectionPicker, CompassArrow, CompassGlyph, BEARING_INITIALS, type DirectionPickerEntry } from './DirectionPicker';
+import { DirectionPicker, CompassArrow, CompassGlyph, COMPASS_ART_PX, BEARING_INITIALS, type DirectionPickerEntry } from './DirectionPicker';
 import type { ThemeAssets } from '../../utils/themeAssets';
 import { CARD_PIXEL_SCALE, computeCardSpriteAreaHeight } from './cardConstants';
 import { StripDividers } from './StripDividers';
@@ -588,7 +588,9 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                         aria-hidden="true"
                         className={`hero-aim-chip ${aimLoud ? 'hero-aim-chip--owed' : 'hero-aim-chip--done'} ${stripSize >= 5 ? 'hero-aim-chip--bare' : ''}`}
                       >
-                        <CompassGlyph className={aimLoud ? 'hud-breathe' : ''} />
+                        <span className="hero-aim-icon">
+                          <CompassGlyph size={stripSize >= 5 ? COMPASS_ART_PX : COMPASS_ART_PX * 2} />
+                        </span>
                         {/* How many are still owed, once there is more than
                             one to owe and the strip has room for a digit. */}
                         {aimLoud && cardEntries.length > 1 && stripSize <= 3 && (
@@ -701,7 +703,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
             <div className="hud-label px-2 flex flex-wrap items-center justify-center gap-x-2.5 gap-y-1 text-center">
               {directionInputEntries.some(owesChoice) ? (
                 <span className="inline-flex items-center gap-1" style={{ color: 'var(--hud-gold)' }}>
-                  Tap <CompassGlyph size={11} /> above to pick directions:
+                  Tap <CompassGlyph /> above to pick directions:
                 </span>
               ) : canChangeDirections ? (
                 // All chosen, still changeable: keep naming the compass (it
@@ -710,7 +712,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                 // user report 2026-09-30). Quiet stone, with the glyph in the
                 // card chip's "all chosen" arcane.
                 <span className="inline-flex items-center gap-1 text-stone-400">
-                  Tap <CompassGlyph size={11} className="text-arcane-400" /> above to change directions:
+                  Tap <CompassGlyph className="compass-glyph--done" /> above to change directions:
                 </span>
               ) : (
                 <span className="text-stone-400">Directions:</span>

@@ -3552,11 +3552,13 @@ body.menu-gate-instant .quest-box-anchor {
 /* ---- The hero card's compass + the picker's tabs and Place button ----
    Two pieces, because a hero card is a <button> and cannot hold another:
 
-   .hero-aim-chip is PAINT ONLY — the compass in the card's stat line, in
-   the order plate's two colourings (lit brass while a choice is owed, quiet
-   arcane once all are made). 18px in a 14px row: it overhangs 2px top and
-   bottom without moving the row. --bare (five or more cards) drops the box
-   and keeps the glyph, because HP + arrow + a boxed chip no longer fit.
+   .hero-aim-chip is PAINT ONLY — the compass in the card's stat line: the
+   user's painted icon on its own, no button box (user call 2026-10-03). 26px
+   (2× its 13px art) in a 14px row: it overhangs 6px top and bottom without
+   moving the row. While a choice is OWED a warm glow breathes behind it to
+   draw the eye; once all are made it dims and the glow goes. --bare (five
+   or more cards) shows it at 1×, because HP + arrow + a 26px icon no
+   longer fit.
 
    .hero-aim is the FINGER BOX — a transparent sibling button laid over the
    card's bottom-right corner, from the card's centre line out to at most
@@ -3570,40 +3572,53 @@ body.menu-gate-instant .quest-box-anchor {
   justify-content: center;
   gap: 3px;
   flex-shrink: 0;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 2px;
-  border: 1px solid transparent;
-  border-radius: 2px;
 }
 
 .hero-aim-chip--owed {
-  border-color: var(--hud-gold);
-  color: #fdf8eb;
-  background-color: #8c5c37;
-  background-image: linear-gradient(180deg, #a06a3f, #5e3d29);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 235, 200, 0.3),
-    inset 0 -2px 0 rgba(0, 0, 0, 0.4);
+  color: var(--hud-gold); /* the owed-count digit */
 }
 
-.hero-aim-chip--done {
-  border-color: rgba(92, 51, 139, 0.55);
-  color: #a98ad6;
-  background-color: rgba(0, 0, 0, 0.18);
+/* The icon's own box: a stacking context, so the glow's z-index:-1 layer
+   sits behind the icon and never escapes it (the selected card is not a
+   stacking context of its own). */
+.hero-aim-icon {
+  position: relative;
+  isolation: isolate;
+  display: inline-flex;
 }
 
-.hero-aim-chip--bare {
-  min-width: 12px;
-  height: 12px;
-  padding: 0;
-  border: 0;
-  background: none;
-  box-shadow: none;
+/* The OWED glow: a layer, not a shadow/filter (blur over painted art fails —
+   see the rendering notes), breathing on OPACITY only (hud-breathe, which
+   reduced-motion already neutralizes). Fades to nothing inside its box
+   (closest-side), so no edge shows. */
+.hero-aim-chip--owed .hero-aim-icon::before {
+  content: '';
+  position: absolute;
+  inset: -7px;
+  z-index: -1;
+  background: radial-gradient(closest-side,
+    rgba(255, 196, 96, 0.55),
+    rgba(255, 170, 70, 0.22) 55%,
+    transparent 100%);
+  animation: hud-breathe 2s ease-in-out infinite;
+  pointer-events: none;
 }
 
-.hero-aim-chip--bare.hero-aim-chip--owed {
-  color: var(--hud-gold);
+.hero-aim-chip--bare .hero-aim-icon::before {
+  inset: -4px;
+}
+
+/* All choices made: the icon steps back. (A painted dim variant can
+   replace this later.) */
+.hero-aim-chip--done .compass-glyph,
+.compass-glyph--done {
+  opacity: 0.5;
+}
+
+/* Pixel art: every size is an integer multiple of the art, kept sharp. */
+.compass-glyph {
+  image-rendering: pixelated;
+  flex-shrink: 0;
 }
 
 /* Geometry: on a roomy card the box runs from the centre line 72px to the
@@ -3660,8 +3675,7 @@ body.menu-gate-instant .quest-box-anchor {
 }
 
 .dir-later__glyph {
-  color: #a98ad6;
-  flex-shrink: 0;
+  opacity: 0.5; /* the card's "all chosen" look, so the player can match it */
 }
 
 /* Keyboard focus on a tab is parchment and sits further out: the active mark

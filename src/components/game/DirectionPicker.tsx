@@ -5,6 +5,7 @@ import type { CustomSprite, SpriteDirection } from '../../utils/assetStorage';
 import { SpriteThumbnail } from '../editor/SpriteThumbnail';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { lockBodyScroll } from '../../utils/scrollLock';
+import compassIcon from '../../assets/icons/compass.png';
 
 /**
  * COMPASS ARROW — one glyph, drawn as SVG so it renders identically on every
@@ -59,19 +60,26 @@ export const CompassArrow: React.FC<{ direction: string; size?: number; classNam
 };
 
 /**
- * THE CARD'S COMPASS GLYPH: a ring around a four-point rose, "this hero has
- * directions to aim" without pointing the way an arrow would (an arrow in the
- * card's stat line reads as the hero's facing). NOT a ring with a diagonal
- * needle — at 12px that read as a "prohibited" sign. It appears in three
- * places that must look like one control: the chip on the hero card, the
- * hero drawer's note ("Tap [glyph] above to …"), and this picker's
- * change-it-later line. A stand-in: this is a natural slot for painted art.
+ * THE CARD'S COMPASS: the user's painted icon (src/assets/icons/compass.png,
+ * 13×13 art — odd, so the needle has a true centre pixel). It appears in
+ * three places that must look like one control: the hero card's stat line
+ * (26px = 2×, the card sprites' pixel size; 13px = 1× on a crowded strip),
+ * the hero drawer's note ("Tap [compass] above to …") and this picker's
+ * change-it-later line (both 13px, 1×). Always an integer multiple of 13:
+ * any other size smears the pixels. To repaint, overwrite the PNG.
  */
-export const CompassGlyph: React.FC<{ size?: number; className?: string }> = ({ size = 12, className = '' }) => (
-  <svg width={size} height={size} viewBox="0 0 12 12" aria-hidden="true" className={className}>
-    <circle cx="6" cy="6" r="5.3" fill="none" stroke="currentColor" strokeWidth="1" />
-    <path d="M6 1.7L7.1 4.9L10.3 6L7.1 7.1L6 10.3L4.9 7.1L1.7 6L4.9 4.9Z" fill="currentColor" />
-  </svg>
+export const COMPASS_ART_PX = 13;
+
+export const CompassGlyph: React.FC<{ size?: number; className?: string }> = ({ size = COMPASS_ART_PX, className = '' }) => (
+  <img
+    src={compassIcon}
+    width={size}
+    height={size}
+    alt=""
+    aria-hidden="true"
+    draggable={false}
+    className={`compass-glyph ${className}`}
+  />
 );
 
 /**
@@ -514,7 +522,7 @@ export const DirectionPicker: React.FC<DirectionPickerProps> = ({ entry, sprite,
                 says where they live from now on — with the card chip's own
                 glyph, in its "all chosen" colour (user report 2026-09-30). */}
             <p className="dir-later hud-label">
-              Change later with <CompassGlyph size={11} className="dir-later__glyph" /> on the hero&apos;s card
+              Change later with <CompassGlyph className="dir-later__glyph" /> on the hero&apos;s card
             </p>
           </>
         )}
