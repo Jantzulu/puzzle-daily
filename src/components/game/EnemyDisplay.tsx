@@ -347,7 +347,10 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
                   cardRole="enemy"
                 />
                 {totalCount > 1 && (
-                  <span className="absolute -top-1 -right-1 text-xs bg-blood-900 text-blood-300 px-1 py-0.5 rounded-pixel min-w-[18px] text-center border border-blood-700 leading-none">
+                  // top-0.5 right-0: 4px in from the card's top and right
+                  // edges, inside the selection outline's 2px line — the
+                  // hero card's compass sits on the same spot.
+                  <span className="absolute top-0.5 right-0 text-xs bg-blood-900 text-blood-300 px-1 py-0.5 rounded-pixel min-w-[18px] text-center border border-blood-700 leading-none">
                     {totalCount}
                   </span>
                 )}
