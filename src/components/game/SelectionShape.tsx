@@ -1,5 +1,6 @@
 import React from 'react';
 import { slotBoundaries } from '../../hooks/useElementWidth';
+import cornerArt from '../../assets/icons/selection-corner.png';
 
 /**
  * THE SELECTION AS ONE OUTLINED SHAPE — the selected card and its drawer
@@ -55,6 +56,45 @@ const TONES: Record<SelectionTone, { fill: string; line: string }> = {
 };
 
 type Rect = { left: number; width: number; top?: number; bottom?: number; height?: number };
+
+/*
+ * CORNER ART (user TEST, 2026-10-03 — may be reverted: delete this block,
+ * the <Corners> calls and src/assets/icons/selection-corner.png). The user's
+ * 6×6 piece, painted as a BOTTOM-RIGHT corner: its dark-red pixel (art 4,4)
+ * lands on the outer corner pixel the line leaves cut, its brown arms run
+ * along the line, and its black rim reaches one art px outside the shape.
+ * Mirrored for the other corners. Copper (hero/ally) outlines only — the
+ * piece is painted brown; the enemy's blood line keeps plain corners.
+ */
+const CORNER_ART_TONES: SelectionTone[] = ['copper'];
+const CORNER_PX = 6 * A;
+
+type Corner = 'tl' | 'tr' | 'br' | 'bl';
+
+const CORNER_PLACE: Record<Corner, React.CSSProperties> = {
+  br: { right: -A, bottom: -A },
+  bl: { left: -A, bottom: -A, transform: 'scaleX(-1)' },
+  tr: { right: -A, top: -A, transform: 'scaleY(-1)' },
+  tl: { left: -A, top: -A, transform: 'scale(-1, -1)' },
+};
+
+/** Corner pieces for one layer box; the right-hand pieces anchor to the box's right edge. */
+const Corners: React.FC<{ corners: Corner[]; tone: SelectionTone }> = ({ corners, tone }) =>
+  CORNER_ART_TONES.includes(tone) ? (
+    <>
+      {corners.map(c => (
+        <img
+          key={c}
+          src={cornerArt}
+          alt=""
+          aria-hidden="true"
+          draggable={false}
+          className="absolute max-w-none"
+          style={{ ...CORNER_PLACE[c], width: CORNER_PX, height: CORNER_PX, imageRendering: 'pixelated' }}
+        />
+      ))}
+    </>
+  ) : null;
 
 /** The shape's slot edges on the art grid, and its right edge (W less any odd pixel). */
 function shapeEdges(width: number, slotCount: number): number[] {
@@ -130,6 +170,7 @@ export const SelectionStrip: React.FC<StripProps> = ({ ids, selectedIndex, width
           >
             <div className="absolute inset-0" style={{ background: TONES[tone].fill, clipPath: clipCorners(true, true, closed, closed) }} />
             <Line rects={rects} tone={tone} />
+            <Corners corners={closed ? ['tl', 'tr', 'br', 'bl'] : ['tl', 'tr']} tone={tone} />
           </div>
         );
       })}
@@ -186,6 +227,14 @@ export const SelectionDrawer: React.FC<DrawerProps> = ({ ids, index, width, tone
         >
           <div className="absolute inset-0" style={{ background: TONES[tone].fill, clipPath: clipCorners(b[j] > 0, b[j + 1] < W, true, true) }} />
           <Line rects={drawerRects(W, b[j], b[j + 1])} tone={tone} />
+          <Corners
+            corners={[
+              'bl', 'br',
+              ...(b[j] > 0 ? ['tl' as const] : []),
+              ...(b[j + 1] < W ? ['tr' as const] : []),
+            ]}
+            tone={tone}
+          />
         </div>
       ))}
     </div>

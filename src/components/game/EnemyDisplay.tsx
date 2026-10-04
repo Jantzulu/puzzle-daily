@@ -426,7 +426,10 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
             ? 'grid-template-rows 0.55s cubic-bezier(0.34, 1.56, 0.64, 1)'
             : 'grid-template-rows 0.28s ease-in',
         }}>
-        <div style={{ overflow: 'hidden', minHeight: 0 }}>
+        {/* The 2px pad (one art px) with an equal negative margin widens the
+            clip on every side by the selection corner pieces' outer rim,
+            without moving the drawer or the height animation. */}
+        <div style={{ overflow: 'hidden', minHeight: 0, margin: -2, padding: 2 }}>
           <div
             // The wash is the selection shape's (copper for allies, blood
             // for enemies — the ally drawer once opened blood-red under a

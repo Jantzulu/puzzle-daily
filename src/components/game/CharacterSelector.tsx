@@ -673,7 +673,10 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
             ? 'grid-template-rows 0.55s cubic-bezier(0.34, 1.56, 0.64, 1)'
             : 'grid-template-rows 0.28s ease-in',
         }}>
-        <div style={{ overflow: 'hidden', minHeight: 0 }}>
+        {/* The 2px pad (one art px) with an equal negative margin widens the
+            clip on every side by the selection corner pieces' outer rim,
+            without moving the drawer or the height animation. */}
+        <div style={{ overflow: 'hidden', minHeight: 0, margin: -2, padding: 2 }}>
         {/* THE DRAWER — natural height, page grows with wordy heroes
             (unbounded 2026-08-01 by user call: no nested scroll region on
             a phone). Actions | Attributes with a dashed divider, the same
