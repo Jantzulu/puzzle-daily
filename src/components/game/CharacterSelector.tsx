@@ -14,6 +14,7 @@ import type { ThemeAssets } from '../../utils/themeAssets';
 import { CARD_PIXEL_SCALE, computeCardSpriteAreaHeight } from './cardConstants';
 import { StripDividers } from './StripDividers';
 import { SelectionStrip, SelectionDrawer } from './SelectionShape';
+import placedBannerIcon from '../../assets/icons/placed-banner.png';
 import { useElementWidth, artGridSlotStyle } from '../../hooks/useElementWidth';
 import { subscribeToImageLoads } from '../../utils/imageLoader';
 
@@ -518,12 +519,24 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                   />
                 </div>
                 {isPlaced && (
-                  // A stamped corner plate instead of a system-font dingbat:
-                  // the old centred ✓ was drawn by whatever glyph the device
-                  // had, sat ON the art it was describing, and said nothing a
-                  // stranger to the game could read.
-                  <span className="absolute bottom-0 left-0 hud-label px-1 py-0.5 rounded-pixel bg-copper-900/80 border border-copper-700 text-copper-300">
-                    Set
+                  // PLACED: the user's painted banner (13×13, a centre pixel
+                  // on the pole) in the sprite band's TOP-LEFT corner,
+                  // opposite the compass and inset the same way (user call
+                  // 2026-10-03; it replaces a "Set" text plate). 2× like the
+                  // card sprites, 1× on a crowded strip. Outside the
+                  // placed-dim wrapper, so it stays at full strength. The
+                  // words survive for screen readers.
+                  <span className="placed-banner">
+                    <img
+                      src={placedBannerIcon}
+                      width={stripSize >= 5 ? COMPASS_ART_PX : COMPASS_ART_PX * 2}
+                      height={stripSize >= 5 ? COMPASS_ART_PX : COMPASS_ART_PX * 2}
+                      alt=""
+                      aria-hidden="true"
+                      draggable={false}
+                      className="compass-glyph"
+                    />
+                    <span className="sr-only">Placed</span>
                   </span>
                 )}
                 {hasAim && (

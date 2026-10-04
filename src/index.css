@@ -3617,6 +3617,17 @@ body.menu-gate-instant .quest-box-anchor {
   opacity: 0.5;
 }
 
+/* The placed banner: the compass's mirror in the TOP-LEFT corner — 4px in
+   from the card's top and left edges (the sprite band starts 2px down and
+   4px in), inside the selection outline. Paint only. */
+.placed-banner {
+  position: absolute;
+  top: 2px;
+  left: 0;
+  display: inline-flex;
+  pointer-events: none;
+}
+
 /* Pixel art: every size is an integer multiple of the art, kept sharp. */
 .compass-glyph {
   image-rendering: pixelated;
