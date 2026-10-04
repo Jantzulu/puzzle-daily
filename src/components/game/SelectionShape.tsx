@@ -63,34 +63,55 @@ type Rect = { left: number; width: number; top?: number; bottom?: number; height
  * 6×6 piece, painted as a BOTTOM-RIGHT corner: its dark-red pixel (art 4,4)
  * lands on the outer corner pixel the line leaves cut, its brown arms run
  * along the line, and its black rim reaches one art px outside the shape.
- * Mirrored for the other corners. Copper (hero/ally) outlines only — the
- * piece is painted brown; the enemy's blood line keeps plain corners.
+ * Mirrored for the other corners. On both tones for now (the user wants to
+ * see the brown piece on the enemy's blood line too).
+ *
+ * INSIDE CORNERS (the elbows, where a card side meets the drawer's top edge)
+ * get the piece too: there the line touches only diagonally, and the pixel
+ * it skips is the drawer's first row directly under the card's side column.
+ * The piece as painted (arms up and left) fits the LEFT elbow; the right one
+ * is mirrored. It straddles the seam — art rows 0-3 above it, 4-5 below —
+ * and the drawer clips everything above its top (that hides its open
+ * slide), so each elbow is drawn in two clipped halves: the top four rows
+ * with the card half, the bottom two with the drawer half. Both halves are
+ * on the one opacity clock, so they read as one piece.
  */
-const CORNER_ART_TONES: SelectionTone[] = ['copper'];
+const CORNER_ART_TONES: SelectionTone[] = ['copper', 'blood'];
 const CORNER_PX = 6 * A;
+const FLIP_X = 'scaleX(-1)';
 
-type Corner = 'tl' | 'tr' | 'br' | 'bl';
+type Piece = { key: string; style: React.CSSProperties };
 
-const CORNER_PLACE: Record<Corner, React.CSSProperties> = {
-  br: { right: -A, bottom: -A },
-  bl: { left: -A, bottom: -A, transform: 'scaleX(-1)' },
-  tr: { right: -A, top: -A, transform: 'scaleY(-1)' },
-  tl: { left: -A, top: -A, transform: 'scale(-1, -1)' },
+/** The outer corners of a layer box; right-hand pieces anchor to its right edge. */
+const OUTER: Record<'tl' | 'tr' | 'br' | 'bl', Piece> = {
+  br: { key: 'br', style: { right: -A, bottom: -A } },
+  bl: { key: 'bl', style: { left: -A, bottom: -A, transform: FLIP_X } },
+  tr: { key: 'tr', style: { right: -A, top: -A, transform: 'scaleY(-1)' } },
+  tl: { key: 'tl', style: { left: -A, top: -A, transform: 'scale(-1, -1)' } },
 };
 
-/** Corner pieces for one layer box; the right-hand pieces anchor to the box's right edge. */
-const Corners: React.FC<{ corners: Corner[]; tone: SelectionTone }> = ({ corners, tone }) =>
+/** Elbow tops (art rows 0-3), in the card half's box: they end at its bottom. */
+const ELBOW_TOP_CLIP = `inset(0 0 ${2 * A}px 0)`;
+const elbowTopLeft: Piece = { key: 'el-top', style: { left: -4 * A, bottom: -2 * A, clipPath: ELBOW_TOP_CLIP } };
+const elbowTopRight: Piece = { key: 'er-top', style: { right: -4 * A, bottom: -2 * A, clipPath: ELBOW_TOP_CLIP, transform: FLIP_X } };
+
+/** Elbow bottoms (art rows 4-5), in the drawer half's box, for a card on [x0, x1). */
+const ELBOW_BOTTOM_CLIP = `inset(${4 * A}px 0 0 0)`;
+const elbowBottomLeft = (x0: number): Piece => ({ key: 'el-bot', style: { left: x0 - 4 * A, top: -4 * A, clipPath: ELBOW_BOTTOM_CLIP } });
+const elbowBottomRight = (x1: number): Piece => ({ key: 'er-bot', style: { left: x1 - 2 * A, top: -4 * A, clipPath: ELBOW_BOTTOM_CLIP, transform: FLIP_X } });
+
+const Corners: React.FC<{ pieces: Piece[]; tone: SelectionTone }> = ({ pieces, tone }) =>
   CORNER_ART_TONES.includes(tone) ? (
     <>
-      {corners.map(c => (
+      {pieces.map(p => (
         <img
-          key={c}
+          key={p.key}
           src={cornerArt}
           alt=""
           aria-hidden="true"
           draggable={false}
           className="absolute max-w-none"
-          style={{ ...CORNER_PLACE[c], width: CORNER_PX, height: CORNER_PX, imageRendering: 'pixelated' }}
+          style={{ ...p.style, width: CORNER_PX, height: CORNER_PX, imageRendering: 'pixelated' }}
         />
       ))}
     </>
@@ -170,7 +191,17 @@ export const SelectionStrip: React.FC<StripProps> = ({ ids, selectedIndex, width
           >
             <div className="absolute inset-0" style={{ background: TONES[tone].fill, clipPath: clipCorners(true, true, closed, closed) }} />
             <Line rects={rects} tone={tone} />
-            <Corners corners={closed ? ['tl', 'tr', 'br', 'bl'] : ['tl', 'tr']} tone={tone} />
+            <Corners
+              pieces={closed
+                ? [OUTER.tl, OUTER.tr, OUTER.br, OUTER.bl]
+                : [
+                    OUTER.tl, OUTER.tr,
+                    // the elbows' top halves, where the drawer reaches past the card
+                    ...(b[j] > 0 ? [elbowTopLeft] : []),
+                    ...(b[j + 1] < b[slotCount] ? [elbowTopRight] : []),
+                  ]}
+              tone={tone}
+            />
           </div>
         );
       })}
@@ -228,10 +259,12 @@ export const SelectionDrawer: React.FC<DrawerProps> = ({ ids, index, width, tone
           <div className="absolute inset-0" style={{ background: TONES[tone].fill, clipPath: clipCorners(b[j] > 0, b[j + 1] < W, true, true) }} />
           <Line rects={drawerRects(W, b[j], b[j + 1])} tone={tone} />
           <Corners
-            corners={[
-              'bl', 'br',
-              ...(b[j] > 0 ? ['tl' as const] : []),
-              ...(b[j + 1] < W ? ['tr' as const] : []),
+            pieces={[
+              OUTER.bl, OUTER.br,
+              // where the drawer reaches past the card: its own top corner,
+              // and the bottom half of the elbow
+              ...(b[j] > 0 ? [OUTER.tl, elbowBottomLeft(b[j])] : []),
+              ...(b[j + 1] < W ? [OUTER.tr, elbowBottomRight(b[j + 1])] : []),
             ]}
             tone={tone}
           />
