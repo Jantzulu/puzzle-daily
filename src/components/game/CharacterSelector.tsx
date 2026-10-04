@@ -615,6 +615,14 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                           size={13}
                         />
                       </>
+                    ) : moveInfo ? (
+                      // A mover whose facing is not picked yet: "?" in the
+                      // compass's owed gold, never the dash — "—" means
+                      // "does not move" on every card (user call 2026-10-03).
+                      <span className="hud-num" style={{ color: 'var(--hud-gold)' }}>
+                        <span aria-hidden="true">?</span>
+                        <span className="sr-only">facing not picked</span>
+                      </span>
                     ) : (
                       <span className="hud-num text-stone-400">—</span>
                     )
