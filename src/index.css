@@ -2401,7 +2401,7 @@ body.gate-raising .gate-shake-layer {
 
 /* The page-load settle (the rail's .gate-settle, Game.tsx) is the final
    moment of a winch-up: a light rumble through its one stroke (no rung
-   kicks), then the CLUNK as it locks. Keyed to .gate-settle's 0.35s delay
+   kicks), then a SOFTER clunk as it locks. Keyed to .gate-settle's 0.35s delay
    + 0.35s run. Ranks below the menu's lowering/raising rules (0,2,0 <
    0,2,1), so opening the menu mid-settle plays the menu's shake instead. */
 @keyframes gate-settle-rumble {
@@ -2411,8 +2411,20 @@ body.gate-raising .gate-shake-layer {
   100% { transform: translate(0, 0); }
 }
 
+/* A SOFTER clunk than the menu's (user round 5, 2026-10-08: the full
+   slam "feels great when the player intentionally opens and closes the
+   portcullis" but is jarring on a page load). A 3px swing (2px up, 1px
+   back) in 0.3s, against gate-clunk's 7px in 0.4s. */
+@keyframes gate-settle-clunk {
+  0% { transform: translate(0, -2px); }
+  25% { transform: translate(0, 1px); }
+  50% { transform: translate(0, -1px); }
+  75% { transform: translate(0, 0); }
+  100% { transform: translate(0, 0); }
+}
+
 .gate-shake-layer:has(.gate-settle) {
-  animation: gate-settle-rumble 0.35s step-end 0.35s, gate-clunk 0.4s step-end 0.7s;
+  animation: gate-settle-rumble 0.35s step-end 0.35s, gate-settle-clunk 0.3s step-end 0.7s;
 }
 
 @media (prefers-reduced-motion: reduce) {
