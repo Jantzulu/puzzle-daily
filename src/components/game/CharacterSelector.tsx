@@ -356,8 +356,13 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
             centering TRANSFORM makes it a stacking context, so a z-46 on
             the h3 inside competed only within it and lost to the anchor
             at page level (probe-diagnosed). Safe for the (?)'s modal —
-            HelpOverlay portals to <body>. */}
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center z-[46]">
+            HelpOverlay portals to <body>.
+            heroes-title-layer: while the menu gate is lowered the 46 DROPS
+            below the riding rail (z-40), like the quest anchor's 45 — on a
+            long (signed-in) menu the rail docks right over this title, and
+            the title painted over its PLAY stone (user report 2026-10-07).
+            See index.css. */}
+        <div className="heroes-title-layer absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center z-[46]">
           <div className="absolute right-full mr-1">
             {/* (?) wears its section title's color (user call 2026-08-13);
               ! beats the button's own text-stone-400. */}

@@ -2580,6 +2580,26 @@ body.menu-gate-instant .quest-box-anchor {
   transition: none;
 }
 
+/* The hero panel's centred title (CharacterSelector) is the quest box's
+   twin: z-46 sits it one step over the box's 45 on purpose, and the same
+   lowered-gate rule must drop it under the RIDING rail (z-40) — on a long
+   (signed-in) menu the rail docks right over this title, and it painted
+   over the rail's PLAY stone (user report 2026-10-07). 31 keeps it over the
+   box's lowered 30, still under the rail; the delayed restore and the
+   instant-dismissal snap are the box's, in lockstep with the winch. */
+.heroes-title-layer {
+  transition: z-index 0s 1.1s; /* = the close winch duration (lockstep) */
+}
+
+body.menu-gate-lowered .heroes-title-layer {
+  z-index: 31;
+  transition: z-index 0s 0s;
+}
+
+body.menu-gate-instant .heroes-title-layer {
+  transition: none;
+}
+
 .control-rail-mesh {
   position: absolute;
   left: 0;
