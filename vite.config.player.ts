@@ -44,17 +44,23 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
+        // The self-hosted font FILES are not precached: every Theme editor
+        // choice ships (public/fonts), but a player only ever needs the
+        // theme's few faces — runtime-cached below on first use, as the
+        // Google-hosted fonts were. (fonts.css itself is precached.)
+        globIgnores: ['fonts/**/*.woff2'],
         navigateFallback: '/index.html',
         // The main chunk is over workbox's 2 MB default
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
         runtimeCaching: [
           {
-            // Google Fonts stylesheets + font files
-            urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com\/.*/i,
+            // Self-hosted font files (scripts/self-host-fonts.mjs) — never
+            // change at a given path, so cache hard.
+            urlPattern: /\/fonts\/[^?#]+\.woff2$/i,
             handler: 'CacheFirst',
             options: {
-              cacheName: 'google-fonts',
-              expiration: { maxEntries: 30, maxAgeSeconds: 60 * 60 * 24 * 365 },
+              cacheName: 'fonts',
+              expiration: { maxEntries: 60, maxAgeSeconds: 60 * 60 * 24 * 365 },
               cacheableResponse: { statuses: [0, 200] },
             },
           },
