@@ -1906,26 +1906,14 @@ body:not(.menu-gate-lowered) .control-rail.rail-riding {
    only reach 27.5px above the rung, so a deeper start exposed art that
    is no longer there. */
 @keyframes gate-settle {
-  /* THE LAST OF A WINCH-UP (user call 2026-10-08: the load settle should
-     feel like the final bit of the real close): a brief strain, then three
-     ratchet pulls — each surges and eases as the pawl catches (29.5%,
-     60.8%) — the same per-pull shape and ~0.3s rhythm as the menu's close
-     (--gate-ease-raise), then it locks and the screen clunks
-     (.gate-shake-layer:has(.gate-settle)). Piecewise: linear timing
-     between these stops. */
+  /* THE FINAL MOMENT OF A WINCH-UP (user round 4, 2026-10-08: the player
+     should witness "the final brief moments of the portcullis opening up
+     for them" — three pulls read as slow and as a string of rung shakes).
+     One stroke, already moving (no strain, no rungs), easing slightly as
+     the last pull spends itself; then it locks and the screen clunks
+     (.gate-shake-layer:has(.gate-settle)). Linear between stops. */
   0% { transform: translateY(24px); }
-  6% { transform: translateY(23.93px); }
-  13.8% { transform: translateY(22.97px); }
-  21.7% { transform: translateY(20.34px); }
-  29.5% { transform: translateY(17.31px); }
-  37.3% { transform: translateY(15.95px); }
-  45.2% { transform: translateY(14.99px); }
-  53% { transform: translateY(12.36px); }
-  60.8% { transform: translateY(9.33px); }
-  68.7% { transform: translateY(7.98px); }
-  76.5% { transform: translateY(7.02px); }
-  84.3% { transform: translateY(4.39px); }
-  92.2% { transform: translateY(1.36px); }
+  60% { transform: translateY(7px); }
   100% { transform: translateY(0); }
 }
 
@@ -1940,10 +1928,10 @@ body:not(.menu-gate-lowered) .control-rail.rail-riding {
      open start through the delay, so the page paints open, pauses a
      beat, then retracts. Game.tsx's gateSettling timeout must cover
      delay + duration — keep them in lockstep. */
-  /* The curve lives in the keyframes (three ratchet pulls); linear
+  /* The curve lives in the keyframes (one closing stroke); linear
      between stops. Game.tsx's gateSettling timeout also covers the
-     screen clunk after it (1.35s + 0.4s). */
-  animation: gate-settle 1s linear 0.35s backwards;
+     screen clunk after it (0.35s + 0.35s + 0.4s). */
+  animation: gate-settle 0.35s linear 0.35s backwards;
 }
 
 /* Replay exit: the control rail re-enters like the portcullis it is —
@@ -2411,30 +2399,20 @@ body.gate-raising .gate-shake-layer {
   animation: gate-rumble-raise 1.1s step-end, gate-clunk 0.4s step-end 1.1s;
 }
 
-/* The page-load settle (the rail's .gate-settle, Game.tsx) is the last of
-   a winch-up: the same haul rumble with a kick at its two pawl catches,
-   then the CLUNK as it locks. Keyed to .gate-settle's 0.35s delay + 1s
-   run. Ranks below the menu's lowering/raising rules (0,2,0 < 0,2,1), so
-   opening the menu mid-settle plays the menu's shake instead. */
+/* The page-load settle (the rail's .gate-settle, Game.tsx) is the final
+   moment of a winch-up: a light rumble through its one stroke (no rung
+   kicks), then the CLUNK as it locks. Keyed to .gate-settle's 0.35s delay
+   + 0.35s run. Ranks below the menu's lowering/raising rules (0,2,0 <
+   0,2,1), so opening the menu mid-settle plays the menu's shake instead. */
 @keyframes gate-settle-rumble {
-  0% { transform: translate(0, 0); }
-  10% { transform: translate(0, 1px); }
-  18% { transform: translate(0, 0); }
-  29.5% { transform: translate(0, -2px); }
-  32% { transform: translate(0, 1px); }
-  34.5% { transform: translate(0, 0); }
-  44% { transform: translate(0, 1px); }
-  52% { transform: translate(0, 0); }
-  60.8% { transform: translate(0, -2px); }
-  63.3% { transform: translate(0, 1px); }
-  65.8% { transform: translate(0, 0); }
-  76% { transform: translate(0, 1px); }
-  86% { transform: translate(0, 0); }
+  0% { transform: translate(0, 1px); }
+  33% { transform: translate(0, 0); }
+  66% { transform: translate(0, 1px); }
   100% { transform: translate(0, 0); }
 }
 
 .gate-shake-layer:has(.gate-settle) {
-  animation: gate-settle-rumble 1s step-end 0.35s, gate-clunk 0.4s step-end 1.35s;
+  animation: gate-settle-rumble 0.35s step-end 0.35s, gate-clunk 0.4s step-end 0.7s;
 }
 
 @media (prefers-reduced-motion: reduce) {
