@@ -2263,6 +2263,39 @@ body.menu-gate-instant .quest-panel-sticky {
   transition: none;
 }
 
+/* REAL-IRON MOTION (user call 2026-10-08: "based on how one would operate
+   in real life"). Piecewise curves (linear()) the cubic-beziers above can't
+   draw; durations unchanged, so every lockstep hold still lines up.
+   LOWERING (menu opens, 1.4s): the brake is released — the gate barely
+   creeps for the first tenth, gravity takes it (accelerating to ~1.7× its
+   average speed by mid-drop), the brake holds that pace, and it HITS the
+   ground at 86% — then two small rebounds (1.2%, then 0.3% of the drop)
+   before it settles. Generated: creep 0–10%, accelerate 10–50%, braked
+   fall 50–86%.
+   RAISING (menu closes, 1.1s): the winch strains (6%), then hauls in four
+   ratchet pulls — each surges and eases as the pawl catches (at 29.5%,
+   53%, 76.5%) — and locks at the top.
+   Only the timing FUNCTION is set here, so `transition: none` (instant
+   dismissal) and the base durations still rule; browsers without
+   linear() keep the cubic-beziers. The gate div and the rail ride share
+   each curve: LOCKSTEP. The screen shake keys to the same moments. */
+@supports (transition-timing-function: linear(0, 1)) {
+  :root {
+    --gate-ease-lower: linear(0, 0.0015 5%, 0.006 10%, 0.014 14%, 0.0285 18%, 0.0494 22%, 0.0768 26%, 0.1106 30%, 0.1509 34%, 0.1976 38%, 0.2508 42%, 0.3104 46%, 0.3764 50%, 0.4804 56%, 0.5843 62%, 0.6882 68%, 0.7921 74%, 0.8961 80%, 1 86%, 0.988 90%, 1 94%, 0.997 97%, 1);
+    --gate-ease-raise: linear(0, 0.003 6%, 0.0329 11.9%, 0.1152 17.8%, 0.2099 23.6%, 0.2522 29.5%, 0.2822 35.4%, 0.3644 41.3%, 0.4591 47.1%, 0.5015 53%, 0.5314 58.9%, 0.6137 64.8%, 0.7084 70.6%, 0.7508 76.5%, 0.7807 82.4%, 0.8629 88.3%, 0.9576 94.1%, 1);
+  }
+
+  .menu-gate > div,
+  .quest-panel-sticky {
+    transition-timing-function: var(--gate-ease-raise);
+  }
+
+  .menu-gate-open > div,
+  body.menu-gate-lowered .quest-panel-sticky {
+    transition-timing-function: var(--gate-ease-lower);
+  }
+}
+
 /* Desktop: the gate is the board column's portcullis, not a wall-to-wall
    curtain. Max width = the play page rail's max-w-2xl (42rem) plus the
    menu's own px-4 (2rem), so the beams inside render the same 42rem as
