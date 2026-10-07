@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { fetchPlayerStats } from '../../services/statsService';
 import type { PlayerStats } from '../../services/statsService';
 import { getPlayerId } from '../../utils/playerId';
 import { getCharacter } from '../../data/characters';
+import { toast } from '../shared/Toast';
+import { PRIVACY_CONTACT_EMAIL } from '../../utils/privacyContact';
 
 const AVATAR_COLORS = [
   'bg-copper-600', 'bg-arcane-600', 'bg-moss-600', 'bg-blood-600',
@@ -147,10 +150,87 @@ export const ProfilePage: React.FC = () => {
             )}
           </>
         )}
+
+        <DeleteAccountPanel isTeam={profile.role !== 'player'} />
       </div>
     </div>
   );
 };
+
+/**
+ * Self-service account deletion (pre-launch privacy work, 2026-10-07): a
+ * player can permanently delete their account and the results saved to it
+ * (RPC delete_own_account, migration 014). Two steps — the button only opens
+ * a confirmation. Team accounts are refused by the RPC too; here they get a
+ * note instead of the button.
+ */
+function DeleteAccountPanel({ isTeam }: { isTeam: boolean }) {
+  const { deleteAccount, signOut } = useAuth();
+  const navigate = useNavigate();
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState(false);
+
+  const handleDelete = async () => {
+    setBusy(true);
+    setFailed(false);
+    const { error } = await deleteAccount();
+    if (error) {
+      setBusy(false);
+      setFailed(true);
+      return;
+    }
+    // Leave this protected page BEFORE dropping the session — ProtectedRoute
+    // would otherwise bounce to /login. The server session went with the
+    // account, so the sign-out is local only.
+    navigate('/', { replace: true });
+    await signOut('local');
+    toast.success('Your account has been deleted.');
+  };
+
+  return (
+    <div className="dungeon-panel p-5 space-y-3">
+      <h2 className="font-medieval text-copper-400 text-lg">Delete account</h2>
+      {isTeam ? (
+        <p className="text-sm text-stone-400">
+          Team accounts can't be deleted here. Ask an admin to remove this one.
+        </p>
+      ) : !confirming ? (
+        <>
+          <p className="text-sm text-stone-400">
+            Permanently delete your account and the puzzle results saved to it.
+          </p>
+          <button type="button" onClick={() => setConfirming(true)} className="dungeon-btn-danger px-4 py-2 text-sm">
+            Delete account
+          </button>
+        </>
+      ) : (
+        <>
+          <p className="text-sm text-parchment-200">
+            This removes your account, your profile and every result saved to it,
+            and can't be undone. Progress stored on this device stays until you
+            clear your browser's site data.
+          </p>
+          {failed && (
+            <p role="alert" className="text-sm text-blood-300">
+              We couldn't delete your account just now. Try again, or email{' '}
+              <a href={`mailto:${PRIVACY_CONTACT_EMAIL}`} className="text-copper-400 underline">{PRIVACY_CONTACT_EMAIL}</a>
+              {' '}and we'll do it for you.
+            </p>
+          )}
+          <div className="flex flex-wrap gap-3">
+            <button type="button" onClick={handleDelete} disabled={busy} className="dungeon-btn-danger px-4 py-2 text-sm disabled:opacity-60">
+              {busy ? 'Deleting…' : 'Yes, delete my account'}
+            </button>
+            <button type="button" onClick={() => { setConfirming(false); setFailed(false); }} disabled={busy} className="dungeon-btn px-4 py-2 text-sm">
+              Cancel
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
 
 function StatCard({ label, value, accent }: { label: string; value: string | number; accent?: string }) {
   return (

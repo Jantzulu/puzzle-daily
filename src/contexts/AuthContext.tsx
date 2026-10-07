@@ -12,7 +12,16 @@ interface AuthContextType {
   isCreator: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signUp: (email: string, password: string, displayName: string) => Promise<{ error: string | null }>;
-  signOut: () => Promise<void>;
+  /** 'local' only drops this device's session (no server call) — for after deleteAccount, when the server session is already gone. */
+  signOut: (scope?: 'global' | 'local') => Promise<void>;
+  /**
+   * Permanently deletes the signed-in PLAYER's account and the puzzle results
+   * saved to it (RPC delete_own_account, migration 014). Team accounts are
+   * refused. On success the account no longer exists server-side: the caller
+   * should leave any protected page FIRST (ProtectedRoute would bounce to
+   * /login), then call signOut('local').
+   */
+  deleteAccount: () => Promise<{ error: string | null }>;
   updateProfile: (updates: Partial<Pick<Profile, 'display_name' | 'avatar_url'>>) => Promise<{ error: string | null }>;
   changePassword: (newPassword: string) => Promise<{ error: string | null }>;
 }
@@ -102,11 +111,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { error: error?.message ?? null };
   }, []);
 
-  const signOut = useCallback(async () => {
-    await supabase.auth.signOut();
+  const signOut = useCallback(async (scope: 'global' | 'local' = 'global') => {
+    await supabase.auth.signOut({ scope });
     setUser(null);
     setProfile(null);
     setSession(null);
+  }, []);
+
+  const deleteAccount = useCallback(async () => {
+    const { error } = await supabase.rpc('delete_own_account');
+    if (error) console.warn('Account deletion failed:', error.message);
+    return { error: error?.message ?? null };
   }, []);
 
   const changePassword = useCallback(async (newPassword: string) => {
@@ -129,7 +144,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const isCreator = profile?.role === 'creator';
 
   return (
-    <AuthContext.Provider value={{ user, profile, session, loading, isCreator, signIn, signUp, signOut, updateProfile, changePassword }}>
+    <AuthContext.Provider value={{ user, profile, session, loading, isCreator, signIn, signUp, signOut, deleteAccount, updateProfile, changePassword }}>
       {children}
     </AuthContext.Provider>
   );
