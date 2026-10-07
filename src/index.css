@@ -2122,7 +2122,7 @@ body:not(.menu-gate-lowered) .control-rail.rail-riding {
      phase. Ease-in spends the duration in the visible lower travel and
      accelerates away as it vanishes behind the nav. LOCKSTEP with the
      .menu-gate > div twin and the visibility/z-index holds (1.4s). */
-  transition: transform 1.1s cubic-bezier(0.4, 0.1, 0.75, 0.5); /* CLOSE = 1.1s (open stays 1.4s): with only the winch's front half visible, equal clocks read as a crawl (user round 4) - perceived parity needs the shorter close. Curve softened from (0.5,0,...). LOCKSTEP: visibility + z-index holds = 1.1s */
+  transition: transform 1.25s cubic-bezier(0.4, 0.1, 0.75, 0.5); /* CLOSE = 1.25s (open stays 1.4s): 1.4s read as a crawl (user round 4, 2026-08) and 1.1s as "ever so" too quick (user, 2026-10-08) - split the difference. Curve softened from (0.5,0,...). LOCKSTEP: visibility + z-index holds and the raise shake (gate-rumble-raise / gate-clunk) = 1.25s */
 }
 
 body.menu-gate-lowered .quest-panel-sticky {
@@ -2180,7 +2180,7 @@ body.menu-gate-lowered .quest-panel-sticky {
   right: 0;
   overflow: hidden;
   visibility: hidden;
-  transition: visibility 0s 1.1s; /* = the close winch duration (lockstep) */
+  transition: visibility 0s 1.25s; /* = the close winch duration (lockstep) */
 }
 
 .menu-gate > div {
@@ -2189,7 +2189,7 @@ body.menu-gate-lowered .quest-panel-sticky {
      base rule (see its comment: identical math reads faster on close
      because the tail exits offscreen; ease-in keeps the visible phase
      slow). */
-  transition: transform 1.1s cubic-bezier(0.4, 0.1, 0.75, 0.5); /* CLOSE = 1.1s (open stays 1.4s): with only the winch's front half visible, equal clocks read as a crawl (user round 4) - perceived parity needs the shorter close. Curve softened from (0.5,0,...). LOCKSTEP: visibility + z-index holds = 1.1s */
+  transition: transform 1.25s cubic-bezier(0.4, 0.1, 0.75, 0.5); /* CLOSE = 1.25s (open stays 1.4s): 1.4s read as a crawl (user round 4, 2026-08) and 1.1s as "ever so" too quick (user, 2026-10-08) - split the difference. Curve softened from (0.5,0,...). LOCKSTEP: visibility + z-index holds and the raise shake (gate-rumble-raise / gate-clunk) = 1.25s */
 }
 
 /* The dungeon dims behind the lowered gate: a dark scrim tints the page
@@ -2278,7 +2278,7 @@ body.menu-gate-instant .quest-panel-sticky {
    ground at 86% — then two small rebounds (1.2%, then 0.3% of the drop)
    before it settles. Generated: creep 0–10%, accelerate 10–50%, braked
    fall 50–86%.
-   RAISING (menu closes, 1.1s): the winch strains (6%), then hauls in four
+   RAISING (menu closes, 1.25s): the winch strains (6%), then hauls in four
    ratchet pulls — each surges and eases as the pawl catches (at 29.5%,
    53%, 76.5%) — and locks at the top.
    Only the timing FUNCTION is set here, so `transition: none` (instant
@@ -2312,8 +2312,8 @@ body.menu-gate-instant .quest-panel-sticky {
    Timing keys to the gate's curves above:
    - lowering: rumble 0–1.2s, growing with the drop's speed; the SLAM at
      1.2s (the curve's impact, 86% of 1.4s) — mostly vertical, heavy;
-   - raising: rumble 0–1.1s with a kick at each pawl catch (29.5%, 53%,
-     76.5% — the curve's ratchet); the CLUNK at 1.1s as it locks on top. */
+   - raising: rumble 0–1.25s with a kick at each pawl catch (29.5%, 53%,
+     76.5% — the curve's ratchet); the CLUNK at 1.25s as it locks on top. */
 @keyframes gate-rumble-lower {
   0% { transform: translate(0, 0); }
   5% { transform: translate(0, 1px); }
@@ -2396,7 +2396,7 @@ body.gate-lowering .gate-shake-layer {
 }
 
 body.gate-raising .gate-shake-layer {
-  animation: gate-rumble-raise 1.1s step-end, gate-clunk 0.4s step-end 1.1s;
+  animation: gate-rumble-raise 1.25s step-end, gate-clunk 0.4s step-end 1.25s;
 }
 
 /* The page-load settle (the rail's .gate-settle, Game.tsx) is the final
@@ -2471,7 +2471,7 @@ body.gate-raising .gate-shake-layer {
    transition) has finished; the lowered state transitions with no delay so
    opening still drops the box instantly. */
 .quest-box-anchor {
-  transition: z-index 0s 1.1s; /* = the close winch duration (lockstep) */
+  transition: z-index 0s 1.25s; /* = the close winch duration (lockstep) */
   /* SILHOUETTE GLOW (user ask 2026-08-06, "like the play button's"): ONE
      static drop-shadow on the PARENT — the filter computes from the
      subtree's combined alpha, so the QUEST plate + box + ornaments glow
@@ -2762,7 +2762,7 @@ body.menu-gate-instant .quest-box-anchor {
    box's lowered 30, still under the rail; the delayed restore and the
    instant-dismissal snap are the box's, in lockstep with the winch. */
 .heroes-title-layer {
-  transition: z-index 0s 1.1s; /* = the close winch duration (lockstep) */
+  transition: z-index 0s 1.25s; /* = the close winch duration (lockstep) */
 }
 
 body.menu-gate-lowered .heroes-title-layer {

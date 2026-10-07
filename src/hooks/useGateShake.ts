@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef } from 'react';
 
-// gate-rumble-raise 1.1s + gate-clunk 0.4s (index.css), with a little slack.
-const RAISE_SHAKE_MS = 1600;
+// gate-rumble-raise 1.25s + gate-clunk 0.4s (index.css), with a little slack.
+const RAISE_SHAKE_MS = 1750;
 
 /**
  * SCREEN RUMBLE for the portcullis menu (user call 2026-10-08): body classes
