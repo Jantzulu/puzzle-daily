@@ -619,6 +619,11 @@ function Navigation() {
             on the gate's utility rung) */}
         <button
           onClick={toggleMobileMenu}
+          // Icon-only: the label is its name for screen readers (it read as
+          // a bare "button"), and expanded/controls tie it to the gate.
+          aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
+          aria-expanded={mobileMenuOpen}
+          aria-controls="site-menu"
           className="absolute right-0 md:static p-2 text-stone-400 hover:text-copper-400 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
         >
           {/* Hardcoded chrome art (hearts precedent): drop nav-menu.png /
@@ -650,7 +655,7 @@ function Navigation() {
           move; on the play page the control rail rides the drop as the
           gate's bottom). At md+ the gate is the board column's width,
           centered (see CSS). */}
-      <div className={`menu-gate${mobileMenuOpen ? ' menu-gate-open' : ''}${instantClose ? ' menu-gate-instant' : ''}`}>
+      <div id="site-menu" className={`menu-gate${mobileMenuOpen ? ' menu-gate-open' : ''}${instantClose ? ' menu-gate-instant' : ''}`}>
         <div>
           {/* pb: when docked with the control rail, pb-[17px] tunes the
               beam-to-rail gap (12px original + the 5px the rail's mt lost
