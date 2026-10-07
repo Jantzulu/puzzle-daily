@@ -24,6 +24,7 @@ import { LoginPage } from './components/auth/LoginPage';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
 import { UserMenu } from './components/auth/UserMenu';
 import { useAuth } from './contexts/AuthContext';
+import { useGateShake } from './hooks/useGateShake';
 import { LoadingRune } from './components/shared/LoadingRune';
 
 const Compendium = lazy(() => import('./components/compendium/Compendium').then(m => ({ default: m.Compendium })));
@@ -233,6 +234,9 @@ function PlayerNavigation() {
     setInstantClose(instant);
     setMobileMenuOpen(false);
   }, []);
+
+  // Screen rumble while the gate moves, slam/clunk at its stops (index.css).
+  useGateShake(mobileMenuOpen, instantClose);
 
   useEffect(() => { closeMobileMenu(true); }, [location.pathname, closeMobileMenu]);
 
@@ -649,6 +653,10 @@ function PlayerApp() {
     <ErrorBoundary>
       <BrowserRouter>
         <div className="min-h-screen theme-root">
+          {/* The "screen" the portcullis shakes (useGateShake): nav + page,
+              so the gate and the rail riding it move as one. Toasts and the
+              consent banner stay outside — fixed UI must not ride a transform. */}
+          <div className="gate-shake-layer">
           <PlayerNavigation />
           <ErrorBoundary autoReloadOnChunkError>
             <RouteFade>
@@ -670,6 +678,7 @@ function PlayerApp() {
             </Suspense>
             </RouteFade>
           </ErrorBoundary>
+          </div>
           <ToastContainer />
           <ConsentBanner />
         </div>
