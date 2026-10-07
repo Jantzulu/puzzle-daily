@@ -1,11 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { hasAnalyticsConsent, setConsent, subscribeConsent } from '../../utils/consent';
+import { PRIVACY_CONTACT_EMAIL as CONTACT_EMAIL } from '../../utils/privacyContact';
 
-// TODO(before launch): set a real privacy contact. Left as a placeholder so a
-// personal address isn't published without an explicit decision.
-const CONTACT_EMAIL = 'privacy@example.com';
-const LAST_UPDATED = 'July 9, 2026';
+const LAST_UPDATED = 'October 7, 2026';
 
 /**
  * Public privacy policy + the canonical opt-out control. Kept plain and
@@ -88,9 +86,12 @@ export const PrivacyPolicy: React.FC = () => {
           <section>
             <h2 className="font-medieval font-semibold text-lg text-copper-300 mb-2">Accounts (optional)</h2>
             <p>
-              If you create an account, we store your email and role to
-              authenticate you and to attribute your saved stats. You can play the
-              daily puzzle without an account.
+              If you create an account, we store your email address, a display
+              name (which other players can see) and your role, to sign you in
+              and to attribute your saved stats. You can play the daily puzzle
+              without an account. You can delete your account at any time from
+              your profile page: that permanently removes the account, your
+              profile and the puzzle results saved to it.
             </p>
           </section>
 
@@ -108,8 +109,9 @@ export const PrivacyPolicy: React.FC = () => {
             <p>
               Anonymous completion records are kept to power ongoing community and
               creator statistics. You can withdraw consent at any time with the
-              toggle above; to request deletion of records already tied to your
-              random ID or account, contact us below.
+              toggle above. Deleting your account removes the results saved to
+              it; to request deletion of records tied only to your random ID,
+              contact us below.
             </p>
           </section>
 
@@ -119,6 +121,21 @@ export const PrivacyPolicy: React.FC = () => {
               Use the toggle above to grant or withdraw analytics consent whenever
               you like. Clearing your browser's site data removes everything stored
               on your device, including your random analytics ID.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="font-medieval font-semibold text-lg text-copper-300 mb-2">Children</h2>
+            <p>
+              This game is made for a general audience and is not directed to
+              children under 13. You can play without an account, and your play
+              data stays on your device unless you opt in. We don't knowingly collect
+              personal information from children under 13; if you believe a
+              child has created an account or sent us data, contact us and
+              we'll delete it. In some countries (including much of the EU) you
+              must be older — up to 16 — to agree to optional data collection on
+              your own; if that's you, please ask a parent before turning on
+              analytics or creating an account.
             </p>
           </section>
 
