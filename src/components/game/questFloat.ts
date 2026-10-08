@@ -43,11 +43,15 @@ export const QUEST_FLIGHT_MS = 700;
  */
 export const QUEST_SPAWN_DELAY_MS = 300;
 /**
- * From spawn to fully open: the entrance unfurl runs 0.8s → 1.45s
- * (.quest-paper / .quest-roll-* / .quest-stage-scroll). The "tap to
- * minimize" hint waits for it (user round 5: no hint before the scroll).
+ * The "tap to minimize" hint waits for the scroll (user round 5) and
+ * arrives this long AFTER the unfurl has actually ended — its animationend,
+ * not a timer from the spawn. User round 6: the timer put the hint's
+ * re-render on the unfurl's last frames on a phone (the CSS animations
+ * start a little after the spawn timer fires), and there the fade popped
+ * in and the objective text flashed. Expanding the small scroll already
+ * left ~this beat before 'reopened', and looked right.
  */
-export const QUEST_ENTRANCE_MS = 1450;
+export const QUEST_HINT_BEAT_MS = 100;
 /**
  * Where the open scroll's BOX top sits below the board's top edge — resting
  * close under the portcullis (user round 3). Measured in the pane: the rail's

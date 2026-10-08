@@ -22,7 +22,7 @@ import { collectPuzzleAssetUrls } from '../../utils/spritePreload';
 import { HelpButton } from './HelpOverlay';
 import { TapHintChip } from './TapHintChip';
 import { QuestBoxFrame, QuestOrnaments, QuestPlate, QuestDivider, questSkinFrameActive, questSkinOrnamentsActive, questSkinPlateActive, questSkinDividerActive, questFrameBorders, questPlateStraddle, useCrispSnap } from './QuestBoxSkin';
-import { QUEST_FLOAT, QUEST_FLIGHT_MS, QUEST_SPAWN_DELAY_MS, QUEST_ENTRANCE_MS, useQuestFloatPlacement } from './questFloat';
+import { QUEST_FLOAT, QUEST_FLIGHT_MS, QUEST_SPAWN_DELAY_MS, QUEST_HINT_BEAT_MS, useQuestFloatPlacement } from './questFloat';
 import { playGameSound, playVictoryMusic, playDefeatMusic, playBackgroundMusic, stopMusic } from '../../utils/gameSounds';
 import { loadThemeAssets, subscribeToThemeAssets, type ThemeAssets } from '../../utils/themeAssets';
 import { WarningModal } from '../shared/WarningModal';
@@ -495,11 +495,20 @@ export const Game: React.FC<GameProps> = ({
     if (!questFloatOn || !spritesReady) return;
     const id = currentPuzzle.id;
     const spawn = window.setTimeout(() => setQuestSpawnedFor(id), QUEST_SPAWN_DELAY_MS);
-    const hint = window.setTimeout(() => setQuestHintFor(id), QUEST_SPAWN_DELAY_MS + QUEST_ENTRANCE_MS);
-    return () => { window.clearTimeout(spawn); window.clearTimeout(hint); };
+    return () => window.clearTimeout(spawn);
   }, [questFloatOn, spritesReady, currentPuzzle.id]);
   const questSpawned = spritesReady && questSpawnedFor === currentPuzzle.id;
   const questHintReady = questHintFor === currentPuzzle.id;
+  // The hint unlocks QUEST_HINT_BEAT_MS after the content's unfurl ENDS
+  // (its own animationend; bubbled ends from inside are ignored), so its
+  // re-render never lands on the unfurl's last frames. On questScrollTimers:
+  // a minimize, expand or puzzle reset clears it, and the next reopen's
+  // unfurl (same keyframes) arms it again.
+  const onQuestUnfurlEnd = (e: React.AnimationEvent<HTMLDivElement>) => {
+    if (e.target !== e.currentTarget || e.animationName !== 'quest-scroll-content' || questHintReady) return;
+    const id = currentPuzzle.id;
+    questScrollTimers.current.push(window.setTimeout(() => setQuestHintFor(id), QUEST_HINT_BEAT_MS));
+  };
   const questFloatStyle = useQuestFloatPlacement(questFloatOn && questBoxShown && questSpawned, questMini, questFloatRef);
   // Opens on EVERY visit (user call, round 2): a fresh mount starts open;
   // switching puzzles in place reopens it too.
@@ -3663,7 +3672,10 @@ export const Game: React.FC<GameProps> = ({
                     baseline keeps the plain fade. Hidden entirely while
                     the scroll toggle rests closed; the replay key re-runs
                     the unfurl on reopen. */}
-                <div className={questSkinFrameActive ? 'quest-stage-scroll relative' : 'quest-stage-box relative'}>
+                <div
+                  className={questSkinFrameActive ? 'quest-stage-scroll relative' : 'quest-stage-box relative'}
+                  onAnimationEnd={questFloatOn ? onQuestUnfurlEnd : undefined}
+                >
                 {/* Puzzle Number & Quest Row */}
                 {puzzleNumber && (
                   <div className="text-center mb-0.5">
