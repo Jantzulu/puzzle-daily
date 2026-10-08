@@ -22,7 +22,7 @@ import { collectPuzzleAssetUrls } from '../../utils/spritePreload';
 import { HelpButton } from './HelpOverlay';
 import { TapHintChip } from './TapHintChip';
 import { QuestBoxFrame, QuestOrnaments, QuestPlate, QuestDivider, questSkinFrameActive, questSkinOrnamentsActive, questSkinPlateActive, questSkinDividerActive, questFrameBorders, questPlateStraddle, useCrispSnap } from './QuestBoxSkin';
-import { QUEST_FLOAT, QUEST_FLIGHT_MS, useQuestFloatPlacement } from './questFloat';
+import { QUEST_FLOAT, QUEST_FLIGHT_MS, QUEST_SPAWN_DELAY_MS, QUEST_ENTRANCE_MS, useQuestFloatPlacement } from './questFloat';
 import { playGameSound, playVictoryMusic, playDefeatMusic, playBackgroundMusic, stopMusic } from '../../utils/gameSounds';
 import { loadThemeAssets, subscribeToThemeAssets, type ThemeAssets } from '../../utils/themeAssets';
 import { WarningModal } from '../shared/WarningModal';
@@ -485,7 +485,22 @@ export const Game: React.FC<GameProps> = ({
   // hero header unmount during replays/victory, so the placement watchers
   // must re-attach to the fresh elements when it returns.
   const questBoxShown = gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none';
-  const questFloatStyle = useQuestFloatPlacement(questFloatOn && questBoxShown, questMini, questFloatRef);
+  // SPAWN: the scroll mounts QUEST_SPAWN_DELAY_MS after the board is ready
+  // (per puzzle), and the hint unlocks once its entrance has fully opened.
+  // Keyed by puzzle id and set only from timers, so a puzzle switch re-arms
+  // both without a synchronous reset.
+  const [questSpawnedFor, setQuestSpawnedFor] = useState<string | null>(null);
+  const [questHintFor, setQuestHintFor] = useState<string | null>(null);
+  useEffect(() => {
+    if (!questFloatOn || !spritesReady) return;
+    const id = currentPuzzle.id;
+    const spawn = window.setTimeout(() => setQuestSpawnedFor(id), QUEST_SPAWN_DELAY_MS);
+    const hint = window.setTimeout(() => setQuestHintFor(id), QUEST_SPAWN_DELAY_MS + QUEST_ENTRANCE_MS);
+    return () => { window.clearTimeout(spawn); window.clearTimeout(hint); };
+  }, [questFloatOn, spritesReady, currentPuzzle.id]);
+  const questSpawned = spritesReady && questSpawnedFor === currentPuzzle.id;
+  const questHintReady = questHintFor === currentPuzzle.id;
+  const questFloatStyle = useQuestFloatPlacement(questFloatOn && questBoxShown && questSpawned, questMini, questFloatRef);
   // Opens on EVERY visit (user call, round 2): a fresh mount starts open;
   // switching puzzles in place reopens it too.
   const questPuzzleRef = useRef(currentPuzzle.id);
@@ -504,9 +519,11 @@ export const Game: React.FC<GameProps> = ({
   // a ref so the effect keys on the run starting, not on every render.
   const minimizeQuestRef = useRef(minimizeQuest);
   useEffect(() => { minimizeQuestRef.current = minimizeQuest; });
+  // (questSpawned too: a run started before the scroll spawned minimizes
+  // it as soon as it appears.)
   useEffect(() => {
-    if (questFloatOn && (gameState.gameStatus === 'running' || testMode !== 'none')) minimizeQuestRef.current();
-  }, [questFloatOn, gameState.gameStatus, testMode]);
+    if (questFloatOn && questSpawned && (gameState.gameStatus === 'running' || testMode !== 'none')) minimizeQuestRef.current();
+  }, [questFloatOn, questSpawned, gameState.gameStatus, testMode]);
 
   const toggleQuestScroll = () => {
     if (questFloatOn) {
@@ -3514,6 +3531,7 @@ export const Game: React.FC<GameProps> = ({
                 className={questFloatOn ? `quest-float ${questMini ? 'quest-float--mini' : 'quest-float--stage'}` : undefined}
                 style={questFloatStyle}
               >
+              {(!questFloatOn || questSpawned) && (
               <div
                 className={`quest-box-anchor w-fit max-w-2xl mx-auto relative z-[45] -mt-[3px] mb-1${questAnchorPhaseClass}`}
                 onClick={questFloatOn && !questMini ? onQuestStageClick : undefined}
@@ -3905,8 +3923,9 @@ export const Game: React.FC<GameProps> = ({
                   />
                 )}
               </div>
+              )}
               {questFloatOn && (
-                <div className={`quest-float-hint${!questMini && (questScroll === 'open' || questScroll === 'reopened') ? '' : ' quest-float-hint--hidden'}`} aria-hidden="true">
+                <div className={`quest-float-hint${questHintReady && !questMini && (questScroll === 'open' || questScroll === 'reopened') ? '' : ' quest-float-hint--hidden'}`} aria-hidden="true">
                   Tap the scroll to minimize
                 </div>
               )}

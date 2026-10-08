@@ -37,6 +37,18 @@ export const QUEST_MINI_SCALE = 0.5;
 /** The toss between the board and the hero header. */
 export const QUEST_FLIGHT_MS = 700;
 /**
+ * The scroll SPAWNS a beat after the board is ready (user round 5: "delay
+ * the initial spawning ever so slightly") — it used to mount with the page
+ * and could unfurl over a board still fading in.
+ */
+export const QUEST_SPAWN_DELAY_MS = 300;
+/**
+ * From spawn to fully open: the entrance unfurl runs 0.8s → 1.45s
+ * (.quest-paper / .quest-roll-* / .quest-stage-scroll). The "tap to
+ * minimize" hint waits for it (user round 5: no hint before the scroll).
+ */
+export const QUEST_ENTRANCE_MS = 1450;
+/**
  * Where the open scroll's BOX top sits below the board's top edge — resting
  * close under the portcullis (user round 3). Measured in the pane: the rail's
  * spike art ends 6px (phone) / 5px (desktop) below the board's top, and the
