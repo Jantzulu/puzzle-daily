@@ -2807,6 +2807,26 @@ body.menu-gate-instant .heroes-title-layer {
   pointer-events: none;
 }
 
+/* FIRST-LOAD BLINK (user round 7): the objective text blinked just after
+   the entrance unfurl, on first load only — never on expand. The spawn
+   delay UNMASKED it: classic (and the float scroll before it) plays the
+   entrance during the gate's page-load shake. Two events happen only on
+   the entrance, at ~1.2s: (1) the bob STARTS, the first time the anchor
+   needs its own compositing layer — Safari repaints the DOM text into
+   the new layer, while the canvases (own layers) hold; (2) the shimmer
+   ENDS — the only animation on the objective text itself, and in float
+   mode it always runs unseen (behind the closed scroll on spawn, under
+   the roll-up on Play). So: the anchor holds its layer from mount, while
+   the scroll is still invisible, and the float scroll skips the shimmer.
+   The resting text is identical (opaque ink fill either way). */
+.quest-float .quest-box-anchor {
+  will-change: transform;
+}
+
+.quest-float .shimmer-container.shimmer-ink > span {
+  animation: none;
+}
+
 /* The small scroll's tap target, centred on the seal — where the tuck
    centres the rolled scroll (the box top + --qseal-dip, stamped on the
    anchor). In the wrapper's pre-scale units: 80 × 64 here is 40 × 32 on

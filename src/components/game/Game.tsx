@@ -374,9 +374,6 @@ export const Game: React.FC<GameProps> = ({
   // sticky top pushes the element down at rest too.
   const [railRiding, setRailRiding] = useState(false);
 
-  // Pixel-snaps the skinned quest box (flex centering can land it on
-  // half-pixels, which blurs the bitmap art at any zoom — see useCrispSnap).
-  const questBoxSnapRef = useCrispSnap<HTMLDivElement>(questSkinFrameActive);
   // THE SCROLL TOGGLE (user ask 2026-08-11, round 2: the scroll TUCKS):
   // the QUEST plate is a button. open/reopened → closing (reverse
   // roll-up, 0.5s) → closed (the ROLLED scroll rides up behind the seal
@@ -499,6 +496,13 @@ export const Game: React.FC<GameProps> = ({
   }, [questFloatOn, spritesReady, currentPuzzle.id]);
   const questSpawned = spritesReady && questSpawnedFor === currentPuzzle.id;
   const questHintReady = questHintFor === currentPuzzle.id;
+  // Pixel-snaps the skinned quest box (flex centering can land it on
+  // half-pixels, which blurs the bitmap art at any zoom — see useCrispSnap).
+  // QUEST FLOAT: the box only exists once the scroll spawns, so the snap
+  // attaches then — keyed on Game's mount alone, the spawn delay left the
+  // float box unsnapped. (Declared down here for questSpawned; the handlers
+  // above only read it at event time.)
+  const questBoxSnapRef = useCrispSnap<HTMLDivElement>(questSkinFrameActive && (!questFloatOn || questSpawned));
   // The hint unlocks QUEST_HINT_BEAT_MS after the content's unfurl ENDS
   // (its own animationend; bubbled ends from inside are ignored), so its
   // re-render never lands on the unfurl's last frames. On questScrollTimers:
