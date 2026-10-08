@@ -133,7 +133,7 @@ function AnimatedLogo({ src, alt, frameCount, frameRate, className }: {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const img = new Image();
+    let img = new Image();
     img.crossOrigin = 'anonymous';
     imageRef.current = img;
 
@@ -244,6 +244,20 @@ function AnimatedLogo({ src, alt, frameCount, frameRate, className }: {
       animate();
     };
 
+    // A bare <canvas> is 300×150 until the sheet loads and sizes it —
+    // that blank box once inflated the bar and shoved the title off-screen
+    // when the sheet never arrived (user bug, Chrome on iOS, 2026-10-08).
+    // So the canvas starts 0×0 (see the JSX), and a load that ERRORS
+    // retries once without CORS: the ink probe then falls back to the full
+    // frame (tainted canvas, caught above) and the torch shading only
+    // composites — no pixel reads.
+    const onLoaded = img.onload;
+    img.onerror = () => {
+      img = new Image();
+      imageRef.current = img;
+      img.onload = onLoaded;
+      img.src = src;
+    };
     img.src = src;
 
     return () => {
@@ -257,6 +271,8 @@ function AnimatedLogo({ src, alt, frameCount, frameRate, className }: {
   return (
     <canvas
       ref={canvasRef}
+      width={0}
+      height={0}
       className={className}
       style={{
         imageRendering: 'pixelated',
@@ -539,6 +555,8 @@ function Navigation() {
                     <img
                       src={logoSrc}
                       alt={themeAssets.logoAlt || 'Logo'}
+                      width={0}
+                      height={0}
                       onLoad={sizeLogoNative}
                       style={{ imageRendering: 'pixelated' }}
                     />
@@ -547,6 +565,8 @@ function Navigation() {
                       alt=""
                       aria-hidden="true"
                       className="nav-sprite-torchlit-lit"
+                      width={0}
+                      height={0}
                       onLoad={sizeLogoNative}
                       style={{ imageRendering: 'pixelated' }}
                     />
