@@ -2774,6 +2774,81 @@ body.menu-gate-instant .heroes-title-layer {
   transition: none;
 }
 
+/* ============================================
+   QUEST FLOAT — EXPERIMENT (?quest=float; questFloat.ts). The quest scroll
+   leaves the page flow: open over the top of the board, minimized at half
+   size in the hero header. One transform (set inline by
+   useQuestFloatPlacement, origin top-left) places the wrapper; the anchor's
+   own glow and bob ride inside it untouched.
+   z-39: just UNDER the control rail (40) — the open scroll hangs below the
+   rail's spikes and slides under the sticky rail on desktop scroll — and
+   under the portcullis (nav 50); over the board (10) and the hero panel.
+   The wrapper spans the column but never catches pointers: only the open
+   scroll (tap to minimize) and the small scroll's own button do.
+   ============================================ */
+.quest-float {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  z-index: 39;
+  transform-origin: 0 0;
+  /* = QUEST_FLIGHT_MS */
+  transition: transform 0.6s cubic-bezier(0.45, 0, 0.25, 1);
+  pointer-events: none;
+}
+
+.quest-float--stage .quest-box-anchor {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.quest-float--mini .quest-box-anchor {
+  pointer-events: none;
+}
+
+/* The small scroll's tap target: the rolled scroll's column, plate to
+   bottom (top set inline to the plate's rise), in the wrapper's
+   pre-scale units — 80px here is 40px on screen. */
+.quest-mini-hit {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 80px;
+  transform: translateX(-50%);
+  pointer-events: auto;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  padding: 0;
+}
+
+/* "Tap the scroll to minimize", under the open scroll. */
+.quest-float-hint {
+  display: flex;
+  justify-content: center;
+  margin-top: 8px;
+  transition: opacity 0.2s ease;
+}
+
+.quest-float-hint--hidden {
+  opacity: 0;
+}
+
+/* The hero header's reserved spot for the small scroll. */
+.quest-mini-slot {
+  display: inline-block;
+  flex-shrink: 0;
+  width: 40px;
+  height: 28px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .quest-float {
+    transition: none;
+  }
+}
+
 .control-rail-mesh {
   position: absolute;
   left: 0;

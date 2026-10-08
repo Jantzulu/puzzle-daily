@@ -22,6 +22,7 @@ import { collectPuzzleAssetUrls } from '../../utils/spritePreload';
 import { HelpButton } from './HelpOverlay';
 import { TapHintChip } from './TapHintChip';
 import { QuestBoxFrame, QuestOrnaments, QuestPlate, QuestDivider, questSkinFrameActive, questSkinOrnamentsActive, questSkinPlateActive, questSkinDividerActive, questFrameBorders, questPlateStraddle, useCrispSnap } from './QuestBoxSkin';
+import { QUEST_FLOAT, QUEST_FLIGHT_MS, questSeenToday, markQuestSeen, useQuestFloatPlacement } from './questFloat';
 import { playGameSound, playVictoryMusic, playDefeatMusic, playBackgroundMusic, stopMusic } from '../../utils/gameSounds';
 import { loadThemeAssets, subscribeToThemeAssets, type ThemeAssets } from '../../utils/themeAssets';
 import { WarningModal } from '../shared/WarningModal';
@@ -388,7 +389,15 @@ export const Game: React.FC<GameProps> = ({
   // entrance animations would re-apply and replay them). Height rides a
   // one-shot CSS transition between measured px values; null =
   // content-driven auto (the resting states). Skinned-mode only.
-  const [questScroll, setQuestScroll] = useState<'open' | 'closing' | 'closed' | 'lowering' | 'reopening' | 'reopened'>('open');
+  // QUEST FLOAT experiment (questFloat.ts; ?quest=float): the scroll leaves
+  // the page flow, pops open over the board on a puzzle's first view and
+  // flies, half size, to the hero header when minimized. A puzzle already
+  // seen today starts minimized — rolled ('closing' holds the rolled look).
+  const questFloatOn = QUEST_FLOAT && questSkinFrameActive;
+  const [questMini, setQuestMini] = useState(() => questFloatOn && questSeenToday(currentPuzzle.id));
+  const [questScroll, setQuestScroll] = useState<'open' | 'closing' | 'closed' | 'lowering' | 'reopening' | 'reopened'>(
+    () => (questFloatOn && questSeenToday(currentPuzzle.id) ? 'closing' : 'open'),
+  );
   const [questBoxHeight, setQuestBoxHeight] = useState<number | null>(null);
   // The frame layer's PINNED height through the tucked lifecycle: a
   // physical scroll keeps its length when rolled (user call — the box's
@@ -408,7 +417,72 @@ export const Game: React.FC<GameProps> = ({
       : questScroll === 'closed' ? ' quest-closing quest-tucked'
         : questScroll === 'reopening' || questScroll === 'reopened' ? ' quest-reopening'
           : '';
+  // QUEST FLOAT: minimize = the usual 0.5s roll-up, then the flight to the
+  // hero header (the rolled look holds through it); expand = the flight
+  // back, still rolled, then the usual unfurl. No height pin/collapse — the
+  // box is out of flow. A busy flag swallows taps mid-sequence.
+  const questFloatBusy = useRef(false);
+  const minimizeQuest = () => {
+    if (questFloatBusy.current || questMini) return;
+    if (questScroll !== 'open' && questScroll !== 'reopened') return;
+    questScrollTimers.current.forEach(clearTimeout);
+    questFloatBusy.current = true;
+    setQuestScroll('closing');
+    questScrollTimers.current = [
+      window.setTimeout(() => setQuestMini(true), 500),
+      window.setTimeout(() => { questFloatBusy.current = false; }, 500 + QUEST_FLIGHT_MS),
+    ];
+  };
+  const expandQuest = () => {
+    if (questFloatBusy.current || !questMini) return;
+    questScrollTimers.current.forEach(clearTimeout);
+    questFloatBusy.current = true;
+    setQuestMini(false);
+    questScrollTimers.current = [
+      window.setTimeout(() => setQuestScroll('reopening'), QUEST_FLIGHT_MS),
+      window.setTimeout(() => { setQuestScroll('reopened'); questFloatBusy.current = false; }, QUEST_FLIGHT_MS + 750),
+    ];
+  };
+  // Tapping the OPEN scroll anywhere minimizes it — except its own controls
+  // (the seal handles itself; the (?) and editor buttons keep their jobs).
+  const onQuestStageClick = (e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest('button, a')) return;
+    minimizeQuest();
+  };
+  const questFloatRef = useRef<HTMLDivElement>(null);
+  // = the quest box's own render condition (JSX below): the box and the
+  // hero header unmount during replays/victory, so the placement watchers
+  // must re-attach to the fresh elements when it returns.
+  const questBoxShown = gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none';
+  const questFloatStyle = useQuestFloatPlacement(questFloatOn && questBoxShown, questMini, questFloatRef, questPlateStraddle);
+  // A new puzzle: first view pops open (and is remembered), a same-day
+  // return starts minimized. Decided ONCE per puzzle id: re-running for the
+  // same id (StrictMode's dev double-invoke) would read its own "seen" mark
+  // and minimize the first view.
+  const questDecidedFor = useRef<string | null>(null);
+  useEffect(() => {
+    if (!questFloatOn || questDecidedFor.current === currentPuzzle.id) return;
+    questDecidedFor.current = currentPuzzle.id;
+    questScrollTimers.current.forEach(clearTimeout);
+    questFloatBusy.current = false;
+    const seen = questSeenToday(currentPuzzle.id);
+    setQuestMini(seen);
+    setQuestScroll(seen ? 'closing' : 'open');
+    if (!seen) markQuestSeen(currentPuzzle.id);
+  }, [questFloatOn, currentPuzzle.id]);
+  // Pressing Play (or Test) minimizes it if it isn't already. Read through
+  // a ref so the effect keys on the run starting, not on every render.
+  const minimizeQuestRef = useRef(minimizeQuest);
+  useEffect(() => { minimizeQuestRef.current = minimizeQuest; });
+  useEffect(() => {
+    if (questFloatOn && (gameState.gameStatus === 'running' || testMode !== 'none')) minimizeQuestRef.current();
+  }, [questFloatOn, gameState.gameStatus, testMode]);
+
   const toggleQuestScroll = () => {
+    if (questFloatOn) {
+      if (questMini) expandQuest(); else minimizeQuest();
+      return;
+    }
     const box = questBoxSnapRef.current;
     if (!box || !questSkinFrameActive) return;
     questScrollTimers.current.forEach(clearTimeout);
@@ -3424,7 +3498,19 @@ export const Game: React.FC<GameProps> = ({
               // long quests into wrapping. (Line comment, NOT {/* */} —
               // this is EXPRESSION position; the documented parse trap
               // struck its third time right here.)
-              <div className={`quest-box-anchor w-fit max-w-2xl mx-auto relative z-[45] -mt-[3px] mb-1${questAnchorPhaseClass}`}>
+              // QUEST FLOAT wrapper (questFloat.ts): out of flow and placed by
+              // one transform when the experiment is on; a plain block div
+              // otherwise (the anchor's margins collapse through it, so the
+              // classic layout is unchanged).
+              <div
+                ref={questFloatRef}
+                className={questFloatOn ? `quest-float ${questMini ? 'quest-float--mini' : 'quest-float--stage'}` : undefined}
+                style={questFloatStyle}
+              >
+              <div
+                className={`quest-box-anchor w-fit max-w-2xl mx-auto relative z-[45] -mt-[3px] mb-1${questAnchorPhaseClass}`}
+                onClick={questFloatOn && !questMini ? onQuestStageClick : undefined}
+              >
                 {/* pt-1.5/pb-1.5 (user call, third round): the plate now
                     rides HIGHER on the border (-top-[15px], only ~6px of it
                     inside the box), which is what lets the top padding drop
@@ -3513,9 +3599,12 @@ export const Game: React.FC<GameProps> = ({
                     <button
                       type="button"
                       onClick={toggleQuestScroll}
-                      disabled={questScroll === 'closing' || questScroll === 'lowering' || questScroll === 'reopening'}
-                      aria-expanded={questScroll !== 'closed'}
-                      title={questScroll === 'closed' ? 'Unfurl the quest scroll' : 'Roll the quest scroll up'}
+                      // QUEST FLOAT rests minimized in 'closing' (the rolled
+                      // hold), so the phase-based disable would lock the seal
+                      // there; the float handlers swallow mid-sequence taps.
+                      disabled={questFloatOn ? false : questScroll === 'closing' || questScroll === 'lowering' || questScroll === 'reopening'}
+                      aria-expanded={questFloatOn ? !questMini : questScroll !== 'closed'}
+                      title={(questFloatOn ? questMini : questScroll === 'closed') ? 'Unfurl the quest scroll' : 'Roll the quest scroll up'}
                       className="quest-seal-stamp pointer-events-auto relative cursor-pointer bg-transparent border-0 p-0"
                     >
                       <QuestPlate>
@@ -3793,6 +3882,24 @@ export const Game: React.FC<GameProps> = ({
                 })()}
                 </div>
                 </div>
+                {/* QUEST FLOAT: the small scroll's tap target — a real button
+                    over the rolled scroll (the wrapper ignores pointers), so it
+                    works even while the hero panel is dimmed during a run. */}
+                {questFloatOn && questMini && (
+                  <button
+                    type="button"
+                    className="quest-mini-hit"
+                    style={{ top: -questPlateStraddle }}
+                    onClick={expandQuest}
+                    aria-label="Show the quest"
+                  />
+                )}
+              </div>
+              {questFloatOn && (
+                <div className={`quest-float-hint${!questMini && (questScroll === 'open' || questScroll === 'reopened') ? '' : ' quest-float-hint--hidden'}`} aria-hidden="true">
+                  <TapHintChip>Tap the scroll to minimize</TapHintChip>
+                </div>
+              )}
               </div>
             )}
 
@@ -3837,6 +3944,7 @@ export const Game: React.FC<GameProps> = ({
                 {/* Character Selector - visible during setup, running, defeat, and test mode */}
                 {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
                   <CharacterSelector
+                    questSlot={questFloatOn}
                     availableCharacterIds={gameState.puzzle.availableCharacters}
                     selectedCharacterId={testMode === 'none' && gameState.gameStatus === 'setup' ? selectedCharacterId : null}
                     onSelectCharacter={testMode === 'none' && gameState.gameStatus === 'setup' ? (id: string | null) => { setSelectedCharacterId(id); if (id) vibrate('heroSelect'); } : () => {}}

@@ -93,6 +93,13 @@ interface CharacterSelectorProps {
   placementAim?: { charId: string } | null;
   onPlacementAimConfirm?: () => void;
   onPlacementAimCancel?: () => void;
+  /**
+   * QUEST FLOAT experiment (questFloat.ts): reserve the header slot the
+   * minimized quest scroll flies to — an empty placeholder Game measures;
+   * the small scroll itself (and its tap target) lives in Game's float
+   * wrapper.
+   */
+  questSlot?: boolean;
 }
 
 export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
@@ -114,6 +121,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
   placementAim = null,
   onPlacementAimConfirm,
   onPlacementAimCancel,
+  questSlot = false,
 }) => {
   const effectiveMaxPlaceable = maxPlaceable ?? availableCharacterIds.length;
   const isAtMaxPlaced = placedCharacterIds.length >= effectiveMaxPlaceable;
@@ -316,6 +324,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
       {/* Header row — unchanged */}
       <div className="relative flex items-center justify-between mb-2">
         <div className="flex items-center gap-2 min-w-[60px]">
+          {questSlot && <span data-quest-slot aria-hidden="true" className="quest-mini-slot" />}
           {onTest && !disabled && (
             themeAssets.actionButtonTestHeroesImage ? (
               <button
