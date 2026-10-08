@@ -22,7 +22,7 @@ import { collectPuzzleAssetUrls } from '../../utils/spritePreload';
 import { HelpButton } from './HelpOverlay';
 import { TapHintChip } from './TapHintChip';
 import { QuestBoxFrame, QuestOrnaments, QuestPlate, QuestDivider, questSkinFrameActive, questSkinOrnamentsActive, questSkinPlateActive, questSkinDividerActive, questFrameBorders, questPlateStraddle, useCrispSnap } from './QuestBoxSkin';
-import { QUEST_FLOAT, QUEST_FLIGHT_MS, questSeenToday, markQuestSeen, useQuestFloatPlacement } from './questFloat';
+import { QUEST_FLOAT, QUEST_FLIGHT_MS, useQuestFloatPlacement } from './questFloat';
 import { playGameSound, playVictoryMusic, playDefeatMusic, playBackgroundMusic, stopMusic } from '../../utils/gameSounds';
 import { loadThemeAssets, subscribeToThemeAssets, type ThemeAssets } from '../../utils/themeAssets';
 import { WarningModal } from '../shared/WarningModal';
@@ -390,14 +390,11 @@ export const Game: React.FC<GameProps> = ({
   // one-shot CSS transition between measured px values; null =
   // content-driven auto (the resting states). Skinned-mode only.
   // QUEST FLOAT experiment (questFloat.ts; ?quest=float): the scroll leaves
-  // the page flow, pops open over the board on a puzzle's first view and
-  // flies, half size, to the hero header when minimized. A puzzle already
-  // seen today starts minimized — rolled ('closing' holds the rolled look).
+  // the page flow, opens over the board on every visit, and is tossed, half
+  // size, to the hero header when minimized.
   const questFloatOn = QUEST_FLOAT && questSkinFrameActive;
-  const [questMini, setQuestMini] = useState(() => questFloatOn && questSeenToday(currentPuzzle.id));
-  const [questScroll, setQuestScroll] = useState<'open' | 'closing' | 'closed' | 'lowering' | 'reopening' | 'reopened'>(
-    () => (questFloatOn && questSeenToday(currentPuzzle.id) ? 'closing' : 'open'),
-  );
+  const [questMini, setQuestMini] = useState(false);
+  const [questScroll, setQuestScroll] = useState<'open' | 'closing' | 'closed' | 'lowering' | 'reopening' | 'reopened'>('open');
   const [questBoxHeight, setQuestBoxHeight] = useState<number | null>(null);
   // The frame layer's PINNED height through the tucked lifecycle: a
   // physical scroll keeps its length when rolled (user call — the box's
@@ -417,31 +414,65 @@ export const Game: React.FC<GameProps> = ({
       : questScroll === 'closed' ? ' quest-closing quest-tucked'
         : questScroll === 'reopening' || questScroll === 'reopened' ? ' quest-reopening'
           : '';
-  // QUEST FLOAT: minimize = the usual 0.5s roll-up, then the flight to the
-  // hero header (the rolled look holds through it); expand = the flight
-  // back, still rolled, then the usual unfurl. No height pin/collapse — the
-  // box is out of flow. A busy flag swallows taps mid-sequence.
+  // The classic close: pin (no visual change, so the later px→px height
+  // transition can run), roll up (0.5s), then tuck + collapse together (the
+  // tuck's -50% self-tracks the shrinking box). Timers APPEND.
+  const rollUpQuest = (box: HTMLElement) => {
+    setQuestBoxHeight(box.offsetHeight);
+    setQuestFrameHold(box.offsetHeight); // the rolled scroll keeps this length while tucked
+    setQuestScroll('closing');
+    questScrollTimers.current.push(
+      window.setTimeout(() => { setQuestScroll('closed'); setQuestBoxHeight(questCollapsedH); }, 500),
+    );
+  };
+  // The classic open: untuck as the box re-expands (lowering, 0.35s), then
+  // unfurl (reopening), resting at 'reopened' at 1.1s. Expansion target =
+  // the IN-FLOW content's natural height + the box paddings. NOT
+  // box.scrollHeight: that counts absolutely-positioned descendants'
+  // overflow (the skin canvases overhang the box by their bleed — the
+  // ornament canvas alone reaches 48px past the bottom; the box once opened
+  // ~50px too tall, user report). The content is clip-hidden, not
+  // display-hidden, so it measures fine. Timers APPEND.
+  const unrollQuest = (box: HTMLElement) => {
+    const content = box.querySelector(':scope > .quest-stage-scroll') as HTMLElement | null;
+    setQuestBoxHeight(content
+      ? content.offsetHeight + questFrameBorders.t + 1 + questFrameBorders.b
+      : questCollapsedH);
+    setQuestScroll('lowering');
+    questScrollTimers.current.push(
+      window.setTimeout(() => setQuestScroll('reopening'), 350),
+      window.setTimeout(() => { setQuestScroll('reopened'); setQuestBoxHeight(null); setQuestFrameHold(null); }, 1100),
+    );
+  };
+  // QUEST FLOAT: minimize = the classic close (roll up, then the tuck that
+  // centres the rolled scroll on the seal, done at 0.8s), then the toss to
+  // the hero header; expand = the toss back, still tucked, then the classic
+  // open (untuck, unfurl). A busy flag swallows taps mid-sequence.
   const questFloatBusy = useRef(false);
   const minimizeQuest = () => {
-    if (questFloatBusy.current || questMini) return;
+    const box = questBoxSnapRef.current;
+    if (!box || questFloatBusy.current || questMini) return;
     if (questScroll !== 'open' && questScroll !== 'reopened') return;
     questScrollTimers.current.forEach(clearTimeout);
+    questScrollTimers.current = [];
     questFloatBusy.current = true;
-    setQuestScroll('closing');
-    questScrollTimers.current = [
-      window.setTimeout(() => setQuestMini(true), 500),
-      window.setTimeout(() => { questFloatBusy.current = false; }, 500 + QUEST_FLIGHT_MS),
-    ];
+    rollUpQuest(box);
+    questScrollTimers.current.push(
+      window.setTimeout(() => setQuestMini(true), 800),
+      window.setTimeout(() => { questFloatBusy.current = false; }, 800 + QUEST_FLIGHT_MS),
+    );
   };
   const expandQuest = () => {
-    if (questFloatBusy.current || !questMini) return;
+    const box = questBoxSnapRef.current;
+    if (!box || questFloatBusy.current || !questMini) return;
     questScrollTimers.current.forEach(clearTimeout);
+    questScrollTimers.current = [];
     questFloatBusy.current = true;
     setQuestMini(false);
-    questScrollTimers.current = [
-      window.setTimeout(() => setQuestScroll('reopening'), QUEST_FLIGHT_MS),
-      window.setTimeout(() => { setQuestScroll('reopened'); questFloatBusy.current = false; }, QUEST_FLIGHT_MS + 750),
-    ];
+    questScrollTimers.current.push(
+      window.setTimeout(() => unrollQuest(box), QUEST_FLIGHT_MS),
+      window.setTimeout(() => { questFloatBusy.current = false; }, QUEST_FLIGHT_MS + 1100),
+    );
   };
   // Tapping the OPEN scroll anywhere minimizes it — except its own controls
   // (the seal handles itself; the (?) and editor buttons keep their jobs).
@@ -454,21 +485,20 @@ export const Game: React.FC<GameProps> = ({
   // hero header unmount during replays/victory, so the placement watchers
   // must re-attach to the fresh elements when it returns.
   const questBoxShown = gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none';
-  const questFloatStyle = useQuestFloatPlacement(questFloatOn && questBoxShown, questMini, questFloatRef, questPlateStraddle);
-  // A new puzzle: first view pops open (and is remembered), a same-day
-  // return starts minimized. Decided ONCE per puzzle id: re-running for the
-  // same id (StrictMode's dev double-invoke) would read its own "seen" mark
-  // and minimize the first view.
-  const questDecidedFor = useRef<string | null>(null);
+  const questFloatStyle = useQuestFloatPlacement(questFloatOn && questBoxShown, questMini, questFloatRef);
+  // Opens on EVERY visit (user call, round 2): a fresh mount starts open;
+  // switching puzzles in place reopens it too.
+  const questPuzzleRef = useRef(currentPuzzle.id);
   useEffect(() => {
-    if (!questFloatOn || questDecidedFor.current === currentPuzzle.id) return;
-    questDecidedFor.current = currentPuzzle.id;
+    if (!questFloatOn || questPuzzleRef.current === currentPuzzle.id) return;
+    questPuzzleRef.current = currentPuzzle.id;
     questScrollTimers.current.forEach(clearTimeout);
+    questScrollTimers.current = [];
     questFloatBusy.current = false;
-    const seen = questSeenToday(currentPuzzle.id);
-    setQuestMini(seen);
-    setQuestScroll(seen ? 'closing' : 'open');
-    if (!seen) markQuestSeen(currentPuzzle.id);
+    setQuestMini(false);
+    setQuestScroll('open');
+    setQuestBoxHeight(null);
+    setQuestFrameHold(null);
   }, [questFloatOn, currentPuzzle.id]);
   // Pressing Play (or Test) minimizes it if it isn't already. Read through
   // a ref so the effect keys on the run starting, not on every render.
@@ -486,32 +516,9 @@ export const Game: React.FC<GameProps> = ({
     const box = questBoxSnapRef.current;
     if (!box || !questSkinFrameActive) return;
     questScrollTimers.current.forEach(clearTimeout);
-    if (questScroll === 'open' || questScroll === 'reopened') {
-      setQuestBoxHeight(box.offsetHeight); // pin (no visual change) so the later px→px transition can run
-      setQuestFrameHold(box.offsetHeight); // the rolled scroll keeps this length while tucked
-      setQuestScroll('closing');
-      questScrollTimers.current = [
-        // After the 0.5s roll-up: tuck + collapse together (the tuck's
-        // -50% self-tracks the shrinking box).
-        window.setTimeout(() => { setQuestScroll('closed'); setQuestBoxHeight(questCollapsedH); }, 500),
-      ];
-    } else if (questScroll === 'closed') {
-      // Expansion target = the IN-FLOW content's natural height + the box
-      // paddings. NOT box.scrollHeight: that counts absolutely-positioned
-      // descendants' overflow (the skin canvases overhang the box by
-      // their bleed — the ornament canvas alone reaches 48px past the
-      // bottom; the box once opened ~50px too tall, user report). The
-      // content is clip-hidden, not display-hidden, so it measures fine.
-      const content = box.querySelector(':scope > .quest-stage-scroll') as HTMLElement | null;
-      setQuestBoxHeight(content
-        ? content.offsetHeight + questFrameBorders.t + 1 + questFrameBorders.b
-        : questCollapsedH);
-      setQuestScroll('lowering');
-      questScrollTimers.current = [
-        window.setTimeout(() => setQuestScroll('reopening'), 350),
-        window.setTimeout(() => { setQuestScroll('reopened'); setQuestBoxHeight(null); setQuestFrameHold(null); }, 1100),
-      ];
-    }
+    questScrollTimers.current = [];
+    if (questScroll === 'open' || questScroll === 'reopened') rollUpQuest(box);
+    else if (questScroll === 'closed') unrollQuest(box);
   };
   useEffect(() => {
     const onScroll = () => setRailRiding(window.scrollY > 8);
@@ -3698,7 +3705,10 @@ export const Game: React.FC<GameProps> = ({
                         permanent blur at any zoom. align-[-4px] (not
                         align-middle) for the same reason: middle aligns by
                         half x-height, which is fractional. */}
-                    <span className="min-w-0 text-center leading-[18px] md:leading-[22px] lg:leading-[25px] [text-wrap:balance]">
+                    {/* QUEST FLOAT (user round 2): one step smaller text with
+                        1px tighter lines at every breakpoint — still integer
+                        heights, and the 16px (?) box still fits each line. */}
+                    <span className={`min-w-0 text-center ${questFloatOn ? 'leading-[17px] md:leading-[21px] lg:leading-[24px]' : 'leading-[18px] md:leading-[22px] lg:leading-[25px]'} [text-wrap:balance]`}>
                     {/* INK on parchment (user call): black (?) + objective
                         when the scroll art is live; the baseline dark box
                         keeps its light registers. !important beats the
@@ -3732,7 +3742,7 @@ export const Game: React.FC<GameProps> = ({
                           mobile; desktop reads right) — matches the card
                           names' hud-title register; 18px line stays
                           integer and still swallows the 16px (?) box. */}
-                      <span className={`text-[15px] md:text-base lg:text-lg font-medium ${questSkinFrameActive ? 'text-black' : 'text-copper-300'}`}>
+                      <span className={`${questFloatOn ? 'text-[14px] md:text-[15px] lg:text-[17px]' : 'text-[15px] md:text-base lg:text-lg'} font-medium ${questSkinFrameActive ? 'text-black' : 'text-copper-300'}`}>
                       {gameState.puzzle.winConditions.map((wc) => {
                         // Quest text override (2026-07-21): authored text
                         // wins verbatim over every auto-phrased label.
@@ -3883,13 +3893,13 @@ export const Game: React.FC<GameProps> = ({
                 </div>
                 </div>
                 {/* QUEST FLOAT: the small scroll's tap target — a real button
-                    over the rolled scroll (the wrapper ignores pointers), so it
-                    works even while the hero panel is dimmed during a run. */}
+                    over the tucked scroll, centred on the seal (the wrapper
+                    ignores pointers), so it works even while the hero panel
+                    is dimmed during a run. */}
                 {questFloatOn && questMini && (
                   <button
                     type="button"
                     className="quest-mini-hit"
-                    style={{ top: -questPlateStraddle }}
                     onClick={expandQuest}
                     aria-label="Show the quest"
                   />
@@ -3897,7 +3907,7 @@ export const Game: React.FC<GameProps> = ({
               </div>
               {questFloatOn && (
                 <div className={`quest-float-hint${!questMini && (questScroll === 'open' || questScroll === 'reopened') ? '' : ' quest-float-hint--hidden'}`} aria-hidden="true">
-                  <TapHintChip>Tap the scroll to minimize</TapHintChip>
+                  Tap the scroll to minimize
                 </div>
               )}
               </div>

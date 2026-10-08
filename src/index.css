@@ -2778,8 +2778,10 @@ body.menu-gate-instant .heroes-title-layer {
    QUEST FLOAT — EXPERIMENT (?quest=float; questFloat.ts). The quest scroll
    leaves the page flow: open over the top of the board, minimized at half
    size in the hero header. One transform (set inline by
-   useQuestFloatPlacement, origin top-left) places the wrapper; the anchor's
-   own glow and bob ride inside it untouched.
+   useQuestFloatPlacement, origin top-left) places the wrapper; the toss
+   between the spots is a Web Animations arc on top of it (NO CSS
+   transition here: a running transition outranks animations in the
+   cascade). The anchor's own glow and bob ride inside it untouched.
    z-39: just UNDER the control rail (40) — the open scroll hangs below the
    rail's spikes and slides under the sticky rail on desktop scroll — and
    under the portcullis (nav 50); over the board (10) and the hero panel.
@@ -2793,8 +2795,6 @@ body.menu-gate-instant .heroes-title-layer {
   top: 0;
   z-index: 39;
   transform-origin: 0 0;
-  /* = QUEST_FLIGHT_MS */
-  transition: transform 0.6s cubic-bezier(0.45, 0, 0.25, 1);
   pointer-events: none;
 }
 
@@ -2807,14 +2807,16 @@ body.menu-gate-instant .heroes-title-layer {
   pointer-events: none;
 }
 
-/* The small scroll's tap target: the rolled scroll's column, plate to
-   bottom (top set inline to the plate's rise), in the wrapper's
-   pre-scale units — 80px here is 40px on screen. */
+/* The small scroll's tap target, centred on the seal — where the tuck
+   centres the rolled scroll (the box top + --qseal-dip, stamped on the
+   anchor). In the wrapper's pre-scale units: 80 × 64 here is 40 × 32 on
+   screen. */
 .quest-mini-hit {
   position: absolute;
   left: 50%;
-  bottom: 0;
+  top: calc(var(--qseal-dip, 0px) - 32px);
   width: 80px;
+  height: 64px;
   transform: translateX(-50%);
   pointer-events: auto;
   cursor: pointer;
@@ -2823,11 +2825,19 @@ body.menu-gate-instant .heroes-title-layer {
   padding: 0;
 }
 
-/* "Tap the scroll to minimize", under the open scroll. */
+/* "Tap the scroll to minimize", under the open scroll — a small quiet
+   line (user round 2: the board's tap-hint chip read too big here). A
+   tight 1px carve, never a blur glow (blur over painted art fails). */
 .quest-float-hint {
-  display: flex;
-  justify-content: center;
-  margin-top: 8px;
+  margin-top: 6px;
+  text-align: center;
+  font-size: 9px;
+  line-height: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(232, 204, 138, 0.8);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.9);
   transition: opacity 0.2s ease;
 }
 
@@ -2843,11 +2853,6 @@ body.menu-gate-instant .heroes-title-layer {
   height: 28px;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .quest-float {
-    transition: none;
-  }
-}
 
 .control-rail-mesh {
   position: absolute;

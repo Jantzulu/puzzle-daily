@@ -1,22 +1,22 @@
-import { useCallback, useLayoutEffect, useState, type RefObject, type CSSProperties } from 'react';
-import { localDateKey } from '../../utils/localDate';
+import { useCallback, useLayoutEffect, useRef, useState, type RefObject, type CSSProperties } from 'react';
 
 // ============================================================================
 // QUEST FLOAT — EXPERIMENT (user idea 2026-10-08; revert = delete this file,
 // the questFloatOn branches in Game.tsx, CharacterSelector's questSlot and
 // the .quest-float* CSS)
 // ============================================================================
-// The quest scroll leaves the page flow: it pops open OVER the top of the
-// board when a puzzle first loads ("Tap the scroll to minimize" beneath),
-// and a tap rolls it up as usual, then flies it — shrinking to half size —
-// to a slot in the hero header (where the Test button sits). Tapping the
-// small scroll flies it back, growing, and unfurls it again. Pressing Play
-// (or Test) minimizes it. The hero panel and everything under it move up
-// by the box's old height.
+// The quest scroll leaves the page flow: it opens OVER the top of the board
+// on every visit to a puzzle ("Tap the scroll to minimize" beneath). A tap
+// plays the classic close — roll up, then TUCK (the rolled scroll rides up
+// to centre on the QUEST seal) — and then TOSSES it in an arc, shrinking to
+// half size, into a slot in the hero header (where the Test button sits).
+// Tapping the small scroll tosses it back, growing; it untucks and unfurls.
+// Pressing Play (or Test) minimizes it. The hero panel and everything under
+// it move up by the box's old height.
 //
-// The flight is ONE transform on a wrapper around .quest-box-anchor, so the
-// anchor's own glow and bob ride along untouched. Half size is exact: the
-// art is drawn at 2×, so 0.5 lands on its native pixels.
+// The placement and the toss live on a wrapper around .quest-box-anchor, so
+// the anchor's own glow and bob ride along untouched. Half size is exact:
+// the art is drawn at 2×, so 0.5 lands on its native pixels.
 //
 // TEMPORARY SWITCH: ?quest=float turns it on for this device (remembered),
 // ?quest=classic turns it off. Off = today's layout, byte for byte.
@@ -34,68 +34,72 @@ export const QUEST_FLOAT: boolean = (() => {
 
 /** The small scroll's size relative to the open one. */
 export const QUEST_MINI_SCALE = 0.5;
-/** The flight between the board and the hero header (keep in step with .quest-float's transition). */
-export const QUEST_FLIGHT_MS = 600;
+/** The toss between the board and the hero header. */
+export const QUEST_FLIGHT_MS = 700;
 /**
  * Where the open scroll's BOX top sits below the board's top edge: clears
  * the control rail's hanging spikes plus the QUEST plate riding above the
  * box (tuned in the pane).
  */
 const STAGE_DROP = 44;
+/** How far the toss rises above the higher end of its path. */
+const ARC_LIFT = 56;
+/** The scroll's peak tilt mid-toss, leaning into its travel (degrees). */
+const ARC_TILT = 8;
 
-// First view of each puzzle pops the scroll open; a return the same day
-// starts it minimized.
-const SEEN_KEY = 'quest_float_seen';
+type Spot = { x: number; y: number };
+type Spots = { stage: Spot; mini: Spot | null; pivot: Spot };
 
-function readSeen(): Record<string, string> {
-  try {
-    return JSON.parse(localStorage.getItem(SEEN_KEY) || '{}') as Record<string, string>;
-  } catch {
-    return {};
+const easeInOut = (u: number) => (u < 0.5 ? 2 * u * u : 1 - (-2 * u + 2) ** 2 / 2);
+
+/**
+ * The toss: a quadratic arc from one spot to the other whose control point
+ * rises ARC_LIFT above the higher end — so going down it pops up first and
+ * drops into the slot, and going back up it overshoots and settles onto the
+ * board. Position and size ease in-out together; the scroll leans into its
+ * travel and rights itself by landing, turning about its own centre
+ * (`pivot`, the anchor's centre in the wrapper's unscaled units).
+ */
+function tossKeyframes(from: Spot, to: Spot, s0: number, s1: number, pivot: Spot): Keyframe[] {
+  const STEPS = 16;
+  const cx = (from.x + to.x) / 2;
+  const cy = Math.min(from.y, to.y) - ARC_LIFT;
+  const lean = Math.sign(to.x - from.x) || 1;
+  const frames: Keyframe[] = [];
+  for (let i = 0; i <= STEPS; i++) {
+    const u = i / STEPS;
+    const t = easeInOut(u);
+    const x = (1 - t) ** 2 * from.x + 2 * (1 - t) * t * cx + t ** 2 * to.x;
+    const y = (1 - t) ** 2 * from.y + 2 * (1 - t) * t * cy + t ** 2 * to.y;
+    const s = s0 + (s1 - s0) * t;
+    const r = lean * ARC_TILT * Math.sin(Math.PI * u);
+    frames.push({
+      offset: u,
+      transform: `translate(${x}px, ${y}px) scale(${s}) translate(${pivot.x}px, ${pivot.y}px) rotate(${r}deg) translate(${-pivot.x}px, ${-pivot.y}px)`,
+    });
   }
-}
-
-export function questSeenToday(puzzleId: string): boolean {
-  return readSeen()[puzzleId] === localDateKey();
-}
-
-export function markQuestSeen(puzzleId: string): void {
-  try {
-    const today = localDateKey();
-    const seen = readSeen();
-    // Keep only today's entries — the map never grows past a day's puzzles.
-    const next: Record<string, string> = {};
-    for (const [id, day] of Object.entries(seen)) if (day === today) next[id] = day;
-    next[puzzleId] = today;
-    localStorage.setItem(SEEN_KEY, JSON.stringify(next));
-  } catch { /* storage blocked — it just pops open again next time */ }
+  return frames;
 }
 
 /**
  * Places the float wrapper. Both spots are measured together, every time:
  * STAGE — the .quest-box-anchor's top-left centred over the board,
- * STAGE_DROP below its top; MINI — its rolled scroll centred on the hero
- * header's [data-quest-slot] at QUEST_MINI_SCALE. Switching `mini` then
- * just picks the other precomputed transform in the same render, so the
- * flight starts on its first frame (no measuring in between). Re-measures
- * whenever the anchor, the board, the slot or the page column resizes;
- * rects are compared to the column the wrapper is positioned in, so page
- * scroll cancels out. The first placement is instant; later changes glide
- * (CSS transition).
- *
- * plateRise = how far the QUEST plate rides above the box top — the rolled
- * scroll's visible extent runs from there to the box bottom, so that span
- * is what centres on the slot.
+ * STAGE_DROP below its top; MINI — the TUCKED scroll's centre (the box top
+ * plus the seal's art dip, --qseal-dip on the anchor — where the tuck
+ * centres the rolled scroll) on the hero header's [data-quest-slot], at
+ * QUEST_MINI_SCALE. Re-measures whenever the anchor, the board, the slot
+ * or the page column resizes; rects are compared to the column the wrapper
+ * is positioned in, so page scroll cancels out. Resting placement is a
+ * plain inline transform (instant); a `mini` flip plays the toss on top of
+ * it with the Web Animations API — no CSS transition, which would outrank
+ * the animation in the cascade.
  */
 export function useQuestFloatPlacement(
   active: boolean,
   mini: boolean,
   wrapperRef: RefObject<HTMLDivElement | null>,
-  plateRise: number,
 ): CSSProperties | undefined {
-  type Spot = { x: number; y: number };
-  const [spots, setSpots] = useState<{ stage: Spot; mini: Spot | null } | null>(null);
-  const [ready, setReady] = useState(false);
+  const [spots, setSpots] = useState<Spots | null>(null);
 
   const measure = useCallback(() => {
     const wrap = wrapperRef.current;
@@ -110,6 +114,7 @@ export function useQuestFloatPlacement(
     const offY = anchor.offsetTop;
     const aw = anchor.offsetWidth;
     const ah = anchor.offsetHeight;
+    const dip = parseFloat(getComputedStyle(anchor).getPropertyValue('--qseal-dip')) || 0;
     const toWrapper = (tx: number, ty: number, s: number): Spot => ({
       x: Math.round(tx - c.left - s * offX),
       y: Math.round(ty - c.top - s * offY),
@@ -121,15 +126,10 @@ export function useQuestFloatPlacement(
     if (slot) {
       const r = slot.getBoundingClientRect();
       const s = QUEST_MINI_SCALE;
-      // centre the plate-to-bottom span (top = -plateRise) on the slot
-      miniSpot = toWrapper(
-        r.left + r.width / 2 - (aw * s) / 2,
-        r.top + r.height / 2 - (s * (ah - plateRise)) / 2,
-        s,
-      );
+      miniSpot = toWrapper(r.left + r.width / 2 - (aw * s) / 2, r.top + r.height / 2 - s * dip, s);
     }
-    setSpots({ stage, mini: miniSpot });
-  }, [wrapperRef, plateRise]);
+    setSpots({ stage, mini: miniSpot, pivot: { x: offX + aw / 2, y: offY + ah / 2 } });
+  }, [wrapperRef]);
 
   useLayoutEffect(() => {
     if (!active) return;
@@ -152,18 +152,25 @@ export function useQuestFloatPlacement(
     };
   }, [active, measure, wrapperRef]);
 
-  // Transitions only after the first placement lands (no flight on load).
+  // THE TOSS: when `mini` flips, animate between the two spots before the
+  // first paint of the new resting transform (a layout effect runs after
+  // the DOM update, before paint). Spot re-measures alone never toss.
+  const prevMini = useRef(mini);
   useLayoutEffect(() => {
-    if (!active || !spots || ready) return;
-    const id = window.setTimeout(() => setReady(true), 50);
-    return () => window.clearTimeout(id);
-  }, [active, spots, ready]);
+    if (prevMini.current === mini) return;
+    prevMini.current = mini;
+    const el = wrapperRef.current;
+    if (!active || !el || !spots?.mini) return;
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+    const from = mini ? spots.stage : spots.mini;
+    const to = mini ? spots.mini : spots.stage;
+    const s0 = mini ? 1 : QUEST_MINI_SCALE;
+    const s1 = mini ? QUEST_MINI_SCALE : 1;
+    el.animate(tossKeyframes(from, to, s0, s1, spots.pivot), { duration: QUEST_FLIGHT_MS, easing: 'linear' });
+  }, [active, mini, spots, wrapperRef]);
 
   if (!active) return undefined;
   const spot = spots && (mini ? spots.mini : spots.stage);
   if (!spot) return { visibility: 'hidden' };
-  return {
-    transform: `translate(${spot.x}px, ${spot.y}px) scale(${mini ? QUEST_MINI_SCALE : 1})`,
-    ...(ready ? {} : { transition: 'none' }),
-  };
+  return { transform: `translate(${spot.x}px, ${spot.y}px) scale(${mini ? QUEST_MINI_SCALE : 1})` };
 }
