@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { getCharacter } from '../../data/characters';
 import type { Character, CharacterAction, PlacedCharacter, Direction } from '../../types/game';
 import { getDirectionInputSpells, spellDirectionCaption, FACING_CAPTION, allowedFacingDirections, allowedSpellDirections } from '../../utils/directionInput';
@@ -319,12 +319,38 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
   // change under an open drawer); otherwise it falls back to a plain wash.
   const drawerShaped = renderedStripIndex >= 0;
 
+  // QUEST FLOAT slot (user round 3): the small scroll sits centred in the
+  // empty stretch between the header's left edge and the HEROES title group
+  // (its (?) included). The slot SPANS that stretch — its centre is the spot
+  // — so when the stretch changes, the slot's SIZE changes and the float's
+  // placement watcher (a ResizeObserver on the slot) re-measures.
+  const questHeaderRef = useRef<HTMLDivElement>(null);
+  const questTitleRef = useRef<HTMLDivElement>(null);
+  const [questGap, setQuestGap] = useState(0);
+  useLayoutEffect(() => {
+    if (!questSlot) return;
+    const row = questHeaderRef.current;
+    const title = questTitleRef.current;
+    if (!row || !title) return;
+    const ro = new ResizeObserver(() => {
+      const help = title.firstElementChild as HTMLElement | null; // the (?) — absolute, outside the title's box
+      const titleLeft = Math.min(
+        title.getBoundingClientRect().left,
+        help ? help.getBoundingClientRect().left : Infinity,
+      );
+      setQuestGap(Math.max(0, Math.round(titleLeft - row.getBoundingClientRect().left)));
+    });
+    ro.observe(row);
+    ro.observe(title);
+    return () => ro.disconnect();
+  }, [questSlot]);
+
   const content = (
     <>
       {/* Header row — unchanged */}
-      <div className="relative flex items-center justify-between mb-2">
+      <div ref={questHeaderRef} className="relative flex items-center justify-between mb-2">
+        {questSlot && <span data-quest-slot aria-hidden="true" className="quest-mini-slot" style={{ width: questGap }} />}
         <div className="flex items-center gap-2 min-w-[60px]">
-          {questSlot && <span data-quest-slot aria-hidden="true" className="quest-mini-slot" />}
           {onTest && !disabled && (
             themeAssets.actionButtonTestHeroesImage ? (
               <button
@@ -371,7 +397,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
             long (signed-in) menu the rail docks right over this title, and
             the title painted over its PLAY stone (user report 2026-10-07).
             See index.css. */}
-        <div className="heroes-title-layer absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center z-[46]">
+        <div ref={questTitleRef} className="heroes-title-layer absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center z-[46]">
           <div className="absolute right-full mr-1">
             {/* (?) wears its section title's color (user call 2026-08-13);
               ! beats the button's own text-stone-400. */}

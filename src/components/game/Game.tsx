@@ -3961,7 +3961,9 @@ export const Game: React.FC<GameProps> = ({
                     placedCharacterIds={gameState.placedCharacters.map(c => c.characterId)}
                     maxPlaceable={gameState.puzzle.maxPlaceableCharacters ?? gameState.puzzle.maxCharacters}
                     onClearAll={testMode === 'none' && gameState.gameStatus === 'setup' ? handleWipe : undefined}
-                    onTest={!hideTestButtons && testMode === 'none' && gameState.gameStatus === 'setup' ? handleTestCharactersWithScroll : undefined}
+                    // QUEST FLOAT hides the Test buttons on the dev site too
+                    // (user call: the small scroll takes that header spot).
+                    onTest={!hideTestButtons && !questFloatOn && testMode === 'none' && gameState.gameStatus === 'setup' ? handleTestCharactersWithScroll : undefined}
                     themeAssets={themeAssets}
                     disabled={gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none'}
                     noPanel
@@ -4019,7 +4021,7 @@ export const Game: React.FC<GameProps> = ({
                 <EnemyDisplay
                   enemies={gameState.puzzle.enemies}
                   onTest={handleTestEnemiesWithScroll}
-                  showTestButton={!hideTestButtons && gameState.gameStatus === 'setup' && testMode === 'none'}
+                  showTestButton={!hideTestButtons && !questFloatOn && gameState.gameStatus === 'setup' && testMode === 'none'}
                   themeAssets={themeAssets}
                   noPanel
                 />

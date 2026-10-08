@@ -2845,12 +2845,15 @@ body.menu-gate-instant .heroes-title-layer {
   opacity: 0;
 }
 
-/* The hero header's reserved spot for the small scroll. */
+/* The hero header's spot for the small scroll: an empty strip from the
+   header's left edge to the HEROES title group (width set inline by
+   CharacterSelector) — its centre is where the scroll rests. */
 .quest-mini-slot {
-  display: inline-block;
-  flex-shrink: 0;
-  width: 40px;
-  height: 28px;
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  pointer-events: none;
 }
 
 
