@@ -22,7 +22,7 @@ import { collectPuzzleAssetUrls } from '../../utils/spritePreload';
 import { HelpButton } from './HelpOverlay';
 import { TapHintChip } from './TapHintChip';
 import { QuestBoxFrame, QuestOrnaments, QuestPlate, QuestDivider, questSkinFrameActive, questSkinOrnamentsActive, questSkinPlateActive, questSkinDividerActive, questFrameBorders, questPlateStraddle, useCrispSnap } from './QuestBoxSkin';
-import { QUEST_FLOAT, QUEST_FLIGHT_MS, QUEST_TOSS_AFTER_ROLL_MS, QUEST_UNROLL_LEAD_MS, QUEST_SPAWN_DELAY_MS, QUEST_HINT_BEAT_MS, useQuestFloatPlacement } from './questFloat';
+import { QUEST_FLOAT, QUEST_FLIGHT_MS, QUEST_TOSS_AFTER_ROLL_MS, QUEST_SPAWN_DELAY_MS, QUEST_HINT_BEAT_MS, useQuestFloatPlacement } from './questFloat';
 import { playGameSound, playVictoryMusic, playDefeatMusic, playBackgroundMusic, stopMusic } from '../../utils/gameSounds';
 import { loadThemeAssets, subscribeToThemeAssets, type ThemeAssets } from '../../utils/themeAssets';
 import { WarningModal } from '../shared/WarningModal';
@@ -442,11 +442,11 @@ export const Game: React.FC<GameProps> = ({
     );
   };
   // QUEST FLOAT: minimize = the classic close (roll up, then the tuck that
-  // centres the rolled scroll on the seal) with the toss to the hero header
-  // leaving as the roll-up finishes — the tuck happens in flight; expand =
-  // the toss back, with the classic open (untuck, unfurl) starting before
-  // it lands so the unfurl begins on landing (overlaps: questFloat.ts). A
-  // busy flag swallows taps mid-sequence.
+  // centres the rolled scroll on the seal), with the toss to the hero header
+  // leaving once the roll-up is done — the tuck finishes in flight
+  // (QUEST_TOSS_AFTER_ROLL_MS); expand = the toss back, still tucked, then
+  // the classic open (untuck, unfurl) after it lands. A busy flag swallows
+  // taps mid-sequence.
   const questFloatBusy = useRef(false);
   const minimizeQuest = () => {
     const box = questBoxSnapRef.current;
@@ -468,10 +468,9 @@ export const Game: React.FC<GameProps> = ({
     questScrollTimers.current = [];
     questFloatBusy.current = true;
     setQuestMini(false);
-    const unrollAt = QUEST_FLIGHT_MS - QUEST_UNROLL_LEAD_MS;
     questScrollTimers.current.push(
-      window.setTimeout(() => unrollQuest(box), unrollAt),
-      window.setTimeout(() => { questFloatBusy.current = false; }, unrollAt + 1100),
+      window.setTimeout(() => unrollQuest(box), QUEST_FLIGHT_MS),
+      window.setTimeout(() => { questFloatBusy.current = false; }, QUEST_FLIGHT_MS + 1100),
     );
   };
   // Tapping the OPEN scroll anywhere minimizes it — except its own controls
