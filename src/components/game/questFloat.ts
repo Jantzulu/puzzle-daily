@@ -8,9 +8,11 @@ import { useCallback, useLayoutEffect, useRef, useState, type RefObject, type CS
 // The quest scroll leaves the page flow: it opens OVER the top of the board
 // on every visit to a puzzle ("Tap the scroll to minimize" beneath). A tap
 // plays the classic close — roll up, then TUCK (the rolled scroll rides up
-// to centre on the QUEST seal) — and then TOSSES it along an arc, shrinking
-// to half size, into a slot in the hero header (where the Test button sits).
-// Tapping the small scroll tosses it back, growing; it untucks and unfurls.
+// to centre on the QUEST seal) — and TOSSES it along an arc as the roll-up
+// finishes (the tuck rides along in flight), shrinking to half size, into a
+// slot in the hero header (where the Test button sits). Tapping the small
+// scroll tosses it back, growing; it untucks on the way in and unfurls as
+// it lands.
 // Pressing Play (or Test) minimizes it. The hero panel and everything under
 // it move up by the box's old height.
 //
@@ -36,6 +38,21 @@ export const QUEST_FLOAT: boolean = (() => {
 export const QUEST_MINI_SCALE = 0.5;
 /** The toss between the board and the hero header. */
 export const QUEST_FLIGHT_MS = 700;
+/**
+ * The phases OVERLAP (user round 8: the toss "does not have to wait until
+ * the scroll is fully rolled up and positioned"). Minimize: the toss leaves
+ * this long into the 0.5s roll-up, which reads ~97% closed by then; the
+ * tuck (from 0.5s, 0.3s) rides up behind the seal in flight and is done
+ * well before the landing. The mini spot is the TUCKED pose, so it still
+ * lands centred.
+ */
+export const QUEST_TOSS_AFTER_ROLL_MS = 400;
+/**
+ * Expand: the unroll starts this long before the toss lands — its untuck
+ * (0.35s, the rolled scroll lowering from behind the seal) plays over the
+ * flight's last stretch, and the unfurl begins on landing.
+ */
+export const QUEST_UNROLL_LEAD_MS = 350;
 /**
  * The scroll SPAWNS a beat after the board is ready (user round 5: "delay
  * the initial spawning ever so slightly") — it used to mount with the page
