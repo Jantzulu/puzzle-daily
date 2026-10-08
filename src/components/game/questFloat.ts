@@ -8,8 +8,8 @@ import { useCallback, useLayoutEffect, useRef, useState, type RefObject, type CS
 // The quest scroll leaves the page flow: it opens OVER the top of the board
 // on every visit to a puzzle ("Tap the scroll to minimize" beneath). A tap
 // plays the classic close — roll up, then TUCK (the rolled scroll rides up
-// to centre on the QUEST seal) — and then TOSSES it in an arc, shrinking to
-// half size, into a slot in the hero header (where the Test button sits).
+// to centre on the QUEST seal) — and then TOSSES it along an arc, shrinking
+// to half size, into a slot in the hero header (where the Test button sits).
 // Tapping the small scroll tosses it back, growing; it untucks and unfurls.
 // Pressing Play (or Test) minimizes it. The hero panel and everything under
 // it move up by the box's old height.
@@ -37,18 +37,18 @@ export const QUEST_MINI_SCALE = 0.5;
 /** The toss between the board and the hero header. */
 export const QUEST_FLIGHT_MS = 700;
 /**
- * Where the open scroll's BOX top sits below the board's top edge: clears
- * the control rail's hanging spikes plus the QUEST plate riding above the
- * box (tuned in the pane).
+ * Where the open scroll's BOX top sits below the board's top edge — resting
+ * close under the portcullis (user round 3). Measured in the pane: the rail's
+ * spike art ends 6px (phone) / 5px (desktop) below the board's top, and the
+ * QUEST plate rides 14px above the box, so 24 puts the plate's top 4-5px
+ * under the spike tips. The bob only ever moves it DOWN from there.
  */
-const STAGE_DROP = 44;
+const STAGE_DROP = 24;
 /** How far the toss rises above the higher end of its path. */
 const ARC_LIFT = 56;
-/** The scroll's peak tilt mid-toss, leaning into its travel (degrees). */
-const ARC_TILT = 8;
 
 type Spot = { x: number; y: number };
-type Spots = { stage: Spot; mini: Spot | null; pivot: Spot };
+type Spots = { stage: Spot; mini: Spot | null };
 
 const easeInOut = (u: number) => (u < 0.5 ? 2 * u * u : 1 - (-2 * u + 2) ** 2 / 2);
 
@@ -56,15 +56,13 @@ const easeInOut = (u: number) => (u < 0.5 ? 2 * u * u : 1 - (-2 * u + 2) ** 2 / 
  * The toss: a quadratic arc from one spot to the other whose control point
  * rises ARC_LIFT above the higher end — so going down it pops up first and
  * drops into the slot, and going back up it overshoots and settles onto the
- * board. Position and size ease in-out together; the scroll leans into its
- * travel and rights itself by landing, turning about its own centre
- * (`pivot`, the anchor's centre in the wrapper's unscaled units).
+ * board. Position and size ease in-out together. NO rotation: the art stays
+ * upright the whole way — only the PATH curves (user round 3).
  */
-function tossKeyframes(from: Spot, to: Spot, s0: number, s1: number, pivot: Spot): Keyframe[] {
+function tossKeyframes(from: Spot, to: Spot, s0: number, s1: number): Keyframe[] {
   const STEPS = 16;
   const cx = (from.x + to.x) / 2;
   const cy = Math.min(from.y, to.y) - ARC_LIFT;
-  const lean = Math.sign(to.x - from.x) || 1;
   const frames: Keyframe[] = [];
   for (let i = 0; i <= STEPS; i++) {
     const u = i / STEPS;
@@ -72,11 +70,7 @@ function tossKeyframes(from: Spot, to: Spot, s0: number, s1: number, pivot: Spot
     const x = (1 - t) ** 2 * from.x + 2 * (1 - t) * t * cx + t ** 2 * to.x;
     const y = (1 - t) ** 2 * from.y + 2 * (1 - t) * t * cy + t ** 2 * to.y;
     const s = s0 + (s1 - s0) * t;
-    const r = lean * ARC_TILT * Math.sin(Math.PI * u);
-    frames.push({
-      offset: u,
-      transform: `translate(${x}px, ${y}px) scale(${s}) translate(${pivot.x}px, ${pivot.y}px) rotate(${r}deg) translate(${-pivot.x}px, ${-pivot.y}px)`,
-    });
+    frames.push({ offset: u, transform: `translate(${x}px, ${y}px) scale(${s})` });
   }
   return frames;
 }
@@ -113,7 +107,6 @@ export function useQuestFloatPlacement(
     const offX = anchor.offsetLeft;
     const offY = anchor.offsetTop;
     const aw = anchor.offsetWidth;
-    const ah = anchor.offsetHeight;
     const dip = parseFloat(getComputedStyle(anchor).getPropertyValue('--qseal-dip')) || 0;
     const toWrapper = (tx: number, ty: number, s: number): Spot => ({
       x: Math.round(tx - c.left - s * offX),
@@ -128,7 +121,7 @@ export function useQuestFloatPlacement(
       const s = QUEST_MINI_SCALE;
       miniSpot = toWrapper(r.left + r.width / 2 - (aw * s) / 2, r.top + r.height / 2 - s * dip, s);
     }
-    setSpots({ stage, mini: miniSpot, pivot: { x: offX + aw / 2, y: offY + ah / 2 } });
+    setSpots({ stage, mini: miniSpot });
   }, [wrapperRef]);
 
   useLayoutEffect(() => {
@@ -166,7 +159,7 @@ export function useQuestFloatPlacement(
     const to = mini ? spots.mini : spots.stage;
     const s0 = mini ? 1 : QUEST_MINI_SCALE;
     const s1 = mini ? QUEST_MINI_SCALE : 1;
-    el.animate(tossKeyframes(from, to, s0, s1, spots.pivot), { duration: QUEST_FLIGHT_MS, easing: 'linear' });
+    el.animate(tossKeyframes(from, to, s0, s1), { duration: QUEST_FLIGHT_MS, easing: 'linear' });
   }, [active, mini, spots, wrapperRef]);
 
   if (!active) return undefined;
