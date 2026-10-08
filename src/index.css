@@ -2849,7 +2849,19 @@ body.menu-gate-instant .heroes-title-layer {
    line (user round 2: the board's tap-hint chip read too big here). A
    tight 1px carve, never a blur glow (blur over painted art fails). */
 .quest-float-hint {
-  margin-top: 6px;
+  /* Tucked up under the paper (user round 10). In the hint's centred span
+     the box's bottom 12px holds no art — the paper's edge sits 12px above
+     the box bottom, only the rods (off to the sides) run past it — so the
+     hint rides up between the rod ends. -13px collapses with the anchor's
+     mb-1 (4px) to -9px, putting the caps ~3.7px under the paper's edge. */
+  margin-top: -13px;
+  /* Over the anchor (z-45): the scroll's glow (its drop-shadow, which
+     paints with the anchor) must not haze the small text. */
+  position: relative;
+  z-index: 46;
+  /* Bobs WITH the scroll — the anchor's exact bob, and mounted in the same
+     commit (Game.tsx), so the gap never breathes. */
+  animation: quest-bob 3.5s ease-in-out 1.2s infinite;
   text-align: center;
   font-size: 9px;
   line-height: 11px;

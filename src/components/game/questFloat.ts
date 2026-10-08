@@ -68,12 +68,14 @@ export const QUEST_SPAWN_DELAY_MS = 300;
 export const QUEST_HINT_BEAT_MS = 100;
 /**
  * Where the open scroll's BOX top sits below the board's top edge — resting
- * close under the portcullis (user round 3). Measured in the pane: the rail's
- * spike art ends 6px (phone) / 5px (desktop) below the board's top, and the
- * QUEST plate rides 14px above the box, so 24 puts the plate's top 4-5px
- * under the spike tips. The bob only ever moves it DOWN from there.
+ * close under the portcullis (user rounds 3 and 10). Measured column by
+ * column in the pane (375 wide): the tightest clearance is where two spike
+ * tips hang over the QUEST plate's shoulders — the spikes end ~6.4px below
+ * the board's top (a px less on desktop) and the plate art rides 10px above
+ * the box (the centre ornament, 14px up, sits BETWEEN those spikes). 18
+ * leaves ~1.4px there (it was 24: ~7.4px). The bob only ever moves it DOWN.
  */
-const STAGE_DROP = 24;
+const STAGE_DROP = 18;
 /** How far the toss rises above the higher end of its path. */
 const ARC_LIFT = 56;
 

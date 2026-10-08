@@ -3942,9 +3942,11 @@ export const Game: React.FC<GameProps> = ({
                 )}
               </div>
               )}
-              {questFloatOn && (
+              {/* Mounted WITH the scroll (questSpawned), so its bob starts
+                  on the same frame as the anchor's and the two stay in step. */}
+              {questFloatOn && questSpawned && (
                 <div className={`quest-float-hint${questHintReady && !questMini && (questScroll === 'open' || questScroll === 'reopened') ? '' : ' quest-float-hint--hidden'}`} aria-hidden="true">
-                  Tap the scroll to minimize
+                  Tap to minimize
                 </div>
               )}
               </div>
