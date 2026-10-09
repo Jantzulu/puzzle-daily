@@ -108,6 +108,24 @@ function tossKeyframes(from: Spot, to: Spot, s0: number, s1: number): Keyframe[]
 }
 
 /**
+ * REDUCE MOTION (user round 11; a playtester has it on): the toss's arc
+ * and zoom are exactly what that setting opts out of, so those viewers get
+ * a DISSOLVE — fade out where it is, fade back in at the other spot, no
+ * travel or scaling in between. Same QUEST_FLIGHT_MS as the toss (half out,
+ * half in), so the rest of the sequence keeps its timing. It used to skip
+ * the toss outright: a hard jump.
+ */
+function dissolveKeyframes(from: Spot, to: Spot, s0: number, s1: number): Keyframe[] {
+  const at = (p: Spot, s: number) => `translate(${p.x}px, ${p.y}px) scale(${s})`;
+  return [
+    { offset: 0, opacity: 1, transform: at(from, s0), easing: 'ease-in' },
+    { offset: 0.5, opacity: 0, transform: at(from, s0) },
+    { offset: 0.5, opacity: 0, transform: at(to, s1), easing: 'ease-out' },
+    { offset: 1, opacity: 1, transform: at(to, s1) },
+  ];
+}
+
+/**
  * Places the float wrapper. Both spots are measured together, every time:
  * STAGE — the .quest-box-anchor's top-left centred over the board,
  * STAGE_DROP below its top; MINI — the TUCKED scroll's centre (the box top
@@ -179,19 +197,20 @@ export function useQuestFloatPlacement(
 
   // THE TOSS: when `mini` flips, animate between the two spots before the
   // first paint of the new resting transform (a layout effect runs after
-  // the DOM update, before paint). Spot re-measures alone never toss.
+  // the DOM update, before paint) — or dissolve, under Reduce Motion. Spot
+  // re-measures alone never toss.
   const prevMini = useRef(mini);
   useLayoutEffect(() => {
     if (prevMini.current === mini) return;
     prevMini.current = mini;
     const el = wrapperRef.current;
     if (!active || !el || !spots?.mini) return;
-    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
     const from = mini ? spots.stage : spots.mini;
     const to = mini ? spots.mini : spots.stage;
     const s0 = mini ? 1 : QUEST_MINI_SCALE;
     const s1 = mini ? QUEST_MINI_SCALE : 1;
-    el.animate(tossKeyframes(from, to, s0, s1), { duration: QUEST_FLIGHT_MS, easing: 'linear' });
+    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    el.animate((reduce ? dissolveKeyframes : tossKeyframes)(from, to, s0, s1), { duration: QUEST_FLIGHT_MS, easing: 'linear' });
   }, [active, mini, spots, wrapperRef]);
 
   if (!active) return undefined;
