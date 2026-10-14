@@ -532,30 +532,35 @@ export const Game: React.FC<GameProps> = ({
     if (questFloatOn && questSpawned && (gameState.gameStatus === 'running' || testMode !== 'none')) minimizeQuestRef.current();
   }, [questFloatOn, questSpawned, gameState.gameStatus, testMode]);
 
-  // ROLL-UP (user pick 2026-10-14 — it replaced the "Tap to minimize" line
-  // under the scroll, which cost a line of board): the (?)'s twin at the
-  // objective line's other end. Same 16px box, alignment and ink, 4px off
-  // the last word as the (?) is 4px off the first. A cue — tapping anywhere
-  // on the scroll still rolls it up. Painted art drops in via questChrome.ts.
+  // ROLL-UP BUTTON (user pick 2026-10-14; round 2 the same day: the inline
+  // glyph at the end of the objective "does not read as" a roll-up, so it
+  // became an obvious BUTTON overlapping the scroll's upper-right corner,
+  // clear of the text). It replaced the "Tap to minimize" line under the
+  // scroll. The placeholder is the picker's iron button (the user's
+  // favourite) with a gold minus; painted art drops in via questChrome.ts.
+  // Tapping anywhere on the scroll still rolls it up.
   const questRollupArt = questChromeIcon('rollup');
   const questRollup = questFloatOn ? (
-    <button
-      type="button"
-      onClick={minimizeQuest}
-      tabIndex={questMini ? -1 : undefined}
-      className="inline-block align-[-2px] lg:align-[-1px] ml-1 p-0 text-black hover:bg-black/10 rounded transition-colors hit-44"
-      aria-label="Roll the quest up"
-      title="Roll the quest up"
-    >
-      {questRollupArt ? (
-        <PaintedNavIcon src={questRollupArt} />
-      ) : (
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-          {/* The (?)'s circle, with the two rods rolling in. */}
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7.5 9l3 3-3 3m9-6l-3 3 3 3M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-      )}
-    </button>
+    // The holder places it: .hit-44 sets the button's own position
+    // (relative, for its slop) and would undo an absolute one.
+    <span className="quest-rollup-holder">
+      <button
+        type="button"
+        onClick={minimizeQuest}
+        tabIndex={questMini ? -1 : undefined}
+        className={`quest-rollup hit-44${questRollupArt ? ' quest-rollup--art' : ''}`}
+        aria-label="Roll the quest up"
+        title="Roll the quest up"
+      >
+        {questRollupArt ? (
+          <PaintedNavIcon src={questRollupArt} />
+        ) : (
+          <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
+            <rect x="1" y="4" width="8" height="2" fill="currentColor" />
+          </svg>
+        )}
+      </button>
+    </span>
   ) : null;
   // The seal: the same toggle as tapping the scroll or the small scroll.
   const toggleQuestScroll = () => {
@@ -3688,6 +3693,13 @@ export const Game: React.FC<GameProps> = ({
                     the scroll toggle rests closed; the replay key re-runs
                     the unfurl on reopen. */}
                 <div className={questSkinFrameActive ? 'quest-stage-scroll relative' : 'quest-stage-box relative'}>
+                {/* The roll-up button rides the CONTENT layer but sits out
+                    over the right rod, beyond the layer's box: the content
+                    wipe keeps it clipped while the scroll unfurls or rolls
+                    up, so it appears as the scroll comes fully open and
+                    goes as the roll-up starts — no timers (index.css,
+                    .quest-rollup-holder). */}
+                {questRollup}
                 {/* Puzzle Number & Quest Row */}
                 {puzzleNumber && (
                   <div className="text-center mb-0.5">
@@ -3785,8 +3797,7 @@ export const Game: React.FC<GameProps> = ({
                           names' hud-title register; 18px line stays
                           integer and still swallows the 16px (?) box. */}
                       <span className={`${questFloatOn ? 'text-[14px] md:text-[15px] lg:text-[17px]' : 'text-[15px] md:text-base lg:text-lg'} font-medium ${questSkinFrameActive ? 'text-black' : 'text-copper-300'}`}>
-                      {(() => {
-                      const objective = gameState.puzzle.winConditions.map((wc) => {
+                      {gameState.puzzle.winConditions.map((wc) => {
                         // Quest text override (2026-07-21): authored text
                         // wins verbatim over every auto-phrased label.
                         if (wc.customLabel?.trim()) return wc.customLabel.trim();
@@ -3893,21 +3904,7 @@ export const Game: React.FC<GameProps> = ({
                           default:
                             return wc.type;
                         }
-                      }).join(' & ');
-                      if (!questRollup) return objective;
-                      // The roll-up rides the LAST WORD inside a nowrap
-                      // span: a no-break space can't hold an inline-block on
-                      // iOS (WebKit's inline layout treats every text|box
-                      // boundary as a wrap point), and the icon must never
-                      // land on a line of its own.
-                      const cut = objective.lastIndexOf(' ');
-                      return (
-                        <>
-                          {objective.slice(0, cut + 1)}
-                          <span className="whitespace-nowrap">{objective.slice(cut + 1)}{questRollup}</span>
-                        </>
-                      );
-                      })()}
+                      }).join(' & ')}
                       </span>
                     </span>
                     </span>

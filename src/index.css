@@ -2845,6 +2845,62 @@ body.menu-gate-instant .heroes-title-layer {
   padding: 0;
 }
 
+/* THE ROLL-UP BUTTON (Game.tsx), pinned to the scroll's upper-right
+   corner — the user's circled spot: centred on the RIGHT ROD and
+   straddling the paper's top edge. The rod is the one place no objective
+   ever reaches (a one-line quest shrink-wraps the box, so the text runs
+   to the content layer's edge; the rod's centre sits 14px past that edge,
+   leaving 3px between the text and the button). The holder places it from
+   inside the content layer: right -25px = rod centre + half the button,
+   top -20px = the paper's top edge (measured beside the rod, 9px above
+   this layer) less half the button. Being outside the layer's box, the content wipe keeps it clipped
+   while the scroll unfurls or rolls up, so it shows only while the scroll
+   rests open. The button is the picker's iron cell in miniature with a
+   gold minus; painted art (questChrome.ts) wears no CSS plate. */
+.quest-rollup-holder {
+  position: absolute;
+  right: -25px;
+  top: -20px;
+  z-index: 2;
+}
+
+.quest-rollup {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid #78716c;
+  border-radius: 3px;
+  background-image: linear-gradient(180deg, #4b453d, #33302a);
+  color: #e8cc8a;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 235, 200, 0.12),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.35),
+    0 1px 3px rgba(0, 0, 0, 0.6);
+  cursor: pointer;
+}
+
+.quest-rollup:active {
+  transform: translateY(1px);
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.5);
+}
+
+@media (hover: hover) {
+  .quest-rollup:hover {
+    background-image: linear-gradient(180deg, #5b544a, #3d3933);
+  }
+}
+
+.quest-rollup--art {
+  width: auto;
+  height: auto;
+  border: 0;
+  background: none;
+  box-shadow: none;
+}
+
 /* The hero header's spot for the small scroll: an empty strip from the
    header's left edge to the HEROES title group (width set inline by
    CharacterSelector) — its centre is where the scroll rests. */
