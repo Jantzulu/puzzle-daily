@@ -3997,7 +3997,10 @@ body.menu-gate-instant .heroes-title-layer {
 
 /* The scrim no longer DIMS (user call 2026-10-14: the board — where the
    hero stands or will stand — must stay readable while choosing its
-   bearing). It still catches the outside tap that closes the picker. */
+   bearing). It still catches the outside tap that closes the picker, but
+   no longer pins the page: with the scroll lock gone (same day, user
+   call), a drag on it scrolls the page beneath, so the player can look
+   around the board while the card stays put. */
 .dir-picker__scrim {
   position: fixed;
   inset: 0;

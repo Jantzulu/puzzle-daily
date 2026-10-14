@@ -4,7 +4,6 @@ import type { Direction, SpellAsset } from '../../types/game';
 import type { CustomSprite } from '../../utils/assetStorage';
 import { HubPreview } from './HubPreview';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
-import { lockBodyScroll } from '../../utils/scrollLock';
 import compassIcon from '../../assets/icons/compass.png';
 import { navChromeIcon } from '../../assets/icons/navChrome';
 import { PaintedNavIcon } from '../shared/PaintedNavIcon';
@@ -280,8 +279,13 @@ export const DirectionPicker: React.FC<DirectionPickerProps> = ({ entry, sprite,
     if (exitRef.current) clearTimeout(exitRef.current);
   }, []);
 
-  // Escape closes, and the page underneath does not scroll while a sheet is up
-  // (the scrim already blocks pointer input; this stops the flick-through).
+  // Escape closes. The page underneath is NOT scroll-locked (user call
+  // 2026-10-14): the picker is a low, undimmed card pinned to the screen so
+  // the board stays in view while aiming, and a drag outside it now scrolls
+  // the page to look around (the lock dated from the dimmed full-screen
+  // sheet). A tap outside still closes it (the scrim). The sheet's body is
+  // overscroll-contained, so a wheel over the rose leaves the page alone
+  // (checked on desktop; a touch drag there may still scroll on iOS).
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -291,11 +295,7 @@ export const DirectionPicker: React.FC<DirectionPickerProps> = ({ entry, sprite,
       }
     };
     document.addEventListener('keydown', onKey);
-    const releaseScroll = lockBodyScroll();
-    return () => {
-      document.removeEventListener('keydown', onKey);
-      releaseScroll();
-    };
+    return () => document.removeEventListener('keydown', onKey);
   }, [open, onClose]);
 
   // PLACEMENT ASK ONLY — the sheet is opened BY a tap on the board, so the
