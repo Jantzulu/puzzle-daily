@@ -2845,60 +2845,54 @@ body.menu-gate-instant .heroes-title-layer {
   padding: 0;
 }
 
-/* THE ROLL-UP BUTTON (Game.tsx), pinned to the scroll's upper-right
-   corner — the user's circled spot: centred on the RIGHT ROD and
-   straddling the paper's top edge. The rod is the one place no objective
-   ever reaches (a one-line quest shrink-wraps the box, so the text runs
-   to the content layer's edge; the rod's centre sits 14px past that edge,
-   leaving 3px between the text and the button). The holder places it from
-   inside the content layer: right -25px = rod centre + half the button,
-   top -20px = the paper's top edge (measured beside the rod, 9px above
-   this layer) less half the button. Being outside the layer's box, the content wipe keeps it clipped
-   while the scroll unfurls or rolls up, so it shows only while the scroll
-   rests open. The button is the picker's iron cell in miniature with a
-   gold minus; painted art (questChrome.ts) wears no CSS plate. */
-.quest-rollup-holder {
-  position: absolute;
-  right: -25px;
-  top: -20px;
-  z-index: 2;
+/* "Tap the scroll to minimize", under the open scroll — a small quiet
+   line (user round 2: the board's tap-hint chip read too big here). A
+   tight 1px carve, never a blur glow (blur over painted art fails). */
+.quest-float-hint {
+  /* Tucked up under the paper (user round 10). In the hint's centred span
+     the box's bottom 12px holds no art — the paper's edge sits 12px above
+     the box bottom, only the rods (off to the sides) run past it — so the
+     hint rides up between the rod ends. -13px collapses with the anchor's
+     mb-1 (4px) to -9px. */
+  margin-top: -13px;
+  /* LEGIBILITY over any floor (user ask 2026-10-14, when the hint came
+     back from the roll-up-button detour): gold caps on a carve shadow
+     alone washed out over the light stone walls. A soft dark backing
+     holds them over light and dark tiles alike — the board-hint chip's
+     idea without its border (the chip read too big here, round 2). The
+     table display shrink-wraps the backing to the words and centres it.
+     No blur anywhere: blur over painted/canvas art fails on Safari. */
+  display: table;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 1px 6px 2px;
+  border-radius: 2px;
+  background-color: rgba(10, 8, 5, 0.62);
+  /* Over the anchor (z-45): the scroll's glow (its drop-shadow, which
+     paints with the anchor) must not haze the small text. */
+  position: relative;
+  z-index: 46;
+  /* Bobs WITH the scroll — the anchor's exact bob, and mounted in the same
+     commit (Game.tsx), so the gap never breathes. */
+  animation: quest-bob 3.5s ease-in-out 1.2s infinite;
+  text-align: center;
+  /* 8px (user: "reduce the font size slightly" from 9). */
+  font-size: 8px;
+  line-height: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(232, 204, 138, 0.95);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.9);
+  /* The ENTRANCE waits (user ask): it fades in a beat after the scroll is
+     fully open — 0.45s after the unfurl's end (plus the 0.1s JS beat in
+     Game.tsx), over 0.3s. The exit (below) is immediate. */
+  transition: opacity 0.3s ease 0.45s;
 }
 
-.quest-rollup {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  padding: 0;
-  border: 1px solid #78716c;
-  border-radius: 3px;
-  background-image: linear-gradient(180deg, #4b453d, #33302a);
-  color: #e8cc8a;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 235, 200, 0.12),
-    inset 0 -2px 0 rgba(0, 0, 0, 0.35),
-    0 1px 3px rgba(0, 0, 0, 0.6);
-  cursor: pointer;
-}
-
-.quest-rollup:active {
-  transform: translateY(1px);
-  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.5);
-}
-
-@media (hover: hover) {
-  .quest-rollup:hover {
-    background-image: linear-gradient(180deg, #5b544a, #3d3933);
-  }
-}
-
-.quest-rollup--art {
-  width: auto;
-  height: auto;
-  border: 0;
-  background: none;
-  box-shadow: none;
+.quest-float-hint--hidden {
+  opacity: 0;
+  transition: opacity 0.15s ease 0s;
 }
 
 /* The hero header's spot for the small scroll: an empty strip from the
