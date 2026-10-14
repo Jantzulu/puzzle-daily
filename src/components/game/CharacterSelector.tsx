@@ -230,6 +230,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
       ...getDirectionInputSpells(character).map(spell => ({
         key: spell.id,
         caption: spellDirectionCaption(spell),
+        spell,
         current: placed?.spellDirectionOverrides?.[spell.id]
           || pendingSpellDirectionOverrides[character.id]?.[spell.id],
         allowed: allowedSpellDirections(spell),
@@ -239,6 +240,15 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
       })),
     ];
   };
+
+  // The bearing a hero shows before a run: an input hero's choice (placed
+  // or pending — nothing until one is made), else the authored default. The
+  // card's arrow and the picker hub (idling on a spell tab) both read it.
+  const shownFacing = (character: Character): Direction | undefined =>
+    character.facingAcceptsUserInput
+      ? (placedCharacters.find(pc => pc.characterId === character.id)?.facing
+          ?? pendingFacingOverrides[character.id])
+      : character.defaultFacing;
 
   // The rendered hero's entries (the drawer's note line).
   const directionInputEntries = buildDirectionEntries(renderedCharacter, !!selectedCharacterId);
@@ -300,6 +310,9 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
     ? pickerEntries.find(e => e.key === picker.key) ?? null
     : null;
   const pickerOwedCount = pickerEntries.filter(owesChoice).length;
+  // The hub's hero: the picker's, else (while the sheet slides away after
+  // the picker is dropped) the rendered one.
+  const hubHero = pickerCharacter ?? renderedCharacter;
 
   // Slot list for the strip and its overlays: only ids that resolve to real
   // characters render cards, so the overlays' slot math must index within
@@ -470,10 +483,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
           // the player's compass choice (pending or placed) and has nothing
           // to point at until one is made.
           const isInputFacing = !!character.facingAcceptsUserInput;
-          const arrowDir = isInputFacing
-            ? (placedCharacters.find(pc => pc.characterId === character.id)?.facing
-                ?? pendingFacingOverrides[character.id])
-            : character.defaultFacing;
+          const arrowDir = shownFacing(character);
 
           // This hero's direction inputs, for the compass in the stat line. The compass is LOUD (lit brass, breathing)
           // while any choice is owed and quiet arcane once all are made. It
@@ -881,7 +891,8 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
         entries={pickerEntries}
         onSwitch={(key) => setPicker(p => (p ? { ...p, key } : p))}
         title={pickerCharacter?.name}
-        sprite={(pickerCharacter ?? renderedCharacter)?.customSprite}
+        sprite={hubHero?.customSprite}
+        facing={hubHero ? shownFacing(hubHero) : undefined}
         // Placement ask: the sheet carries the Place button and waits for it
         // (no auto-dismiss on the last pick); dismissing cancels the ask.
         confirm={picker?.placing ? {

@@ -1,8 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import type { Direction } from '../../types/game';
+import type { Direction, SpellAsset } from '../../types/game';
 import type { CustomSprite, SpriteDirection } from '../../utils/assetStorage';
 import { SpriteThumbnail } from '../editor/SpriteThumbnail';
+import { HubSpellPreview } from './HubSpellPreview';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { lockBodyScroll } from '../../utils/scrollLock';
 import compassIcon from '../../assets/icons/compass.png';
@@ -113,6 +114,8 @@ export interface DirectionPickerEntry {
    * Escape). Spell-direction entries keep the pick-and-dismiss flow.
    */
   isFacing?: boolean;
+  /** SPELL entries: the spell being aimed — the hub previews its cast. */
+  spell?: SpellAsset;
 }
 
 // Game bearing → directional-sprite key, for the hub's turned idle.
@@ -136,6 +139,11 @@ interface DirectionPickerProps {
   entry: DirectionPickerEntry | null;
   /** The hero being aimed — drawn in the rose's hub. */
   sprite?: CustomSprite;
+  /**
+   * The hero's facing (their facing choice, or the authored one): on a spell
+   * tab the hub hero idles toward it until the spell is aimed.
+   */
+  facing?: Direction;
   onClose: () => void;
   /**
    * Every entry this hero owes. With two or more the sheet grows a tab per
@@ -199,7 +207,7 @@ const owes = (e: DirectionPickerEntry) => !(e.current && e.allowed.includes(e.cu
  * exist, and getMissingDirectionInputs still gates placement. Only WHERE the
  * player expresses the choice changed.
  */
-export const DirectionPicker: React.FC<DirectionPickerProps> = ({ entry, sprite, onClose, entries, onSwitch, title, confirm }) => {
+export const DirectionPicker: React.FC<DirectionPickerProps> = ({ entry, sprite, facing, onClose, entries, onSwitch, title, confirm }) => {
   const open = !!entry;
   const entryKey = entry?.key ?? null;
 
@@ -471,7 +479,18 @@ export const DirectionPicker: React.FC<DirectionPickerProps> = ({ entry, sprite,
             if (dir === null) {
               return (
                 <div key="hub" className="dir-rose__hub" aria-hidden="true">
-                  {sprite && (
+                  {sprite && shownEntry.spell ? (
+                    // Spell entries: the hero idles toward their facing until
+                    // the spell is aimed, then loops the cast toward the aim,
+                    // the spell's own art and all (HubSpellPreview). An aim
+                    // outside the allowed subset counts as unset (owes).
+                    <HubSpellPreview
+                      sprite={sprite}
+                      spell={shownEntry.spell}
+                      aim={owes(shownEntry) ? undefined : shownEntry.current}
+                      facing={facing}
+                    />
+                  ) : sprite && (
                     <SpriteThumbnail
                       sprite={sprite}
                       size={52}
