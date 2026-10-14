@@ -108,10 +108,11 @@ export interface DirectionPickerEntry {
   /** Absent = read-only (a placed hero, or a disabled panel). */
   onPick?: (d: Direction) => void;
   /**
-   * FACING entries only (user call 2026-08-01): the sheet stays open after a
-   * pick — the hub hero turns to face the chosen bearing, so the player can
-   * try directions and watch, then close deliberately (scrim / the X /
-   * Escape). Spell-direction entries keep the pick-and-dismiss flow.
+   * The FACING entry: the hub hero turns to face the chosen bearing (a spell
+   * entry's hub previews the cast instead). Either way the sheet stays open
+   * after a pick (user calls 2026-08-01 for facing, 2026-10-14 for spells,
+   * once the hub had a cast to show): the player tries directions, watches,
+   * then closes deliberately (scrim / the X / Escape) or places.
    */
   isFacing?: boolean;
   /** SPELL entries: the spell being aimed — the hub previews its cast. */
@@ -147,34 +148,30 @@ interface DirectionPickerProps {
   onClose: () => void;
   /**
    * Every entry this hero owes. With two or more the sheet grows a tab per
-   * choice, and a spell pick walks on to the next unset entry instead of
-   * dismissing. With one (or none passed) the sheet has no tab row.
+   * choice (an unset one wears the red "!"). With one (or none passed) the
+   * lone entry gets a plain plate.
    */
   entries?: DirectionPickerEntry[];
-  /** Make another entry the active one (tab tap, or the walk after a pick). */
+  /** Make another entry the active one (a tab tap). */
   onSwitch?: (key: string) => void;
   /** Hero name for the cap row when the tabs already carry the captions. */
   title?: string;
   /**
    * PLACEMENT ASK: the sheet was opened by a tile tap and
    * the hero lands on that tile when the player confirms. Present = a Place
-   * button under the rose (enabled once nothing is owed), and NO auto-dismiss
-   * on the last pick — one ending for facing and spell entries alike, and a
-   * stray double tap can never place a hero with an aim the player did not
-   * see. Dismissing the sheet any other way cancels the placement.
+   * button under the rose (enabled once nothing is owed) — a pick never
+   * places or dismisses, so a stray double tap can never place a hero with
+   * an aim the player did not see. Dismissing the sheet any other way
+   * cancels the placement.
    */
   confirm?: { label: string; enabled: boolean; onConfirm: () => void };
 }
 
 // Matches the .dir-picker__sheet transition in index.css.
 const EXIT_MS = 200;
-// Long enough for the pressed cell to light up before the sheet leaves, short
-// enough that it never feels like a second step.
-const PICK_LINGER_MS = 140;
-// After the sheet walks to the next entry the rose re-skins IN PLACE, so a
-// double tap would land on the same cell of a different choice. Swallow rose
-// input for this long after a walk.
-const SWITCH_GUARD_MS = 260;
+// A placement ask opens under the finger that tapped the board: swallow
+// scrim and rose input this long after it opens (see the effect below).
+const OPEN_GUARD_MS = 260;
 
 // A choice counts only if it is inside the creator's allowed subset — the
 // placement gate's own rule (getMissingDirectionInputs).
@@ -266,7 +263,6 @@ export const DirectionPicker: React.FC<DirectionPickerProps> = ({ entry, sprite,
   const panelRef = useFocusTrap<HTMLDivElement>(open && mounted, { focusContainer: true });
   const rafRef = useRef<number | null>(null);
   const exitRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pickRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Mount closed, then flip to the open class on the next frame so the browser
   // has painted the closed state and the transition actually runs.
@@ -289,7 +285,6 @@ export const DirectionPicker: React.FC<DirectionPickerProps> = ({ entry, sprite,
 
   useEffect(() => () => {
     if (exitRef.current) clearTimeout(exitRef.current);
-    if (pickRef.current) clearTimeout(pickRef.current);
   }, []);
 
   // Escape closes, and the page underneath does not scroll while a sheet is up
@@ -318,7 +313,7 @@ export const DirectionPicker: React.FC<DirectionPickerProps> = ({ entry, sprite,
   // still work).
   const hasConfirm = confirmLabel !== null;
   useEffect(() => {
-    if (open && hasConfirm) guardUntilRef.current = performance.now() + SWITCH_GUARD_MS;
+    if (open && hasConfirm) guardUntilRef.current = performance.now() + OPEN_GUARD_MS;
   }, [open, hasConfirm]);
 
   // When the Place button lights, make sure it can be seen: on a short
@@ -338,29 +333,16 @@ export const DirectionPicker: React.FC<DirectionPickerProps> = ({ entry, sprite,
   const handlePick = (d: Direction) => {
     if (!entry?.onPick) return;
     if (performance.now() < guardUntilRef.current) return;
+    // The sheet stays up and stays on this choice: the lit cell and the
+    // hub (the hero turning, or the cast looping toward the aim) ARE the
+    // feedback. The tabs' red "!" says what is still owed; the player
+    // moves on, closes or places when done. (Spell picks used to dismiss,
+    // or walk to the next unset tab, 140ms later — the cast preview never
+    // got to play.)
     entry.onPick(d);
-    // Facing: the sheet stays up — the lit cell, the cap-row readout and the
-    // hub hero turning ARE the feedback, and the player closes when done.
-    if (entry.isFacing) return;
-    // Spell aims: let the chosen cell light before the sheet leaves —
-    // otherwise the only feedback for a required input is the sheet vanishing.
-    // With tabs, walk to the next entry that still owes a choice instead
-    // (excluding the one just picked — this closure predates the pick).
-    const next = onSwitch ? entries?.find(e => e.key !== entry.key && owes(e))?.key : undefined;
-    if (pickRef.current) clearTimeout(pickRef.current);
-    // Placement ask with nothing left to walk to: stay up — the Place button
-    // under the rose is the way forward, never an automatic dismiss.
-    if (!next && confirm) return;
-    pickRef.current = setTimeout(next
-      ? () => { guardUntilRef.current = performance.now() + SWITCH_GUARD_MS; onSwitch!(next); }
-      : onClose, PICK_LINGER_MS);
   };
 
-  const handleTab = (key: string) => {
-    // A pending walk/dismiss belongs to the entry being left.
-    if (pickRef.current) clearTimeout(pickRef.current);
-    onSwitch?.(key);
-  };
+  const handleTab = (key: string) => onSwitch?.(key);
 
   const readOnly = !entry?.onPick;
   // The top-edge plates: every choice when the parent passes them, else the

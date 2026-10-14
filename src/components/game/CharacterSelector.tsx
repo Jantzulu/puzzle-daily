@@ -887,14 +887,14 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
       <DirectionPicker
         entry={activePickerEntry}
         // Every entry the hero owes, so the sheet can show one tab per
-        // choice and walk to the next unset one after a pick.
+        // choice.
         entries={pickerEntries}
         onSwitch={(key) => setPicker(p => (p ? { ...p, key } : p))}
         title={pickerCharacter?.name}
         sprite={hubHero?.customSprite}
         facing={hubHero ? shownFacing(hubHero) : undefined}
         // Placement ask: the sheet carries the Place button and waits for it
-        // (no auto-dismiss on the last pick); dismissing cancels the ask.
+        // (a pick never dismisses); dismissing cancels the ask.
         confirm={picker?.placing ? {
           enabled: pickerOwedCount === 0,
           // No count (user call 2026-10-14): the tabs' red "!" badges
