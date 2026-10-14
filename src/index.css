@@ -3969,17 +3969,6 @@ body.menu-gate-instant .heroes-title-layer {
   outline-offset: 3px;
 }
 
-/* Hairline groove — the picker's cap-row furniture (the experiment's
-   cap-rail vocabulary, ported ONLY for the picker). Its recessed well went
-   with the close chevron (2026-10-14: the menu's painted X now). */
-.hero-cap__groove {
-  flex: none;
-  width: 1px;
-  height: 12px;
-  background: rgba(0, 0, 0, 0.75);
-  box-shadow: 1px 0 0 rgba(255, 235, 200, 0.07);
-}
-
 /* ---- The picker ------------------------------------------------------
    Portalled to <body>, so `.theme-root` has to be re-applied for the font
    and the type ramp — and that class also paints the app's opaque page
@@ -4004,35 +3993,29 @@ body.menu-gate-instant .heroes-title-layer {
 
 /* A bottom sheet below lg: the rose lands under the thumb. TRANSFORM AND
    OPACITY ONLY. The ground is OPAQUE — a sheet slides OVER the page, so a
-   translucent wash would let the hero cards show through the rose. Carved
-   like every other surface here: radius, lit top edge, dark side bevels,
-   and 50px of floor clearance so the bottom row of a REQUIRED control
-   never sits against the viewport edge. */
+   translucent wash would let the hero cards show through the rose.
+   THEME PASS (user ask 2026-10-14: the sheet "does not visually follow the
+   theming of the rest of the app"): it wears the app's chrome baseline —
+   the board-hint chip's and the plaques' — the page's own dark stone with
+   the chrome noise and a torch-warm wash at the head, a 1px copper-700
+   rim, 2px pixel corners, and a TITLE PLATE riding proud of the top edge.
+   The rose (iron cells, the hub hero) is untouched: the user loves it.
+   This element is the FRAME; the body inside it scrolls, so the plate
+   (outside the scroll box) is never clipped. */
 .dir-picker__sheet {
   position: fixed;
   left: 0;
   right: 0;
   bottom: 0;
   z-index: 59;
-  /* Never taller than the screen: with a tab row (and the Place button) the
-     sheet outgrows a landscape phone, and a fixed sheet taller than the viewport
-     pushes its own cap row (and the way out) off the top. */
-  max-height: 100dvh;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  padding: 12px 16px 50px;
-  padding-bottom: calc(50px + env(safe-area-inset-bottom));
-  background-color: var(--theme-bg-secondary, #2a2118);
+  background-color: #15100a; /* stone-900 */
   background-image:
-    linear-gradient(180deg, rgba(255, 235, 200, 0.07) 0, rgba(255, 235, 200, 0) 72px),
-    linear-gradient(rgba(255, 235, 200, 0.06), rgba(255, 235, 200, 0.06)),
+    linear-gradient(180deg, rgba(212, 165, 116, 0.07) 0, rgba(212, 165, 116, 0) 72px),
     var(--chrome-noise);
-  border-top: 1px solid rgba(255, 235, 200, 0.22);
-  border-radius: var(--theme-border-radius, 4px) var(--theme-border-radius, 4px) 0 0;
+  border-top: 1px solid #8c5c37; /* copper-700 */
+  border-radius: 2px 2px 0 0;
   box-shadow:
-    inset 0 1px 0 rgba(255, 235, 200, 0.1),
-    inset 1px 0 0 rgba(0, 0, 0, 0.35),
-    inset -1px 0 0 rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(0, 0, 0, 0.55),
     0 -12px 28px rgba(0, 0, 0, 0.65);
   transform: translateY(100%);
   opacity: 0;
@@ -4044,6 +4027,44 @@ body.menu-gate-instant .heroes-title-layer {
 .dir-picker__sheet--in {
   transform: translateY(0);
   opacity: 1;
+}
+
+/* The scroll box, with 50px of floor clearance so the bottom row of a
+   REQUIRED control never sits against the viewport edge. Never taller than
+   the screen less the plate's overhang: with a tab row (and the Place
+   button) the sheet outgrows a landscape phone, and a sheet taller than the
+   viewport pushes its plate and its way out off the top. */
+.dir-picker__body {
+  max-height: calc(100dvh - 12px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 16px 16px 50px;
+  padding-bottom: calc(50px + env(safe-area-inset-bottom));
+}
+
+/* The title plate, centred on the frame's top edge (integer offset, no
+   translate — the plate stays on whole pixels). */
+.dir-picker__plate {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -12px;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+/* The board-hint chip's plate, opaque so the rim doesn't show through. */
+.dir-picker__plate-chip {
+  max-width: calc(100% - 32px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 4px 12px;
+  background-color: #15100a; /* stone-900 */
+  border: 1px solid #8c5c37; /* copper-700 */
+  border-radius: 2px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
 }
 
 /* The sheet takes focus on open (useFocusTrap's focusContainer) so an Enter
@@ -4062,17 +4083,21 @@ body.menu-gate-instant .heroes-title-layer {
     bottom: auto;
     top: 50%;
     width: 288px;
-    padding-bottom: 50px;
-    border: 1px solid rgba(255, 235, 200, 0.22);
-    border-radius: var(--theme-border-radius, 4px);
+    border: 1px solid #8c5c37; /* copper-700, all round */
+    border-radius: 2px;
     box-shadow:
-      inset 0 1px 0 rgba(255, 235, 200, 0.1),
+      inset 0 1px 0 rgba(0, 0, 0, 0.55),
       0 12px 34px rgba(0, 0, 0, 0.7);
     transform: translate(-50%, -50%) translateY(10px);
   }
 
   .dir-picker__sheet--in {
     transform: translate(-50%, -50%);
+  }
+
+  .dir-picker__body {
+    max-height: calc(100dvh - 48px);
+    padding-bottom: 50px;
   }
 }
 

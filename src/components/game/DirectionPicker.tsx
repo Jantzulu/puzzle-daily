@@ -315,11 +315,13 @@ export const DirectionPicker: React.FC<DirectionPickerProps> = ({ entry, sprite,
   // (landscape) screen the sheet scrolls inside itself and the button sits
   // below the fold, and in this mode the last pick does not dismiss — the
   // player would have made every choice and seen nothing change. Scrolls the
-  // sheet only; a no-op whenever the sheet fits.
+  // sheet's BODY only (the frame holds the title plate and never scrolls);
+  // a no-op whenever the sheet fits.
+  const bodyRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    const panel = panelRef.current;
-    if (open && confirmEnabled && panel) panel.scrollTop = panel.scrollHeight;
-  }, [open, confirmEnabled, panelRef]);
+    const body = bodyRef.current;
+    if (open && confirmEnabled && body) body.scrollTop = body.scrollHeight;
+  }, [open, confirmEnabled]);
 
   if (!mounted || !shownEntry) return null;
 
@@ -371,14 +373,19 @@ export const DirectionPicker: React.FC<DirectionPickerProps> = ({ entry, sprite,
         aria-label={shownEntry.caption}
         className={`dir-picker__sheet ${shown ? 'dir-picker__sheet--in' : ''}`}
       >
-        {/* CAP ROW — what is being aimed, what it is currently set to, and the
-            way out. Same vocabulary as the plate's right cap: engraved label,
-            a groove, then a recessed well for the control. */}
-        <div className="flex items-center gap-2 h-7 mb-2.5">
-          {/* With tabs the captions live on the tabs, so the cap names the
-              hero being aimed instead of repeating the active caption. */}
-          <span className="hud-label text-arcane-300 truncate">{tabs.length > 1 && shownTitle ? shownTitle : shownEntry.caption}</span>
-          <span className="hero-cap__groove" aria-hidden="true" />
+        {/* TITLE PLATE (theme pass 2026-10-14) — riding proud of the frame's
+            top edge: the app's title relation (QUEST on the scroll, LIVES /
+            TURNS on the rail). With tabs the captions live on the tabs, so
+            the plate names the hero being aimed instead of repeating the
+            active caption. CSS baseline in the board-hint chip's vocabulary
+            until the picker's own art is painted. */}
+        <div className="dir-picker__plate">
+          <span className="dir-picker__plate-chip hud-label text-copper-300">{tabs.length > 1 && shownTitle ? shownTitle : shownEntry.caption}</span>
+        </div>
+        <div ref={bodyRef} className="dir-picker__body">
+        {/* STATE ROW — the bearing as it stands, centred under the plate,
+            and the way out at the frame's right. */}
+        <div className="relative flex items-center justify-center h-7 mb-2.5">
           {shownEntry.current ? (
             // `capitalize` was here and never applied: `.theme-root .hud-label`
             // (0,2,0) outranks the utility (0,1,0), so this always rendered
@@ -398,20 +405,25 @@ export const DirectionPicker: React.FC<DirectionPickerProps> = ({ entry, sprite,
               if the PNG is ever removed. 44px of real target (hit-44) — the
               picker exists BECAUSE its predecessor was a 17px target on a
               required input, so its way out can't shrink either. */}
-          <button
-            type="button"
-            onClick={onClose}
-            className="dir-picker__close hit-44 ml-auto flex items-center justify-center w-11 h-7 flex-shrink-0"
-            aria-label="Close direction picker"
-          >
-            {CLOSE_ART ? (
-              <PaintedNavIcon src={CLOSE_ART} />
-            ) : (
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            )}
-          </button>
+          {/* The holder pins it to the frame's right: .hit-44 sets the
+              button's own position (relative, for its slop) and would
+              drag it back beside the readout. */}
+          <div className="absolute right-0 top-0">
+            <button
+              type="button"
+              onClick={onClose}
+              className="dir-picker__close hit-44 flex items-center justify-center w-11 h-7"
+              aria-label="Close direction picker"
+            >
+              {CLOSE_ART ? (
+                <PaintedNavIcon src={CLOSE_ART} />
+              ) : (
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              )}
+            </button>
+          </div>
         </div>
 
         {/* TABS — one per choice this hero owes, only when there are two or
@@ -535,6 +547,7 @@ export const DirectionPicker: React.FC<DirectionPickerProps> = ({ entry, sprite,
             </p>
           </>
         )}
+        </div>
       </div>
     </div>,
     document.body
