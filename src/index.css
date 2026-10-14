@@ -3991,9 +3991,12 @@ body.menu-gate-instant .heroes-title-layer {
   opacity: 1;
 }
 
-/* A bottom sheet below lg: the rose lands under the thumb. TRANSFORM AND
-   OPACITY ONLY. The ground is OPAQUE — a sheet slides OVER the page, so a
-   translucent wash would let the hero cards show through the rose.
+/* A CENTRED POPOVER at every width (user call 2026-10-14: on phones the
+   full-width bottom sheet "takes up the entire width of the device (and
+   extra step below)" — they wanted the desktop popover's size as an
+   overlay). TRANSFORM AND OPACITY ONLY. The ground is OPAQUE — the
+   popover sits OVER the page, so a translucent wash would let the hero
+   cards show through the rose.
    THEME PASS (user ask 2026-10-14: the sheet "does not visually follow the
    theming of the rest of the app"): it wears the app's chrome baseline —
    the board-hint chip's and the plaques' — the page's own dark stone with
@@ -4004,20 +4007,22 @@ body.menu-gate-instant .heroes-title-layer {
    (outside the scroll box) is never clipped. */
 .dir-picker__sheet {
   position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  left: 50%;
+  top: 50%;
   z-index: 59;
+  /* 288 = the rose (3 × 56 + 2 × 8) in its field; a 320px phone keeps
+     16px of page either side. */
+  width: min(288px, calc(100vw - 32px));
   background-color: #15100a; /* stone-900 */
   background-image:
     linear-gradient(180deg, rgba(212, 165, 116, 0.07) 0, rgba(212, 165, 116, 0) 72px),
     var(--chrome-noise);
-  border-top: 1px solid #8c5c37; /* copper-700 */
-  border-radius: 2px 2px 0 0;
+  border: 1px solid #8c5c37; /* copper-700 */
+  border-radius: 2px;
   box-shadow:
     inset 0 1px 0 rgba(0, 0, 0, 0.55),
-    0 -12px 28px rgba(0, 0, 0, 0.65);
-  transform: translateY(100%);
+    0 12px 34px rgba(0, 0, 0, 0.7);
+  transform: translate(-50%, -50%) translateY(10px);
   opacity: 0;
   transition:
     transform 0.2s cubic-bezier(0.2, 0, 0, 1),
@@ -4025,21 +4030,20 @@ body.menu-gate-instant .heroes-title-layer {
 }
 
 .dir-picker__sheet--in {
-  transform: translateY(0);
+  transform: translate(-50%, -50%);
   opacity: 1;
 }
 
-/* The scroll box, with 50px of floor clearance so the bottom row of a
-   REQUIRED control never sits against the viewport edge. Never taller than
-   the screen less the plate's overhang: with a tab row (and the Place
-   button) the sheet outgrows a landscape phone, and a sheet taller than the
-   viewport pushes its plate and its way out off the top. */
+/* The scroll box, keeping the 50px field under the rose (the size the user
+   picked). Never taller than the screen: with a tab row (and the Place
+   button) the popover outgrows a landscape phone, and one taller than the
+   viewport would push its plate and its way out off the top — 48px leaves
+   the plate's 12px overhang clear on both ends. */
 .dir-picker__body {
-  max-height: calc(100dvh - 12px);
+  max-height: calc(100dvh - 48px);
   overflow-y: auto;
   overscroll-behavior: contain;
   padding: 16px 16px 50px;
-  padding-bottom: calc(50px + env(safe-area-inset-bottom));
 }
 
 /* The title plate, centred on the frame's top edge (integer offset, no
@@ -4072,33 +4076,6 @@ body.menu-gate-instant .heroes-title-layer {
    whole sheet after a keyboard open — the controls inside keep theirs. */
 .dir-picker__sheet:focus {
   outline: none;
-}
-
-/* At lg+ the same object becomes a centred popover: full border, closed
-   radius, the 50/50 field above and below the rose kept. */
-@media (min-width: 1024px) {
-  .dir-picker__sheet {
-    left: 50%;
-    right: auto;
-    bottom: auto;
-    top: 50%;
-    width: 288px;
-    border: 1px solid #8c5c37; /* copper-700, all round */
-    border-radius: 2px;
-    box-shadow:
-      inset 0 1px 0 rgba(0, 0, 0, 0.55),
-      0 12px 34px rgba(0, 0, 0, 0.7);
-    transform: translate(-50%, -50%) translateY(10px);
-  }
-
-  .dir-picker__sheet--in {
-    transform: translate(-50%, -50%);
-  }
-
-  .dir-picker__body {
-    max-height: calc(100dvh - 48px);
-    padding-bottom: 50px;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {

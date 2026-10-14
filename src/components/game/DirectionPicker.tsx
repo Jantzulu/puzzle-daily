@@ -188,8 +188,10 @@ const owes = (e: DirectionPickerEntry) => !(e.current && e.allowed.includes(e.cu
  * PORTALLED TO <body> for the same reason NavSheet is: the hero panel is
  * inside transformed, clipped, z-stacked chrome (the plate, the strip's
  * z-30 band, the animating info grid), and `position: fixed` re-anchors to a
- * transformed ancestor. From <body> the sheet is anchored to the viewport,
- * which is what a bottom sheet has to be.
+ * transformed ancestor. From <body> the popover is anchored to the viewport,
+ * which is what a centred overlay has to be. (Phones got a full-width bottom
+ * sheet until 2026-10-14; the user wanted the desktop popover's size there
+ * too — an overlay, not a band across the screen.)
  *
  * NOTHING ABOUT THE GAME'S RULES MOVES. It calls the same
  * onFacingOverride / onSpellDirectionOverride props with the same values;
