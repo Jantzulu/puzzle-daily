@@ -1,9 +1,10 @@
 import { useCallback, useLayoutEffect, useRef, useState, type RefObject, type CSSProperties } from 'react';
 
 // ============================================================================
-// QUEST FLOAT — EXPERIMENT (user idea 2026-10-08; revert = delete this file,
-// the questFloatOn branches in Game.tsx, CharacterSelector's questSlot and
-// the .quest-float* CSS)
+// QUEST FLOAT — the quest scroll's layout (user idea 2026-10-08, rounds 1-11
+// behind ?quest=float; made THE layout 2026-10-14, replacing the in-flow
+// scroll and its in-place seal toggle). Without the scroll art the plain
+// baseline box stays in the page flow (Game.tsx: questFloatOn).
 // ============================================================================
 // The quest scroll leaves the page flow: it opens OVER the top of the board
 // on every visit to a puzzle ("Tap the scroll to minimize" beneath). A tap
@@ -19,20 +20,6 @@ import { useCallback, useLayoutEffect, useRef, useState, type RefObject, type CS
 // The placement and the toss live on a wrapper around .quest-box-anchor, so
 // the anchor's own glow and bob ride along untouched. Half size is exact:
 // the art is drawn at 2×, so 0.5 lands on its native pixels.
-//
-// TEMPORARY SWITCH: ?quest=float turns it on for this device (remembered),
-// ?quest=classic turns it off. Off = today's layout, byte for byte.
-
-export const QUEST_FLOAT: boolean = (() => {
-  try {
-    const q = new URLSearchParams(window.location.search).get('quest');
-    if (q === 'float') localStorage.setItem('quest_layout', 'float');
-    else if (q === 'classic') localStorage.removeItem('quest_layout');
-    return localStorage.getItem('quest_layout') === 'float';
-  } catch {
-    return false; // no window (tests) / storage blocked — classic
-  }
-})();
 
 /** The small scroll's size relative to the open one. */
 export const QUEST_MINI_SCALE = 0.5;

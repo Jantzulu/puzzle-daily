@@ -2775,8 +2775,8 @@ body.menu-gate-instant .heroes-title-layer {
 }
 
 /* ============================================
-   QUEST FLOAT — EXPERIMENT (?quest=float; questFloat.ts). The quest scroll
-   leaves the page flow: open over the top of the board, minimized at half
+   QUEST FLOAT — the quest scroll's layout (questFloat.ts; the default
+   since 2026-10-14). The skinned quest scroll leaves the page flow: open over the top of the board, minimized at half
    size in the hero header. One transform (set inline by
    useQuestFloatPlacement, origin top-left) places the wrapper; the toss
    between the spots is a Web Animations arc on top of it (NO CSS

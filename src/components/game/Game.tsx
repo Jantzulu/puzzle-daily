@@ -22,7 +22,7 @@ import { collectPuzzleAssetUrls } from '../../utils/spritePreload';
 import { HelpButton } from './HelpOverlay';
 import { TapHintChip } from './TapHintChip';
 import { QuestBoxFrame, QuestOrnaments, QuestPlate, QuestDivider, questSkinFrameActive, questSkinOrnamentsActive, questSkinPlateActive, questSkinDividerActive, questFrameBorders, questPlateStraddle, useCrispSnap } from './QuestBoxSkin';
-import { QUEST_FLOAT, QUEST_FLIGHT_MS, QUEST_TOSS_AFTER_ROLL_MS, QUEST_SPAWN_DELAY_MS, QUEST_HINT_BEAT_MS, useQuestFloatPlacement } from './questFloat';
+import { QUEST_FLIGHT_MS, QUEST_TOSS_AFTER_ROLL_MS, QUEST_SPAWN_DELAY_MS, QUEST_HINT_BEAT_MS, useQuestFloatPlacement } from './questFloat';
 import { playGameSound, playVictoryMusic, playDefeatMusic, playBackgroundMusic, stopMusic } from '../../utils/gameSounds';
 import { loadThemeAssets, subscribeToThemeAssets, type ThemeAssets } from '../../utils/themeAssets';
 import { WarningModal } from '../shared/WarningModal';
@@ -386,10 +386,13 @@ export const Game: React.FC<GameProps> = ({
   // entrance animations would re-apply and replay them). Height rides a
   // one-shot CSS transition between measured px values; null =
   // content-driven auto (the resting states). Skinned-mode only.
-  // QUEST FLOAT experiment (questFloat.ts; ?quest=float): the scroll leaves
-  // the page flow, opens over the board on every visit, and is tossed, half
-  // size, to the hero header when minimized.
-  const questFloatOn = QUEST_FLOAT && questSkinFrameActive;
+  // QUEST FLOAT (questFloat.ts) — THE layout since 2026-10-14: the skinned
+  // scroll leaves the page flow, opens over the board on every visit, and
+  // is tossed, half size, to the hero header when minimized. It replaced
+  // the in-flow scroll and its in-place seal toggle; the phases above are
+  // the same machinery. Without the scroll art the baseline box stays in
+  // the flow.
+  const questFloatOn = questSkinFrameActive;
   const [questMini, setQuestMini] = useState(false);
   const [questScroll, setQuestScroll] = useState<'open' | 'closing' | 'closed' | 'lowering' | 'reopening' | 'reopened'>('open');
   const [questBoxHeight, setQuestBoxHeight] = useState<number | null>(null);
@@ -540,17 +543,10 @@ export const Game: React.FC<GameProps> = ({
     if (questFloatOn && questSpawned && (gameState.gameStatus === 'running' || testMode !== 'none')) minimizeQuestRef.current();
   }, [questFloatOn, questSpawned, gameState.gameStatus, testMode]);
 
+  // The seal: the same toggle as tapping the scroll or the small scroll.
   const toggleQuestScroll = () => {
-    if (questFloatOn) {
-      if (questMini) expandQuest(); else minimizeQuest();
-      return;
-    }
-    const box = questBoxSnapRef.current;
-    if (!box || !questSkinFrameActive) return;
-    questScrollTimers.current.forEach(clearTimeout);
-    questScrollTimers.current = [];
-    if (questScroll === 'open' || questScroll === 'reopened') rollUpQuest(box);
-    else if (questScroll === 'closed') unrollQuest(box);
+    if (!questFloatOn) return;
+    if (questMini) expandQuest(); else minimizeQuest();
   };
   useEffect(() => {
     const onScroll = () => setRailRiding(window.scrollY > 8);
@@ -3639,12 +3635,11 @@ export const Game: React.FC<GameProps> = ({
                     <button
                       type="button"
                       onClick={toggleQuestScroll}
-                      // QUEST FLOAT rests minimized in 'closing' (the rolled
-                      // hold), so the phase-based disable would lock the seal
-                      // there; the float handlers swallow mid-sequence taps.
-                      disabled={questFloatOn ? false : questScroll === 'closing' || questScroll === 'lowering' || questScroll === 'reopening'}
-                      aria-expanded={questFloatOn ? !questMini : questScroll !== 'closed'}
-                      title={(questFloatOn ? questMini : questScroll === 'closed') ? 'Unfurl the quest scroll' : 'Roll the quest scroll up'}
+                      // Never disabled: the minimized scroll rests in 'closing'
+                      // (the rolled hold), and the float handlers swallow
+                      // mid-sequence taps themselves.
+                      aria-expanded={!questMini}
+                      title={questMini ? 'Unfurl the quest scroll' : 'Roll the quest scroll up'}
                       className="quest-seal-stamp pointer-events-auto relative cursor-pointer bg-transparent border-0 p-0"
                     >
                       <QuestPlate>
