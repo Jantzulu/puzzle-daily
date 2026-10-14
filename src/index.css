@@ -4085,6 +4085,18 @@ body.menu-gate-instant .heroes-title-layer {
   .dir-picker__sheet--in {
     transform: translate(-50%, -50%);
   }
+
+  /* UNDER THE BOARD (user call 2026-10-14): DirectionPicker writes top and
+     left (viewport px, measured off the board) and the card hangs from its
+     top edge — no vertical centring. The centred rules above stay the
+     fallback when the page has no board. */
+  .dir-picker__sheet.dir-picker__sheet--under-board {
+    transform: translateX(-50%) translateY(10px);
+  }
+
+  .dir-picker__sheet.dir-picker__sheet--under-board.dir-picker__sheet--in {
+    transform: translateX(-50%);
+  }
 }
 
 /* The scroll box — COMPACT (user calls 2026-10-14: shorter, so the board

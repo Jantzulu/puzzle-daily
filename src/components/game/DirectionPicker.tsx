@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { Direction, SpellAsset } from '../../types/game';
 import type { CustomSprite } from '../../utils/assetStorage';
@@ -161,6 +161,12 @@ interface DirectionPickerProps {
 
 // Matches the .dir-picker__sheet transition in index.css.
 const EXIT_MS = 200;
+// DESKTOP UNDER THE BOARD (see the placement effect): the breakpoint the
+// centred popover used, the air between the board and the card (its tabs
+// ride 12px proud of it), and the card's margin inside the window.
+const DESKTOP_MQ = '(min-width: 1024px)';
+const BOARD_GAP = 14;
+const VIEWPORT_MARGIN = 12;
 // A placement ask opens under the finger that tapped the board: swallow
 // scrim and rose input this long after it opens (see the effect below).
 const OPEN_GUARD_MS = 260;
@@ -255,6 +261,8 @@ export const DirectionPicker: React.FC<DirectionPickerProps> = ({ entry, sprite,
   const panelRef = useFocusTrap<HTMLDivElement>(open && mounted, { focusContainer: true });
   const rafRef = useRef<number | null>(null);
   const exitRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Desktop only: the card rides under the board (placement effect below).
+  const [underBoard, setUnderBoard] = useState(false);
 
   // Mount closed, then flip to the open class on the next frame so the browser
   // has painted the closed state and the transition actually runs.
@@ -297,6 +305,57 @@ export const DirectionPicker: React.FC<DirectionPickerProps> = ({ entry, sprite,
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [open, onClose]);
+
+  // DESKTOP: UNDER THE BOARD (user call 2026-10-14: the centred popover
+  // covered the board the player is aiming on). The card RIDES the board's
+  // bottom edge (.board-rise, the layout box the quest float measures too):
+  // just under it when the window has room, clamped inside the window when
+  // it doesn't (a short laptop window can't show both whole, so the card
+  // stays usable and overlaps the board's lowest rows), and it follows the
+  // board as the page scrolls. Viewport coordinates on the fixed card,
+  // written straight to its style (rAF-throttled, no re-render per scroll).
+  // Phones keep the low pinned card; a page without a board keeps the
+  // centred popover. Runs from the mounted render on, so the first paint
+  // is already in place; the last spot holds through the exit slide.
+  useLayoutEffect(() => {
+    if (!open || !mounted) return;
+    const sheet = panelRef.current;
+    if (!sheet) return;
+    const mq = window.matchMedia(DESKTOP_MQ);
+    let frame = 0;
+    const place = () => {
+      frame = 0;
+      const board = mq.matches ? document.querySelector<HTMLElement>('.board-rise') : null;
+      if (!board) {
+        sheet.style.top = '';
+        sheet.style.left = '';
+        setUnderBoard(false);
+        return;
+      }
+      const r = board.getBoundingClientRect();
+      const lowest = window.innerHeight - sheet.offsetHeight - VIEWPORT_MARGIN;
+      // The tabs ride 12px proud of the card's top, so its top stays that
+      // far below the window's top.
+      const highest = VIEWPORT_MARGIN + 12;
+      const top = Math.max(highest, Math.min(r.bottom + BOARD_GAP, lowest));
+      sheet.style.top = `${Math.round(top)}px`;
+      sheet.style.left = `${Math.round(r.left + r.width / 2)}px`;
+      setUnderBoard(true);
+    };
+    const schedule = () => {
+      if (!frame) frame = requestAnimationFrame(place);
+    };
+    place();
+    window.addEventListener('scroll', schedule, { passive: true });
+    window.addEventListener('resize', schedule);
+    return () => {
+      if (frame) cancelAnimationFrame(frame);
+      window.removeEventListener('scroll', schedule);
+      window.removeEventListener('resize', schedule);
+    };
+    // panelRef is a stable ref object.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, mounted]);
 
   // PLACEMENT ASK ONLY — the sheet is opened BY a tap on the board, so the
   // second half of a double tap arrives on a sheet that did not exist for
@@ -359,7 +418,7 @@ export const DirectionPicker: React.FC<DirectionPickerProps> = ({ entry, sprite,
         role="dialog"
         aria-modal="true"
         aria-label={shownEntry.caption}
-        className={`dir-picker__sheet ${shown ? 'dir-picker__sheet--in' : ''}`}
+        className={`dir-picker__sheet ${shown ? 'dir-picker__sheet--in' : ''}${underBoard ? ' dir-picker__sheet--under-board' : ''}`}
       >
         {/* THE TABS (user design 2026-10-14) ride the frame's top edge where
             the title plate rode — the app's title relation (QUEST on the
