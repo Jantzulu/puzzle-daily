@@ -433,16 +433,43 @@ export const Game: React.FC<GameProps> = ({
   // ornament canvas alone reaches 48px past the bottom; the box once opened
   // ~50px too tall, user report). The content is clip-hidden, not
   // display-hidden, so it measures fine. Timers APPEND.
-  const unrollQuest = (box: HTMLElement) => {
+  const questOpenHeight = (box: HTMLElement) => {
     const content = box.querySelector(':scope > .quest-stage-scroll') as HTMLElement | null;
-    setQuestBoxHeight(content
+    return content
       ? content.offsetHeight + questFrameBorders.t + 1 + questFrameBorders.b
-      : questCollapsedH);
+      : questCollapsedH;
+  };
+  const unrollQuest = (box: HTMLElement) => {
+    setQuestBoxHeight(questOpenHeight(box));
     setQuestScroll('lowering');
     questScrollTimers.current.push(
       window.setTimeout(() => setQuestScroll('reopening'), 350),
       window.setTimeout(() => { setQuestScroll('reopened'); setQuestBoxHeight(null); setQuestFrameHold(null); }, 1100),
     );
+  };
+  // THE SMALL SCROLL IS ONE LINE LONG (user ask 2026-10-14): a quest that
+  // wraps keeps its full length while it rolls up (the rods don't squish —
+  // the frame hold above), but in the hero header it conserves space as a
+  // one-line quest's scroll would, and grows back on its way out. The user
+  // round on top: it must not be obvious — full length through the roll-up
+  // and the first bit of the travel, the change hidden in the whole
+  // scroll's resize. So the length GLIDES (index.css .quest-frame-layer)
+  // from a quarter into the toss, done by three quarters; under Reduce
+  // Motion the glide is off and the change lands at the dissolve's
+  // midpoint, fully faded out. The tuck keeps the rolled scroll centred on
+  // the seal at any length. One-line length = the open box minus the
+  // objective's extra lines (its line heights are whole px).
+  const questLengthChangeAt = () =>
+    window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? QUEST_FLIGHT_MS / 2 : QUEST_FLIGHT_MS / 4;
+  const questOneLineHeight = (box: HTMLElement) => {
+    const objective = box.querySelector('.quest-objective') as HTMLElement | null;
+    const lh = objective ? parseFloat(getComputedStyle(objective).lineHeight) : NaN;
+    if (!objective || !(lh > 0)) return box.offsetHeight;
+    // floor, not round: the inline (?) icon can stand a few px proud of
+    // its line (a two-line quest measured 38px at 17px lines), never a whole
+    // line.
+    const extraLines = Math.max(0, Math.floor(objective.offsetHeight / lh) - 1);
+    return box.offsetHeight - extraLines * lh;
   };
   // QUEST FLOAT: minimize = the classic close (roll up, then the tuck that
   // centres the rolled scroll on the seal), with the toss to the hero header
@@ -458,9 +485,11 @@ export const Game: React.FC<GameProps> = ({
     questScrollTimers.current.forEach(clearTimeout);
     questScrollTimers.current = [];
     questFloatBusy.current = true;
+    const oneLineH = questOneLineHeight(box);
     rollUpQuest(box);
     questScrollTimers.current.push(
       window.setTimeout(() => setQuestMini(true), QUEST_TOSS_AFTER_ROLL_MS),
+      window.setTimeout(() => setQuestFrameHold(oneLineH), QUEST_TOSS_AFTER_ROLL_MS + questLengthChangeAt()),
       window.setTimeout(() => { questFloatBusy.current = false; }, QUEST_TOSS_AFTER_ROLL_MS + QUEST_FLIGHT_MS),
     );
   };
@@ -472,6 +501,7 @@ export const Game: React.FC<GameProps> = ({
     questFloatBusy.current = true;
     setQuestMini(false);
     questScrollTimers.current.push(
+      window.setTimeout(() => setQuestFrameHold(questOpenHeight(box)), questLengthChangeAt()),
       window.setTimeout(() => unrollQuest(box), QUEST_FLIGHT_MS),
       window.setTimeout(() => { questFloatBusy.current = false; }, QUEST_FLIGHT_MS + 1100),
     );
@@ -3763,7 +3793,7 @@ export const Game: React.FC<GameProps> = ({
                     {/* QUEST FLOAT (user round 2): one step smaller text with
                         1px tighter lines at every breakpoint — still integer
                         heights, and the 16px (?) box still fits each line. */}
-                    <span className={`min-w-0 text-center ${questFloatOn ? 'leading-[17px] md:leading-[21px] lg:leading-[24px]' : 'leading-[18px] md:leading-[22px] lg:leading-[25px]'} [text-wrap:balance]`}>
+                    <span className={`quest-objective min-w-0 text-center ${questFloatOn ? 'leading-[17px] md:leading-[21px] lg:leading-[24px]' : 'leading-[18px] md:leading-[22px] lg:leading-[25px]'} [text-wrap:balance]`}>
                     {/* INK on parchment (user call): black (?) + objective
                         when the scroll art is live; the baseline dark box
                         keeps its light registers. !important beats the

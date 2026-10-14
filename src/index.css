@@ -2605,7 +2605,21 @@ body.gate-raising .gate-shake-layer {
    so the scroll rises as the box closes over it, and lowers back down
    ahead of the reopen unfurl. */
 .quest-frame-layer {
-  transition: transform 0.3s ease;
+  /* height: the small scroll's one-line length (Game.tsx, user ask
+     2026-10-14) glides in mid-toss over half the flight, hidden in the
+     whole scroll's resize. A ONE-SHOT geometry glide (each step redraws
+     the frame canvases once) — the same exception class as the unfurl's
+     clip wipe, never a looping one. Pinning and releasing the hold never
+     glide: the pin matches the height it replaces, and the release goes
+     to auto. */
+  transition: transform 0.3s ease, height 0.35s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .quest-frame-layer {
+    /* No glide: the length changes while the dissolve has it faded out. */
+    transition: transform 0.3s ease;
+  }
 }
 .quest-tucked .quest-frame-layer {
   /* -50% centers the rolled scroll on the seal ELEMENT; --qseal-dip
