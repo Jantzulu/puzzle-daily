@@ -22,7 +22,9 @@ import { collectPuzzleAssetUrls } from '../../utils/spritePreload';
 import { HelpButton } from './HelpOverlay';
 import { TapHintChip } from './TapHintChip';
 import { QuestBoxFrame, QuestOrnaments, QuestPlate, QuestDivider, questSkinFrameActive, questSkinOrnamentsActive, questSkinPlateActive, questSkinDividerActive, questFrameBorders, questPlateStraddle, useCrispSnap } from './QuestBoxSkin';
-import { QUEST_FLIGHT_MS, QUEST_TOSS_AFTER_ROLL_MS, QUEST_SPAWN_DELAY_MS, QUEST_HINT_BEAT_MS, useQuestFloatPlacement } from './questFloat';
+import { QUEST_FLIGHT_MS, QUEST_TOSS_AFTER_ROLL_MS, QUEST_SPAWN_DELAY_MS, useQuestFloatPlacement } from './questFloat';
+import { questChromeIcon } from '../../assets/icons/questChrome';
+import { PaintedNavIcon } from '../shared/PaintedNavIcon';
 import { playGameSound, playVictoryMusic, playDefeatMusic, playBackgroundMusic, stopMusic } from '../../utils/gameSounds';
 import { loadThemeAssets, subscribeToThemeAssets, type ThemeAssets } from '../../utils/themeAssets';
 import { WarningModal } from '../shared/WarningModal';
@@ -488,11 +490,9 @@ export const Game: React.FC<GameProps> = ({
   // must re-attach to the fresh elements when it returns.
   const questBoxShown = gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none';
   // SPAWN: the scroll mounts QUEST_SPAWN_DELAY_MS after the board is ready
-  // (per puzzle), and the hint unlocks once its entrance has fully opened.
-  // Keyed by puzzle id and set only from timers, so a puzzle switch re-arms
-  // both without a synchronous reset.
+  // (per puzzle). Keyed by puzzle id and set only from a timer, so a puzzle
+  // switch re-arms it without a synchronous reset.
   const [questSpawnedFor, setQuestSpawnedFor] = useState<string | null>(null);
-  const [questHintFor, setQuestHintFor] = useState<string | null>(null);
   useEffect(() => {
     if (!questFloatOn || !spritesReady) return;
     const id = currentPuzzle.id;
@@ -500,7 +500,6 @@ export const Game: React.FC<GameProps> = ({
     return () => window.clearTimeout(spawn);
   }, [questFloatOn, spritesReady, currentPuzzle.id]);
   const questSpawned = spritesReady && questSpawnedFor === currentPuzzle.id;
-  const questHintReady = questHintFor === currentPuzzle.id;
   // Pixel-snaps the skinned quest box (flex centering can land it on
   // half-pixels, which blurs the bitmap art at any zoom — see useCrispSnap).
   // QUEST FLOAT: the box only exists once the scroll spawns, so the snap
@@ -508,16 +507,6 @@ export const Game: React.FC<GameProps> = ({
   // float box unsnapped. (Declared down here for questSpawned; the handlers
   // above only read it at event time.)
   const questBoxSnapRef = useCrispSnap<HTMLDivElement>(questSkinFrameActive && (!questFloatOn || questSpawned));
-  // The hint unlocks QUEST_HINT_BEAT_MS after the content's unfurl ENDS
-  // (its own animationend; bubbled ends from inside are ignored), so its
-  // re-render never lands on the unfurl's last frames. On questScrollTimers:
-  // a minimize, expand or puzzle reset clears it, and the next reopen's
-  // unfurl (same keyframes) arms it again.
-  const onQuestUnfurlEnd = (e: React.AnimationEvent<HTMLDivElement>) => {
-    if (e.target !== e.currentTarget || e.animationName !== 'quest-scroll-content' || questHintReady) return;
-    const id = currentPuzzle.id;
-    questScrollTimers.current.push(window.setTimeout(() => setQuestHintFor(id), QUEST_HINT_BEAT_MS));
-  };
   const questFloatStyle = useQuestFloatPlacement(questFloatOn && questBoxShown && questSpawned, questMini, questFloatRef);
   // Opens on EVERY visit (user call, round 2): a fresh mount starts open;
   // switching puzzles in place reopens it too.
@@ -543,6 +532,31 @@ export const Game: React.FC<GameProps> = ({
     if (questFloatOn && questSpawned && (gameState.gameStatus === 'running' || testMode !== 'none')) minimizeQuestRef.current();
   }, [questFloatOn, questSpawned, gameState.gameStatus, testMode]);
 
+  // ROLL-UP (user pick 2026-10-14 — it replaced the "Tap to minimize" line
+  // under the scroll, which cost a line of board): the (?)'s twin at the
+  // objective line's other end. Same 16px box, alignment and ink, 4px off
+  // the last word as the (?) is 4px off the first. A cue — tapping anywhere
+  // on the scroll still rolls it up. Painted art drops in via questChrome.ts.
+  const questRollupArt = questChromeIcon('rollup');
+  const questRollup = questFloatOn ? (
+    <button
+      type="button"
+      onClick={minimizeQuest}
+      tabIndex={questMini ? -1 : undefined}
+      className="inline-block align-[-2px] lg:align-[-1px] ml-1 p-0 text-black hover:bg-black/10 rounded transition-colors hit-44"
+      aria-label="Roll the quest up"
+      title="Roll the quest up"
+    >
+      {questRollupArt ? (
+        <PaintedNavIcon src={questRollupArt} />
+      ) : (
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          {/* The (?)'s circle, with the two rods rolling in. */}
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7.5 9l3 3-3 3m9-6l-3 3 3 3M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      )}
+    </button>
+  ) : null;
   // The seal: the same toggle as tapping the scroll or the small scroll.
   const toggleQuestScroll = () => {
     if (!questFloatOn) return;
@@ -3673,10 +3687,7 @@ export const Game: React.FC<GameProps> = ({
                     baseline keeps the plain fade. Hidden entirely while
                     the scroll toggle rests closed; the replay key re-runs
                     the unfurl on reopen. */}
-                <div
-                  className={questSkinFrameActive ? 'quest-stage-scroll relative' : 'quest-stage-box relative'}
-                  onAnimationEnd={questFloatOn ? onQuestUnfurlEnd : undefined}
-                >
+                <div className={questSkinFrameActive ? 'quest-stage-scroll relative' : 'quest-stage-box relative'}>
                 {/* Puzzle Number & Quest Row */}
                 {puzzleNumber && (
                   <div className="text-center mb-0.5">
@@ -3774,7 +3785,8 @@ export const Game: React.FC<GameProps> = ({
                           names' hud-title register; 18px line stays
                           integer and still swallows the 16px (?) box. */}
                       <span className={`${questFloatOn ? 'text-[14px] md:text-[15px] lg:text-[17px]' : 'text-[15px] md:text-base lg:text-lg'} font-medium ${questSkinFrameActive ? 'text-black' : 'text-copper-300'}`}>
-                      {gameState.puzzle.winConditions.map((wc) => {
+                      {(() => {
+                      const objective = gameState.puzzle.winConditions.map((wc) => {
                         // Quest text override (2026-07-21): authored text
                         // wins verbatim over every auto-phrased label.
                         if (wc.customLabel?.trim()) return wc.customLabel.trim();
@@ -3881,7 +3893,21 @@ export const Game: React.FC<GameProps> = ({
                           default:
                             return wc.type;
                         }
-                      }).join(' & ')}
+                      }).join(' & ');
+                      if (!questRollup) return objective;
+                      // The roll-up rides the LAST WORD inside a nowrap
+                      // span: a no-break space can't hold an inline-block on
+                      // iOS (WebKit's inline layout treats every text|box
+                      // boundary as a wrap point), and the icon must never
+                      // land on a line of its own.
+                      const cut = objective.lastIndexOf(' ');
+                      return (
+                        <>
+                          {objective.slice(0, cut + 1)}
+                          <span className="whitespace-nowrap">{objective.slice(cut + 1)}{questRollup}</span>
+                        </>
+                      );
+                      })()}
                       </span>
                     </span>
                     </span>
@@ -3936,13 +3962,6 @@ export const Game: React.FC<GameProps> = ({
                   />
                 )}
               </div>
-              )}
-              {/* Mounted WITH the scroll (questSpawned), so its bob starts
-                  on the same frame as the anchor's and the two stay in step. */}
-              {questFloatOn && questSpawned && (
-                <div className={`quest-float-hint${questHintReady && !questMini && (questScroll === 'open' || questScroll === 'reopened') ? '' : ' quest-float-hint--hidden'}`} aria-hidden="true">
-                  Tap to minimize
-                </div>
               )}
               </div>
             )}

@@ -7,7 +7,8 @@ import { useCallback, useLayoutEffect, useRef, useState, type RefObject, type CS
 // baseline box stays in the page flow (Game.tsx: questFloatOn).
 // ============================================================================
 // The quest scroll leaves the page flow: it opens OVER the top of the board
-// on every visit to a puzzle ("Tap the scroll to minimize" beneath). A tap
+// on every visit to a puzzle (a roll-up control ends the objective line;
+// tapping anywhere on the scroll works too). A tap
 // plays the classic close — roll up, then TUCK (the rolled scroll rides up
 // to centre on the QUEST seal) — and TOSSES it along an arc once the
 // roll-up is done (the tuck finishes in flight), shrinking to half size,
@@ -43,16 +44,6 @@ export const QUEST_TOSS_AFTER_ROLL_MS = 600;
  * and could unfurl over a board still fading in.
  */
 export const QUEST_SPAWN_DELAY_MS = 300;
-/**
- * The "tap to minimize" hint waits for the scroll (user round 5) and
- * arrives this long AFTER the unfurl has actually ended — its animationend,
- * not a timer from the spawn. User round 6: the timer put the hint's
- * re-render on the unfurl's last frames on a phone (the CSS animations
- * start a little after the spawn timer fires), and there the fade popped
- * in and the objective text flashed. Expanding the small scroll already
- * left ~this beat before 'reopened', and looked right.
- */
-export const QUEST_HINT_BEAT_MS = 100;
 /**
  * Where the open scroll's BOX top sits below the board's top edge — resting
  * close under the portcullis (user rounds 3 and 10). Measured column by
