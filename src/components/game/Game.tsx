@@ -8,7 +8,7 @@ import { initializeGameState, executeTurn, checkVictoryConditions, setHomingDebu
 import { calculateScore, getRankEmoji, getRankName, checkSideQuests } from '../../engine/scoring';
 import { isTileBlockingMovement } from '../../engine/actions';
 import { entityParty } from '../../engine/party';
-import { ResponsiveGameBoard } from './AnimatedGameBoard';
+import { ResponsiveGameBoard, type PlacementGhost } from './AnimatedGameBoard';
 import { PortcullisMesh } from './PortcullisMesh';
 import { CharacterSelector } from './CharacterSelector';
 import { EnemyDisplay } from './EnemyDisplay';
@@ -567,6 +567,27 @@ export const Game: React.FC<GameProps> = ({
   // rule above the gate is re-checked against current state). Null = no ask
   // in flight.
   const [placementAim, setPlacementAim] = useState<{ charId: string; x: number; y: number } | null>(null);
+
+  // PLACEMENT GHOST (user design 2026-10-14): while the ask is open, the hero
+  // stands tentatively on the tapped tile — turned to the facing chosen in
+  // the picker (SOUTH until one is, when facing is the player's to pick; a
+  // hero with an authored facing shows it), translucent until every
+  // direction is chosen, then solid. Visual only: the board draws it, and
+  // nothing is placed until the Place button replays the tap.
+  const placementGhostHero = placementAim ? getCharacter(placementAim.charId) : undefined;
+  const placementGhost: PlacementGhost | null = placementAim && placementGhostHero ? {
+    characterId: placementAim.charId,
+    x: placementAim.x,
+    y: placementAim.y,
+    facing: placementGhostHero.facingAcceptsUserInput
+      ? (pendingFacingOverrides[placementAim.charId] ?? Direction.SOUTH)
+      : placementGhostHero.defaultFacing,
+    solid: getMissingDirectionInputs(
+      placementGhostHero,
+      pendingFacingOverrides[placementAim.charId],
+      pendingSpellDirectionOverrides[placementAim.charId]
+    ).length === 0,
+  } : null;
 
   // Cloud puzzle number (from daily_schedule)
   const [puzzleNumber, setPuzzleNumber] = useState<number | null>(() => cachedDaily?.puzzleNumber ?? null);
@@ -2948,7 +2969,7 @@ export const Game: React.FC<GameProps> = ({
                 className={`transition-[opacity,transform] duration-700 ease-out ${spritesReady ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
                 style={{ transform: spritesReady ? 'scale(1)' : 'scale(0.85)', transformOrigin: '50% 50%', willChange: 'transform, opacity' }}
               >
-                <ResponsiveGameBoard gameState={gameState} onTileClick={handleTileClick} onProjectileKill={handleProjectileKill} replayFrozen={replayMode && !replayPlaying && !replayStepAnimating} entrancesRevealed={spritesReady} />
+                <ResponsiveGameBoard gameState={gameState} onTileClick={handleTileClick} onProjectileKill={handleProjectileKill} replayFrozen={replayMode && !replayPlaying && !replayStepAnimating} entrancesRevealed={spritesReady} placementGhost={placementGhost} />
               </div>
               {!spritesReady && (
                 // No fill: the page background shows through while loading —
@@ -2984,6 +3005,9 @@ export const Game: React.FC<GameProps> = ({
               {(() => {
                 if (testMode !== 'none' || gameState.gameStatus !== 'setup' || !selectedCharacterId) return null;
                 if (gameState.placedCharacters.some(c => c.characterId === selectedCharacterId)) return null;
+                // A placement ask is open: the hero already stands on its
+                // tile as a ghost (user call 2026-10-14), so the prompt goes.
+                if (placementAim) return null;
                 const maxPlaceable = gameState.puzzle.maxPlaceableCharacters ?? gameState.puzzle.maxCharacters;
                 if (maxPlaceable != null && gameState.placedCharacters.length >= maxPlaceable) return null;
                 return (

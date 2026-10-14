@@ -53,6 +53,21 @@ function enemyHasMovementActions(behavior: EnemyBehavior | undefined): boolean {
   return behavior.pattern.some(action => MOVEMENT_ACTIONS.has(action.type));
 }
 
+/**
+ * PLACEMENT GHOST (user design 2026-10-14): while a placement ask is open (a
+ * tile tapped for a hero whose directions are still owed), the hero stands
+ * on that tile as a ghost, turned to `facing`, translucent until every
+ * direction is chosen (`solid`). Purely visual: nothing is placed until the
+ * player confirms, and the placement itself plays the usual entrance.
+ */
+export interface PlacementGhost {
+  characterId: string;
+  x: number;
+  y: number;
+  facing: Direction;
+  solid: boolean;
+}
+
 interface AnimatedGameBoardProps {
   gameState: GameState;
   onTileClick?: (x: number, y: number) => void;
@@ -67,6 +82,7 @@ interface AnimatedGameBoardProps {
   // pass their reveal flag so entrance clocks don't burn while invisible —
   // otherwise a fly-in is half over before the player can see the board.
   entrancesRevealed?: boolean;
+  placementGhost?: PlacementGhost | null;  // See PlacementGhost
 }
 
 const TILE_SIZE = 48;
@@ -96,6 +112,7 @@ const DROP_PLACE_OFFSET = 0.4; // tiles above final position (subtle)
 const ITEM_SPAWN_DURATION = 400; // ms for collectible scale-up animation (thrown/placed items)
 const DELIVERY_TOSS_MS = 420;    // ms for a delivery's toss-in arc from its opening
 const DELIVERY_GHOST_ALPHA = 0.35; // pre-arrival ghost telegraphy
+const PLACEMENT_GHOST_ALPHA = 0.45; // a hero tentatively on its tile while directions are still owed
 const ITEM_DESPAWN_DURATION = 400; // ms for collectible scale-down animation (duration expiry)
 
 // Cap device pixel ratio to limit canvas backbuffer size on high-DPI mobile.
@@ -889,7 +906,7 @@ interface LiftOffAnimation {
   characterId: string;
 }
 
-export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState, onTileClick, isEditor = false, maxWidth, maxHeight, onProjectileKill, skinOverride, replayFrozen = false, entrancesRevealed = true }) => {
+export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState, onTileClick, isEditor = false, maxWidth, maxHeight, onProjectileKill, skinOverride, replayFrozen = false, entrancesRevealed = true, placementGhost = null }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imageCache = useRef<Map<string, HTMLImageElement>>(new Map());
   const [characterPositions, setCharacterPositions] = useState<Map<number, CharacterPosition>>(new Map());
@@ -939,6 +956,12 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
   const characterGhostWalksRef = useRef<Map<string, WalkInState>>(new Map());
   // Setup-phase glances at freshly placed heroes, keyed by enemy index.
   const enemyGlancesRef = useRef<Map<number, GlanceState>>(new Map());
+  // The placement ghost (see the prop), read by the render loop through a
+  // ref so a facing pick or the last choice doesn't restart the loop.
+  const placementGhostRef = useRef<PlacementGhost | null>(placementGhost);
+  useEffect(() => {
+    placementGhostRef.current = placementGhost;
+  }, [placementGhost]);
   // Track lift-off animations for unplaced characters
   const [liftOffAnimations, setLiftOffAnimations] = useState<LiftOffAnimation[]>([]);
   const prevGameStatusRef = useRef(gameState.gameStatus);
@@ -2479,6 +2502,26 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
           }
         }
       });
+
+      // PLACEMENT GHOST (see the prop): after every entity (its tile is
+      // empty by the placement rules), through the hero's own
+      // drawCharacter, translucent until every direction is chosen.
+      // drawCharacter restores the alpha it was handed before the health
+      // bar, so the bar and the facing arrow ghost with the body.
+      const ghost = placementGhostRef.current;
+      if (ghost && gameState.gameStatus === 'setup') {
+        const ghostHero = getCharacter(ghost.characterId);
+        if (ghostHero) {
+          ctx.save();
+          if (!ghost.solid) ctx.globalAlpha *= PLACEMENT_GHOST_ALPHA;
+          drawCharacter(
+            ctx,
+            { characterId: ghost.characterId, x: ghost.x, y: ghost.y, facing: ghost.facing, currentHealth: ghostHero.health, actionIndex: 0, active: true, dead: false },
+            ghost.x, ghost.y, false, ghost.facing, gameStarted, undefined, now
+          );
+          ctx.restore();
+        }
+      }
 
       profPhase('overlays');
       // Overlay particles — summon materialize effects draw ON TOP of the
@@ -5960,6 +6003,7 @@ interface ResponsiveGameBoardProps {
   skinOverride?: PuzzleSkin;  // Override skin instead of loading from localStorage
   replayFrozen?: boolean;  // Freeze animations during replay pause
   entrancesRevealed?: boolean;  // See AnimatedGameBoardProps — forwarded via the props spread
+  placementGhost?: PlacementGhost | null;  // Ditto — see PlacementGhost
 }
 
 // Maximum dimensions for the puzzle board on desktop
