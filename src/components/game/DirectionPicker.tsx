@@ -381,10 +381,11 @@ export const DirectionPicker: React.FC<DirectionPickerProps> = ({ entry, sprite,
         {/* THE TABS (user design 2026-10-14) ride the frame's top edge where
             the title plate rode — the app's title relation (QUEST on the
             scroll, LIVES / TURNS on the rail): one plate per choice this hero
-            owes. With two or more they switch what is being aimed, and their
-            labels drop " Direction" to fit side by side (FACING, FIREBALL —
-            the hero drawer's short form); a lone choice is a plain plate
-            with its full caption. An unset choice wears a red "!" in its
+            owes. With two or more they switch what is being aimed; a lone
+            choice is a plain plate. Every label drops " Direction" (FACING,
+            FIREBALL — the hero drawer's short form; user call 2026-10-14:
+            "Facing" alone, the picker itself says it's a direction). An
+            unset choice wears a red "!" in its
             corner, the enemy card's counter badge — it replaces the old
             "Not set" line and the Place button's "N to pick". CSS baseline
             in the board-hint chip's vocabulary until the picker's own art
@@ -395,11 +396,21 @@ export const DirectionPicker: React.FC<DirectionPickerProps> = ({ entry, sprite,
           aria-label={plateTabs.length > 1 ? `Choices${shownTitle ? ` for ${shownTitle}` : ''}` : undefined}
         >
           {plateTabs.map(t => {
-            const label = plateTabs.length > 1 ? t.caption.replace(/ Direction$/, '') : t.caption;
+            const label = t.caption.replace(/ Direction$/, '');
             const face = (
               <>
                 <span className="dir-picker__tab-text">{label}</span>
-                {owes(t) && <span className="dir-picker__owed" aria-hidden="true">!</span>}
+                {owes(t) && (
+                  // A DRAWN "!" (user pick 2026-10-14): the themed font's "!"
+                  // didn't read as one. Square-ended bar + square dot on
+                  // whole CSS pixels, so it's crisp at any device scale.
+                  <span className="dir-picker__owed" aria-hidden="true">
+                    <svg width="2" height="8" viewBox="0 0 2 8" shapeRendering="crispEdges">
+                      <rect x="0" y="0" width="2" height="5" fill="currentColor" />
+                      <rect x="0" y="6" width="2" height="2" fill="currentColor" />
+                    </svg>
+                  </span>
+                )}
               </>
             );
             const state = `${t.caption}: ${t.current ?? 'not set'}`;

@@ -4150,21 +4150,18 @@ button.dir-picker__tab {
 }
 
 /* UNSET: the enemy card's counter badge (blood-900 / blood-300 /
-   blood-700), riding the plate's top-right corner with a "!". */
+   blood-700), riding the plate's top-right corner with a DRAWN "!" (an
+   SVG in DirectionPicker.tsx — the themed font's "!" didn't read as one).
+   14px square: the 2×8 mark centres on whole pixels. */
 .dir-picker__owed {
   position: absolute;
   top: -7px;
   right: -7px;
-  min-width: 14px;
+  width: 14px;
   height: 14px;
-  padding: 0 3px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 10px;
-  line-height: 1;
-  font-weight: 700;
-  letter-spacing: 0;
   color: #f4a8a8; /* blood-300 */
   background-color: #6b1010; /* blood-900 */
   border: 1px solid #9e1b1b; /* blood-700 */
