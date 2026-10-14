@@ -12,6 +12,15 @@ import { VersionHistoryModal } from './VersionHistoryModal';
 import { createVersionSnapshot } from '../../services/versionService';
 import { useIsMobile } from '../../hooks/useMediaQuery';
 import { SpriteThumbnail } from './SpriteThumbnail';
+import { getRotationForDirection } from '../game/spellArt';
+
+// The eight bearings of the directional previews, turned by the board's own
+// rotation table (spellArt.ts) so a preview can never disagree with how a
+// bolt or strike actually flies.
+const PREVIEW_ROTATIONS = ([
+  ['E', Direction.EAST], ['NE', Direction.NORTHEAST], ['N', Direction.NORTH], ['NW', Direction.NORTHWEST],
+  ['W', Direction.WEST], ['SW', Direction.SOUTHWEST], ['S', Direction.SOUTH], ['SE', Direction.SOUTHEAST],
+] as const).map(([label, direction]) => ({ label, ...getRotationForDirection(direction) }));
 
 interface SpellAssetBuilderProps {
   spell?: SpellAsset; // If editing existing spell
@@ -382,16 +391,7 @@ const SpellSpriteEditor: React.FC<SpellSpriteEditorProps> = ({
             <div>
               <label className="block text-xs text-stone-400 mb-2">Directional Preview</label>
               <div className="grid grid-cols-4 gap-2 dungeon-panel p-3 rounded">
-                {[
-                  { label: 'E', rotation: 0, mirror: false },
-                  { label: 'NE', rotation: 45, mirror: false },
-                  { label: 'N', rotation: 90, mirror: false },
-                  { label: 'NW', rotation: 45, mirror: true },
-                  { label: 'W', rotation: 0, mirror: true },
-                  { label: 'SW', rotation: -45, mirror: true },
-                  { label: 'S', rotation: -90, mirror: false },
-                  { label: 'SE', rotation: -45, mirror: false },
-                ].map(({ label, rotation, mirror }) => (
+                {PREVIEW_ROTATIONS.map(({ label, rotation, mirror }) => (
                   <div key={label} className="flex flex-col items-center gap-1 p-2 bg-stone-900 rounded">
                     <span className="text-xs text-stone-400 font-bold">{label}</span>
                     <div className="w-12 h-12 flex items-center justify-center bg-stone-700 rounded">
@@ -532,16 +532,7 @@ const SpellSpriteEditor: React.FC<SpellSpriteEditorProps> = ({
                 <div>
                   <label className="block text-xs text-stone-400 mb-2">Directional Preview (first frame)</label>
                   <div className="grid grid-cols-4 gap-2 dungeon-panel p-3 rounded">
-                    {[
-                      { label: 'E', rotation: 0, mirror: false },
-                      { label: 'NE', rotation: 45, mirror: false },
-                      { label: 'N', rotation: 90, mirror: false },
-                      { label: 'NW', rotation: 45, mirror: true },
-                      { label: 'W', rotation: 0, mirror: true },
-                      { label: 'SW', rotation: -45, mirror: true },
-                      { label: 'S', rotation: -90, mirror: false },
-                      { label: 'SE', rotation: -45, mirror: false },
-                    ].map(({ label, rotation, mirror }) => (
+                    {PREVIEW_ROTATIONS.map(({ label, rotation, mirror }) => (
                       <div key={label} className="flex flex-col items-center gap-1 p-2 bg-stone-900 rounded">
                         <span className="text-xs text-stone-400 font-bold">{label}</span>
                         <SpriteSheetPreview

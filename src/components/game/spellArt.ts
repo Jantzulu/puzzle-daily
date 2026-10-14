@@ -403,15 +403,22 @@ function drawStar(ctx: CanvasRenderingContext2D, cx: number, cy: number, spikes:
 /**
  * Get rotation/mirror config for a direction
  * Base image points East (left-to-right →)
+ *
+ * Canvas (and CSS) rotation is CLOCKWISE on screen — y points down — so
+ * north is -90. Until 2026-10-14 north, north-east, south-east and south
+ * had their signs flipped: east-pointing art flying north pointed south
+ * (caught when the picker hub's cast preview flew an arrow up the rose).
+ * The mirrored west half was always right. The spell editor's directional
+ * previews read this table too.
  */
 export function getRotationForDirection(direction: Direction): { rotation: number; mirror: boolean } {
   switch (direction) {
     case Direction.EAST:
       return { rotation: 0, mirror: false };
     case Direction.NORTHEAST:
-      return { rotation: 45, mirror: false };
+      return { rotation: -45, mirror: false };
     case Direction.NORTH:
-      return { rotation: 90, mirror: false };
+      return { rotation: -90, mirror: false };
     case Direction.NORTHWEST:
       return { rotation: 45, mirror: true };
     case Direction.WEST:
@@ -419,9 +426,9 @@ export function getRotationForDirection(direction: Direction): { rotation: numbe
     case Direction.SOUTHWEST:
       return { rotation: -45, mirror: true };
     case Direction.SOUTH:
-      return { rotation: -90, mirror: false };
+      return { rotation: 90, mirror: false };
     case Direction.SOUTHEAST:
-      return { rotation: -45, mirror: false };
+      return { rotation: 45, mirror: false };
     default:
       return { rotation: 0, mirror: false };
   }
