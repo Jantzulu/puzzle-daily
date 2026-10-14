@@ -3969,23 +3969,9 @@ body.menu-gate-instant .heroes-title-layer {
   outline-offset: 3px;
 }
 
-/* Recessed well + hairline groove — the picker's cap-row furniture (the
-   experiment's cap-rail vocabulary, ported ONLY for the picker; main has no
-   cap rail, so the band-height hit cap that lived here is deliberately
-   absent and .hit-44's normal 44px slop applies). */
-.hero-cap__well {
-  color: var(--hud-gold);
-  background: rgba(0, 0, 0, 0.45);
-  border-radius: 2px;
-  box-shadow:
-    inset 0 1px 2px rgba(0, 0, 0, 0.8),
-    inset 0 -1px 0 rgba(255, 235, 200, 0.07);
-}
-
-.hero-cap__well:hover {
-  background: rgba(0, 0, 0, 0.25);
-}
-
+/* Hairline groove — the picker's cap-row furniture (the experiment's
+   cap-rail vocabulary, ported ONLY for the picker). Its recessed well went
+   with the close chevron (2026-10-14: the menu's painted X now). */
 .hero-cap__groove {
   flex: none;
   width: 1px;
@@ -4061,7 +4047,7 @@ body.menu-gate-instant .heroes-title-layer {
 }
 
 /* The sheet takes focus on open (useFocusTrap's focusContainer) so an Enter
-   cannot land on the close chevron. It is not a control: no ring around the
+   cannot land on the close X. It is not a control: no ring around the
    whole sheet after a keyboard open — the controls inside keep theirs. */
 .dir-picker__sheet:focus {
   outline: none;

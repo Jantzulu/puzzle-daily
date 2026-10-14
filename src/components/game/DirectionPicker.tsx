@@ -6,6 +6,11 @@ import { SpriteThumbnail } from '../editor/SpriteThumbnail';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { lockBodyScroll } from '../../utils/scrollLock';
 import compassIcon from '../../assets/icons/compass.png';
+import { navChromeIcon } from '../../assets/icons/navChrome';
+import { PaintedNavIcon } from '../shared/PaintedNavIcon';
+
+/** The hamburger menu's painted X — the picker's way out wears it too. */
+const CLOSE_ART = navChromeIcon('menu-close');
 
 /**
  * COMPASS ARROW — one glyph, drawn as SVG so it renders identically on every
@@ -104,7 +109,7 @@ export interface DirectionPickerEntry {
   /**
    * FACING entries only (user call 2026-08-01): the sheet stays open after a
    * pick — the hub hero turns to face the chosen bearing, so the player can
-   * try directions and watch, then close deliberately (scrim / chevron /
+   * try directions and watch, then close deliberately (scrim / the X /
    * Escape). Spell-direction entries keep the pick-and-dismiss flow.
    */
   isFacing?: boolean;
@@ -246,7 +251,7 @@ export const DirectionPicker: React.FC<DirectionPickerProps> = ({ entry, sprite,
   // `&& mounted`: on the render where `open` flips true the sheet is not in
   // the DOM yet (mounted is set by the effect below), and a trap keyed on
   // `open` alone ran against a null ref and never ran again. The dialog
-  // itself takes focus, not its first control: that is the close chevron,
+  // itself takes focus, not its first control: that is the close X,
   // and on a placement ask an Enter landing there would cancel the ask.
   const panelRef = useFocusTrap<HTMLDivElement>(open && mounted, { focusContainer: true });
   const rafRef = useRef<number | null>(null);
@@ -386,22 +391,26 @@ export const DirectionPicker: React.FC<DirectionPickerProps> = ({ entry, sprite,
           ) : (
             <span className="hud-label text-copper-300 whitespace-nowrap">Not set</span>
           )}
-          {/* 44x44 of real target, not the cap rail's 44x26. `.hero-cap__well`
-              is borrowed for the LOOK only; the sheet overrides its
-              `--hit-h` cap (see index.css) because that cap exists to keep a
-              cap control off the quest rung and the hero cards, and neither
-              is anywhere near this sheet. The picker exists BECAUSE its
-              predecessor was a 17px target on a required input — shipping
-              its way out at 26px would have been the same mistake, quieter. */}
+          {/* THE WAY OUT is the menu's X (user call 2026-10-14: the down
+              chevron in a recessed well read as "minimize" and sat off the
+              theme). The same painted art that closes the hamburger menu,
+              so one mark means "close" app-wide; the menu's SVG X stands in
+              if the PNG is ever removed. 44px of real target (hit-44) — the
+              picker exists BECAUSE its predecessor was a 17px target on a
+              required input, so its way out can't shrink either. */}
           <button
             type="button"
             onClick={onClose}
-            className="hero-cap__well hit-44 ml-auto flex items-center justify-center w-11 h-7 flex-shrink-0"
+            className="dir-picker__close hit-44 ml-auto flex items-center justify-center w-11 h-7 flex-shrink-0"
             aria-label="Close direction picker"
           >
-            <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
-              <path d="M2 4.5L6 8.5L10 4.5" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="square" />
-            </svg>
+            {CLOSE_ART ? (
+              <PaintedNavIcon src={CLOSE_ART} />
+            ) : (
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            )}
           </button>
         </div>
 
