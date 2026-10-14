@@ -360,8 +360,10 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
 
   const content = (
     <>
-      {/* Header row — unchanged */}
-      <div ref={questHeaderRef} className="relative flex items-center justify-between mb-2">
+      {/* Header row. mb-3 with the quest slot (user ask 2026-10-14: the
+          small scroll sat right on the hero cards — slightly more air, not
+          much); mb-2 otherwise. */}
+      <div ref={questHeaderRef} className={`relative flex items-center justify-between ${questSlot ? 'mb-3' : 'mb-2'}`}>
         {questSlot && <span data-quest-slot aria-hidden="true" className="quest-mini-slot" style={{ width: questGap }} />}
         <div className="flex items-center gap-2 min-w-[60px]">
           {onTest && !disabled && (
