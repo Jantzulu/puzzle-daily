@@ -383,15 +383,21 @@ export const DirectionPicker: React.FC<DirectionPickerProps> = ({ entry, sprite,
             const face = (
               <>
                 <span className="dir-picker__tab-text">{label}</span>
-                {owes(t) && (
+                {owes(t) ? (
                   // A DRAWN "!" (user pick 2026-10-14): the themed font's "!"
                   // didn't read as one. Square-ended bar + square dot on
                   // whole CSS pixels, so it's crisp at any device scale.
-                  <span className="dir-picker__owed" aria-hidden="true">
+                  <span className="dir-picker__badge dir-picker__badge--owed" aria-hidden="true">
                     <svg width="2" height="8" viewBox="0 0 2 8" shapeRendering="crispEdges">
                       <rect x="0" y="0" width="2" height="5" fill="currentColor" />
                       <rect x="0" y="6" width="2" height="2" fill="currentColor" />
                     </svg>
+                  </span>
+                ) : (
+                  // CHOSEN (user ask 2026-10-14): the same corner says which
+                  // way — the compass arrow in the chosen cell's purple.
+                  <span className="dir-picker__badge dir-picker__badge--set" aria-hidden="true">
+                    <CompassArrow direction={t.current!} size={10} />
                   </span>
                 )}
               </>

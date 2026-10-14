@@ -4182,11 +4182,14 @@ button.dir-picker__tab:not(.dir-picker__tab--active) .dir-picker__tab-text {
   }
 }
 
-/* UNSET: the enemy card's counter badge (blood-900 / blood-300 /
-   blood-700), riding the plate's top-right corner with a DRAWN "!" (an
-   SVG in DirectionPicker.tsx — the themed font's "!" didn't read as one).
-   14px square: the 2×8 mark centres on whole pixels. */
-.dir-picker__owed {
+/* THE CORNER BADGE, riding each plate's top-right corner. UNSET: the
+   enemy card's counter badge (blood-900 / blood-300 / blood-700) with a
+   DRAWN "!" (an SVG in DirectionPicker.tsx — the themed font's "!" didn't
+   read as one). CHOSEN (user ask 2026-10-14): the compass arrow pointing
+   the chosen way, in the rose's chosen-cell colours (.dir-cell--on), so
+   the tab says which way without opening it. 14px square: the 2×8 mark
+   and the 10px arrow both centre on whole pixels. */
+.dir-picker__badge {
   position: absolute;
   top: -7px;
   right: -7px;
@@ -4195,10 +4198,21 @@ button.dir-picker__tab:not(.dir-picker__tab--active) .dir-picker__tab-text {
   display: flex;
   align-items: center;
   justify-content: center;
+  border: 1px solid;
+  border-radius: 2px;
+}
+
+.dir-picker__badge--owed {
   color: #f4a8a8; /* blood-300 */
   background-color: #6b1010; /* blood-900 */
-  border: 1px solid #9e1b1b; /* blood-700 */
-  border-radius: 2px;
+  border-color: #9e1b1b; /* blood-700 */
+}
+
+.dir-picker__badge--set {
+  color: #fdf8eb; /* parchment-100, the chosen cell's arrow */
+  background-color: #4a2a71; /* arcane-800 */
+  background-image: linear-gradient(180deg, #7040a9, #4a2a71); /* arcane-600 to 800 */
+  border-color: #a98ad6; /* arcane-400 */
 }
 
 /* The sheet takes focus on open (useFocusTrap's focusContainer) so an Enter
