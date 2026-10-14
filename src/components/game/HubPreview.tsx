@@ -9,17 +9,23 @@ import { satellitesPaused } from './frameProfiler';
 import { DESPAWN_SHRINK_MS } from '../../engine/simulation';
 
 /**
- * THE PICKER HUB ON A SPELL TAB (user design 2026-10-14). Until the spell is
- * aimed, the hero idles toward their facing (the facing tab's choice, or the
- * authored one). Once it is aimed, a loop: the hero casts toward the aim
- * while the spell's own art goes that way — a bolt flies out over the chosen
- * button, a melee strike lands on it — then a beat idling toward the aim,
- * then again. Area spells (and the other no-art casts) play the cast alone.
+ * THE PICKER HUB — the hero being aimed, on every tab. On the FACING tab the
+ * hero idles toward the chosen bearing. On a SPELL tab (user design
+ * 2026-10-14) they idle toward their facing (the facing tab's choice, or the
+ * authored one) until the spell is aimed; once it is, a loop: the hero casts
+ * toward the aim while the spell's own art goes that way — a bolt flies out
+ * over the chosen button, a melee strike lands on it — then a beat idling
+ * toward the aim, then again. Area spells (and the other no-art casts) play
+ * the cast alone.
  *
  * Everything is drawn by the board's own routines: drawSprite for the hero
  * (pixel-perfect, as drawSpritePixelPerfect does), spellArt.ts for the bolt
- * and the strike. One canvas spans the whole rose, so the art can leave the
- * hub; the hero stays in the hub thumbnail's window, as on the facing tab.
+ * and the strike. ONE renderer for every tab: the facing tab once drew its
+ * hero through the card thumbnail, which places sprites differently (offsets
+ * at 1 CSS px per art px instead of the board's zoom, odd sizes unsnapped),
+ * so the hero jumped sideways between tabs (user report 2026-10-14). One
+ * canvas spans the whole rose, so the art can leave the hub; the hero stays
+ * in a 52px window in the hub, as the thumbnail did.
  */
 
 // The rose's geometry (index.css .dir-rose: 56px cells, 8px gaps).
@@ -28,8 +34,8 @@ const GAP = 8;
 const PITCH = CELL + GAP; // one board tile, in rose pixels
 const ROSE = CELL * 3 + GAP * 2;
 const C = ROSE / 2; // the hub's centre
-const HUB_TILE = 48; // a board tile in the hub: the hero at 2x art scale, like the thumbnail
-const WINDOW = 52; // the hub thumbnail's box — the hero is clipped to it
+const HUB_TILE = 48; // a board tile in the hub: the hero at 2x art scale
+const WINDOW = 52; // the hero's window in the 56px hub — clipped to it
 
 // One loop: the cast (the board holds the pose for the whole turn a spell is
 // cast), then a beat idling toward the aim.
@@ -96,16 +102,20 @@ function hubArtFor(spell: SpellAsset): HubArt | null {
   return { kind: 'cast' };
 }
 
-interface HubSpellPreviewProps {
+interface HubPreviewProps {
   sprite: CustomSprite;
-  spell: SpellAsset;
+  /** Spell tabs: the spell being aimed. Unset = the facing tab. */
+  spell?: SpellAsset;
   /** The spell's aim; unset = not aimed yet (the hero idles toward `facing`). */
   aim?: Direction;
-  /** The hero's facing — what they idle toward until the spell is aimed. */
+  /**
+   * What the hero idles toward: the facing tab's choice there; on a spell
+   * tab, the hero's facing until the spell is aimed. Unset = default art.
+   */
   facing?: Direction;
 }
 
-export const HubSpellPreview: React.FC<HubSpellPreviewProps> = ({ sprite, spell, aim, facing }) => {
+export const HubPreview: React.FC<HubPreviewProps> = ({ sprite, spell, aim, facing }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -116,7 +126,7 @@ export const HubSpellPreview: React.FC<HubSpellPreviewProps> = ({ sprite, spell,
     canvas.width = Math.round(ROSE * dpr);
     canvas.height = Math.round(ROSE * dpr);
 
-    const art = aim ? hubArtFor(spell) : null;
+    const art = aim && spell ? hubArtFor(spell) : null;
     const step = aim ? STEP[aim] : undefined;
     const rotation = aim ? getRotationForDirection(aim) : undefined;
     const reduceMotion = !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
@@ -181,7 +191,8 @@ export const HubSpellPreview: React.FC<HubSpellPreviewProps> = ({ sprite, spell,
       }
 
       // THE HERO: casting toward the aim for the turn, then idling toward it;
-      // unaimed (or a redirect), idling toward their facing.
+      // otherwise (the facing tab, an unaimed spell, a redirect) idling
+      // toward `facing`.
       const casting = !!art && t < CAST_MS;
       ctx.save();
       ctx.beginPath();
@@ -192,11 +203,11 @@ export const HubSpellPreview: React.FC<HubSpellPreviewProps> = ({ sprite, spell,
     };
     frame();
     return () => cancelAnimationFrame(raf);
-    // spell.id, not spell: spell assets are re-parsed from storage on every
+    // spell?.id, not spell: spell assets are re-parsed from storage on every
     // read, so the object is new on each parent render and would restart the
     // loop. Its content cannot change while the picker is up.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sprite, spell.id, aim, facing]);
+  }, [sprite, spell?.id, aim, facing]);
 
   return <canvas ref={canvasRef} className="dir-rose__fx" aria-hidden="true" />;
 };

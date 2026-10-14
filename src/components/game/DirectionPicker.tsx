@@ -1,9 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { Direction, SpellAsset } from '../../types/game';
-import type { CustomSprite, SpriteDirection } from '../../utils/assetStorage';
-import { SpriteThumbnail } from '../editor/SpriteThumbnail';
-import { HubSpellPreview } from './HubSpellPreview';
+import type { CustomSprite } from '../../utils/assetStorage';
+import { HubPreview } from './HubPreview';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { lockBodyScroll } from '../../utils/scrollLock';
 import compassIcon from '../../assets/icons/compass.png';
@@ -118,12 +117,6 @@ export interface DirectionPickerEntry {
   /** SPELL entries: the spell being aimed — the hub previews its cast. */
   spell?: SpellAsset;
 }
-
-// Game bearing → directional-sprite key, for the hub's turned idle.
-const SPRITE_DIR: Record<string, SpriteDirection> = {
-  north: 'n', northeast: 'ne', east: 'e', southeast: 'se',
-  south: 's', southwest: 'sw', west: 'w', northwest: 'nw',
-};
 
 /**
  * Compass initials for compact readouts (the hero drawer's note line lists
@@ -461,32 +454,20 @@ export const DirectionPicker: React.FC<DirectionPickerProps> = ({ entry, sprite,
             if (dir === null) {
               return (
                 <div key="hub" className="dir-rose__hub" aria-hidden="true">
-                  {sprite && shownEntry.spell ? (
-                    // Spell entries: the hero idles toward their facing until
-                    // the spell is aimed, then loops the cast toward the aim,
-                    // the spell's own art and all (HubSpellPreview). An aim
-                    // outside the allowed subset counts as unset (owes).
-                    <HubSpellPreview
+                  {sprite && (
+                    // One renderer for every tab (HubPreview), so the hero
+                    // never shifts when the tabs switch. Facing: the hero
+                    // idles in the chosen bearing (default art until one is
+                    // picked, or when the sprite has no variant for it).
+                    // Spell: they idle toward their facing until the spell
+                    // is aimed, then loop the cast toward the aim, the
+                    // spell's own art and all. An aim outside the allowed
+                    // subset counts as unset (owes).
+                    <HubPreview
                       sprite={sprite}
                       spell={shownEntry.spell}
-                      aim={owes(shownEntry) ? undefined : shownEntry.current}
-                      facing={facing}
-                    />
-                  ) : sprite && (
-                    <SpriteThumbnail
-                      sprite={sprite}
-                      size={52}
-                      pixelScale={2}
-                      previewType="entity"
-                      noBackground
-                      // Facing entries: the hub hero idles in the chosen
-                      // bearing (default art until one is picked, or when
-                      // the sprite has no variant for it).
-                      facingDirection={
-                        shownEntry.isFacing && shownEntry.current
-                          ? SPRITE_DIR[shownEntry.current]
-                          : undefined
-                      }
+                      aim={shownEntry.spell && !owes(shownEntry) ? shownEntry.current : undefined}
+                      facing={shownEntry.spell ? facing : shownEntry.current}
                     />
                   )}
                 </div>
