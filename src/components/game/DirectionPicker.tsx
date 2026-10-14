@@ -355,6 +355,9 @@ export const DirectionPicker: React.FC<DirectionPickerProps> = ({ entry, sprite,
   };
 
   const readOnly = !entry?.onPick;
+  // The top-edge plates: every choice when the parent passes them, else the
+  // lone entry being aimed.
+  const plateTabs = tabs.length > 0 ? tabs : [shownEntry];
 
   return createPortal(
     // theme-root re-applied because the portal lands OUTSIDE the app's wrapper:
@@ -375,14 +378,48 @@ export const DirectionPicker: React.FC<DirectionPickerProps> = ({ entry, sprite,
         aria-label={shownEntry.caption}
         className={`dir-picker__sheet ${shown ? 'dir-picker__sheet--in' : ''}`}
       >
-        {/* TITLE PLATE (theme pass 2026-10-14) — riding proud of the frame's
-            top edge: the app's title relation (QUEST on the scroll, LIVES /
-            TURNS on the rail). With tabs the captions live on the tabs, so
-            the plate names the hero being aimed instead of repeating the
-            active caption. CSS baseline in the board-hint chip's vocabulary
-            until the picker's own art is painted. */}
-        <div className="dir-picker__plate">
-          <span className="dir-picker__plate-chip hud-label text-copper-300">{tabs.length > 1 && shownTitle ? shownTitle : shownEntry.caption}</span>
+        {/* THE TABS (user design 2026-10-14) ride the frame's top edge where
+            the title plate rode — the app's title relation (QUEST on the
+            scroll, LIVES / TURNS on the rail): one plate per choice this hero
+            owes. With two or more they switch what is being aimed, and their
+            labels drop " Direction" to fit side by side (FACING, FIREBALL —
+            the hero drawer's short form); a lone choice is a plain plate
+            with its full caption. An unset choice wears a red "!" in its
+            corner, the enemy card's counter badge — it replaces the old
+            "Not set" line and the Place button's "N to pick". CSS baseline
+            in the board-hint chip's vocabulary until the picker's own art
+            is painted. */}
+        <div
+          className="dir-picker__tabs"
+          role={plateTabs.length > 1 ? 'group' : undefined}
+          aria-label={plateTabs.length > 1 ? `Choices${shownTitle ? ` for ${shownTitle}` : ''}` : undefined}
+        >
+          {plateTabs.map(t => {
+            const label = plateTabs.length > 1 ? t.caption.replace(/ Direction$/, '') : t.caption;
+            const face = (
+              <>
+                <span className="dir-picker__tab-text">{label}</span>
+                {owes(t) && <span className="dir-picker__owed" aria-hidden="true">!</span>}
+              </>
+            );
+            const state = `${t.caption}: ${t.current ?? 'not set'}`;
+            return plateTabs.length > 1 ? (
+              <button
+                key={t.key}
+                type="button"
+                onClick={() => handleTab(t.key)}
+                aria-pressed={t.key === shownEntry.key}
+                aria-label={state}
+                className={`dir-picker__tab hud-label text-copper-300${t.key === shownEntry.key ? ' dir-picker__tab--active' : ''}`}
+              >
+                {face}
+              </button>
+            ) : (
+              <span key={t.key} className="dir-picker__tab dir-picker__tab--active hud-label text-copper-300" aria-label={state}>
+                {face}
+              </span>
+            );
+          })}
         </div>
         {/* THE WAY OUT is the menu's X (user call 2026-10-14: the down
             chevron in a recessed well read as "minimize" and sat off the
@@ -411,53 +448,6 @@ export const DirectionPicker: React.FC<DirectionPickerProps> = ({ entry, sprite,
           </button>
         </div>
         <div ref={bodyRef} className="dir-picker__body">
-        {/* STATE ROW — the bearing as it stands, centred under the plate,
-            one slim line. */}
-        <div className="flex items-center justify-center h-3.5 mb-1.5">
-          {shownEntry.current ? (
-            // `capitalize` was here and never applied: `.theme-root .hud-label`
-            // (0,2,0) outranks the utility (0,1,0), so this always rendered
-            // uppercase. It is gone rather than left as a no-op — one
-            // register for every label in the sheet is the point.
-            <span className="hud-label text-parchment-300 flex items-center gap-1 whitespace-nowrap">
-              <CompassArrow direction={shownEntry.current} size={12} />
-              {shownEntry.current}
-            </span>
-          ) : (
-            <span className="hud-label text-copper-300 whitespace-nowrap">Not set</span>
-          )}
-        </div>
-
-        {/* TABS — one per choice this hero owes, only when there are two or
-            more. Each wears the .hero-order plate (loud brass while unset,
-            quiet arcane once chosen) with its caption inside, 44px tall; the
-            active one carries the gold ring. The row WRAPS and a tab never
-            goes below 96px — the width of the word DIRECTION plus the state
-            mark — so three tabs on a 320px phone or in the 288px desktop
-            popover lay out 2 + 1 instead of breaking every caption mid-word. */}
-        {tabs.length > 1 && (
-          <div className="flex flex-wrap gap-2 mb-3" role="group" aria-label="Choices">
-            {tabs.map(t => {
-              const active = t.key === shownEntry.key;
-              return (
-                <button
-                  key={t.key}
-                  type="button"
-                  onClick={() => handleTab(t.key)}
-                  aria-pressed={active}
-                  aria-label={`${t.caption}: ${t.current ?? 'not set'}`}
-                  className={`dir-tab hero-order ${owes(t) ? 'hero-order--open' : 'hero-order--done'} ${active ? 'dir-tab--active' : ''} hud-label flex-1 min-w-[96px] min-h-[44px] px-1.5 py-1 flex items-center justify-center gap-1.5 rounded-pixel border`}
-                  style={{ fontSize: '10px' }}
-                >
-                  <span className="min-w-0 break-words text-center leading-tight">{t.caption}</span>
-                  {owes(t)
-                    ? <span className="w-1.5 h-1.5 rounded-full bg-parchment-100 flex-shrink-0" aria-hidden="true" />
-                    : <CompassArrow direction={t.current!} size={14} className="flex-shrink-0" />}
-                </button>
-              );
-            })}
-          </div>
-        )}
 
         {/* THE ROSE. 56x56 cells with 8px gaps — no hit-slop anywhere, because
             slop between adjacent targets is exactly the failure mode this
@@ -527,8 +517,9 @@ export const DirectionPicker: React.FC<DirectionPickerProps> = ({ entry, sprite,
         </div>
 
         {/* PLACE — placement ask only. The .hero-order plate again: lit
-            brass once nothing is owed, recessed and inert until then (its
-            label counts what is still to pick). As wide as the rose. */}
+            brass once nothing is owed, recessed and inert until then (the
+            tabs' red "!" badges say what is still to pick). As wide as the
+            rose. */}
         {shownConfirm && (
           <>
             <button
@@ -539,14 +530,6 @@ export const DirectionPicker: React.FC<DirectionPickerProps> = ({ entry, sprite,
             >
               {shownConfirm.label}
             </button>
-            {/* A player who met this sheet by tapping the board never saw
-                the compass on the card, and re-placing the hero will not
-                bring the sheet back (the choices are kept). So the sheet
-                says where they live from now on — with the card chip's own
-                glyph, in its "all chosen" colour (user report 2026-09-30). */}
-            <p className="dir-later hud-label">
-              Change later with <CompassGlyph className="dir-later__glyph" /> on the hero&apos;s card
-            </p>
           </>
         )}
         </div>

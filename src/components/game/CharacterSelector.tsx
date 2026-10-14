@@ -886,7 +886,9 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
         // (no auto-dismiss on the last pick); dismissing cancels the ask.
         confirm={picker?.placing ? {
           enabled: pickerOwedCount === 0,
-          label: pickerOwedCount === 0 ? 'Place hero' : `${pickerOwedCount} to pick`,
+          // No count (user call 2026-10-14): the tabs' red "!" badges
+          // say what is still owed; the button just waits, recessed.
+          label: 'Place hero',
           onConfirm: () => onPlacementAimConfirm?.(),
         } : undefined}
         onClose={() => {

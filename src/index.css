@@ -3970,12 +3970,6 @@ body.menu-gate-instant .heroes-title-layer {
   border-radius: 2px;
 }
 
-/* The picker's tab for the entry being aimed right now. */
-.dir-tab--active {
-  outline: 2px solid var(--hud-gold);
-  outline-offset: 1px;
-}
-
 /* The placement ask's Place button, under the rose and as wide as it. */
 .dir-confirm {
   display: flex;
@@ -3990,33 +3984,6 @@ body.menu-gate-instant .heroes-title-layer {
 .dir-confirm:disabled {
   opacity: 0.6;
   cursor: default;
-}
-
-/* Under the Place button: where the choices live once the sheet is gone.
-   Quiet stone text; the glyph wears the card chip's "all chosen" colour
-   (.hero-aim-chip--done) so the player can match it to the card. */
-.dir-later {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 4px;
-  margin: 8px auto 0;
-  max-width: 260px;
-  text-align: center;
-  color: #9a8a6e; /* stone-400 */
-}
-
-.dir-later__glyph {
-  opacity: 0.5; /* the card's "all chosen" look, so the player can match it */
-}
-
-/* Keyboard focus on a tab is parchment and sits further out: the active mark
-   above is the same gold and width as the global focus ring, so without this
-   a focused tab and the active tab were indistinguishable. */
-.dir-tab:focus-visible {
-  outline: 2px solid #fdf8eb;
-  outline-offset: 3px;
 }
 
 /* ---- The picker ------------------------------------------------------
@@ -4063,7 +4030,9 @@ body.menu-gate-instant .heroes-title-layer {
 .dir-picker__sheet {
   position: fixed;
   left: 50%;
-  bottom: calc(env(safe-area-inset-bottom, 0px) + 40px);
+  /* 12px above the safe area (user, 2026-10-14 round 2: "lowered even
+     more" — it was 40px). */
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
   z-index: 59;
   /* 288 = the rose (3 × 56 + 2 × 8) in its field; a 320px phone keeps
      16px of page either side. */
@@ -4101,52 +4070,105 @@ body.menu-gate-instant .heroes-title-layer {
   }
 }
 
-/* The scroll box — COMPACT (user call 2026-10-14: shorter, so the board
-   shows above it): 14px under the plate for the slim state row, 14px under
-   the rose (the old 50px field is gone). Never taller than the screen: with
-   a tab row (and the Place button) the card outgrows a landscape phone,
-   and one taller than the viewport would push its plate and its way out
-   off the top — 96px leaves the plate's overhang and the card's bottom
-   offset clear. */
+/* The scroll box — COMPACT (user calls 2026-10-14: shorter, so the board
+   shows above it): the rose starts 7px under the tabs' lower half (the
+   "Not set" line went to the tabs' red badges), with 14px under it (the
+   old 50px field is gone). Never taller than the screen: with the Place
+   button the card can outgrow a landscape phone, and one taller than the
+   viewport would push its tabs and its way out off the top — 60px leaves
+   the tabs' overhang and the card's bottom offset clear. */
 .dir-picker__body {
-  max-height: calc(100dvh - 96px);
+  max-height: calc(100dvh - 60px);
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: 14px 16px 14px;
+  padding: 18px 16px 14px;
 }
 
-/* The X's corner, level with the slim state row (the frame is the fixed
-   containing block). */
+/* The X's corner: just under the tabs' lower half, beside the rose's top
+   row (the rose is 184px wide, centred, so the corner is clear). */
 .dir-picker__close-holder {
   position: absolute;
-  top: 7px;
+  top: 16px;
   right: 6px;
   z-index: 1;
 }
 
-/* The title plate, centred on the frame's top edge (integer offset, no
-   translate — the plate stays on whole pixels). */
-.dir-picker__plate {
+/* THE TABS: a row of plates centred on the frame's top edge (integer
+   offset, no translate — they stay on whole pixels). The row itself lets
+   taps through; the plates take them. */
+.dir-picker__tabs {
   position: absolute;
-  left: 0;
-  right: 0;
+  left: 8px;
+  right: 8px;
   top: -12px;
   display: flex;
   justify-content: center;
+  gap: 6px;
   pointer-events: none;
 }
 
-/* The board-hint chip's plate, opaque so the rim doesn't show through. */
-.dir-picker__plate-chip {
-  max-width: calc(100% - 32px);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+/* One plate: the board-hint chip's, opaque so the rim doesn't show
+   through. It never clips (the badge overhangs its corner) — the label
+   inside carries the ellipsis for a long spell name. */
+.dir-picker__tab {
+  position: relative;
+  min-width: 0;
+  flex: 0 1 auto;
   padding: 4px 12px;
   background-color: #15100a; /* stone-900 */
   border: 1px solid #8c5c37; /* copper-700 */
   border-radius: 2px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+  pointer-events: auto;
+}
+
+button.dir-picker__tab {
+  cursor: pointer;
+}
+
+.dir-picker__tab-text {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The choice being aimed: the gold rim; the others sit quieter until
+   hovered or picked. */
+.dir-picker__tab--active {
+  border-color: #d4a574; /* copper-400, the hud gold */
+}
+
+.dir-picker__tab:not(.dir-picker__tab--active) .dir-picker__tab-text {
+  opacity: 0.55;
+}
+
+@media (hover: hover) {
+  .dir-picker__tab:not(.dir-picker__tab--active):hover .dir-picker__tab-text {
+    opacity: 0.85;
+  }
+}
+
+/* UNSET: the enemy card's counter badge (blood-900 / blood-300 /
+   blood-700), riding the plate's top-right corner with a "!". */
+.dir-picker__owed {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  line-height: 1;
+  font-weight: 700;
+  letter-spacing: 0;
+  color: #f4a8a8; /* blood-300 */
+  background-color: #6b1010; /* blood-900 */
+  border: 1px solid #9e1b1b; /* blood-700 */
+  border-radius: 2px;
 }
 
 /* The sheet takes focus on open (useFocusTrap's focusContainer) so an Enter
