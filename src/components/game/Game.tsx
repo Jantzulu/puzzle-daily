@@ -3041,15 +3041,19 @@ export const Game: React.FC<GameProps> = ({
                 const maxPlaceable = gameState.puzzle.maxPlaceableCharacters ?? gameState.puzzle.maxCharacters;
                 if (maxPlaceable != null && gameState.placedCharacters.length >= maxPlaceable) return null;
                 return (
-                  // bottom-5 (was 2, user call 2026-08-01): the quest box's
-                  // plate now rides up near the board's bottom edge, so the
-                  // prompt sits higher to keep clear air between them.
+                  // LOWERED into the bottom wall band (user call 2026-10-14:
+                  // "too high, can sometimes cover tiles"): it rode bottom-5
+                  // only to clear the quest box's plate (2026-08-01), and the
+                  // quest now floats over the board's TOP. Measured: on a
+                  // phone the band is 36px (board at 0.75x) and the art chip
+                  // 33px, so 2px seats it 1px clear of the floor; desktop
+                  // boards draw ~1x (a 48px band), where 8px centres it.
                   // (LINE comments — a {/* */} before the JSX root inside
                   // `return (` is an expression-position parse error; this
                   // exact mistake has now broken the page twice.)
                   // TapHintChip owns the chip look (CSS or forge-cut art);
                   // this wrapper keeps only the board positioning.
-                  <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-20 whitespace-nowrap pointer-events-none">
+                  <div className="absolute bottom-0.5 lg:bottom-2 left-1/2 -translate-x-1/2 z-20 whitespace-nowrap pointer-events-none">
                     <TapHintChip>Tap the dungeon to place your hero</TapHintChip>
                   </div>
                 );
