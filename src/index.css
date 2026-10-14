@@ -4133,19 +4133,52 @@ button.dir-picker__tab {
   white-space: nowrap;
 }
 
-/* The choice being aimed: the gold rim; the others sit quieter until
-   hovered or picked. */
+/* The choice being aimed. A lone plate (one choice owed) just wears the
+   gold rim. With TWO OR MORE tabs (user, 2026-10-14: "just dimming the
+   unselected one is not enough") the one being aimed is LIT in the menu's
+   active-page look (.nav-gate-item-active): a gold label, a lit bevel and a
+   gold glow around it — while the others sit RECESSED: darker than the
+   frame, a dim rim, a pressed-in shadow, a muted label. */
 .dir-picker__tab--active {
   border-color: #d4a574; /* copper-400, the hud gold */
 }
 
-.dir-picker__tab:not(.dir-picker__tab--active) .dir-picker__tab-text {
-  opacity: 0.55;
+/* The glow is three STEPPED 1px rings, not a blur: a pixel-art falloff,
+   crisp at any scale, and nothing for mobile Safari to box over the
+   board's canvas (the nav gate's law: blurred glows box there). A
+   gradient bloom behind the plate was tried first — the opaque plate hid
+   its strong middle and the visible rim was too faint to read. */
+button.dir-picker__tab--active {
+  background-color: #2a2118; /* stone-800 */
+  background-image: linear-gradient(180deg, rgba(228, 185, 106, 0.16), rgba(228, 185, 106, 0.04));
+  border-color: #e4b96a;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 235, 200, 0.22),
+    0 0 0 1px rgba(228, 185, 106, 0.45),
+    0 0 0 2px rgba(228, 185, 106, 0.25),
+    0 0 0 3px rgba(228, 185, 106, 0.12),
+    0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+button.dir-picker__tab--active .dir-picker__tab-text {
+  color: #e4b96a;
+}
+
+button.dir-picker__tab:not(.dir-picker__tab--active) {
+  background-color: #0a0805; /* stone-950 */
+  border-color: #5e3d29; /* copper-900 */
+  box-shadow:
+    inset 0 2px 3px rgba(0, 0, 0, 0.6),
+    0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+button.dir-picker__tab:not(.dir-picker__tab--active) .dir-picker__tab-text {
+  color: #9a8a6e; /* stone-400 */
 }
 
 @media (hover: hover) {
-  .dir-picker__tab:not(.dir-picker__tab--active):hover .dir-picker__tab-text {
-    opacity: 0.85;
+  button.dir-picker__tab:not(.dir-picker__tab--active):hover .dir-picker__tab-text {
+    color: #ebc097; /* copper-300 */
   }
 }
 
