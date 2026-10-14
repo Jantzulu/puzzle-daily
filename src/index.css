@@ -4028,11 +4028,14 @@ body.menu-gate-instant .heroes-title-layer {
   background: none;
 }
 
+/* The scrim no longer DIMS (user call 2026-10-14: the board — where the
+   hero stands or will stand — must stay readable while choosing its
+   bearing). It still catches the outside tap that closes the picker. */
 .dir-picker__scrim {
   position: fixed;
   inset: 0;
   z-index: 58;
-  background: rgba(0, 0, 0, 0.58);
+  background: none;
   opacity: 0;
   transition: opacity 0.2s cubic-bezier(0.2, 0, 0, 1);
 }
@@ -4041,10 +4044,12 @@ body.menu-gate-instant .heroes-title-layer {
   opacity: 1;
 }
 
-/* A CENTRED POPOVER at every width (user call 2026-10-14: on phones the
-   full-width bottom sheet "takes up the entire width of the device (and
-   extra step below)" — they wanted the desktop popover's size as an
-   overlay). TRANSFORM AND OPACITY ONLY. The ground is OPAQUE — the
+/* A FLOATING CARD, the desktop popover's size at every width (user calls
+   2026-10-14: on phones the full-width bottom sheet "takes up the entire
+   width of the device (and extra step below)"; then: sit LOW on phones
+   and keep the board in view). Below lg it rides near the bottom of the
+   screen, clear of the home indicator and Safari's floating toolbar; at
+   lg+ it centres. TRANSFORM AND OPACITY ONLY. The ground is OPAQUE — the
    popover sits OVER the page, so a translucent wash would let the hero
    cards show through the rose.
    THEME PASS (user ask 2026-10-14: the sheet "does not visually follow the
@@ -4058,7 +4063,7 @@ body.menu-gate-instant .heroes-title-layer {
 .dir-picker__sheet {
   position: fixed;
   left: 50%;
-  top: 50%;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 40px);
   z-index: 59;
   /* 288 = the rose (3 × 56 + 2 × 8) in its field; a 320px phone keeps
      16px of page either side. */
@@ -4072,7 +4077,7 @@ body.menu-gate-instant .heroes-title-layer {
   box-shadow:
     inset 0 1px 0 rgba(0, 0, 0, 0.55),
     0 12px 34px rgba(0, 0, 0, 0.7);
-  transform: translate(-50%, -50%) translateY(10px);
+  transform: translateX(-50%) translateY(10px);
   opacity: 0;
   transition:
     transform 0.2s cubic-bezier(0.2, 0, 0, 1),
@@ -4080,20 +4085,43 @@ body.menu-gate-instant .heroes-title-layer {
 }
 
 .dir-picker__sheet--in {
-  transform: translate(-50%, -50%);
+  transform: translateX(-50%);
   opacity: 1;
 }
 
-/* The scroll box, keeping the 50px field under the rose (the size the user
-   picked). Never taller than the screen: with a tab row (and the Place
-   button) the popover outgrows a landscape phone, and one taller than the
-   viewport would push its plate and its way out off the top — 48px leaves
-   the plate's 12px overhang clear on both ends. */
+@media (min-width: 1024px) {
+  .dir-picker__sheet {
+    top: 50%;
+    bottom: auto;
+    transform: translate(-50%, -50%) translateY(10px);
+  }
+
+  .dir-picker__sheet--in {
+    transform: translate(-50%, -50%);
+  }
+}
+
+/* The scroll box — COMPACT (user call 2026-10-14: shorter, so the board
+   shows above it): 14px under the plate for the slim state row, 14px under
+   the rose (the old 50px field is gone). Never taller than the screen: with
+   a tab row (and the Place button) the card outgrows a landscape phone,
+   and one taller than the viewport would push its plate and its way out
+   off the top — 96px leaves the plate's overhang and the card's bottom
+   offset clear. */
 .dir-picker__body {
-  max-height: calc(100dvh - 48px);
+  max-height: calc(100dvh - 96px);
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: 16px 16px 50px;
+  padding: 14px 16px 14px;
+}
+
+/* The X's corner, level with the slim state row (the frame is the fixed
+   containing block). */
+.dir-picker__close-holder {
+  position: absolute;
+  top: 7px;
+  right: 6px;
+  z-index: 1;
 }
 
 /* The title plate, centred on the frame's top edge (integer offset, no

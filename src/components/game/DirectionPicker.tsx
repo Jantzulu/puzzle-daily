@@ -384,10 +384,36 @@ export const DirectionPicker: React.FC<DirectionPickerProps> = ({ entry, sprite,
         <div className="dir-picker__plate">
           <span className="dir-picker__plate-chip hud-label text-copper-300">{tabs.length > 1 && shownTitle ? shownTitle : shownEntry.caption}</span>
         </div>
+        {/* THE WAY OUT is the menu's X (user call 2026-10-14: the down
+            chevron in a recessed well read as "minimize" and sat off the
+            theme). The same painted art that closes the hamburger menu, so
+            one mark means "close" app-wide; the menu's SVG X stands in if
+            the PNG is ever removed. Pinned to the frame's top-right corner
+            rather than given a row (user, same day: shorter, so the board
+            stays in view while aiming). 44px of real target (hit-44) — the
+            picker exists BECAUSE its predecessor was a 17px target on a
+            required input, so its way out can't shrink either. The holder
+            places it: .hit-44 sets the button's own position. */}
+        <div className="dir-picker__close-holder">
+          <button
+            type="button"
+            onClick={onClose}
+            className="dir-picker__close hit-44 flex items-center justify-center w-11 h-7"
+            aria-label="Close direction picker"
+          >
+            {CLOSE_ART ? (
+              <PaintedNavIcon src={CLOSE_ART} />
+            ) : (
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            )}
+          </button>
+        </div>
         <div ref={bodyRef} className="dir-picker__body">
         {/* STATE ROW — the bearing as it stands, centred under the plate,
-            and the way out at the frame's right. */}
-        <div className="relative flex items-center justify-center h-7 mb-2.5">
+            one slim line. */}
+        <div className="flex items-center justify-center h-3.5 mb-1.5">
           {shownEntry.current ? (
             // `capitalize` was here and never applied: `.theme-root .hud-label`
             // (0,2,0) outranks the utility (0,1,0), so this always rendered
@@ -400,32 +426,6 @@ export const DirectionPicker: React.FC<DirectionPickerProps> = ({ entry, sprite,
           ) : (
             <span className="hud-label text-copper-300 whitespace-nowrap">Not set</span>
           )}
-          {/* THE WAY OUT is the menu's X (user call 2026-10-14: the down
-              chevron in a recessed well read as "minimize" and sat off the
-              theme). The same painted art that closes the hamburger menu,
-              so one mark means "close" app-wide; the menu's SVG X stands in
-              if the PNG is ever removed. 44px of real target (hit-44) — the
-              picker exists BECAUSE its predecessor was a 17px target on a
-              required input, so its way out can't shrink either. */}
-          {/* The holder pins it to the frame's right: .hit-44 sets the
-              button's own position (relative, for its slop) and would
-              drag it back beside the readout. */}
-          <div className="absolute right-0 top-0">
-            <button
-              type="button"
-              onClick={onClose}
-              className="dir-picker__close hit-44 flex items-center justify-center w-11 h-7"
-              aria-label="Close direction picker"
-            >
-              {CLOSE_ART ? (
-                <PaintedNavIcon src={CLOSE_ART} />
-              ) : (
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              )}
-            </button>
-          </div>
         </div>
 
         {/* TABS — one per choice this hero owes, only when there are two or
