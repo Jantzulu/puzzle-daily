@@ -53,8 +53,8 @@ const EFFECT_MS = 300;
 // single tile of flight.
 const FLIGHT_TILES = 1.25;
 const FLIGHT_SLOWMO = 2;
-// Reduce Motion: no flight — the bolt fades in and out over the button.
-const FADE_MS = 150;
+// The bolt flies under Reduce Motion too (user call 2026-10-15: minimal movement, in a project full of it); it used to fade in and
+// out over the button instead.
 
 // THE REDIRECT SCENE (user design 2026-10-15): a redirect's choice turns its
 // TARGET, so a redirect tab shows the target, not the caster — fading in
@@ -178,7 +178,6 @@ export const HubPreview: React.FC<HubPreviewProps> = ({ sprite, spell, aim, faci
     const redirectHit = spell?.sprites.damageEffect?.spriteData;
     const step = aim ? STEP[aim] : undefined;
     const rotation = aim ? getRotationForDirection(aim) : undefined;
-    const reduceMotion = !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
     const flightMs = art?.kind === 'bolt' ? FLIGHT_TILES * art.tileMs * FLIGHT_SLOWMO : 0;
     const period = Math.max(CAST_MS, flightMs, EFFECT_MS) + IDLE_MS;
     // The board's clock (wall time): the sprite-sheet states are shared.
@@ -249,19 +248,13 @@ export const HubPreview: React.FC<HubPreviewProps> = ({ sprite, spell, aim, faci
             drawParticleArt(ctx, art.castFlash, C, C, castStart, now, EFFECT_MS, 1, HUB_TILE);
           }
           if (t < flightMs) {
-            let dist: number;
+            const dist = t / (art.tileMs * FLIGHT_SLOWMO);
             let scale = art.scale;
-            if (reduceMotion) {
-              dist = 1;
-              ctx.globalAlpha = Math.max(0, Math.min(1, t / FADE_MS, (flightMs - t) / FADE_MS));
-            } else {
-              dist = t / (art.tileMs * FLIGHT_SLOWMO);
-              // The board's fizzle: ease-in cubic over the flight's last stretch.
-              const left = flightMs - t;
-              if (left <= DESPAWN_SHRINK_MS) {
-                const p = 1 - left / DESPAWN_SHRINK_MS;
-                scale *= 1 - p * p * p;
-              }
+            // The board's fizzle: ease-in cubic over the flight's last stretch.
+            const left = flightMs - t;
+            if (left <= DESPAWN_SHRINK_MS) {
+              const p = 1 - left / DESPAWN_SHRINK_MS;
+              scale *= 1 - p * p * p;
             }
             if (scale > 0.01) {
               const px = C + step[0] * dist * PITCH;

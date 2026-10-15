@@ -1001,15 +1001,7 @@ html body.theme-font-active,
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .compendium-slab-mesh {
-    animation: none;
-    filter:
-      drop-shadow(0 8px 18px rgba(0, 0, 0, 0.55))
-      drop-shadow(0 0 10px var(--arcane-aura))
-      drop-shadow(0 0 26px var(--arcane-aura));
-  }
-}
+/* The pulse runs under Reduce Motion too (user call 2026-10-15: minimal movement, in a project full of it). */
 
 /* Content face — sits on the mesh's flattened plate. The text-shadow is
    the "carved into stone" treatment (debossed): a dark line above each
@@ -3561,12 +3553,7 @@ body:not(.menu-gate-lowered) .quest-panel-sticky[data-jostle] .control-rail {
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .compendium-flip,
-  .compendium-flip--from-right {
-    animation: none;
-  }
-}
+/* Runs under Reduce Motion too: mostly a fade, with a 3px rise (user call 2026-10-15: minimal movement, in a project full of it). */
 
 /* Runic chevron buttons carved into the slab's bottom corners */
 .compendium-turn-corner {
@@ -3925,21 +3912,8 @@ body:not(.menu-gate-lowered) .quest-panel-sticky[data-jostle] .control-rail {
   animation: hud-breathe 2s ease-in-out infinite;
 }
 
-/* Redefining the keyframes under reduced-motion neutralizes EVERY user of
-   the animation, including Tailwind arbitrary-value call sites, which a
-   class-scoped `animation: none` would miss. */
-@media (prefers-reduced-motion: reduce) {
-  @keyframes hud-breathe {
-    0%,
-    100% {
-      opacity: 1;
-    }
-  }
-
-  .hud-breathe {
-    animation: none;
-  }
-}
+/* Breathes under Reduce Motion too: an opacity change moves nothing
+   (user call 2026-10-15: minimal movement, in a project full of it). */
 
 /* ============================================
    THE ORDER PLATE + THE DIRECTION PICKER — ported from the experiment at
@@ -4039,7 +4013,7 @@ body:not(.menu-gate-lowered) .quest-panel-sticky[data-jostle] .control-rail {
 
 /* The OWED glow: a layer, not a shadow/filter (blur over painted art fails —
    see the rendering notes), breathing on OPACITY only (hud-breathe, which
-   reduced-motion already neutralizes). Fades to nothing inside its box
+   runs under Reduce Motion too). Fades to nothing inside its box
    (closest-side), so no edge shows. */
 .hero-aim-chip--owed .hero-aim-icon::before {
   content: '';
@@ -4358,12 +4332,8 @@ button.dir-picker__tab:not(.dir-picker__tab--active) .dir-picker__tab-text {
   outline: none;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .dir-picker__scrim,
-  .dir-picker__sheet {
-    transition: none;
-  }
-}
+/* The entrance (a 10px rise and a fade) runs under Reduce Motion too
+   (user call 2026-10-15: minimal movement, in a project full of it). */
 
 .dir-rose {
   display: grid;
@@ -4595,11 +4565,6 @@ button.dir-picker__tab:not(.dir-picker__tab--active) .dir-picker__tab-text {
 }
 
 .movement-arrow-anim {
+  /* Runs under Reduce Motion too (user call 2026-10-15: minimal movement, in a project full of it). */
   animation: movement-arrow-travel 1.2s ease-in-out infinite;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .movement-arrow-anim {
-    animation: none;
-  }
 }
