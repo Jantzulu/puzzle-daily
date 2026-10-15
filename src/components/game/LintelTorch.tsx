@@ -14,8 +14,9 @@ const Z = 2;
  * COST (the user asked): no script runs per frame. The flame is a Web
  * Animations transform loop and the light a CSS opacity/scale flicker,
  * both the compositor's work, and both pause while the torch is off screen.
- * Reduce Motion holds one still frame and steady light. `phase` (ms)
- * offsets this torch's loops so a pair never burns in step.
+ * They burn under Reduce Motion too (user call 2026-10-15: the movement is
+ * minimal, in a project full of it). `phase` (ms) offsets this torch's
+ * loops so a pair never burns in step.
  */
 export const LintelTorch: React.FC<{ phase?: number }> = ({ phase = 0 }) => {
   const [lit, setLit] = React.useState(true);
@@ -35,11 +36,10 @@ export const LintelTorch: React.FC<{ phase?: number }> = ({ phase = 0 }) => {
     const strip = stripRef.current;
     if (!strip) return;
     const at = (frame: number) => `translateX(${-frame * fw}px)`;
-    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
     let anim: Animation | null = null;
     if (lit) {
       strip.style.transform = at(0);
-      if (!reduce && SHEET.litFrames > 1) {
+      if (SHEET.litFrames > 1) {
         anim = strip.animate([{ transform: at(0) }, { transform: at(SHEET.litFrames) }], {
           duration: (SHEET.litFrames / SHEET.fps) * 1000,
           iterations: Infinity,
@@ -49,7 +49,7 @@ export const LintelTorch: React.FC<{ phase?: number }> = ({ phase = 0 }) => {
       }
     } else {
       strip.style.transform = at(SHEET.outFrame);
-      if (!reduce && SHEET.smokeFrames > 0) {
+      if (SHEET.smokeFrames > 0) {
         anim = strip.animate([{ transform: at(SHEET.outFrame + 1) }, { transform: at(SHEET.outFrame + 1 + SHEET.smokeFrames) }], {
           duration: (SHEET.smokeFrames / SHEET.fps) * 1000,
           easing: `steps(${SHEET.smokeFrames})`,

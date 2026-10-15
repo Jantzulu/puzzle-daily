@@ -3727,13 +3727,8 @@ body:not(.menu-gate-lowered) .quest-panel-sticky[data-jostle] .control-rail {
   68% { opacity: 1; transform: scale(1.05); }
   83% { opacity: 0.9; transform: scale(1); }
 }
-
-@media (prefers-reduced-motion: reduce) {
-  .lintel-torch-light > span {
-    animation: none;
-    opacity: 0.9;
-  }
-}
+/* No Reduce Motion variant (user call 2026-10-15): the flicker is minimal,
+   in a project full of motion. */
 
 /* (dungeon-lintel-gem removed 2026-08-13: the center mark between
    DUNGEON and DETAILS retired by user call, along with the
