@@ -18,6 +18,7 @@ import { isTileActiveOnTurn } from '../../engine/actions';
 import { subscribeToImageLoads, loadImage, isImageReady } from '../../utils/imageLoader';
 import { blobShadowsEnabled, drawBlobShadow, drawDeathBlobShadow, drawProjectileBlobShadow } from './blobShadows';
 import { drawLightGlow } from './lightGlow';
+import { hasMovementActions, enemyHasMovementActions, drawFacingArrow } from './facingArrow';
 import { drawSpellSpriteSheet, drawSpellSpriteSheetFromStartTime, drawShape, getRotationForDirection, drawDefaultProjectile, drawProjectileArt, drawParticleArt } from './spellArt';
 import { wallAOEnabled, drawWallAO, AO_VOID_OCCLUDES } from './wallAO';
 import { staticBakeEnabled } from './staticBake';
@@ -25,33 +26,8 @@ import { atmosphereEnabled } from './atmosphere';
 import { profFrameStart, profPhase, profFrameEnd, drawFreezeEnabled } from './frameProfiler';
 import { staleMidGameWalkIns, indicesBeyond } from './boardIndexPrune';
 
-// Movement action types - entities with these actions should show direction arrow
-const MOVEMENT_ACTIONS = new Set([
-  ActionType.MOVE_FORWARD,
-  ActionType.MOVE_BACKWARD,
-  ActionType.MOVE_LEFT,
-  ActionType.MOVE_RIGHT,
-  ActionType.MOVE_DIAGONAL_NE,
-  ActionType.MOVE_DIAGONAL_NW,
-  ActionType.MOVE_DIAGONAL_SE,
-  ActionType.MOVE_DIAGONAL_SW,
-]);
-
-/**
- * Check if a character's behavior contains any movement actions
- */
-function hasMovementActions(behavior: CharacterAction[]): boolean {
-  return behavior.some(action => MOVEMENT_ACTIONS.has(action.type));
-}
-
-/**
- * Check if an enemy's behavior pattern contains any movement actions
- */
-function enemyHasMovementActions(behavior: EnemyBehavior | undefined): boolean {
-  if (!behavior || behavior.type !== 'active') return false;
-  if (!behavior.pattern || behavior.pattern.length === 0) return false;
-  return behavior.pattern.some(action => MOVEMENT_ACTIONS.has(action.type));
-}
+// The movement test behind the facing arrow's colour lives in ./facingArrow
+// (shared with the direction picker's hub since 2026-10-15).
 
 /**
  * PLACEMENT GHOST (user design 2026-10-14): while a placement ask is open (a
@@ -4980,7 +4956,6 @@ function drawDirectionIndicator(
   barIcon?: BarIconKind,
   isMoving: boolean = true
 ) {
-  const arrowSize = 3; // Small arrow
   const barWidth = 30;
   const bossIconSize = 7;
   const bossIconGap = 2;
@@ -4994,37 +4969,8 @@ function drawDirectionIndicator(
   const indicatorX = barEndX + 3; // 3px gap from health bar
   const indicatorY = barTopY + HEALTH_BAR_HEIGHT / 2; // Centered with health bar
 
-  // Draw arrow rotated based on direction
-  ctx.save();
-  ctx.translate(indicatorX, indicatorY);
-
-  // Rotate based on direction (0 = East/right, rotating clockwise)
-  const rotationAngles: Record<Direction, number> = {
-    [Direction.EAST]: 0,
-    [Direction.SOUTHEAST]: Math.PI / 4,
-    [Direction.SOUTH]: Math.PI / 2,
-    [Direction.SOUTHWEST]: (3 * Math.PI) / 4,
-    [Direction.WEST]: Math.PI,
-    [Direction.NORTHWEST]: (-3 * Math.PI) / 4,
-    [Direction.NORTH]: -Math.PI / 2,
-    [Direction.NORTHEAST]: -Math.PI / 4,
-  };
-
-  ctx.rotate(rotationAngles[direction] || 0);
-
-  // Draw a simple arrow pointing right (will be rotated)
-  // Green for moving entities, grey for facing-only entities
-  ctx.fillStyle = isMoving ? 'rgba(255, 200, 50, 0.95)' : 'rgba(180, 180, 180, 0.7)';
-  ctx.beginPath();
-  // Arrow shape: triangle pointing right
-  const baseHalfWidth = arrowSize / 2 + 0.5; // Make base 1px wider
-  ctx.moveTo(arrowSize, 0); // Tip
-  ctx.lineTo(-arrowSize / 2, -baseHalfWidth); // Top left
-  ctx.lineTo(-arrowSize / 2, baseHalfWidth); // Bottom left
-  ctx.closePath();
-  ctx.fill();
-
-  ctx.restore();
+  // The arrow itself — ./facingArrow (the picker hub draws it too).
+  drawFacingArrow(ctx, indicatorX, indicatorY, direction, isMoving);
 }
 
 /**
