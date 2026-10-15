@@ -2,6 +2,7 @@ import React from 'react';
 import { IRON } from '../game/PortcullisMesh';
 import navJson from '../../assets/panels/nav-gate-slices.json';
 import { Z, buildSkin, barCenters, EDGE_BAR_INSET, nomW, nomH, drawFixed, drawTiled, prepCanvas, whenDecoded, useCrispSnap, type SkinPiece } from '../game/panelSkins';
+import { useGateImpactWobble, type GateImpact } from './signWobble';
 
 // ============================================================================
 // GATE BEAM — one horizontal portcullis beam per nav menu item (all widths)
@@ -191,6 +192,16 @@ const GateBeamSkin: React.FC<{ first?: boolean }> = ({ first = false }) => {
 };
 
 /**
+ * THE MENU'S LOOSE SIGNS (user ask 2026-10-15): when the gate lands (the
+ * slam), every sign on the open menu (the page links and the utility
+ * pills alike) rattles on its bolt, like the rail's poked plaques
+ * (shared/signWobble.ts). Only inside the open menu: the same plates on
+ * other surfaces hold still.
+ */
+const menuSignImpact = (kind: GateImpact, el: HTMLElement) =>
+  (kind === 'slam' && el.closest('.menu-gate-open') ? 1 : 0);
+
+/**
  * A menu item's label on its steel plate sign. Baseline: the plain span the
  * CSS plates (.nav-gate-item > span). Skinned: the CSS stock switches off
  * (span.nav-gate-sign-skinned) and a 3-slice canvas paints the plate behind
@@ -198,6 +209,7 @@ const GateBeamSkin: React.FC<{ first?: boolean }> = ({ first = false }) => {
  */
 export const GateSign: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const snapRef = useCrispSnap<HTMLSpanElement>(navSignSkinActive, true);
+  useGateImpactWobble(snapRef, menuSignImpact);
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
   React.useLayoutEffect(() => {
     if (!navSignSkinActive) return;

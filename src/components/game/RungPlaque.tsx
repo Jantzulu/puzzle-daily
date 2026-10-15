@@ -1,6 +1,7 @@
 import React from 'react';
 import skinJson from '../../assets/panels/rung-plaque-slices.json';
-import { Z, buildSkin, nomW, nomH, useCrispSnap, resnapWithin, prepCanvas, drawFixed, drawTiled, whenDecoded, type SkinPiece } from './panelSkins';
+import { Z, buildSkin, nomW, nomH, useCrispSnap, prepCanvas, drawFixed, drawTiled, whenDecoded, type SkinPiece } from './panelSkins';
+import { wobbleSign, useGateImpactWobble, type GateImpact } from '../shared/signWobble';
 
 // ============================================================================
 // RUNG PLAQUE — one shared 3-slice worn by BOTH rail plaques
@@ -79,20 +80,13 @@ export const plaqueHeaderStraddle = (pieces: Map<string, SkinPiece>): number =>
 const HEADER_BLEED = 8;
 
 /**
- * THE LOOSE SIGN (user ask 2026-10-15, "purely for fun"): poke a plaque and
- * it rocks on a bolt that isn't as tight as it should be. Header plate,
- * hearts and counter move as one, in a quick wobble that dies out, the
- * poked side dipping first. Stops: degrees, times the poked side (+1 =
- * the right half, so clockwise first).
+ * THE LOOSE SIGN (user asks 2026-10-15; the wobble is shared, see
+ * shared/signWobble.ts): poke a plaque and it rocks on its loose bolt,
+ * header plate, hearts and counter as one, the poked side dipping first.
+ * The menu gate's impacts rattle it too: a full rattle when the gate lands
+ * (the slam), a little one when it locks shut (the clunk).
  */
-const WOBBLE_STOPS = [
-  { offset: 0.12, deg: 2.5 },
-  { offset: 0.3, deg: -1.8 },
-  { offset: 0.48, deg: 1.1 },
-  { offset: 0.66, deg: -0.6 },
-  { offset: 0.84, deg: 0.25 },
-];
-const WOBBLE_MS = 550;
+const plaqueImpact = (kind: GateImpact) => (kind === 'slam' ? 1 : 0.6);
 
 /**
  * The header plate: text-driven width (quest-plate spacer plumbing), DOM
@@ -180,27 +174,13 @@ export const PlaqueHeaderLabel: React.FC<{ children: React.ReactNode }> = ({ chi
 export const RungPlaque: React.FC<{ header?: string; children: React.ReactNode }> = ({ header, children }) => {
   const snapRef = useCrispSnap<HTMLSpanElement>(rungPlaqueActive, true);
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
-  const wobbleRef = React.useRef<Animation | null>(null);
-  // THE LOOSE SIGN's wobble: the individual `rotate` property (Web
-  // Animations), clear of useCrispSnap's left/top. Each poke starts from
-  // wherever the last left the sign, so a quick second poke never jumps.
-  // Once it settles, the sign and its header plate re-snap: a snap that
-  // ran mid-wobble measured the tilted box. Runs under Reduce Motion too
-  // (user call 2026-10-15: minimal movement, in a project full of it).
+  useGateImpactWobble(snapRef, plaqueImpact);
+  // A poke: the poked half dips first.
   const poke = (e: React.PointerEvent<HTMLSpanElement>) => {
     if (e.button !== 0) return;
     const el = e.currentTarget;
     const r = el.getBoundingClientRect();
-    const side = e.clientX < r.left + r.width / 2 ? -1 : 1;
-    const from = parseFloat(getComputedStyle(el).rotate) || 0;
-    wobbleRef.current?.cancel();
-    const anim = el.animate([
-      { offset: 0, rotate: `${from}deg`, easing: 'ease-out' },
-      ...WOBBLE_STOPS.map(s => ({ offset: s.offset, rotate: `${s.deg * side}deg`, easing: 'ease-in-out' })),
-      { offset: 1, rotate: '0deg' },
-    ], { duration: WOBBLE_MS });
-    wobbleRef.current = anim;
-    anim.finished.then(() => resnapWithin(el), () => { /* cancelled by a newer poke */ });
+    wobbleSign(el, e.clientX < r.left + r.width / 2 ? -1 : 1);
   };
   React.useLayoutEffect(() => {
     if (!rungPlaqueActive) return;
