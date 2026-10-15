@@ -3665,7 +3665,7 @@ export const Game: React.FC<GameProps> = ({
                 {questSkinFrameActive && (
                   // No quest-stage-box fade here: the frame's entrance is
                   // the scroll OPENING (paper + roll layers animate inside
-                  // QuestBoxFrame — index.css .quest-paper/.quest-roll-*),
+                  // QuestBoxFrame — index.css .quest-paper-*/.quest-roll-*),
                   // visible from first paint as the closed scroll. ALWAYS
                   // MOUNTED: the scroll toggle drives it purely by anchor
                   // phase classes — rolled hold, the tuck behind the seal

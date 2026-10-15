@@ -125,15 +125,16 @@ export const questPlateStraddle = plateMid ? (Math.round(nomH(plateMid) * 0.6) -
 // PAPER (center field + top/bottom runs and caps) under two ROLL columns
 // (each side's corners + vertical edge run, the painted rods). The split is
 // PERMANENT — no swap at animation end, so there is nothing to pop. The
-// entrance (index.css .quest-paper/.quest-roll-*) starts the rolls butted
-// at the box center (the closed scroll) and slides them outward — pure
-// transform — while the paper reveals via a one-shot clip-path whose
-// boundary tracks each roll's inner edge EXACTLY: clip inset interpolates
-// 50% → roll width over the same easing as the roll's travel (both linear
-// in progress p), so the cut edge is always flush with the roll and the
-// paper texture is REVEALED in place, never stretched. The box's layout
-// size never animates — the page below holds still. Travel distances are
-// content-dependent, so draw() stamps them as CSS vars on the host.
+// entrance (index.css .quest-paper-*/.quest-roll-*) starts the rolls
+// butted at the box center (the closed scroll) and slides them outward —
+// pure transform — while the paper is REVEALED in place, never stretched,
+// its edge flush with each roll's inner edge. Since 2026-10-15 that reveal
+// is all transform too (the paper in two halves, each in a window riding
+// its roll — see THE PAPER'S REVEAL in index.css): the clip-path wipe it
+// replaced ran on the main thread and fell behind the rolls under load.
+// The box's layout size never animates — the page below holds still.
+// Travel distances are content-dependent, so draw() stamps them as CSS
+// vars on the host.
 const ROLL_W_L = (tl ? nomW(tl) : leftMid?.w ?? 0) * Z;
 const ROLL_W_R = (tr ? nomW(tr) : rightMid?.w ?? 0) * Z;
 
@@ -145,16 +146,19 @@ const ROLL_W_R = (tr ? nomW(tr) : rightMid?.w ?? 0) * Z;
  */
 export const QuestBoxFrame: React.FC = () => {
   const hostRef = React.useRef<HTMLDivElement>(null);
-  const paperRef = React.useRef<HTMLCanvasElement>(null);
+  // The paper twice: one copy per half of the reveal.
+  const paperLRef = React.useRef<HTMLCanvasElement>(null);
+  const paperRRef = React.useRef<HTMLCanvasElement>(null);
   const rollLRef = React.useRef<HTMLCanvasElement>(null);
   const rollRRef = React.useRef<HTMLCanvasElement>(null);
   React.useLayoutEffect(() => {
     if (!questSkinFrameActive) return;
     const host = hostRef.current;
-    const paper = paperRef.current;
+    const paperL = paperLRef.current;
+    const paperR = paperRRef.current;
     const rollL = rollLRef.current;
     const rollR = rollRRef.current;
-    if (!host || !paper || !rollL || !rollR) return;
+    if (!host || !paperL || !paperR || !rollL || !rollR) return;
     let cancelled = false;
 
     // The rolls' travel = from butted-at-center to their resting columns.
@@ -189,6 +193,9 @@ export const QuestBoxFrame: React.FC = () => {
       // wrapper is narrower than the box (side padding), so w/2 over-
       // clips it when closed — harmless, fully hidden is fully hidden.
       varTarget.style.setProperty('--qclose', `${w / 2}px`);
+      // Where the paper's halves meet (whole px: an odd width overlaps
+      // them by one identical column rather than splitting a pixel).
+      varTarget.style.setProperty('--qmid', `${Math.floor(w / 2)}px`);
       varTarget.style.setProperty('--qedge-l', `${ROLL_W_L}px`);
       varTarget.style.setProperty('--qedge-r', `${ROLL_W_R}px`);
     };
@@ -229,9 +236,10 @@ export const QuestBoxFrame: React.FC = () => {
 
       // ── PAPER: the notched-cross centre + top/bottom runs, everything
       // the rolls reveal. Tiles phase-anchored at (bl, bt); the sacred
-      // corner squares stay unpainted.
-      const pctx = prepCanvas(paper, w, h, BLEED);
-      if (pctx) {
+      // corner squares stay unpainted. Drawn into BOTH halves' canvases.
+      for (const paper of [paperL, paperR]) {
+        const pctx = prepCanvas(paper, w, h, BLEED);
+        if (!pctx) continue;
         pctx.clearRect(-BLEED, -BLEED, w + BLEED * 2, h + BLEED * 2);
         drawTiled(pctx, ctr, bl, bt, w - bl - br, h - bt - bb, bl, bt);
         if (bt > gt) drawTiled(pctx, ctr, bl, gt, w - bl - br, bt - gt, bl, bt);
@@ -294,11 +302,19 @@ export const QuestBoxFrame: React.FC = () => {
     // its own closed clip), and the stamp's scale composes fine with the
     // rolls' travel transforms since they sit at the scaled center.
     <div ref={hostRef} aria-hidden className="quest-scroll-stamp absolute inset-0">
-      {/* The paper's resting clip insets (--qedge-*, stamped on the
-          anchor) must equal the roll widths — the exact-tracking
-          contract with the entrance keyframes. */}
-      <div className="quest-paper absolute inset-0">
-        <canvas ref={paperRef} style={{ position: 'absolute' }} />
+      {/* THE PAPER'S REVEAL (index.css): each half shows through a window
+          that rides its roll while the half inside slides back the same
+          amount. The windows' resting edges (--qedge-*, stamped on the
+          anchor) must equal the roll widths — the exact-tracking contract. */}
+      <div className="quest-paper-win quest-paper-win--l">
+        <div className="quest-paper-half quest-paper-half--l">
+          <canvas ref={paperLRef} style={{ position: 'absolute' }} />
+        </div>
+      </div>
+      <div className="quest-paper-win quest-paper-win--r">
+        <div className="quest-paper-half quest-paper-half--r">
+          <canvas ref={paperRRef} style={{ position: 'absolute' }} />
+        </div>
       </div>
       <div className="quest-roll-l absolute inset-y-0 left-0" style={{ width: ROLL_W_L }}>
         <canvas ref={rollLRef} style={{ position: 'absolute' }} />

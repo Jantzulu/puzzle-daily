@@ -2505,18 +2505,13 @@ body.gate-raising .gate-shake-layer {
 /* Stage 0 — THE SCROLL OPENS (user idea, 2026-08-10). The two painted
    roll columns start butted at the box center (the closed scroll,
    visible through the whole pre-delay via backwards fill) and slide
-   outward — pure transform — while the paper beneath reveals through a
-   one-shot clip-path wipe. The wipe's cut edge TRACKS THE ROLLS
-   EXACTLY: inset interpolates 50% → the roll's own width over the same
-   curve as the roll's travel, both linear in progress, so the boundary
-   stays flush under each roll's inner edge and no naked cut ever shows
-   (the earlier clip-wipe rejection was a bare edge on TEXT — here the
-   moving rod masks it). The box's LAYOUT never animates: the page
-   below holds still while the visuals open. clip-path here is a
-   documented ONE-SHOT exception to the transform/opacity law, same
-   class as quest-ignite. --qtravel-* are stamped by QuestBoxFrame from
-   the box's measured width; --qedge-* are the roll widths (the
-   exact-tracking contract — change one, change both). */
+   outward — pure transform — while the paper beneath is revealed in
+   place, its edge flush under each roll's inner edge, so no naked cut
+   ever shows. Since 2026-10-15 the reveal is pure transform too (THE
+   PAPER'S REVEAL below). The box's LAYOUT never animates: the page below
+   holds still while the visuals open. --qtravel-* are stamped by
+   QuestBoxFrame from the box's measured width; --qedge-* are the roll
+   widths (the exact-tracking contract — change one, change both). */
 /* Timeline (user round 3, 2026-08-11): the WHOLE SEAL+SCROLL ASSEMBLY
    stamps together 0.3–0.7s, vertically centered on the box (the seal
    rides --qseal-start down to the scroll's middle; both stamps scale
@@ -2527,22 +2522,62 @@ body.gate-raising .gate-shake-layer {
 .quest-scroll-stamp {
   animation: quest-plate-stamp 0.4s cubic-bezier(0.2, 0, 0.3, 1) 0.3s backwards;
 }
-.quest-paper {
-  /* 0.6s vs the rolls' 0.65s — A DELIBERATE LEAD (user diagnosis,
-     round 3): the rolls ride the compositor thread (transform) while
-     the clip wipe runs on the main thread, so under load the rolls
-     can outrun the reveal and page background peeks through the lag
-     strip. The paper opening slightly AHEAD hides all jitter under
-     the rods (which paint above it); excess paper behind a rod is
-     physical. OPEN direction only — on close a lag shows paper, not
-     background, and the user pinned close speeds as-is. */
-  animation: quest-scroll-paper 0.6s cubic-bezier(0.45, 0, 0.25, 1) 0.8s backwards;
+/* THE PAPER'S REVEAL — ALL TRANSFORM (user report 2026-10-15: "still
+   some lag or disconnect ... gaps in the scroll"). The paper used to
+   reveal by a clip-path wipe, which iOS Safari runs on the MAIN thread,
+   while the rolls' transforms run on the compositor: any main-thread
+   hitch (the board redraws every frame) froze the wipe while the rolls
+   kept going, and the page showed through between them. The wipe's
+   0.05s head start only covered short hitches.
+   Now each HALF of the paper (QuestBoxFrame draws it twice) sits in a
+   WINDOW that rides its roll, on the roll's own keyframes, while the half
+   inside slides back by the same amount: the paper never moves, and the
+   window's edge IS the roll's inner edge, every frame, all on the
+   compositor. A static clip at --qmid keeps each half to its own side. */
+.quest-paper-win {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  overflow: hidden;
 }
-.quest-roll-l {
+.quest-paper-win--l {
+  left: var(--qedge-l, 0px);
+  right: 0;
+}
+.quest-paper-win--r {
+  left: 0;
+  right: var(--qedge-r, 0px);
+}
+/* Each half spans the whole box again (undoing its window's resting
+   offset), so the paper canvas sits where the box is. */
+.quest-paper-half {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+}
+.quest-paper-half--l {
+  left: calc(-1 * var(--qedge-l, 0px));
+  right: 0;
+  clip-path: inset(0 var(--qmid, 50%) 0 0);
+}
+.quest-paper-half--r {
+  left: 0;
+  right: calc(-1 * var(--qedge-r, 0px));
+  clip-path: inset(0 0 0 var(--qmid, 50%));
+}
+.quest-roll-l,
+.quest-paper-win--l {
   animation: quest-scroll-roll-l 0.65s cubic-bezier(0.45, 0, 0.25, 1) 0.8s backwards;
 }
-.quest-roll-r {
+.quest-roll-r,
+.quest-paper-win--r {
   animation: quest-scroll-roll-r 0.65s cubic-bezier(0.45, 0, 0.25, 1) 0.8s backwards;
+}
+.quest-paper-half--l {
+  animation: quest-paper-hold-l 0.65s cubic-bezier(0.45, 0, 0.25, 1) 0.8s backwards;
+}
+.quest-paper-half--r {
+  animation: quest-paper-hold-r 0.65s cubic-bezier(0.45, 0, 0.25, 1) 0.8s backwards;
 }
 
 /* The objective content unfurls WITH the paper (user re-order): the same
@@ -2556,6 +2591,13 @@ body.gate-raising .gate-shake-layer {
 }
 
 @keyframes quest-scroll-content {
+  /* Both endpoints PX-VALUED (--qclose = half the measured box width,
+     stamped by QuestBoxFrame): a 50% from-value interpolating to a px
+     to-value is mixed-unit territory that some engines animate
+     DISCRETELY. The 50% fallback only exists for the unstamped first
+     frames, where it renders the identical closed state. The text's
+     wipe stays a clip-path (one DOM copy of the words): a main-thread
+     lag only reveals them late, over paper that is already there. */
   from { clip-path: inset(0 var(--qclose, 50%) 0 var(--qclose, 50%)); }
   to { clip-path: inset(0 0px 0 0px); }
 }
@@ -2567,14 +2609,19 @@ body.gate-raising .gate-shake-layer {
    'closed' rest (the layers stay mounted and visible — round 2: the
    rolled scroll TUCKS behind the seal via .quest-tucked while the box
    height transition lowers the page content into the freed space). */
-.quest-closing .quest-paper {
-  animation: quest-scroll-paper-close 0.5s cubic-bezier(0.45, 0, 0.25, 1) forwards;
-}
-.quest-closing .quest-roll-l {
+.quest-closing .quest-roll-l,
+.quest-closing .quest-paper-win--l {
   animation: quest-scroll-roll-l-close 0.5s cubic-bezier(0.45, 0, 0.25, 1) forwards;
 }
-.quest-closing .quest-roll-r {
+.quest-closing .quest-roll-r,
+.quest-closing .quest-paper-win--r {
   animation: quest-scroll-roll-r-close 0.5s cubic-bezier(0.45, 0, 0.25, 1) forwards;
+}
+.quest-closing .quest-paper-half--l {
+  animation: quest-paper-hold-l-close 0.5s cubic-bezier(0.45, 0, 0.25, 1) forwards;
+}
+.quest-closing .quest-paper-half--r {
+  animation: quest-paper-hold-r-close 0.5s cubic-bezier(0.45, 0, 0.25, 1) forwards;
 }
 .quest-closing .quest-stage-scroll {
   animation: quest-scroll-content-close 0.5s cubic-bezier(0.45, 0, 0.25, 1) forwards;
@@ -2624,24 +2671,44 @@ body.gate-raising .gate-shake-layer {
    position ('reopening' phase). The class STAYS after the reopen
    completes (reverting to the base entrance animations would re-apply
    and replay them). */
-.quest-reopening .quest-paper {
-  /* 0.6s = the entrance's deliberate lead over the 0.65s rolls (see
-     .quest-paper) — same anti-gap guarantee on the reopen unfurl. */
-  animation: quest-scroll-paper 0.6s cubic-bezier(0.45, 0, 0.25, 1) backwards;
-}
-.quest-reopening .quest-roll-l {
+.quest-reopening .quest-roll-l,
+.quest-reopening .quest-paper-win--l {
   animation: quest-scroll-roll-l 0.65s cubic-bezier(0.45, 0, 0.25, 1) backwards;
 }
-.quest-reopening .quest-roll-r {
+.quest-reopening .quest-roll-r,
+.quest-reopening .quest-paper-win--r {
   animation: quest-scroll-roll-r 0.65s cubic-bezier(0.45, 0, 0.25, 1) backwards;
+}
+.quest-reopening .quest-paper-half--l {
+  animation: quest-paper-hold-l 0.65s cubic-bezier(0.45, 0, 0.25, 1) backwards;
+}
+.quest-reopening .quest-paper-half--r {
+  animation: quest-paper-hold-r 0.65s cubic-bezier(0.45, 0, 0.25, 1) backwards;
 }
 .quest-reopening .quest-stage-scroll {
   animation: quest-scroll-content 0.65s cubic-bezier(0.45, 0, 0.25, 1) backwards;
 }
 
-@keyframes quest-scroll-paper-close {
-  from { clip-path: inset(0 var(--qedge-r, 0px) 0 var(--qedge-l, 0px)); }
-  to { clip-path: inset(0 var(--qclose, 50%) 0 var(--qclose, 50%)); }
+/* The halves' HOLD: the exact negation of their window's travel, so the
+   paper stays where it is (the window keyframes are the rolls'). */
+@keyframes quest-paper-hold-l {
+  from { transform: translateX(calc(-1 * var(--qtravel-l, 0px))); }
+  to { transform: translateX(0); }
+}
+
+@keyframes quest-paper-hold-r {
+  from { transform: translateX(var(--qtravel-r, 0px)); }
+  to { transform: translateX(0); }
+}
+
+@keyframes quest-paper-hold-l-close {
+  from { transform: translateX(0); }
+  to { transform: translateX(calc(-1 * var(--qtravel-l, 0px))); }
+}
+
+@keyframes quest-paper-hold-r-close {
+  from { transform: translateX(0); }
+  to { transform: translateX(var(--qtravel-r, 0px)); }
 }
 
 @keyframes quest-scroll-roll-l-close {
@@ -2670,18 +2737,6 @@ body.gate-raising .gate-shake-layer {
 @keyframes quest-seal-rise {
   from { transform: translateY(var(--qseal-start, 0px)); }
   to { transform: translateY(0); }
-}
-
-@keyframes quest-scroll-paper {
-  /* Both endpoints PX-VALUED (--qclose = half the measured box width,
-     stamped by QuestBoxFrame): a 50% from-value interpolating to a px
-     to-value is mixed-unit territory that some engines animate
-     DISCRETELY — the paper would snap to full width mid-open while the
-     rods were still traveling. The 50% fallback only exists for the
-     unstamped first frames, where it renders the identical closed
-     state. */
-  from { clip-path: inset(0 var(--qclose, 50%) 0 var(--qclose, 50%)); }
-  to { clip-path: inset(0 var(--qedge-r, 0px) 0 var(--qedge-l, 0px)); }
 }
 
 @keyframes quest-scroll-roll-l {
