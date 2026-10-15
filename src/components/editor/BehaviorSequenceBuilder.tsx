@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router';
-import { Direction, ActionType, TURN_INTERVAL_MS } from '../../types/game';
+import { Direction, ActionType, SpellTemplate, TURN_INTERVAL_MS } from '../../types/game';
 import type { CharacterAction, ExecutionMode, TriggerConfig, RelativeDirection, HitStampWindow } from '../../types/game';
 import { loadSpellAsset, loadStatusEffectAsset } from '../../utils/assetStorage';
 import { resolveTriggerEvent } from '../../engine/actions';
@@ -562,6 +562,29 @@ interface SpellConfigProps {
 
 const SpellConfig: React.FC<SpellConfigProps> = ({ action, spell, context, onUpdate, onSelectSpell }) => {
   const navigate = useNavigate();
+  // A spell the PLAYER aims at setup (directionAcceptsUserInput; a
+  // redirect's input aims its target's new facing instead). Heroes only —
+  // enemies never carry a player's choice.
+  const playerAimed = context === 'character' && !!spell
+    && spell.templateType !== SpellTemplate.REDIRECT && !!spell.directionAcceptsUserInput;
+  // Whether this step casts ONE way, so "Face Cast Direction" means
+  // something: the player's aim, an auto-target, or a single fixed or
+  // relative direction (the step's override, else the spell's own config).
+  // Facing forward / current facing is already facing; all-directions and
+  // multi-direction casts have no one way to face (the engine never turns
+  // them either — applyFaceOnCast).
+  const castsOneWay = (() => {
+    if (playerAimed || action.autoTargetNearestEnemy || action.autoTargetNearestCharacter) return true;
+    if (action.useRelativeOverride && action.relativeDirectionOverride?.length) {
+      return action.relativeDirectionOverride.length === 1 && action.relativeDirectionOverride[0] !== 'forward';
+    }
+    if (action.directionOverride?.length) return action.directionOverride.length === 1;
+    if (spell?.directionMode === 'fixed') return (spell.defaultDirections?.length ?? 0) === 1;
+    if (spell?.directionMode === 'relative') {
+      return (spell.relativeDirections?.length ?? 0) === 1 && spell.relativeDirections![0] !== 'forward';
+    }
+    return false;
+  })();
   const turnEquivalent = (ms: number) => Math.round((ms / TURN_INTERVAL_MS) * 10) / 10;
 
   // Team-relative event vocabulary (TRIGGER_EVENT_OPTIONS + on_death, which
@@ -894,28 +917,36 @@ const SpellConfig: React.FC<SpellConfigProps> = ({ action, spell, context, onUpd
               </>
             )}
 
-            {/* Face target on cast */}
-            {(action.autoTargetNearestEnemy || action.autoTargetNearestCharacter) && (
-              <>
-                <label className="flex items-center gap-2 text-xs text-sky-300">
-                  <input type="checkbox" checked={action.faceTargetOnCast || false}
-                    onChange={(e) => onUpdate({
+            {/* FACING WHEN CASTING (user design 2026-10-15): a three-way
+                choice wherever the step casts one way (castsOneWay; it was
+                auto-target only), player-aimed spells included. Both turns
+                are REAL facing changes, never cosmetic — the sprite and the
+                rules (a backstab on the caster) agree. The board's arrow by
+                the health bar shows where the caster walks NEXT, so a turn
+                that reverts never flicks it. Stored as the two existing
+                flags: none = neither; while = faceTargetOnCast +
+                revertFacingAfterCast; keep = faceTargetOnCast alone. */}
+            {castsOneWay && (
+              <div className="flex items-center gap-2">
+                <label className="text-xs text-sky-300">Facing when casting:</label>
+                <select
+                  value={!action.faceTargetOnCast ? 'none' : action.revertFacingAfterCast ? 'while' : 'keep'}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    onUpdate({
                       ...action,
-                      faceTargetOnCast: e.target.checked,
-                      revertFacingAfterCast: e.target.checked ? action.revertFacingAfterCast : false,
-                    })}
-                    className="w-3 h-3" />
-                  Face Target on Cast
-                </label>
-                {action.faceTargetOnCast && (
-                  <label className="flex items-center gap-2 text-xs ml-4">
-                    <input type="checkbox" checked={action.revertFacingAfterCast || false}
-                      onChange={(e) => onUpdate({ ...action, revertFacingAfterCast: e.target.checked })}
-                      className="w-3 h-3" />
-                    <span className="text-stone-400">Revert facing next turn</span>
-                  </label>
-                )}
-              </>
+                      faceTargetOnCast: v !== 'none',
+                      revertFacingAfterCast: v === 'while',
+                    });
+                  }}
+                  className="flex-1 px-2 py-1 bg-stone-600 rounded text-xs"
+                  title="Whether the caster really turns to face the way it casts (toward the target, the player's aim, or its one direction)."
+                >
+                  <option value="none">Don't turn</option>
+                  <option value="while">Turn while casting (back next turn)</option>
+                  <option value="keep">Turn and keep facing</option>
+                </select>
+              </div>
             )}
 
             {/* Homing — not for dead ally */}
