@@ -172,25 +172,4 @@ describe('directionAcceptsUserInput — player-aimed cast direction', () => {
     }), 1);
     expect(result.heroFacing[0]).toBe(Direction.EAST);
   });
-
-  // User report 2026-10-14: the cast ANIMATION played toward the facing.
-  // castFacing is the board's visual hook for the aim; logic never reads it.
-  it('stamps castFacing with the aim on the cast turn — facing untouched — and clears it next turn', () => {
-    registerBolt();
-    const gs = buildState({ spellDirectionOverrides: { 'aim-bolt': Direction.NORTH } });
-    executeTurn(gs);
-    expect(gs.placedCharacters[0].isCasting).toBe(true);
-    expect(gs.placedCharacters[0].castFacing).toBe(Direction.NORTH);
-    expect(gs.placedCharacters[0].facing).toBe(Direction.EAST);
-    executeTurn(gs);
-    expect(gs.placedCharacters[0].castFacing).toBeUndefined();
-  });
-
-  it('never stamps castFacing without a stored aim', () => {
-    registerBolt();
-    const gs = buildState({});
-    executeTurn(gs);
-    expect(gs.placedCharacters[0].isCasting).toBe(true);
-    expect(gs.placedCharacters[0].castFacing).toBeUndefined();
-  });
 });

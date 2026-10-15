@@ -4773,6 +4773,12 @@ function drawCharacter(
   const py = y * TILE_SIZE;
   const facing = facingOverride !== undefined ? facingOverride : character.facing;
 
+  // Honor the entity's facing direction even during setup, so the post-spawn idle
+  // points the way the entity will move once the game starts. Falls back to the
+  // 'default' directional sprite when that specific direction isn't configured
+  // (see directionalSprites[dirKey] || ['default'] in drawSpritePixelPerfect).
+  const directionToUse = facing;
+
   // Check if this character has a custom sprite
   const charData = getCharacter(character.characterId) as CustomCharacter | undefined;
   const hasCustomSprite = charData && 'customSprite' in charData && charData.customSprite;
@@ -4781,19 +4787,6 @@ function drawCharacter(
   // mid-move unless the sprite opts into castingWhileMoving. isCasting is a
   // deterministic per-turn flag — true for the whole turn a spell is cast.
   const isCasting = (!isMoving || charData?.customSprite?.castingWhileMoving === true) && !!character.isCasting;
-
-  // Honor the entity's facing direction even during setup, so the post-spawn idle
-  // points the way the entity will move once the game starts. Falls back to the
-  // 'default' directional sprite when that specific direction isn't configured
-  // (see directionalSprites[dirKey] || ['default'] in drawSpritePixelPerfect).
-  // A player-AIMED cast plays toward its aim instead (castFacing, visual only:
-  // the logical facing never turns for it — user report 2026-10-14), the way
-  // an enemy's contact reaction plays toward its attacker. A caller's
-  // facingOverride (a walk's travel facing) still wins. The direction
-  // indicator by the health bar keeps the logical facing.
-  const directionToUse = isCasting && facingOverride === undefined && character.castFacing !== undefined
-    ? character.castFacing
-    : facing;
 
   // Check if spawn animation is still playing
   // startTime can sit in the future while a fly-in entrance is mid-flight;
