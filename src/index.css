@@ -140,12 +140,9 @@ canvas {
 .route-emerge {
   animation: route-emerge 0.55s ease-out;
 }
-
-@media (prefers-reduced-motion: reduce) {
-  .route-emerge {
-    animation: none;
-  }
-}
+/* No Reduce Motion variant (user call 2026-10-15): a fade moves nothing — it
+   is what the setting swaps motion FOR (the quest toss dissolves) — and a
+   hard cut between pages is the harsher change. */
 
 /* ============================================
    DUNGEON THEME COMPONENT CLASSES
