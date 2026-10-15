@@ -2893,6 +2893,12 @@ body.menu-gate-instant .heroes-title-layer {
   z-index: 39;
   transform-origin: 0 0;
   pointer-events: none;
+  /* The scroll is a thing you press and hold (user report 2026-10-15: a
+     held press started selecting the objective to copy). No selection,
+     and no iOS long-press callout. */
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .quest-float--stage .quest-box-anchor {
