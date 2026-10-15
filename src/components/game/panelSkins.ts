@@ -113,7 +113,8 @@ export const pmod = (v: number, m: number) => ((v % m) + m) % m;
  * ancestor (it otherwise measures the pre-snap position); a NUMBER of
  * frames handles deeper nesting — a snapped child inside an already
  * DEFERRED snapped ancestor (the plaque header inside RungPlaque) must
- * wait one frame beyond that ancestor's own snap.
+ * wait one frame beyond that ancestor's own snap. resnapWithin() re-runs
+ * it after a transient transform settles.
  */
 export function useCrispSnap<T extends HTMLElement>(active: boolean, defer: boolean | number = false) {
   const ref = React.useRef<T>(null);
@@ -142,13 +143,31 @@ export function useCrispSnap<T extends HTMLElement>(active: boolean, defer: bool
     const ro = new ResizeObserver(run);
     ro.observe(el);
     ro.observe(document.documentElement);
+    const onResnap = (e: Event) => {
+      const root = (e as CustomEvent<Element | undefined>).detail;
+      if (!root || root.contains(el)) run();
+    };
+    window.addEventListener(RESNAP_EVENT, onResnap);
     return () => {
       ro.disconnect();
+      window.removeEventListener(RESNAP_EVENT, onResnap);
       cancelAnimationFrame(raf);
     };
   }, [active, defer]);
   return ref;
 }
+
+const RESNAP_EVENT = 'crisp-resnap';
+
+/**
+ * Re-snap every crisp-snapped element inside `root` (root included), for a
+ * transient transform that just settled (RungPlaque's poke wobble): a snap
+ * that ran while it moved measured the transformed box, and the wrong
+ * offset it wrote would outlive the motion.
+ */
+export const resnapWithin = (root: Element) => {
+  window.dispatchEvent(new CustomEvent(RESNAP_EVENT, { detail: root }));
+};
 
 // ─── Canvas plumbing ────────────────────────────────────────────────────────
 

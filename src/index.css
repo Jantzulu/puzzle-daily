@@ -3188,6 +3188,19 @@ body.menu-gate-instant .heroes-title-layer {
   justify-content: center;
   min-height: 26px;
   padding: 0 14px;
+  /* THE LOOSE SIGN (RungPlaque.tsx): pokes rock it. A quick double poke
+     must not select the label. */
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* The header plate is part of the sign, so it takes pokes too: its own
+   box only. The row around it and its canvas's bleed stay see-through. */
+.rung-plaque-header-row > * {
+  pointer-events: auto;
+}
+.rung-plaque-header-row canvas {
+  pointer-events: none;
 }
 
 /* Play Stone optional state faces (painted hover/pressed pieces) swap by
