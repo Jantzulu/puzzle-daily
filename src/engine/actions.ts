@@ -1845,6 +1845,9 @@ function executeSpell(
   if (aimedDirection) {
     castDirections = [aimedDirection];
     applyFaceOnCast(character, action, aimedDirection);
+    // The cast ANIMATION plays toward the aim (user report 2026-10-14: it
+    // played toward the facing). Visual only — see PlacedCharacter.castFacing.
+    character.castFacing = aimedDirection;
   } else if (autoTeam) {
     const maxTargets = action.maxTargets || 1;
     const targetMode = action.autoTargetMode || 'omnidirectional';

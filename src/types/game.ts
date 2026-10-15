@@ -932,6 +932,7 @@ export interface PlacedCharacter {
   teleportSprite?: TeleportSpriteConfig; // DEPRECATED: No longer used, activation sprite is on tile instead
   iceSlideDistance?: number; // Number of tiles slid on ice (for slower animation)
   isCasting?: boolean; // True on the turn a spell is cast — per-turn casting animation flag (deterministic, no clock)
+  castFacing?: Direction; // Visual only: the aim of a player-AIMED spell cast this turn — the board plays the cast animation toward it (the logical facing never turns for it). Cleared with isCasting at turn start.
   preCastFacing?: Direction; // Set when a face-on-cast with revert changes facing; restored at the next turn start (deterministic)
   contactReactionTurn?: number; // Turn on which this entity's contact-damage reaction fired — visual only (board plays a cast animation while this === currentTurn)
   contactReactionFacing?: Direction; // Facing to render the contact-damage reaction animation toward — visual only

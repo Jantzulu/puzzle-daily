@@ -1967,6 +1967,7 @@ export function executeTurn(gameState: GameState): GameState {
     // Reset casting once per turn (NOT per action) so a SPELL anywhere in this
     // turn's action chain stays flagged for the cast animation.
     newCharacter.isCasting = false;
+    newCharacter.castFacing = undefined;
     // Restore facing stashed by a face-on-cast-with-revert last turn: the entity
     // faced its target during that cast turn's animation window; now it reverts.
     if (newCharacter.preCastFacing !== undefined) {
