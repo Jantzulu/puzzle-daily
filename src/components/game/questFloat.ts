@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useRef, useState, type RefObject, type CSSProperties } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type RefObject, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react';
 
 // ============================================================================
 // QUEST FLOAT — the quest scroll's layout (user idea 2026-10-08, rounds 1-11
@@ -53,6 +53,14 @@ export const QUEST_SPAWN_DELAY_MS = 300;
  * left ~this beat before 'reopened', and looked right.
  */
 export const QUEST_HINT_BEAT_MS = 100;
+/**
+ * THE PRESS (user ask 2026-10-15): the scroll gives under a finger. A tap
+ * that toggles it (the open scroll or its seal, the small scroll's tap
+ * target) shrinks it a touch while held (index.css
+ * .quest-box-anchor[data-pressed]) and it springs back on release. A quick
+ * tap holds the press at least this long, so it still reads.
+ */
+export const QUEST_PRESS_MIN_MS = 100;
 /**
  * Where the open scroll's BOX top sits below the board's top edge — resting
  * close under the portcullis (user rounds 3 and 10). Measured column by
@@ -204,4 +212,42 @@ export function useQuestFloatPlacement(
   const spot = spots && (mini ? spots.mini : spots.stage);
   if (!spot) return { visibility: 'hidden' };
   return { transform: `translate(${spot.x}px, ${spot.y}px) scale(${mini ? QUEST_MINI_SCALE : 1})` };
+}
+
+/**
+ * The press's pointer plumbing, spread on the .quest-box-anchor. It flips
+ * an ATTRIBUTE, not React state: a press must not re-render Game, and a
+ * class would be wiped mid-press when the tap's own toggle rewrites the
+ * anchor's className. `canPress` vets each pointerdown's target. Release =
+ * the pointer lifting or cancelling anywhere (a drag that turns into a page
+ * scroll cancels), or a mouse sliding off.
+ */
+export function useQuestPress(canPress: (target: HTMLElement) => boolean) {
+  const release = useRef<(() => void) | null>(null);
+  const timer = useRef<number | undefined>(undefined);
+  useEffect(() => () => {
+    release.current?.();
+    window.clearTimeout(timer.current);
+  }, []);
+  const onPointerDown = (e: ReactPointerEvent<HTMLElement>) => {
+    if (e.button !== 0 || release.current || !canPress(e.target as HTMLElement)) return;
+    const el = e.currentTarget;
+    const at = performance.now();
+    window.clearTimeout(timer.current);
+    el.setAttribute('data-pressed', '');
+    const up = () => {
+      release.current = null;
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', up);
+      timer.current = window.setTimeout(
+        () => el.removeAttribute('data-pressed'),
+        Math.max(0, QUEST_PRESS_MIN_MS - (performance.now() - at)),
+      );
+    };
+    release.current = up;
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', up);
+  };
+  const onPointerLeave = () => release.current?.();
+  return { onPointerDown, onPointerLeave };
 }

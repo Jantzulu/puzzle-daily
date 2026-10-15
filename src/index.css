@@ -2471,7 +2471,8 @@ body.gate-raising .gate-shake-layer {
    transition) has finished; the lowered state transitions with no delay so
    opening still drops the box instantly. */
 .quest-box-anchor {
-  transition: z-index 0s 1.25s; /* = the close winch duration (lockstep) */
+  /* z-index: the close winch duration (lockstep). scale: THE PRESS. */
+  transition: z-index 0s 1.25s, scale 0.1s ease-out;
   /* SILHOUETTE GLOW (user ask 2026-08-06, "like the play button's"): ONE
      static drop-shadow on the PARENT — the filter computes from the
      subtree's combined alpha, so the QUEST plate + box + ornaments glow
@@ -2759,7 +2760,7 @@ body.gate-raising .gate-shake-layer {
 
 body.menu-gate-lowered .quest-box-anchor {
   z-index: 30;
-  transition: z-index 0s 0s;
+  transition: z-index 0s 0s, scale 0.1s ease-out;
 }
 
 /* Instant dismissal (a nav link was tapped): the gate snaps, so the box's
@@ -2835,6 +2836,17 @@ body.menu-gate-instant .heroes-title-layer {
    The resting text is identical (opaque ink fill either way). */
 .quest-float .quest-box-anchor {
   will-change: transform;
+}
+
+/* THE PRESS (user ask 2026-10-15): while a tap that toggles the scroll is
+   held, the scroll gives a touch (questFloat.ts useQuestPress sets
+   data-pressed; 0.1s in and out, the anchor's transition). The individual
+   `scale` property composes with the bob's transform and the float
+   wrapper's placement and toss, scaling about the anchor's own centre.
+   Like the bob's sub-px transit, the non-integer scale lasts only while
+   pressed: the art is whole-px again at rest. */
+.quest-float .quest-box-anchor[data-pressed] {
+  scale: 0.96;
 }
 
 .quest-float .shimmer-container.shimmer-ink > span {

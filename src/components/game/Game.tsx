@@ -22,7 +22,7 @@ import { collectPuzzleAssetUrls } from '../../utils/spritePreload';
 import { HelpButton } from './HelpOverlay';
 import { TapHintChip } from './TapHintChip';
 import { QuestBoxFrame, QuestOrnaments, QuestPlate, QuestDivider, questSkinFrameActive, questSkinOrnamentsActive, questSkinPlateActive, questSkinDividerActive, questFrameBorders, questPlateStraddle, useCrispSnap } from './QuestBoxSkin';
-import { QUEST_FLIGHT_MS, QUEST_TOSS_AFTER_ROLL_MS, QUEST_SPAWN_DELAY_MS, QUEST_HINT_BEAT_MS, useQuestFloatPlacement } from './questFloat';
+import { QUEST_FLIGHT_MS, QUEST_TOSS_AFTER_ROLL_MS, QUEST_SPAWN_DELAY_MS, QUEST_HINT_BEAT_MS, useQuestFloatPlacement, useQuestPress } from './questFloat';
 import { playGameSound, playVictoryMusic, playDefeatMusic, playBackgroundMusic, stopMusic } from '../../utils/gameSounds';
 import { loadThemeAssets, subscribeToThemeAssets, type ThemeAssets } from '../../utils/themeAssets';
 import { WarningModal } from '../shared/WarningModal';
@@ -512,6 +512,16 @@ export const Game: React.FC<GameProps> = ({
     if ((e.target as HTMLElement).closest('button, a')) return;
     minimizeQuest();
   };
+  // THE PRESS (questFloat.ts useQuestPress): only the taps that toggle the
+  // scroll press it (the open scroll and its seal, the small scroll's tap
+  // target), never the (?) or the editor buttons, and never mid-sequence
+  // (those taps are swallowed anyway).
+  const questPress = useQuestPress(target => {
+    if (!questFloatOn || questFloatBusy.current) return false;
+    const control = target.closest('button, a');
+    if (control && !control.matches('.quest-seal-stamp, .quest-mini-hit')) return false;
+    return questMini || questScroll === 'open' || questScroll === 'reopened';
+  });
   const questFloatRef = useRef<HTMLDivElement>(null);
   // = the quest box's own render condition (JSX below): the box and the
   // hero header unmount during replays/victory, so the placement watchers
@@ -3604,6 +3614,8 @@ export const Game: React.FC<GameProps> = ({
               <div
                 className={`quest-box-anchor w-fit max-w-2xl mx-auto relative z-[45] -mt-[3px] mb-1${questAnchorPhaseClass}`}
                 onClick={questFloatOn && !questMini ? onQuestStageClick : undefined}
+                onPointerDown={questPress.onPointerDown}
+                onPointerLeave={questPress.onPointerLeave}
               >
                 {/* pt-1.5/pb-1.5 (user call, third round): the plate now
                     rides HIGHER on the border (-top-[15px], only ~6px of it
