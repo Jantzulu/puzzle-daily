@@ -2949,6 +2949,16 @@ body.menu-gate-instant .heroes-title-layer {
   z-index: 1;
 }
 
+/* THE JOSTLE (gateJostle.ts): the closed gate can be grabbed and pulled
+   down a little. Its buttons keep their own cursor. */
+body:not(.menu-gate-lowered) .quest-panel-sticky[data-jostle] .control-rail {
+  cursor: grab;
+}
+.quest-panel-sticky[data-jostling] .control-rail,
+.quest-panel-sticky[data-jostling] .control-rail * {
+  cursor: grabbing;
+}
+
 /* ============================================
    NAVBAR
    The clean flat bar at every width (the stone-wall meshes — tiled

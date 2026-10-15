@@ -53,6 +53,7 @@ import { DeathSpriteThumbnail, deathVignetteUsable } from './DeathSpriteThumbnai
 import heartFullIcon from '../../assets/icons/heart-full.png';
 import heartEmptyIcon from '../../assets/icons/heart-empty.png';
 import { RungPlaque } from './RungPlaque';
+import { useGateJostle } from './gateJostle';
 import { ReplaySlabMesh } from './ReplaySlabMesh';
 
 // Test mode types
@@ -640,6 +641,10 @@ export const Game: React.FC<GameProps> = ({
 
   // Replay system state
   const [replayMode, setReplayMode] = useState(false);
+  // THE JOSTLE (gateJostle.ts): the closed portcullis can be pulled down a
+  // little and winches home. Not while it settles on load or around replay
+  // (the rail's own ascend/descend); the hook itself checks the menu gate.
+  const gateJostleRef = useGateJostle(!gateSettling && !replayMode && !enteringReplay && !justExitedReplay);
   const [replayTurnIndex, setReplayTurnIndex] = useState(0);
   const [replayPlaying, setReplayPlaying] = useState(false);
   const [replaySpeed, setReplaySpeed] = useState(1);
@@ -2659,7 +2664,7 @@ export const Game: React.FC<GameProps> = ({
               // menu carries its own spiked bottom while desktop still
               // docks. z-[40] stays: spikes over the board (z-10),
               // everything under the nav (z-50).
-              <div className={`w-full flex flex-col items-center relative md:sticky z-[40] quest-panel-sticky${gateSettling ? ' gate-settle' : ''}`}>
+              <div ref={gateJostleRef} className={`w-full flex flex-col items-center relative md:sticky z-[40] quest-panel-sticky${gateSettling ? ' gate-settle' : ''}`}>
               {/* (The quest banner used to hang here — it now hangs BELOW
                   the board, and only this rail rides sticky.) */}
               {/* Control Panel Row — Lives / Play / Max Turns riding the
