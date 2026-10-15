@@ -4015,7 +4015,11 @@ function drawEnemy(
     // Draw direction indicator next to health bar — green if moving, grey for facing only
     if (enemyData) {
       const enemyHasMovement = enemyHasMovementActions(enemyData.behavior);
-      drawDirectionIndicator(ctx, px, barTopY, facing || Direction.SOUTH, barIcon, enemyHasMovement);
+      // The arrow shows where the entity walks NEXT (user call 2026-10-15): a
+      // "turn while casting" holds its pre-cast heading in preCastFacing until
+      // the next turn start, so the arrow keeps that heading while the sprite
+      // shows the turned cast — it never flicks per attack.
+      drawDirectionIndicator(ctx, px, barTopY, (enemy.preCastFacing ?? facing) || Direction.SOUTH, barIcon, enemyHasMovement);
     }
 
     // Draw status effect icons above health bar
@@ -4958,7 +4962,8 @@ function drawCharacter(
     // Draw direction indicator next to health bar — green if moving, grey for facing only
     if (charData) {
       const charHasMovement = hasMovementActions(charData.behavior || []);
-      drawDirectionIndicator(ctx, px, barTopY, facing, charBarIcon, charHasMovement);
+      // Where the hero walks NEXT — see the enemy arrow above.
+      drawDirectionIndicator(ctx, px, barTopY, character.preCastFacing ?? facing, charBarIcon, charHasMovement);
     }
 
     // Draw status effect icons above health bar
