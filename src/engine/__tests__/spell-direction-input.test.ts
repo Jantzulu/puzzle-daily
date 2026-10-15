@@ -173,3 +173,55 @@ describe('directionAcceptsUserInput — player-aimed cast direction', () => {
     expect(result.heroFacing[0]).toBe(Direction.EAST);
   });
 });
+
+// FACE CAST DIRECTION (user call 2026-10-15): faceTargetOnCast is a per-step
+// choice for ANY cast that resolves to one direction — the caster actually
+// turns (logical facing, parity-checked), or keeps its facing when off.
+describe('Face Cast Direction — faceTargetOnCast on any one-way cast', () => {
+  const withStep = (step: Record<string, unknown>) => regChar(createTestCharacterDef({
+    id: 'archer', health: 10,
+    behavior: [{ type: ActionType.SPELL, spellId: 'aim-bolt', ...step }, { type: ActionType.REPEAT }] as never,
+  }));
+
+  it('turns the caster to a single fixed direction override — a real facing change', () => {
+    registerBolt({ directionAcceptsUserInput: false });
+    withStep({ directionOverride: [Direction.NORTH], faceTargetOnCast: true });
+    const result = expectParity(() => buildState({}), 2);
+    expect(result.heroFacing[0]).toBe(Direction.NORTH);
+    expect(result.enemies.find(e => e.y === 0)!.health).toBe(2);
+  });
+
+  it('keeps the facing when the option is off', () => {
+    registerBolt({ directionAcceptsUserInput: false });
+    withStep({ directionOverride: [Direction.NORTH] });
+    const result = expectParity(() => buildState({}), 2);
+    expect(result.heroFacing[0]).toBe(Direction.EAST);
+    expect(result.enemies.find(e => e.y === 0)!.health).toBe(2);
+  });
+
+  it('never turns a multi-direction cast', () => {
+    registerBolt({ directionAcceptsUserInput: false });
+    withStep({ directionOverride: [Direction.NORTH, Direction.EAST], faceTargetOnCast: true });
+    const result = expectParity(() => buildState({}), 1);
+    expect(result.heroFacing[0]).toBe(Direction.EAST);
+  });
+
+  it("faces the spell's own single fixed direction", () => {
+    registerBolt({ directionAcceptsUserInput: false, directionMode: 'fixed', defaultDirections: [Direction.NORTH] });
+    withStep({ faceTargetOnCast: true });
+    const result = expectParity(() => buildState({}), 1);
+    expect(result.heroFacing[0]).toBe(Direction.NORTH);
+  });
+
+  it('turns while casting and back at the next turn start (revertFacingAfterCast)', () => {
+    registerBolt({ directionAcceptsUserInput: false });
+    withStep({ directionOverride: [Direction.NORTH], faceTargetOnCast: true, revertFacingAfterCast: true });
+    const gs = buildState({});
+    executeTurn(gs);
+    expect(gs.placedCharacters[0].facing).toBe(Direction.NORTH);
+    // The heading the board's arrow shows meanwhile (where it walks next).
+    expect(gs.placedCharacters[0].preCastFacing).toBe(Direction.EAST);
+    executeTurn(gs);
+    expect(gs.placedCharacters[0].facing).toBe(Direction.EAST);
+  });
+});

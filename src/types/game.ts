@@ -256,8 +256,8 @@ export interface CharacterAction {
   faceDirection?: Direction; // Target direction for FACE_DIRECTION action (used when faceTarget is unset)
   faceTarget?: 'nearest_enemy' | 'nearest_hero'; // For FACE_DIRECTION: face the nearest enemy or hero (absolute teams, resolved against the actor's own side) instead of a fixed direction. Snapped to the 8 compass dirs. Unset = use faceDirection.
   faceTargetRange?: number; // For FACE_DIRECTION faceTarget: max search range in tiles (0 or unset = unlimited).
-  faceTargetOnCast?: boolean; // For auto-target SPELL actions: rotate the caster to face the nearest target when casting, snapped to the 8 compass dirs.
-  revertFacingAfterCast?: boolean; // With faceTargetOnCast: restore the pre-cast facing at the start of the next turn (otherwise the new facing persists).
+  faceTargetOnCast?: boolean; // "Facing when casting" (editor three-way: Don't turn / Turn while casting / Turn and keep): when this SPELL step casts, the caster ACTUALLY turns to face the way it casts (logical facing, not cosmetic) — the (first) auto-target, the player's aim, or the single direction the cast resolves to. Multi-direction casts never turn it. (Name kept from its auto-target-only days.)
+  revertFacingAfterCast?: boolean; // With faceTargetOnCast: restore the pre-cast facing at the start of the next turn (otherwise the new facing persists) — "Turn while casting". The board's facing arrow shows that pre-cast heading meanwhile (where the caster walks next).
 
   // Execution configuration (new system)
   executionMode?: ExecutionMode;  // Default: 'sequential'

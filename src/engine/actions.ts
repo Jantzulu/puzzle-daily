@@ -1694,9 +1694,13 @@ function relativeToAbsolute(facing: Direction, relative: RelativeDirection): Dir
 }
 
 /**
- * For auto-target SPELL actions with faceTargetOnCast: rotate the caster to face
- * the (nearest) target, snapped to the 8 compass directions. `direction` is the
- * already-snapped direction to that target. When revertFacingAfterCast is set, the
+ * FACE CAST DIRECTION (faceTargetOnCast): the caster ACTUALLY turns to face the
+ * way it casts — a real facing change, never cosmetic (user call 2026-10-15:
+ * "actually face this direction when attacking" or "don't", per step). Auto-
+ * target faces the (first) target, snapped to the 8 compass directions; a
+ * player-AIMED cast faces its aim; any other cast that resolves to exactly ONE
+ * direction (a fixed or relative override, the spell's own config) faces that.
+ * Off = the caster keeps its facing. When revertFacingAfterCast is set, the
  * pre-cast facing is stashed once per turn (guarded so multiple casts in a turn
  * don't overwrite the true original) and restored at the next turn start by the
  * simulation. Mutates `character` in place. Facing is logical state, so this flows
@@ -1842,9 +1846,13 @@ function executeSpell(
     ? character.spellDirectionOverrides?.[spell.id]
     : undefined;
 
+  // Set where a branch faces its own direction (the uniform single-direction
+  // rule below then stands down).
+  let facedOnCast = false;
   if (aimedDirection) {
     castDirections = [aimedDirection];
     applyFaceOnCast(character, action, aimedDirection);
+    facedOnCast = true;
   } else if (autoTeam) {
     const maxTargets = action.maxTargets || 1;
     const targetMode = action.autoTargetMode || 'omnidirectional';
@@ -1854,6 +1862,7 @@ function executeSpell(
     if (targets.length > 0) {
       castDirections = targets.map(t => t.direction);
       applyFaceOnCast(character, action, targets[0].direction);
+      facedOnCast = true;
       if (action.homing) {
         homingTargets = toHomingTargets(targets);
       }
@@ -1932,6 +1941,13 @@ function executeSpell(
   // Handle self-targeting in addition to other targets
   if (action.targetSelf) {
     applySpellToSelf(character, spell, gameState);
+  }
+
+  // FACE CAST DIRECTION for every other cast that resolves to ONE direction
+  // (see applyFaceOnCast). All-directions and multi-direction casts have no
+  // single way to face, so they never turn the caster.
+  if (!facedOnCast && castDirections.length === 1) {
+    applyFaceOnCast(character, action, castDirections[0]);
   }
 
   // Execute spell for each direction based on template type
