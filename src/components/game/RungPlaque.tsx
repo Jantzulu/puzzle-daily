@@ -83,10 +83,13 @@ const HEADER_BLEED = 8;
  * THE LOOSE SIGN (user asks 2026-10-15; the wobble is shared, see
  * shared/signWobble.ts): poke a plaque and it rocks on its loose bolt,
  * header plate, hearts and counter as one, the poked side dipping first.
- * The menu gate's impacts rattle it too: a full rattle when the gate lands
- * (the slam), a little one when it locks shut (the clunk).
+ * The gate's impacts rattle it too: fully when the menu gate lands (the
+ * slam); less when it locks shut (the clunk), when the knock of a pulled
+ * gate going home hits (scaled by the pull), and least for the rail's
+ * soft settle on page load.
  */
-const plaqueImpact = (kind: GateImpact) => (kind === 'slam' ? 1 : 0.6);
+const PLAQUE_IMPACT: Record<GateImpact, number> = { slam: 1, clunk: 0.6, knock: 0.8, settle: 0.5 };
+const plaqueImpact = (kind: GateImpact) => PLAQUE_IMPACT[kind];
 
 /**
  * The header plate: text-driven width (quest-plate spacer plumbing), DOM

@@ -7,7 +7,8 @@ import { resnapWithin } from '../game/panelSkins';
 // User asks 2026-10-15: poke a LIVES/TURNS plaque and it rocks on a bolt
 // that isn't as tight as it should be; when the portcullis menu LANDS (the
 // slam) its signs rattle the same way; and the rail's plaques rattle when
-// the gate lands and, a little, when it locks shut. One routine for all.
+// the gate lands, when it locks shut, when the rail settles on page load,
+// and when a pulled gate knocks home. One routine for all.
 //
 // The individual `rotate` property (Web Animations), clear of useCrispSnap's
 // left/top. Each wobble starts from wherever the last one left the sign, so
@@ -44,13 +45,19 @@ export function wobbleSign(el: HTMLElement, side: 1 | -1, strength = 1) {
 
 // ─── The gate's impacts ─────────────────────────────────────────────────────
 
-/** The menu gate LANDS when it opens (the slam) and LOCKS when it closes (the clunk). */
-export type GateImpact = 'slam' | 'clunk';
+/**
+ * The iron's impacts. The menu gate LANDS when it opens (slam) and LOCKS
+ * when it closes (clunk), both announced by useGateShake. The rail SETTLES
+ * on page load with its soft clunk (settle, from Game). A pulled gate
+ * KNOCKS home (knock, from gateJostle).
+ */
+export type GateImpact = 'slam' | 'clunk' | 'settle' | 'knock';
+type GateImpactDetail = { kind: GateImpact; force: number };
 const GATE_IMPACT = 'gate-impact';
 
-/** useGateShake announces each impact at the moment it hits. */
-export const announceGateImpact = (kind: GateImpact) => {
-  window.dispatchEvent(new CustomEvent<GateImpact>(GATE_IMPACT, { detail: kind }));
+/** Announce an impact at the moment it hits; its force scales every sign's rattle. */
+export const announceGateImpact = (kind: GateImpact, force = 1) => {
+  window.dispatchEvent(new CustomEvent<GateImpactDetail>(GATE_IMPACT, { detail: { kind, force } }));
 };
 
 /** Up to this much lag per sign, so a row of signs rattles one by one, not as a block. */
@@ -70,7 +77,8 @@ export function useGateImpactWobble(
     const onImpact = (e: Event) => {
       const el = ref.current;
       if (!el) return;
-      const s = strength((e as CustomEvent<GateImpact>).detail, el);
+      const { kind, force } = (e as CustomEvent<GateImpactDetail>).detail;
+      const s = strength(kind, el) * force;
       if (!(s > 0)) return;
       const side = Math.random() < 0.5 ? -1 : 1;
       const jitter = 0.8 + Math.random() * 0.2;

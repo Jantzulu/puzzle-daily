@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react';
+import { announceGateImpact } from '../shared/signWobble';
 
 // ============================================================================
 // THE JOSTLE (user idea 2026-10-15): the closed portcullis can be grabbed and
@@ -9,7 +10,8 @@ import { useCallback, useEffect, useRef } from 'react';
 // a bit to give the effect some life"). The pull runs into growing tension,
 // approaching JOSTLE_MAX_PX. Released, the gate winches up a whole px at a
 // time (the art stays crisp the whole way) and, from a real pull, knocks
-// against its stop: home, a 1px rebound, home.
+// against its stop: home, a 1px rebound, home. The knock rattles the rail's
+// plaques (shared/signWobble.ts), harder for a deeper pull.
 //
 // Grab anywhere on the rail except its buttons. Only a DOWNWARD pull grabs,
 // so a swipe up on a phone still scrolls the page: touch decides on its
@@ -71,6 +73,7 @@ export function useGateJostle(enabled: boolean) {
     let base = 0;
     let depth = 0;
     let home: Animation | null = null;
+    let knockTimer: number | undefined;
 
     const setDepth = (px: number) => {
       depth = px;
@@ -94,6 +97,7 @@ export function useGateJostle(enabled: boolean) {
       const anim = wrap.animate(frames, { duration: total });
       home = anim;
       anim.finished.then(() => { if (home === anim) home = null; }, () => { /* caught by a new grab */ });
+      if (knock) knockTimer = window.setTimeout(() => announceGateImpact('knock', from / JOSTLE_MAX_PX), glide);
     };
 
     const grab = () => {
@@ -147,10 +151,11 @@ export function useGateJostle(enabled: boolean) {
       const target = e.target as HTMLElement;
       if (!target.closest('.control-rail') || target.closest('button, a')) return;
       if (home) {
-        // Caught mid-winch: hold it where it is.
+        // Caught mid-winch: hold it where it is (and it never knocks).
         const y = /\S+\s+(-?[\d.]+)px/.exec(getComputedStyle(wrap).translate)?.[1];
         home.cancel();
         home = null;
+        window.clearTimeout(knockTimer);
         setDepth(Math.round(parseFloat(y ?? '0') || 0));
       }
       pointerId = e.pointerId;
@@ -173,6 +178,7 @@ export function useGateJostle(enabled: boolean) {
       window.removeEventListener('pointerup', finish);
       window.removeEventListener('pointercancel', finish);
       home?.cancel();
+      window.clearTimeout(knockTimer);
       wrap.style.translate = '';
       wrap.removeAttribute('data-jostling');
       if (wrapRef.current === wrap) wrapRef.current = null;

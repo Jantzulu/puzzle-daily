@@ -54,6 +54,7 @@ import heartFullIcon from '../../assets/icons/heart-full.png';
 import heartEmptyIcon from '../../assets/icons/heart-empty.png';
 import { RungPlaque } from './RungPlaque';
 import { useGateJostle } from './gateJostle';
+import { announceGateImpact } from '../shared/signWobble';
 import { ReplaySlabMesh } from './ReplaySlabMesh';
 
 // Test mode types
@@ -257,7 +258,11 @@ export const Game: React.FC<GameProps> = ({
   const [gateSettling, setGateSettling] = useState(true);
   useEffect(() => {
     const id = setTimeout(() => setGateSettling(false), 1150); // settle = 0.35s delay + 0.35s stroke, then the 0.4s screen clunk keyed off this class (lockstep with .gate-settle and .gate-shake-layer:has(.gate-settle))
-    return () => clearTimeout(id);
+    // The settle LOCKS as its soft clunk starts (0.35s delay + 0.35s stroke,
+    // lockstep with .gate-settle): the rail's plaques rattle (user ask
+    // 2026-10-15; shared/signWobble.ts).
+    const lock = setTimeout(() => announceGateImpact('settle'), 700);
+    return () => { clearTimeout(id); clearTimeout(lock); };
   }, []);
   // Reset reveal: masks the instant repaint on reset/retry/replay swaps.
   // Bumping the nonce fades the BOARD CONTENT from 0 -> 1 (WAAPI, no
