@@ -38,8 +38,12 @@ export const drawTapHint = (ctx: CanvasRenderingContext2D, w: number, pieces: Ma
   if (r) drawFixed(ctx, r, w - rw - (r.halo?.l ?? 0) * Z, -(r.halo?.t ?? 0) * Z);
 };
 
-const SkinnedTapHint: React.FC<{ pieces: Map<string, SkinPiece>; children: React.ReactNode }> = ({ pieces, children }) => {
-  const snapRef = useCrispSnap<HTMLSpanElement>(true, true);
+const SkinnedTapHint: React.FC<{ pieces: Map<string, SkinPiece>; deferSnap: boolean; children: React.ReactNode }> = ({ pieces, deferSnap, children }) => {
+  // The game's chips snap BEFORE their first paint (user report 2026-10-15:
+  // the board's chip appeared, then hopped a fraction of a pixel right as a
+  // two-frame-deferred snap landed). Nothing snapped above them to wait for.
+  // The forge preview keeps the deferred snap.
+  const snapRef = useCrispSnap<HTMLSpanElement>(true, deferSnap);
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
   const m = pieces.get('hint-mid')!;
   const h = nomH(m) * Z;
@@ -99,5 +103,5 @@ export const TapHintChip: React.FC<{ children: React.ReactNode; pieces?: Map<str
       </span>
     );
   }
-  return <SkinnedTapHint pieces={skin}>{children}</SkinnedTapHint>;
+  return <SkinnedTapHint pieces={skin} deferSnap={!!pieces}>{children}</SkinnedTapHint>;
 };
