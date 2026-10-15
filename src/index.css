@@ -3655,6 +3655,86 @@ body:not(.menu-gate-lowered) .quest-panel-sticky[data-jostle] .control-rail {
     0 1px 0 rgba(255, 235, 200, 0.12);
 }
 
+/* THE LINTEL TORCHES (LintelTorch.tsx, user idea 2026-10-15), one each side
+   of the lettering. The button is the torch's own art box (the crisp snap
+   moves it with left/top); the strip of frames slides inside it. The light
+   is a z:-1 layer in the lettering's stacking context, so it warms the
+   stone BEHIND the letters and the torch, never over them. Two layers: the
+   outer fades on put-out/relight (a transition), the inner flickers (an
+   animation), so neither fights the other. Transform and opacity only. */
+.lintel-torch {
+  position: relative;
+  flex-shrink: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.dungeon-lintel-text > .lintel-torch:first-child {
+  margin-right: 6px;
+}
+
+.dungeon-lintel-text > .lintel-torch:last-child {
+  margin-left: 6px;
+}
+
+.lintel-torch-frame {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.lintel-torch-frame > img {
+  display: block;
+  max-width: none;
+  image-rendering: pixelated;
+}
+
+.lintel-torch-light {
+  position: absolute;
+  z-index: -1;
+  left: calc(var(--torch-flame-x) - 36px);
+  top: calc(var(--torch-flame-y) - 26px);
+  width: 72px;
+  height: 52px;
+  pointer-events: none;
+  transition: opacity 0.35s ease-out;
+}
+
+.lintel-torch-light > span {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(closest-side, rgba(255, 196, 110, 0.52), rgba(255, 150, 60, 0.24) 45%, rgba(255, 120, 40, 0));
+  animation: torch-flicker 1.9s ease-in-out var(--torch-phase, 0ms) infinite;
+}
+
+.lintel-torch--out .lintel-torch-light {
+  opacity: 0;
+}
+
+.lintel-torch--out .lintel-torch-light > span,
+.lintel-torch[data-offscreen] .lintel-torch-light > span {
+  animation-play-state: paused;
+}
+
+@keyframes torch-flicker {
+  0%, 100% { opacity: 0.86; transform: scale(1); }
+  13% { opacity: 1; transform: scale(1.04); }
+  27% { opacity: 0.8; transform: scale(0.98); }
+  41% { opacity: 0.95; transform: scale(1.02); }
+  55% { opacity: 0.84; transform: scale(0.99); }
+  68% { opacity: 1; transform: scale(1.05); }
+  83% { opacity: 0.9; transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lintel-torch-light > span {
+    animation: none;
+    opacity: 0.9;
+  }
+}
+
 /* (dungeon-lintel-gem removed 2026-08-13: the center mark between
    DUNGEON and DETAILS retired by user call, along with the
    iconDungeonDetails theme slot that could replace it.) */

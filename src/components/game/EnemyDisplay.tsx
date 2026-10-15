@@ -8,6 +8,7 @@ import { HelpButton } from './HelpOverlay';
 import { TapHintChip } from './TapHintChip';
 import { GemMesh } from './GemMesh';
 import { LintelMesh } from './LintelMesh';
+import { LintelTorch } from './LintelTorch';
 import { MovementArrow } from './DirectionArrow';
 import type { ThemeAssets } from '../../utils/themeAssets';
 import { CARD_PIXEL_SCALE, computeCardSpriteAreaHeight } from './cardConstants';
@@ -183,9 +184,13 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
       {/* Center mark retired (user call 2026-08-13): plain DUNGEON
           DETAILS; the words' gap is the container's own 8px. The
           iconDungeonDetails theme slot went with it. */}
+      {/* A torch each side (user idea 2026-10-15; LintelTorch.tsx), their
+          flickers offset so the pair never burns in step. */}
       <span className="dungeon-lintel-text font-medieval uppercase">
+        <LintelTorch />
         <span>Dungeon</span>
         <span>Details</span>
+        <LintelTorch phase={700} />
       </span>
     </div>
   ) : noPanel ? (
