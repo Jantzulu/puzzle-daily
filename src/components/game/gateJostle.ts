@@ -19,7 +19,9 @@ import { useCallback, useEffect, useRef } from 'react';
 // the individual `translate` property on the sticky wrapper, so it composes
 // with the settle and the menu ride (transform, same element) and the
 // riding sag (on the rail itself). Whole px only, so the crisp snaps inside
-// (useCrispSnap measures fractions) never see it.
+// (useCrispSnap measures fractions) never see it. It winches home under
+// Reduce Motion too (user call 2026-10-15: minimal movement, in a project
+// full of it).
 
 /** How far the pull can bring the gate down, in px. */
 export const JOSTLE_MAX_PX = 8;
@@ -78,7 +80,6 @@ export function useGateJostle(enabled: boolean) {
     const winchHome = () => {
       const from = depth;
       setDepth(0);
-      if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
       const glide = from * WINCH_MS_PER_PX;
       const knock = from >= KNOCK_FROM_PX;
       const total = glide + (knock ? KNOCK_MS : 0);

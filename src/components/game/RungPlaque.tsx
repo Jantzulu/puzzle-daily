@@ -185,9 +185,10 @@ export const RungPlaque: React.FC<{ header?: string; children: React.ReactNode }
   // Animations), clear of useCrispSnap's left/top. Each poke starts from
   // wherever the last left the sign, so a quick second poke never jumps.
   // Once it settles, the sign and its header plate re-snap: a snap that
-  // ran mid-wobble measured the tilted box. Skipped under Reduce Motion.
+  // ran mid-wobble measured the tilted box. Runs under Reduce Motion too
+  // (user call 2026-10-15: minimal movement, in a project full of it).
   const poke = (e: React.PointerEvent<HTMLSpanElement>) => {
-    if (e.button !== 0 || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+    if (e.button !== 0) return;
     const el = e.currentTarget;
     const r = el.getBoundingClientRect();
     const side = e.clientX < r.left + r.width / 2 ? -1 : 1;
