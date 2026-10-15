@@ -1,9 +1,11 @@
 import React, { useEffect, useRef } from 'react';
-import { SpellTemplate, TURN_INTERVAL_MS } from '../../types/game';
-import type { Direction, SpellAsset, SpriteReference } from '../../types/game';
+import { Direction, SpellTemplate, TURN_INTERVAL_MS } from '../../types/game';
+import type { SpellAsset, SpriteReference } from '../../types/game';
 import type { CustomSprite } from '../../utils/assetStorage';
 import { drawSprite } from '../editor/SpriteEditor';
 import { drawProjectileArt, drawParticleArt, getRotationForDirection } from './spellArt';
+import { drawFacingArrow } from './facingArrow';
+import { turnAround } from '../../engine/utils';
 import { drawLightGlow } from './lightGlow';
 import { satellitesPaused } from './frameProfiler';
 import { DESPAWN_SHRINK_MS } from '../../engine/simulation';
@@ -53,6 +55,36 @@ const FLIGHT_TILES = 1.25;
 const FLIGHT_SLOWMO = 2;
 // Reduce Motion: no flight — the bolt fades in and out over the button.
 const FADE_MS = 150;
+
+// THE REDIRECT SCENE (user design 2026-10-15): a redirect's choice turns its
+// TARGET, so a redirect tab shows the target, not the caster — fading in
+// idling in its own facing (the board's facing arrow beside it), then the
+// spell landing on it, then the target and its arrow turned to the pick,
+// then a fade out that resets the loop. Times in ms.
+const R_FADE = 250;
+const R_HOLD_BEFORE = 700;
+const R_HOLD_AFTER = 1000;
+const R_PERIOD = R_FADE + R_HOLD_BEFORE + R_HOLD_AFTER + R_FADE;
+const R_IMPACT_AT = R_FADE + R_HOLD_BEFORE;
+// The spell's bolt pops onto the target at impact: this long to arrive
+// (half size to full), then it fades out over the hit effect's life.
+const R_POP_MS = 120;
+// The facing arrow: the board's own drawing at 3x (it is 3px on a 48px
+// tile), riding the hub window's top-right corner.
+const R_ARROW_SCALE = 3;
+const R_ARROW_X = 19;
+const R_ARROW_Y = -19;
+
+/**
+ * What a redirect tab shows: the target the spell turns (CharacterSelector
+ * picks it — an enemy, or a teammate when the casting step auto-targets its
+ * own team), where it faces now, and whether it moves (the arrow's colour).
+ */
+export interface RedirectTarget {
+  sprite: CustomSprite;
+  facing?: Direction;
+  moving: boolean;
+}
 
 const STEP: Record<string, [number, number]> = {
   north: [0, -1], northeast: [1, -1], east: [1, 0], southeast: [1, 1],
@@ -120,9 +152,11 @@ interface HubPreviewProps {
    * still goes to the aim). The hub shows exactly that.
    */
   faceOnCast?: 'keep' | 'revert';
+  /** REDIRECT tabs: the target the redirect turns (see RedirectTarget). */
+  redirectTarget?: RedirectTarget;
 }
 
-export const HubPreview: React.FC<HubPreviewProps> = ({ sprite, spell, aim, facing, faceOnCast }) => {
+export const HubPreview: React.FC<HubPreviewProps> = ({ sprite, spell, aim, facing, faceOnCast, redirectTarget }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -134,6 +168,14 @@ export const HubPreview: React.FC<HubPreviewProps> = ({ sprite, spell, aim, faci
     canvas.height = Math.round(ROSE * dpr);
 
     const art = aim && spell ? hubArtFor(spell) : null;
+    const redirect = spell?.templateType === SpellTemplate.REDIRECT && redirectTarget ? redirectTarget : null;
+    // The target starts in its own facing — or, when that already IS the
+    // pick, the opposite way, so the turn always shows.
+    const redirectFrom = redirect
+      ? ((redirect.facing ?? Direction.SOUTH) === aim ? turnAround(aim!) : (redirect.facing ?? Direction.SOUTH))
+      : undefined;
+    const redirectBolt = spell?.sprites.projectile?.spriteData;
+    const redirectHit = spell?.sprites.damageEffect?.spriteData;
     const step = aim ? STEP[aim] : undefined;
     const rotation = aim ? getRotationForDirection(aim) : undefined;
     const reduceMotion = !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
@@ -159,6 +201,44 @@ export const HubPreview: React.FC<HubPreviewProps> = ({ sprite, spell, aim, faci
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.imageSmoothingEnabled = false;
+
+      if (redirect) {
+        // THE REDIRECT SCENE — unaimed: the target idles in its own facing.
+        const rt = aim ? (now - origin) % R_PERIOD : R_FADE;
+        const turned = !!aim && rt >= R_IMPACT_AT;
+        const dir = turned ? aim! : redirectFrom!;
+        ctx.globalAlpha = !aim ? 1
+          : rt < R_FADE ? rt / R_FADE
+            : rt >= R_PERIOD - R_FADE ? (R_PERIOD - rt) / R_FADE
+              : 1;
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(win0, win0, winSize, winSize);
+        ctx.clip();
+        drawSprite(ctx, redirect.sprite, physC, physC, physTile, dir, false, now);
+        ctx.restore();
+        // The landing: the spell's bolt pops onto the target and fades as
+        // its hit effect plays (the board's redirect hit vfx), drawn over
+        // the target so the moment reads.
+        const sinceImpact = rt - R_IMPACT_AT;
+        if (aim && sinceImpact >= 0 && sinceImpact < EFFECT_MS) {
+          ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+          const impactStart = now - sinceImpact;
+          if (redirectHit) drawParticleArt(ctx, redirectHit, C, C, impactStart, now, EFFECT_MS, 1, HUB_TILE);
+          const pop = Math.min(1, sinceImpact / R_POP_MS);
+          const fadeOut = 1 - sinceImpact / EFFECT_MS;
+          const sceneAlpha = ctx.globalAlpha;
+          ctx.globalAlpha = sceneAlpha * fadeOut;
+          drawProjectileArt(ctx, redirectBolt, C, C, now, 0.5 + 0.5 * pop);
+          ctx.globalAlpha = sceneAlpha;
+        }
+        // The board's facing arrow, turning with the target.
+        ctx.setTransform(dpr * R_ARROW_SCALE, 0, 0, dpr * R_ARROW_SCALE, (C + R_ARROW_X) * dpr, (C + R_ARROW_Y) * dpr);
+        drawFacingArrow(ctx, 0, 0, dir, redirect.moving);
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.globalAlpha = 1;
+        return;
+      }
 
       // THE SPELL'S ART, in the board's logical units (CSS px here), drawn
       // under the hero as the board draws bolts and particles before entities.
@@ -219,7 +299,7 @@ export const HubPreview: React.FC<HubPreviewProps> = ({ sprite, spell, aim, faci
     // read, so the object is new on each parent render and would restart the
     // loop. Its content cannot change while the picker is up.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sprite, spell?.id, aim, facing, faceOnCast]);
+  }, [sprite, spell?.id, aim, facing, faceOnCast, redirectTarget]);
 
   return <canvas ref={canvasRef} className="dir-rose__fx" aria-hidden="true" />;
 };

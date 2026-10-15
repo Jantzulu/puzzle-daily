@@ -1,6 +1,10 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { getCharacter } from '../../data/characters';
-import type { Character, CharacterAction, PlacedCharacter, Direction } from '../../types/game';
+import { getEnemy } from '../../data/enemies';
+import { SpellTemplate, StatusEffectType } from '../../types/game';
+import type { Character, CharacterAction, PlacedCharacter, PlacedEnemy, SpellAsset, Direction } from '../../types/game';
+import { hasMovementActions, enemyHasMovementActions } from './facingArrow';
+import type { RedirectTarget } from './HubPreview';
 import { getDirectionInputSpells, spellDirectionCaption, FACING_CAPTION, allowedFacingDirections, allowedSpellDirections } from '../../utils/directionInput';
 import { SpriteThumbnail } from '../editor/SpriteThumbnail';
 import { GemMesh } from './GemMesh';
@@ -79,6 +83,8 @@ interface CharacterSelectorProps {
   disabled?: boolean;
   noPanel?: boolean;
   placedCharacters?: PlacedCharacter[];
+  /** The puzzle's enemies — a redirect tab's hub shows one being turned. */
+  enemies?: PlacedEnemy[];
   onSpellDirectionOverride?: (characterId: string, spellId: string, direction: Direction) => void;
   pendingSpellDirectionOverrides?: Record<string, Record<string, Direction>>;
   onFacingOverride?: (characterId: string, direction: Direction) => void;
@@ -114,6 +120,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
   disabled = false,
   noPanel = false,
   placedCharacters = [],
+  enemies = [],
   onSpellDirectionOverride,
   pendingSpellDirectionOverrides = {},
   onFacingOverride,
@@ -237,6 +244,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
           const step = character.behavior.find(a => a.type === 'spell' && a.spellId === spell.id);
           return step?.faceTargetOnCast ? (step.revertFacingAfterCast ? 'revert' as const : 'keep' as const) : undefined;
         })(),
+        redirectTarget: spell.templateType === SpellTemplate.REDIRECT ? redirectTargetFor(character, spell) : undefined,
         current: placed?.spellDirectionOverrides?.[spell.id]
           || pendingSpellDirectionOverrides[character.id]?.[spell.id],
         allowed: allowedSpellDirections(spell),
@@ -245,6 +253,29 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
           : undefined,
       })),
     ];
+  };
+
+  // REDIRECT entries (user design 2026-10-15): the picker hub shows the
+  // TARGET the redirect turns, not the caster — an enemy, or a teammate when
+  // the casting step auto-targets its own team (a homing redirect resolves
+  // its target by id, so allies turn too; the roster's next hero, else the
+  // caster). Among enemies it prefers a mover (where facing matters most)
+  // that isn't steadfast (immune to redirects). Its own facing is where the
+  // hub starts it. Undefined = nothing to show (the hub keeps the hero).
+  const redirectTargetFor = (character: Character, spell: SpellAsset): RedirectTarget | undefined => {
+    const step = character.behavior.find(a => a.type === 'spell' && a.spellId === spell.id);
+    if (step?.autoTargetNearestCharacter) {
+      const mateId = availableCharacterIds.find(id => id !== character.id && !!getCharacter(id)?.customSprite) ?? character.id;
+      const mate = getCharacter(mateId);
+      if (!mate?.customSprite) return undefined;
+      return { sprite: mate.customSprite, facing: shownFacing(mate) ?? mate.defaultFacing, moving: hasMovementActions(mate.behavior) };
+    }
+    const candidates = enemies.filter(e => !e.dead && !e.despawned && !!getEnemy(e.enemyId)?.customSprite
+      && !e.statusEffects?.some(s => s.type === StatusEffectType.STEADFAST));
+    const pick = candidates.find(e => enemyHasMovementActions(getEnemy(e.enemyId)?.behavior)) ?? candidates[0];
+    const data = pick ? getEnemy(pick.enemyId) : undefined;
+    if (!pick || !data?.customSprite) return undefined;
+    return { sprite: data.customSprite, facing: pick.facing, moving: enemyHasMovementActions(data.behavior) };
   };
 
   // The bearing a hero shows before a run: an input hero's choice (placed

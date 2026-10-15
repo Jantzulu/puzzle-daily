@@ -4048,6 +4048,7 @@ export const Game: React.FC<GameProps> = ({
                   <CharacterSelector
                     questSlot={questFloatOn}
                     availableCharacterIds={gameState.puzzle.availableCharacters}
+                    enemies={gameState.puzzle.enemies}
                     selectedCharacterId={testMode === 'none' && gameState.gameStatus === 'setup' ? selectedCharacterId : null}
                     onSelectCharacter={testMode === 'none' && gameState.gameStatus === 'setup' ? (id: string | null) => { setSelectedCharacterId(id); if (id) vibrate('heroSelect'); } : () => {}}
                     placedCharacterIds={gameState.placedCharacters.map(c => c.characterId)}

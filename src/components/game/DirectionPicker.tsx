@@ -2,7 +2,7 @@ import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { Direction, SpellAsset } from '../../types/game';
 import type { CustomSprite } from '../../utils/assetStorage';
-import { HubPreview } from './HubPreview';
+import { HubPreview, type RedirectTarget } from './HubPreview';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import compassIcon from '../../assets/icons/compass.png';
 import { navChromeIcon } from '../../assets/icons/navChrome';
@@ -116,6 +116,8 @@ export interface DirectionPickerEntry {
   /** SPELL entries: the spell being aimed — the hub previews its cast. */
   /** SPELL entries: the casting step's Face Cast Direction (see HubPreview). */
   faceOnCast?: 'keep' | 'revert';
+  /** REDIRECT entries: the target the hub shows being turned. */
+  redirectTarget?: RedirectTarget;
   spell?: SpellAsset;
 }
 
@@ -536,6 +538,7 @@ export const DirectionPicker: React.FC<DirectionPickerProps> = ({ entry, sprite,
                       aim={shownEntry.spell && !owes(shownEntry) ? shownEntry.current : undefined}
                       facing={shownEntry.spell ? facing : shownEntry.current}
                       faceOnCast={shownEntry.faceOnCast}
+                      redirectTarget={shownEntry.redirectTarget}
                     />
                   )}
                 </div>
