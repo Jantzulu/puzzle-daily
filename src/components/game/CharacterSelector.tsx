@@ -231,6 +231,12 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
         key: spell.id,
         caption: spellDirectionCaption(spell),
         spell,
+        // The hub turns the hero only if the casting step does (its first
+        // step casting this spell — the order getDirectionInputSpells keeps).
+        faceOnCast: (() => {
+          const step = character.behavior.find(a => a.type === 'spell' && a.spellId === spell.id);
+          return step?.faceTargetOnCast ? (step.revertFacingAfterCast ? 'revert' as const : 'keep' as const) : undefined;
+        })(),
         current: placed?.spellDirectionOverrides?.[spell.id]
           || pendingSpellDirectionOverrides[character.id]?.[spell.id],
         allowed: allowedSpellDirections(spell),

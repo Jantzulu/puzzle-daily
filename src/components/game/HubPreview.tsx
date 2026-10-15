@@ -113,9 +113,16 @@ interface HubPreviewProps {
    * tab, the hero's facing until the spell is aimed. Unset = default art.
    */
   facing?: Direction;
+  /**
+   * The step's "Face Cast Direction" (faceTargetOnCast): 'keep' = the hero
+   * turns to the aim and stays; 'revert' = turns for the cast, back next
+   * turn; unset = never turns (it casts in its own facing while the art
+   * still goes to the aim). The hub shows exactly that.
+   */
+  faceOnCast?: 'keep' | 'revert';
 }
 
-export const HubPreview: React.FC<HubPreviewProps> = ({ sprite, spell, aim, facing }) => {
+export const HubPreview: React.FC<HubPreviewProps> = ({ sprite, spell, aim, facing, faceOnCast }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -198,7 +205,12 @@ export const HubPreview: React.FC<HubPreviewProps> = ({ sprite, spell, aim, faci
       ctx.beginPath();
       ctx.rect(win0, win0, winSize, winSize);
       ctx.clip();
-      drawSprite(ctx, sprite, physC, physC, physTile, art ? aim : facing, false, now, casting, casting ? castStart : undefined);
+      // Which way: the step's Face Cast Direction decides (user call
+      // 2026-10-15 — a real facing change or none, never cosmetic, so the
+      // preview shows the hero turning only when the game will).
+      const castDir = faceOnCast ? aim : facing;
+      const restDir = faceOnCast === 'keep' ? aim : facing;
+      drawSprite(ctx, sprite, physC, physC, physTile, art ? (casting ? castDir : restDir) : facing, false, now, casting, casting ? castStart : undefined);
       ctx.restore();
     };
     frame();
@@ -207,7 +219,7 @@ export const HubPreview: React.FC<HubPreviewProps> = ({ sprite, spell, aim, faci
     // read, so the object is new on each parent render and would restart the
     // loop. Its content cannot change while the picker is up.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sprite, spell?.id, aim, facing]);
+  }, [sprite, spell?.id, aim, facing, faceOnCast]);
 
   return <canvas ref={canvasRef} className="dir-rose__fx" aria-hidden="true" />;
 };

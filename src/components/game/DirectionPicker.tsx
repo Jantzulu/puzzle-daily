@@ -114,6 +114,8 @@ export interface DirectionPickerEntry {
    */
   isFacing?: boolean;
   /** SPELL entries: the spell being aimed — the hub previews its cast. */
+  /** SPELL entries: the casting step's Face Cast Direction (see HubPreview). */
+  faceOnCast?: 'keep' | 'revert';
   spell?: SpellAsset;
 }
 
@@ -533,6 +535,7 @@ export const DirectionPicker: React.FC<DirectionPickerProps> = ({ entry, sprite,
                       spell={shownEntry.spell}
                       aim={shownEntry.spell && !owes(shownEntry) ? shownEntry.current : undefined}
                       facing={shownEntry.spell ? facing : shownEntry.current}
+                      faceOnCast={shownEntry.faceOnCast}
                     />
                   )}
                 </div>
