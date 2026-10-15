@@ -185,14 +185,6 @@ export const QuestBoxFrame: React.FC = () => {
       varTarget.style.setProperty('--qseal-dip', `${SEAL_ART_DIP * Z}px`);
       varTarget.style.setProperty('--qtravel-l', `${Math.max(0, Math.round(w / 2 - ROLL_W_L))}px`);
       varTarget.style.setProperty('--qtravel-r', `${Math.max(0, Math.round(w / 2 - ROLL_W_R))}px`);
-      // The clip's CLOSED insets, in px: the keyframes must interpolate
-      // px → px. A 50% from-value interpolating to a px to-value is
-      // mixed-unit calc territory, which some engines animate DISCRETELY
-      // — the paper snapped to full width mid-open while the rods were
-      // still traveling (user report, 2026-08-10). NOTE the content
-      // wrapper is narrower than the box (side padding), so w/2 over-
-      // clips it when closed — harmless, fully hidden is fully hidden.
-      varTarget.style.setProperty('--qclose', `${w / 2}px`);
       // Where the paper's halves meet (whole px: an odd width overlaps
       // them by one identical column rather than splitting a pixel).
       varTarget.style.setProperty('--qmid', `${Math.floor(w / 2)}px`);

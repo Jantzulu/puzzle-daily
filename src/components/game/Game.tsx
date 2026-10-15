@@ -3744,14 +3744,17 @@ export const Game: React.FC<GameProps> = ({
                 {/* relative: the art frame is absolutely positioned, and
                     absolute layers paint over STATIC siblings — everything
                     readable lives above the art. Skinned: the content
-                    UNFURLS with the paper (quest-scroll-content wipe);
-                    baseline keeps the plain fade. Hidden entirely while
-                    the scroll toggle rests closed; the replay key re-runs
-                    the unfurl on reopen. */}
+                    UNFURLS with the rods, inside two nested windows that
+                    ride them (quest-text-* — THE TEXT'S REVEAL in
+                    index.css); baseline keeps the plain fade. Hidden
+                    entirely while the scroll toggle rests closed. */}
                 <div
                   className={questSkinFrameActive ? 'quest-stage-scroll relative' : 'quest-stage-box relative'}
                   onAnimationEnd={questFloatOn ? onQuestUnfurlEnd : undefined}
                 >
+                <div className="quest-text-c1">
+                <div className="quest-text-w2">
+                <div className="quest-text-c2">
                 {/* Puzzle Number & Quest Row */}
                 {puzzleNumber && (
                   <div className="text-center mb-0.5">
@@ -3996,6 +3999,9 @@ export const Game: React.FC<GameProps> = ({
                     </>
                   );
                 })()}
+                </div>
+                </div>
+                </div>
                 </div>
                 </div>
                 {/* QUEST FLOAT: the small scroll's tap target — a real button

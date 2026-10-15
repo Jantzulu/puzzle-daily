@@ -2580,26 +2580,46 @@ body.gate-raising .gate-shake-layer {
   animation: quest-paper-hold-r 0.65s cubic-bezier(0.45, 0, 0.25, 1) 0.8s backwards;
 }
 
-/* The objective content unfurls WITH the paper (user re-order): the same
-   wipe, but ending at inset 0px — the content wrapper sits inside the
-   box's side padding, so its resting edges must not be clipped. Its
-   boundary therefore rides 32px − 24p px INSIDE the paper's (the padding
-   offset), always at least 8px behind the rod — text emerges from paper
-   already revealed, never at the raw cut. */
+/* THE TEXT'S REVEAL — ALL TRANSFORM TOO (user report 2026-10-15: in
+   desktop Chrome the words showed "off of the scroll", over the rolled
+   rods, as it began to open; mobile Safari looked right). The words had a
+   clip-path wipe on the main thread while the rods ride the compositor.
+   Chrome starts compositor animations a little LATER than main-thread
+   ones, so the words ran AHEAD of the rods; Safari's main thread runs
+   behind instead, unseen.
+   Now the one copy of the words (no duplicate DOM: the (?) and the editor
+   buttons live in here) sits in two nested WINDOWS on the rods' own
+   keyframes. The outer (.quest-stage-scroll) rides the LEFT rod and its
+   clip is the left edge; the inner (.quest-text-w2) rides the RIGHT rod
+   and its clip is the right edge. Each has a counter-slide inside it
+   (.quest-text-c1 / -c2, the paper halves' holds), so the words never
+   move. The content box sits inside the box padding, a constant few px
+   inside the rods, so the words emerge that far inside the paper's edge,
+   locked to the rods every frame. overflow-x: clip — horizontal only, so
+   the (?)'s vertical tap slop stays whole. */
+.quest-stage-scroll,
+.quest-text-w2 {
+  overflow-x: clip;
+}
 .quest-stage-scroll {
   animation: quest-scroll-content 0.65s cubic-bezier(0.45, 0, 0.25, 1) 0.8s backwards;
 }
+.quest-stage-scroll .quest-text-c1 {
+  animation: quest-paper-hold-l 0.65s cubic-bezier(0.45, 0, 0.25, 1) 0.8s backwards;
+}
+.quest-stage-scroll .quest-text-w2 {
+  animation: quest-scroll-roll-r 0.65s cubic-bezier(0.45, 0, 0.25, 1) 0.8s backwards;
+}
+.quest-stage-scroll .quest-text-c2 {
+  animation: quest-paper-hold-r 0.65s cubic-bezier(0.45, 0, 0.25, 1) 0.8s backwards;
+}
 
+/* The text's OUTER window: the left rod's travel (= quest-scroll-roll-l;
+   its own name, because the hint's unlock listens for this animation's
+   end — Game.tsx onQuestUnfurlEnd). */
 @keyframes quest-scroll-content {
-  /* Both endpoints PX-VALUED (--qclose = half the measured box width,
-     stamped by QuestBoxFrame): a 50% from-value interpolating to a px
-     to-value is mixed-unit territory that some engines animate
-     DISCRETELY. The 50% fallback only exists for the unstamped first
-     frames, where it renders the identical closed state. The text's
-     wipe stays a clip-path (one DOM copy of the words): a main-thread
-     lag only reveals them late, over paper that is already there. */
-  from { clip-path: inset(0 var(--qclose, 50%) 0 var(--qclose, 50%)); }
-  to { clip-path: inset(0 0px 0 0px); }
+  from { transform: translateX(var(--qtravel-l, 0px)); }
+  to { transform: translateX(0); }
 }
 
 /* THE SCROLL TOGGLE'S CLOSE (user ask 2026-08-11: the QUEST seal is a
@@ -2625,6 +2645,15 @@ body.gate-raising .gate-shake-layer {
 }
 .quest-closing .quest-stage-scroll {
   animation: quest-scroll-content-close 0.5s cubic-bezier(0.45, 0, 0.25, 1) forwards;
+}
+.quest-closing .quest-text-c1 {
+  animation: quest-paper-hold-l-close 0.5s cubic-bezier(0.45, 0, 0.25, 1) forwards;
+}
+.quest-closing .quest-text-w2 {
+  animation: quest-scroll-roll-r-close 0.5s cubic-bezier(0.45, 0, 0.25, 1) forwards;
+}
+.quest-closing .quest-text-c2 {
+  animation: quest-paper-hold-r-close 0.5s cubic-bezier(0.45, 0, 0.25, 1) forwards;
 }
 .quest-closing .quest-scroll-stamp,
 .quest-reopening .quest-scroll-stamp {
@@ -2688,6 +2717,15 @@ body.gate-raising .gate-shake-layer {
 .quest-reopening .quest-stage-scroll {
   animation: quest-scroll-content 0.65s cubic-bezier(0.45, 0, 0.25, 1) backwards;
 }
+.quest-reopening .quest-text-c1 {
+  animation: quest-paper-hold-l 0.65s cubic-bezier(0.45, 0, 0.25, 1) backwards;
+}
+.quest-reopening .quest-text-w2 {
+  animation: quest-scroll-roll-r 0.65s cubic-bezier(0.45, 0, 0.25, 1) backwards;
+}
+.quest-reopening .quest-text-c2 {
+  animation: quest-paper-hold-r 0.65s cubic-bezier(0.45, 0, 0.25, 1) backwards;
+}
 
 /* The halves' HOLD: the exact negation of their window's travel, so the
    paper stays where it is (the window keyframes are the rolls'). */
@@ -2722,8 +2760,8 @@ body.gate-raising .gate-shake-layer {
 }
 
 @keyframes quest-scroll-content-close {
-  from { clip-path: inset(0 0px 0 0px); }
-  to { clip-path: inset(0 var(--qclose, 50%) 0 var(--qclose, 50%)); }
+  from { transform: translateX(0); }
+  to { transform: translateX(var(--qtravel-l, 0px)); }
 }
 
 /* THE SEAL'S ENTRANCE RIDE (user round 2): the seal (plate + top
