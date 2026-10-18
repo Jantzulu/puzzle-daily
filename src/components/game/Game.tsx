@@ -3428,7 +3428,9 @@ export const Game: React.FC<GameProps> = ({
                   programmatically in handlePlay / handleRestartPuzzle. */}
               {dailyLockStatus && gameState.gameStatus === 'setup' && !replayMode && (
                 <div className="absolute inset-x-0 top-2 flex justify-center z-10 pointer-events-none">
-                  <div className={`pointer-events-auto px-5 py-3 rounded-pixel-lg flex flex-col items-center gap-1 text-sm shadow-lg ${
+                  {/* data-quest-below: an opened quest scroll sits UNDER this
+                      banner, never over it (questFloat.ts BELOW_GAP). */}
+                  <div data-quest-below className={`pointer-events-auto px-5 py-3 rounded-pixel-lg flex flex-col items-center gap-1 text-sm shadow-lg ${
                     dailyLockStatus === 'won' ? 'victory-panel' : 'defeat-panel'
                   }`}>
                     <span className="text-2xl">

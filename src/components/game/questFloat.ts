@@ -71,6 +71,13 @@ export const QUEST_PRESS_MIN_MS = 100;
  * leaves ~1.4px there (it was 24: ~7.4px). The bob only ever moves it DOWN.
  */
 const STAGE_DROP = 18;
+/**
+ * Opened while something on the board must stay readable (an element marked
+ * [data-quest-below]: the finished daily's "Today's Puzzle Failed" banner,
+ * user ask 2026-10-18), the scroll's box opens this far below that element
+ * instead: room for the QUEST plate riding above the box, plus a gap.
+ */
+const BELOW_GAP = 22;
 /** How far the toss rises above the higher end of its path. */
 const ARC_LIFT = 56;
 
@@ -158,7 +165,9 @@ export function useQuestFloatPlacement(
       y: Math.round(ty - c.top - s * offY),
     });
     const b = board.getBoundingClientRect();
-    const stage = toWrapper(b.left + b.width / 2 - aw / 2, b.top + STAGE_DROP, 1);
+    const below = document.querySelector<HTMLElement>('[data-quest-below]');
+    const stageTop = below ? Math.max(b.top + STAGE_DROP, below.getBoundingClientRect().bottom + BELOW_GAP) : b.top + STAGE_DROP;
+    const stage = toWrapper(b.left + b.width / 2 - aw / 2, stageTop, 1);
     let miniSpot: Spot | null = null;
     const slot = document.querySelector<HTMLElement>('[data-quest-slot]');
     if (slot) {
@@ -177,6 +186,7 @@ export function useQuestFloatPlacement(
     const ro = new ResizeObserver(() => measure());
     const wrap = wrapperRef.current;
     const targets = [
+      document.querySelector('[data-quest-below]'),
       wrap?.querySelector('.quest-box-anchor'),
       wrap?.offsetParent,
       document.querySelector('.board-rise'),
