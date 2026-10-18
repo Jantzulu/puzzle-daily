@@ -551,7 +551,8 @@ const AnchorPreview: React.FC<AnchorPreviewLayer & {
 
     render(previewRef.current, ANCHOR_PREVIEW_SIZE, ANCHOR_PREVIEW_ZOOM);
     if (zoomed) render(zoomRef.current, ANCHOR_OVERLAY_SIZE, ANCHOR_OVERLAY_ZOOM);
-  }, [imageSrc, anchorX, anchorY, offsetX, offsetY, isSpriteSheet, frameCount, frameRate, frameWidth, frameHeight, ghosts, activeAlpha, loadTick, zoomed, playing, playLoop, playTick, shadow?.widthArt, shadow?.offsetXArt, shadow?.offsetYArt, shadowFloating]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- shadow/glow objects are rebuilt by the parent every render; keyed on their primitive fields so the preview redraws only when a value changes
+  }, [imageSrc, anchorX, anchorY, offsetX, offsetY, isSpriteSheet, frameCount, frameRate, frameWidth, frameHeight, ghosts, activeAlpha, loadTick, zoomed, playing, playLoop, playTick, shadow?.widthArt, shadow?.offsetXArt, shadow?.offsetYArt, shadowFloating, glow?.color, glow?.radiusArt, glow?.intensity, glow?.offsetXArt, glow?.offsetYArt, glow?.flicker]);
 
   return (
     <div className="relative flex-shrink-0" style={{ width: ANCHOR_PREVIEW_SIZE, height: ANCHOR_PREVIEW_SIZE }}>

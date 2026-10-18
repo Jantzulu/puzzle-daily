@@ -1463,7 +1463,10 @@ export const Game: React.FC<GameProps> = ({
     // The pending maps are read at click time — omitting them left the
     // callback closing over stale choices (latent before the placement gate,
     // load-bearing now).
-    [selectedCharacterId, gameState, pendingSpellDirectionOverrides, pendingFacingOverrides]
+    // spritesReady/dailyLockStatus likewise: without spritesReady the callback
+    // kept the pre-reveal `false` after the board faded in, silently dropping
+    // board taps until another dep changed.
+    [selectedCharacterId, gameState, pendingSpellDirectionOverrides, pendingFacingOverrides, spritesReady, dailyLockStatus]
   );
 
   // Called from AnimatedGameBoard when a projectile kills an enemy
