@@ -266,7 +266,7 @@ export const TrainingGrounds: React.FC<TrainingGroundsProps> = ({ playerReveal }
     playGameSound('simulation_stop');
   };
 
-  const handleReset = () => {
+  const handleReset = useCallback(() => {
     if (!originalPuzzle) return;
     const resetPuzzle: Puzzle = JSON.parse(JSON.stringify(originalPuzzle));
     const resetState = initializeGameState(resetPuzzle);
@@ -279,7 +279,7 @@ export const TrainingGrounds: React.FC<TrainingGroundsProps> = ({ playerReveal }
     setGameState(resetState);
     setIsSimulating(false);
     setSelectedCharacterId(null);
-  };
+  }, [originalPuzzle, playStartCharacters]);
 
   const handleWipe = () => {
     if (!originalPuzzle) return;
@@ -324,7 +324,7 @@ export const TrainingGrounds: React.FC<TrainingGroundsProps> = ({ playerReveal }
   // ============================================================
 
   useEffect(() => {
-    if (!isSimulating || !gameState || gameState.gameStatus !== 'running') return;
+    if (!isSimulating || gameState?.gameStatus !== 'running') return;
 
     const interval = setInterval(() => {
       vibrate('turnAdvance');
@@ -398,7 +398,7 @@ export const TrainingGrounds: React.FC<TrainingGroundsProps> = ({ playerReveal }
     turnHistoryRef.current = [];
     replayEventsRef.current = new Map();
     handleReset();
-  }, [originalPuzzle, playStartCharacters]);
+  }, [handleReset]);
 
   const handleReplayPlayPause = useCallback(() => setReplayPlaying(p => !p), []);
 

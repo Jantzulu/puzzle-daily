@@ -1026,6 +1026,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       doorRevealTimeRef.current = entrancesRevealed ? Date.now() : null;
     }
     prevPuzzleIdRef.current = currentPuzzleId;
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed to puzzle swaps only; entrancesRevealed is read fresh from the swap render, and mid-puzzle reveal flips are handled by the door reveal clock effect below
   }, [gameState.puzzle.id]);
 
   // Door reveal clock (phase 2): the doors' start-of-puzzle open/close
@@ -1112,6 +1113,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
         return updated;
       });
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- entrance setup is deliberately keyed to puzzle load, the reveal flip and enemy-count growth (summons); adding gameState would re-run it every turn/replay step and could start full entrances at moments it never does today (e.g. a revived enemy)
   }, [gameState.puzzle.id, gameState.puzzle.enemies.length, entrancesRevealed]);
 
   // Force re-render when images finish loading. Also bumps the static-bake
@@ -1361,6 +1363,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
 
     prevCharactersRef.current = [...gameState.placedCharacters];
     prevGameStatusRef.current = gameState.gameStatus;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- hero-diff detector keyed to hero list/status/reveal only; puzzle tiles/dims/enemies are read fresh when it runs, and re-running on enemy/tile ref changes would reset walk flags and restart cast sheets
   }, [gameState.placedCharacters, gameState.gameStatus, entrancesRevealed]);
 
   // Detect enemy movement
@@ -1471,6 +1474,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       tileActivationsRef.current = [...tileActivationsRef.current, ...newActivations];
     }
     prevEnemiesRef.current = [...gameState.puzzle.enemies];
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed to the enemies-array diff only; currentTurn/tiles are read from the same commit (hosts deep-copy state each turn, so they change together); extra runs would re-stamp cast start times and reset walk flags
   }, [gameState.puzzle.enemies]);
 
   // Detect character deaths and trigger death animations
@@ -2692,6 +2696,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
         cancelAnimationFrame(animationRef.current);
       }
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- rAF loop is deliberately restarted only on these triggers; the omitted values change in the same render as gameState/positions (or, for liftOffAnimations, are re-set by the loop itself), so adding them would restart the loop at new moments (the 2026-03 lint pass that added them was reverted for breakage)
   }, [gameState, characterPositions, enemyPositions, characterDeathAnimations, enemyDeathAnimations, maxWidth, maxHeight, replayFrozen]);
 
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {

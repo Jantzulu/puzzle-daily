@@ -38,6 +38,7 @@ export const NavSheet: React.FC<NavSheetProps> = ({ open, onClose, label, childr
 
   useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate mount-then-show: the sheet enters the DOM one commit after `open` flips, which the `open && rendered` focus-trap gate and the entrance/exit animation timing rely on; bails out (no-op) when already rendered
       setRendered(true);
       return;
     }

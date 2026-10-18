@@ -746,6 +746,7 @@ export const Game: React.FC<GameProps> = ({
   // The arrive-closed scroll's rolled length: the one-line length, measured
   // once the box exists (its collapsed height is no guide, so from the open
   // height), before the first paint.
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deliberately dep-less: re-checks each render until the box ref attaches (its mount hangs on gameStatus/testMode, not these values); the questFrameHold != null guard limits it to one set, so no update loop
   useLayoutEffect(() => {
     if (!questArriveClosed || !questSpawned || questFrameHold != null) return;
     const box = questBoxSnapRef.current;
@@ -854,6 +855,7 @@ export const Game: React.FC<GameProps> = ({
       if (!cachedDaily && !puzzleProp) setDailyNotice('offline');
     });
     return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only daily fetch: cachedDaily is fixed at mount and the puzzle source is captured at mount (remount via key to change it); depending on puzzleProp would refetch and could swap/reset the board mid-session
   }, []);
 
   // ── Crash recovery (player daily only) ─────────────────────────────
@@ -900,6 +902,7 @@ export const Game: React.FC<GameProps> = ({
     if (saved.facingOverrides) {
       setPendingFacingOverrides(saved.facingOverrides);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- one restore attempt per puzzle id (ref-guarded); deps are exactly the guard inputs, so the attempt runs on the render the guards first pass with that render's puzzle/gameState; adding gameState would re-run it on every state change for no effect
   }, [isDailyContext, dailyLockStatus, gameState.gameStatus, gameState.placedCharacters.length, currentPuzzle.id]);
 
   // Save — every setup change after the restore attempt has been consumed
@@ -978,6 +981,7 @@ export const Game: React.FC<GameProps> = ({
       reveal();
     }, reveal);
     return () => { cancelled = true; clearTimeout(timeoutId); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- preload is keyed to the puzzle id on purpose; reset/wipe/retry/test-mode swap in same-id clones of currentPuzzle, and re-running would re-preload and briefly hide the failed-sprite pill
   }, [currentPuzzle.id]);
 
   // Retry every failed sprite; the pill hides immediately (retryImage clears
@@ -1260,6 +1264,7 @@ export const Game: React.FC<GameProps> = ({
     }, TURN_INTERVAL_MS);
 
     return () => clearInterval(interval);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- turn interval is keyed to run start/stop + lives/test counters; a re-run clears and restarts setInterval (shifts turn timing). Omitted values are stable or only change alongside these triggers
   }, [isSimulating, gameState.gameStatus, testMode, testTurnsRemaining, livesRemaining, currentPuzzle.lives]);
 
   // Replay playback timer
@@ -1286,6 +1291,7 @@ export const Game: React.FC<GameProps> = ({
     }, intervalMs);
 
     return () => clearInterval(interval);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- copySnapshotForPlayback is a per-render helper; listing it would re-arm this interval on every render and shift the replay tick cadence
   }, [replayMode, replayPlaying, replaySpeed]);
 
   // Cancel replay on puzzle change
@@ -1298,6 +1304,7 @@ export const Game: React.FC<GameProps> = ({
       projectileTimelineRef.current = [];
       projectileLifetimesRef.current = new Map();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fires only on puzzle change; replayMode is a guard read fresh each render, and adding it would re-run this when startReplay sets it true and instantly cancel every replay
   }, [currentPuzzle?.id]);
 
   const handleTileClick = useCallback(
@@ -1515,7 +1522,7 @@ export const Game: React.FC<GameProps> = ({
         }]);
       }
     }
-  }, [gameState, livesRemaining, currentPuzzle.lives]);
+  }, [gameState, livesRemaining, currentPuzzle.lives, currentPuzzle.id, currentPuzzle.date, playStartCharacters, beginOutcomeOverlayHold]);
 
   const handlePlay = () => {
     // Daily-lock guard: if today's puzzle is already won or lost, block any
@@ -1905,6 +1912,7 @@ export const Game: React.FC<GameProps> = ({
     } else if (!enteringReplayRef.current) {
       startReplay();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- copySnapshotForPlayback is a per-render helper; listing it would rebuild this handler every render (the deps already track puzzle/placement/status changes)
   }, [generateTurnHistory, gameState.gameStatus, testMode]);
 
   // Exit replay mode - animate out then return to appropriate screen
@@ -2480,6 +2488,7 @@ export const Game: React.FC<GameProps> = ({
     replayStepTimerRef.current = setTimeout(() => {
       setReplayStepAnimating(false);
     }, TURN_INTERVAL_MS);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- [] keeps this replay handler stable; copySnapshotForPlayback is a per-render helper reading replay refs (known: its pathfinding BFS sees first-render gameState)
   }, []);
 
   // Step-back and seek skip the per-turn-start reset: they jump straight to
@@ -2500,6 +2509,7 @@ export const Game: React.FC<GameProps> = ({
     });
 
     setReplayStepAnimating(false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- [] keeps this replay handler stable; copySnapshotForPlayback is a per-render helper reading replay refs (known: its pathfinding BFS sees first-render gameState)
   }, []);
 
   const handleReplaySeek = useCallback((turn: number) => {
@@ -2511,6 +2521,7 @@ export const Game: React.FC<GameProps> = ({
     setGameState(copy);
     setReplayTurnIndex(clamped);
     setReplayStepAnimating(false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- [] keeps this replay handler stable; copySnapshotForPlayback is a per-render helper reading replay refs (known: its pathfinding BFS sees first-render gameState)
   }, []);
 
   const handleReplaySpeedChange = useCallback((speed: number) => {

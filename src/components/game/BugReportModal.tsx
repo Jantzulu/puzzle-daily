@@ -185,7 +185,7 @@ export const BugReportModal: React.FC<BugReportModalProps> = ({ isOpen, onClose,
       default:
         return [];
     }
-  }, [assetType, puzzle]);
+  }, [assetType, puzzle, puzzleSpells.effectsInPuzzle]);
 
   const selectedRun = trackedRuns.find(r => r.id === selectedRunId);
   const replayingRun = replayingRunId ? trackedRuns.find(r => r.id === replayingRunId) : null;
@@ -233,6 +233,7 @@ export const BugReportModal: React.FC<BugReportModalProps> = ({ isOpen, onClose,
   if (!isOpen) return null;
 
   const formatTimeAgo = (timestamp: number) => {
+    // eslint-disable-next-line react-hooks/purity -- display-only 'Xm ago' run labels deliberately read the clock each render; the modal stays mounted while closed, so capturing the time once would show stale ages
     const seconds = Math.floor((Date.now() - timestamp) / 1000);
     if (seconds < 60) return 'just now';
     const minutes = Math.floor(seconds / 60);

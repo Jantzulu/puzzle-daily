@@ -37,6 +37,7 @@ export const TownCrierPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- loadPosts is async; setPosts/setLoading run only after awaiting fetchPublishedPosts, never synchronously in the effect (fetch-on-mount)
     loadPosts();
   }, [loadPosts]);
 

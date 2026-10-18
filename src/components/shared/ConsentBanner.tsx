@@ -17,6 +17,7 @@ export const ConsentBanner: React.FC = () => {
   useEffect(() => {
     // Honor a prior "accept" (spins up diagnostics) and reflect current state.
     applyStartupConsent();
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate one-time post-mount read of the consent store (initial state assumes decided so nothing flashes); reading it at render instead would mount the banner a commit earlier and shift its consent-rise entrance timing
     setDecided(consentDecided());
     return subscribeConsent(() => setDecided(consentDecided()));
   }, []);
