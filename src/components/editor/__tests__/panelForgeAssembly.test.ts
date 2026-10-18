@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_KITS, assembleKit, type Assembly, type AssemblyRegion, type KitSpec } from '../PanelForge';
+import { DEFAULT_KITS, assembleKit, type Assembly, type AssemblyRegion, type KitSpec } from '../panelForgeKits';
 import { BAR_FRACS, barCenters } from '../../game/panelSkins';
 
 // ============================================================================

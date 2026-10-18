@@ -13,7 +13,8 @@ import {
 } from '../../utils/cloudSync';
 import { ConflictResolutionModal } from './ConflictResolutionModal';
 import { NavSheet } from '../shared/NavSheet';
-import { NavPillSign, navSignSkinActive } from '../shared/GateMesh';
+import { NavPillSign } from '../shared/GateMesh';
+import { navSignSkinActive } from '../shared/gateSkin';
 
 interface CloudSyncButtonProps {
   onSyncComplete?: () => void;

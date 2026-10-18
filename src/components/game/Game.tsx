@@ -21,7 +21,8 @@ import { loadTileType, loadCollectible, loadEnemy, loadStatusEffectAsset } from 
 import { collectPuzzleAssetUrls } from '../../utils/spritePreload';
 import { HelpButton } from './HelpOverlay';
 import { TapHintChip } from './TapHintChip';
-import { QuestBoxFrame, QuestOrnaments, QuestPlate, QuestDivider, questSkinFrameActive, questSkinOrnamentsActive, questSkinPlateActive, questSkinDividerActive, questFrameBorders, questPlateStraddle } from './QuestBoxSkin';
+import { QuestBoxFrame, QuestOrnaments, QuestPlate, QuestDivider } from './QuestBoxSkin';
+import { questSkinFrameActive, questSkinOrnamentsActive, questSkinPlateActive, questSkinDividerActive, questFrameBorders, questPlateStraddle } from './questBoxSkinData';
 import { useCrispSnap } from './panelSkins';
 import { QUEST_FLIGHT_MS, QUEST_TOSS_AFTER_ROLL_MS, QUEST_SPAWN_DELAY_MS, QUEST_HINT_BEAT_MS, useQuestFloatPlacement, useQuestPress } from './questFloat';
 import { playGameSound, playVictoryMusic, playDefeatMusic, playBackgroundMusic, stopMusic } from '../../utils/gameSounds';
@@ -45,7 +46,8 @@ import { NextPuzzleCountdown } from './NextPuzzleCountdown';
 import { BugReportModal } from './BugReportModal';
 import type { TrackedRun } from '../../types/bugReport';
 import { GemMesh } from './GemMesh';
-import { PlayStoneSkin, playStoneSkinActive, concedeStoneActive, PLAY_STONE_DIM, PLAY_STONE_LIT_TRANSITION } from './PlayStoneSkin';
+import { PlayStoneSkin, PLAY_STONE_LIT_TRANSITION } from './PlayStoneSkin';
+import { playStoneSkinActive, concedeStoneActive, PLAY_STONE_DIM } from './playStoneSkinArt';
 import { DeathSpriteThumbnail } from './DeathSpriteThumbnail';
 import { deathVignetteUsable } from './deathVignette';
 // The rail hearts are HARDCODED ART (user call 2026-08-04, the quest-box

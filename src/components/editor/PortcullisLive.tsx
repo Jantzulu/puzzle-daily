@@ -1,9 +1,10 @@
 import React from 'react';
 import { skinFromSlices, prepCanvas, whenDecoded, type ForgeSlice } from '../game/panelSkins';
-import { drawRailSkin } from '../game/PortcullisMesh';
-import { drawGateBars, drawGateBeamSkin, drawGateSignSkin } from '../shared/GateMesh';
-import { drawStonePiece, dimStoneFace } from '../game/PlayStoneSkin';
-import { drawRungPlaque, PlaqueHeader, PlaqueHeaderLabel, plaqueHeaderStraddle } from '../game/RungPlaque';
+import { drawRailSkin } from '../game/portcullisSkin';
+import { drawGateBars, drawGateBeamSkin, drawGateSignSkin } from '../shared/gateSkin';
+import { drawStonePiece, dimStoneFace } from '../game/playStoneSkinArt';
+import { PlaqueHeader, PlaqueHeaderLabel } from '../game/RungPlaque';
+import { drawRungPlaque, plaqueHeaderStraddle } from '../game/rungPlaqueSkin';
 import { TapHintChip } from '../game/TapHintChip';
 
 // ============================================================================

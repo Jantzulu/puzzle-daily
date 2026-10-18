@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom';
 import { useOptionalAuth } from '../../contexts/AuthContext';
 import { toast } from '../shared/Toast';
 import { NavSheet } from '../shared/NavSheet';
-import { NavPillSign, AvatarCrest, navSignSkinActive } from '../shared/GateMesh';
+import { NavPillSign, AvatarCrest } from '../shared/GateMesh';
+import { navSignSkinActive } from '../shared/gateSkin';
 
 const AVATAR_ICONS = ['⚔️', '🛡️', '🧙', '🏹', '💀', '🐉', '👑', '🔮', '🗡️', '🧝', '🦊', '🐺', '🏰', '⭐', '🔥', '💎'];
 const AVATAR_COLORS = [

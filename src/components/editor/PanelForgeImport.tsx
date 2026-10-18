@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from '../shared/Toast';
-import type { Assembly, KitSpec } from './PanelForge';
+import type { Assembly, KitSpec } from './panelForgeKits';
 import { PanelNineSlice } from './PanelNineSlice';
 import { PortcullisLive } from './PortcullisLive';
 

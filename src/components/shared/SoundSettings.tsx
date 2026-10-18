@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { soundManager } from '../../utils/soundManager';
 import { isHapticsSupported, isHapticsEnabledByPlayer, setHapticsEnabledByPlayer, vibratePreview } from '../../utils/haptics';
 import { NavSheet } from './NavSheet';
-import { NavPillSign, navSignSkinActive } from './GateMesh';
+import { NavPillSign } from './GateMesh';
+import { navSignSkinActive } from './gateSkin';
 import type { SoundSettings as SoundSettingsType } from '../../types/game';
 
 const Toggle: React.FC<{ on: boolean; onClick: () => void; label: string }> = ({ on, onClick, label }) => (

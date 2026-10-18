@@ -2,6 +2,7 @@ import React from 'react';
 import skinJson from '../../assets/panels/rung-plaque-slices.json';
 import { Z, buildSkin, nomW, nomH, useCrispSnap, prepCanvas, drawFixed, drawTiled, whenDecoded, type SkinPiece } from './panelSkins';
 import { wobbleSign, useGateImpactWobble, type GateImpact } from '../shared/signWobble';
+import { plaqueHeaderStraddle, drawRungPlaque } from './rungPlaqueSkin';
 
 // ============================================================================
 // RUNG PLAQUE — one shared 3-slice worn by BOTH rail plaques
@@ -27,25 +28,6 @@ const rungPlaqueActive = PIECES.has('plaque-mid');
 const plaqueHeaderActive = PIECES.has('header-mid');
 
 /**
- * The plaque's draw, parameterized on the skin map — the forge's live
- * preview composes THIS routine with its fresh slices (share-the-renderer
- * law). Caps at the ends, middle tiled between their nominal edges,
- * vertically centered in the host.
- */
-export const drawRungPlaque = (ctx: CanvasRenderingContext2D, w: number, h: number, pieces: Map<string, SkinPiece>) => {
-  const mid = pieces.get('plaque-mid');
-  const cl = pieces.get('plaque-cap-l');
-  const cr = pieces.get('plaque-cap-r');
-  const plaqueH = (mid?.h ?? 13) * Z;
-  const y = Math.round((h - plaqueH) / 2);
-  const clW = cl ? cl.w * Z : 0;
-  const crW = cr ? cr.w * Z : 0;
-  drawTiled(ctx, mid, clW, y, w - clW - crW, plaqueH, clW, y);
-  if (cl) drawFixed(ctx, cl, 0, y);
-  if (cr) drawFixed(ctx, cr, w - crW, y);
-};
-
-/**
  * The header plate's draw — the quest plate's halo-aware 3-slice, exact
  * abut between nominal cap edges (cap-art transparency is silhouette;
  * never tuck a band under the caps). Shared with the forge preview.
@@ -62,19 +44,6 @@ const drawPlaqueHeader = (ctx: CanvasRenderingContext2D, w: number, pieces: Map<
   if (l) drawFixed(ctx, l, -(l.halo?.l ?? 0) * Z, -(l.halo?.t ?? 0) * Z);
   if (r) drawFixed(ctx, r, w - rw - (r.halo?.l ?? 0) * Z, -(r.halo?.t ?? 0) * Z);
 };
-
-/** Header plate height in CSS px for a given skin map (0 when unpainted). */
-const plaqueHeaderHeight = (pieces: Map<string, SkinPiece>): number => {
-  const m = pieces.get('header-mid');
-  return m ? nomH(m) * Z : 0;
-};
-
-/**
- * How far the header pokes above the plaque's top edge — the quest
- * plate's 60% rule at the smaller register.
- */
-export const plaqueHeaderStraddle = (pieces: Map<string, SkinPiece>): number =>
-  Math.round(plaqueHeaderHeight(pieces) * 0.6);
 
 /** Room the header's bleed canvas needs for future halo'd cap art. */
 const HEADER_BLEED = 8;
