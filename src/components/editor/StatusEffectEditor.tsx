@@ -94,7 +94,7 @@ const TYPE_LABELS: Partial<Record<StatusEffectType, string>> = {
   [StatusEffectType.TRAMPLE]: 'Trample',
 };
 
-export const statusTypeLabel = (t: StatusEffectType): string =>
+const statusTypeLabel = (t: StatusEffectType): string =>
   TYPE_LABELS[t] ?? t.charAt(0).toUpperCase() + t.slice(1);
 
 function makeDefaultIcon(color: string): SpriteReference {

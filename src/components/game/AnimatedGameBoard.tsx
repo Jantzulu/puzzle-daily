@@ -5667,7 +5667,7 @@ function getFogNoiseTexture(): HTMLCanvasElement {
 // merged overlay (source-over is associative), so the result is
 // pixel-identical to the old five-fills-per-frame path. Drawn plain
 // source-over here onto the bake's transparent canvas.
-export function drawStaticVignetteOverlay(
+function drawStaticVignetteOverlay(
   ctx: CanvasRenderingContext2D,
   tiles: (import('../../types/game').TileOrNull)[][],
   gridWidth: number,

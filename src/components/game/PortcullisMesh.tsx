@@ -69,7 +69,7 @@ const SPIKE_HALF = 22; // spike half-width at the root
 // whatever space the box gives above the band.
 const RAIL = buildSkin(railJson, 'control-rail');
 const BARS = buildSkin(barsJson, 'portcullis-gate');
-export const portcullisSkinActive = RAIL.has('rail-face') || BARS.has('bar-segment');
+const portcullisSkinActive = RAIL.has('rail-face') || BARS.has('bar-segment');
 
 /**
  * The rail surface's draw, parameterized on the two skin maps so the

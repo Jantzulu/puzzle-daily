@@ -21,7 +21,8 @@ import { loadTileType, loadCollectible, loadEnemy, loadStatusEffectAsset } from 
 import { collectPuzzleAssetUrls } from '../../utils/spritePreload';
 import { HelpButton } from './HelpOverlay';
 import { TapHintChip } from './TapHintChip';
-import { QuestBoxFrame, QuestOrnaments, QuestPlate, QuestDivider, questSkinFrameActive, questSkinOrnamentsActive, questSkinPlateActive, questSkinDividerActive, questFrameBorders, questPlateStraddle, useCrispSnap } from './QuestBoxSkin';
+import { QuestBoxFrame, QuestOrnaments, QuestPlate, QuestDivider, questSkinFrameActive, questSkinOrnamentsActive, questSkinPlateActive, questSkinDividerActive, questFrameBorders, questPlateStraddle } from './QuestBoxSkin';
+import { useCrispSnap } from './panelSkins';
 import { QUEST_FLIGHT_MS, QUEST_TOSS_AFTER_ROLL_MS, QUEST_SPAWN_DELAY_MS, QUEST_HINT_BEAT_MS, useQuestFloatPlacement, useQuestPress } from './questFloat';
 import { playGameSound, playVictoryMusic, playDefeatMusic, playBackgroundMusic, stopMusic } from '../../utils/gameSounds';
 import { loadThemeAssets, subscribeToThemeAssets, type ThemeAssets } from '../../utils/themeAssets';

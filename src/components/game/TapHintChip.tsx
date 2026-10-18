@@ -17,15 +17,13 @@ import { Z, buildSkin, nomW, nomH, useCrispSnap, prepCanvas, drawFixed, drawTile
 
 const PIECES = buildSkin(skinJson, 'tap-hint');
 
-export const tapHintSkinActive = PIECES.has('hint-mid');
-
 /**
  * The chip's draw, parameterized on the skin map — the forge's Live panel
  * composes THIS routine via the component below (share-the-renderer law).
  * Caps anchor by NOMINAL with halo overhang; the band spans exactly
  * between their nominal edges (cap-art transparency is silhouette).
  */
-export const drawTapHint = (ctx: CanvasRenderingContext2D, w: number, pieces: Map<string, SkinPiece>) => {
+const drawTapHint = (ctx: CanvasRenderingContext2D, w: number, pieces: Map<string, SkinPiece>) => {
   const m = pieces.get('hint-mid');
   if (!m) return;
   const l = pieces.get('hint-cap-l');

@@ -45,7 +45,6 @@ import skinJson from '../../assets/panels/quest-box-slices.json';
 import { Z, buildSkin, nomW, nomH, useCrispSnap, whenDecoded, drawFixed, drawTiled, prepCanvas, BLEED, type SkinPiece } from './panelSkins';
 
 // Game.tsx imports the snap hook from here — keep the path stable.
-export { useCrispSnap };
 
 const PIECES = buildSkin(skinJson, 'quest-box');
 const P = (id: string) => PIECES.get(id);

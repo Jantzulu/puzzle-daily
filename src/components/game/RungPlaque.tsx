@@ -23,8 +23,8 @@ import { wobbleSign, useGateImpactWobble, type GateImpact } from '../shared/sign
 
 const PIECES = buildSkin(skinJson, 'rung-plaque');
 
-export const rungPlaqueActive = PIECES.has('plaque-mid');
-export const plaqueHeaderActive = PIECES.has('header-mid');
+const rungPlaqueActive = PIECES.has('plaque-mid');
+const plaqueHeaderActive = PIECES.has('header-mid');
 
 /**
  * The plaque's draw, parameterized on the skin map — the forge's live
@@ -50,7 +50,7 @@ export const drawRungPlaque = (ctx: CanvasRenderingContext2D, w: number, h: numb
  * abut between nominal cap edges (cap-art transparency is silhouette;
  * never tuck a band under the caps). Shared with the forge preview.
  */
-export const drawPlaqueHeader = (ctx: CanvasRenderingContext2D, w: number, pieces: Map<string, SkinPiece>) => {
+const drawPlaqueHeader = (ctx: CanvasRenderingContext2D, w: number, pieces: Map<string, SkinPiece>) => {
   const m = pieces.get('header-mid');
   if (!m) return;
   const l = pieces.get('header-cap-l');
@@ -64,7 +64,7 @@ export const drawPlaqueHeader = (ctx: CanvasRenderingContext2D, w: number, piece
 };
 
 /** Header plate height in CSS px for a given skin map (0 when unpainted). */
-export const plaqueHeaderHeight = (pieces: Map<string, SkinPiece>): number => {
+const plaqueHeaderHeight = (pieces: Map<string, SkinPiece>): number => {
   const m = pieces.get('header-mid');
   return m ? nomH(m) * Z : 0;
 };

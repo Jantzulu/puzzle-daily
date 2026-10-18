@@ -77,7 +77,7 @@ export const dimStoneFace = (ctx: CanvasRenderingContext2D, w: number, h: number
  * rule: the twin sits over the fully-opaque base, so animating the
  * twin's opacity never makes the stack translucent.
  */
-export const brightStoneFace = (ctx: CanvasRenderingContext2D, w: number, h: number, bleed: number) => {
+const brightStoneFace = (ctx: CanvasRenderingContext2D, w: number, h: number, bleed: number) => {
   ctx.save();
   ctx.globalCompositeOperation = 'source-atop';
   // 0.10: the first cut (0.22) read too intense on the user's eyes.

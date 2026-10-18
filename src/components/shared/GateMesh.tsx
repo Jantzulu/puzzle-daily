@@ -62,7 +62,7 @@ const BAR_HALF = 6;
 // over incoming bar tips), and plates at the crossings. Sign plates render
 // separately (GateSign) with the DOM label on top.
 const NAV = buildSkin(navJson, 'nav-gate');
-export const navGateSkinActive = NAV.has('beam-face');
+const navGateSkinActive = NAV.has('beam-face');
 export const navSignSkinActive = NAV.has('sign-mid');
 
 /**
