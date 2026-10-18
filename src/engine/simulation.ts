@@ -6046,11 +6046,15 @@ function resolveProjectiles(gameState: GameState): void {
           // steps, etc.) rather than a straight-line reconstruction. Spawn
           // event's tilePath only captures the FIRST turn's segment.
           // targetX/Y = where the engine's interp was aiming (fractional).
+          // tilePath = the tiles actually flown this turn, so replay doesn't
+          // have to re-derive them (a fresh BFS to the turn's end tile can
+          // pick a different, equally short route than this one did).
           recordProjectileEvent(gameState, {
             type: 'homing_move',
             projId: proj.id,
             x: newX, y: newY,
             targetX: targetEntity.x, targetY: targetEntity.y,
+            tilePath: turnTiles.map(t => ({ x: t.x, y: t.y })),
           });
           // Re-anchor the visual each turn so slow projectiles (speed 1-2)
           // don't interpolate from the stale original spawn point forever.
@@ -6597,6 +6601,7 @@ function updateProjectilesHeadless(gameState: GameState): void {
             type: 'homing_move',
             projId: proj.id,
             x: proj.logicalX, y: proj.logicalY,
+            tilePath: plan.turnTiles.map(t => ({ x: t.x, y: t.y })),
           });
         }
       } else {

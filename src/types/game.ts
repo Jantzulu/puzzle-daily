@@ -1457,7 +1457,7 @@ export interface ProjectileEvent {
   y: number;
 
   // Spawn-specific
-  tilePath?: Array<{ x: number; y: number }>;  // Full visual path
+  tilePath?: Array<{ x: number; y: number }>;  // Full visual path (on a mid-flight homing_move: the tiles flown that turn)
   direction?: Direction;
   speed?: number;
   sourceEntityId?: string;

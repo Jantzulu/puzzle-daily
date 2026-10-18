@@ -2054,8 +2054,22 @@ export const Game: React.FC<GameProps> = ({
         if (noMove) {
           tilePath = [{ x: Math.round(thisPos.x), y: Math.round(thisPos.y) }];
         } else if (style === 'pathfinding') {
-          tilePath = findPathBFS(Math.round(prevPos.x), Math.round(prevPos.y),
-                                 Math.round(thisPos.x), Math.round(thisPos.y), snapshot);
+          // Play back the tiles the engine actually flew this turn (recorded
+          // on mid-flight homing_moves). Re-running the BFS from prev to this
+          // can pick a different, equally short route than the live search
+          // toward the target did, so it's only the fallback (reach turns,
+          // where it IS the live search, and any move whose endpoints don't
+          // line up with this turn's).
+          const flown = life.homingMoves[turnsSinceSpawn]?.tilePath;
+          const first = flown?.[0];
+          const last = flown?.[flown.length - 1];
+          const flownFits = !!first && !!last
+            && first.x === Math.round(prevPos.x) && first.y === Math.round(prevPos.y)
+            && last.x === Math.round(thisPos.x) && last.y === Math.round(thisPos.y);
+          tilePath = flownFits
+            ? flown!.map(t => ({ x: t.x, y: t.y }))
+            : findPathBFS(Math.round(prevPos.x), Math.round(prevPos.y),
+                          Math.round(thisPos.x), Math.round(thisPos.y), snapshot);
         } else {
           // 'grid' and 'straight' both use tile-along-line for replay; the
           // difference in live gameplay is in visual interpolation, not path.
