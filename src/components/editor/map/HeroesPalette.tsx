@@ -4,7 +4,8 @@ import React from 'react';
 import type { CharacterWithSprite } from '../../../data/characters';
 import { FolderDropdown } from '../FolderDropdown';
 import { SpriteThumbnail } from '../SpriteThumbnail';
-import { getAllSpells, SpellTooltip, ActionTooltip } from './Tooltips';
+import { SpellTooltip, ActionTooltip } from './Tooltips';
+import { getAllSpells } from './behaviorText';
 
 interface HeroesPaletteProps {
   characters: CharacterWithSprite[];

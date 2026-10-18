@@ -121,16 +121,6 @@ export interface DirectionPickerEntry {
   spell?: SpellAsset;
 }
 
-/**
- * Compass initials for compact readouts (the hero drawer's note line lists
- * every choice on one wrapping line; NORTHWEST three times over would not
- * fit). The full bearing stays in this picker's cap row and in aria labels.
- */
-export const BEARING_INITIALS: Record<string, string> = {
-  north: 'N', northeast: 'NE', east: 'E', southeast: 'SE',
-  south: 'S', southwest: 'SW', west: 'W', northwest: 'NW',
-};
-
 interface DirectionPickerProps {
   /** The entry being aimed, or null when the picker is closed. */
   entry: DirectionPickerEntry | null;

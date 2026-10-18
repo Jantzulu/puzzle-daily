@@ -5,7 +5,7 @@ import React from 'react';
 import type { EntranceRef, PlacedEnemy } from '../../../types/game';
 import { getEnemy } from '../../../data/enemies';
 import { SpriteThumbnail } from '../SpriteThumbnail';
-import { formatActionSequence } from './Tooltips';
+import { formatActionSequence } from './behaviorText';
 
 const FACING_ARROWS: Record<string, string> = {
   north: '↑', northeast: '↗', east: '→', southeast: '↘',

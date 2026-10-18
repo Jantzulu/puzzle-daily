@@ -15,7 +15,8 @@ import { isValidHallway, drawHallwayOpening, collectCorridorCells, type HallwayD
 import { loadImage } from '../../utils/imageLoader';
 import type { HallwaySide, DoorStartState } from '../../types/game';
 import { isValidDoor, drawDoor } from '../../utils/doorDraw';
-import { getAllSpells, SpellTooltip, ActionTooltip } from './map/Tooltips';
+import { SpellTooltip, ActionTooltip } from './map/Tooltips';
+import { getAllSpells } from './map/behaviorText';
 import { createDefaultEditorState, type EditorState, type ToolType, type EditorMode } from './map/editorState';
 import { ValidationModal } from './map/ValidationModal';
 import { EditorToolbar } from './map/EditorToolbar';

@@ -1,6 +1,6 @@
 import React from 'react';
 import type { CustomSprite } from '../../utils/assetStorage';
-import { drawDeathSprite, hasDeathAnimation } from '../editor/SpriteEditor';
+import { drawDeathSprite } from '../editor/SpriteEditor';
 
 // ============================================================================
 // DEATH SPRITE THUMBNAIL — a hero's fall, replayed off-board
@@ -30,10 +30,6 @@ const ART_TILE_PX = 24;
 const SOUL_RISE_MS = 1800;
 const SOUL_RISE_TILES = 0.9;
 const SOUL_PEAK_ALPHA = 0.32;
-
-/** Gate for callers: only swap the skull when the fallen hero has death art. */
-export const deathVignetteUsable = (sprite?: CustomSprite | null): sprite is CustomSprite =>
-  !!sprite && hasDeathAnimation(sprite);
 
 export const DeathSpriteThumbnail: React.FC<{
   sprite: CustomSprite;

@@ -5,7 +5,8 @@ import React from 'react';
 import type { CustomEnemy } from '../../../utils/assetStorage';
 import { FolderDropdown } from '../FolderDropdown';
 import { SpriteThumbnail } from '../SpriteThumbnail';
-import { getAllSpells, SpellTooltip, ActionTooltip } from './Tooltips';
+import { SpellTooltip, ActionTooltip } from './Tooltips';
+import { getAllSpells } from './behaviorText';
 
 interface AllyPaletteProps {
   allies: CustomEnemy[];

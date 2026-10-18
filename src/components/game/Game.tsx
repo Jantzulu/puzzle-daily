@@ -46,7 +46,8 @@ import { BugReportModal } from './BugReportModal';
 import type { TrackedRun } from '../../types/bugReport';
 import { GemMesh } from './GemMesh';
 import { PlayStoneSkin, playStoneSkinActive, concedeStoneActive, PLAY_STONE_DIM, PLAY_STONE_LIT_TRANSITION } from './PlayStoneSkin';
-import { DeathSpriteThumbnail, deathVignetteUsable } from './DeathSpriteThumbnail';
+import { DeathSpriteThumbnail } from './DeathSpriteThumbnail';
+import { deathVignetteUsable } from './deathVignette';
 // The rail hearts are HARDCODED ART (user call 2026-08-04, the quest-box
 // precedent: core chrome ships in git, not as a theme knob — the old
 // Settings icon path stretched any upload into a fixed box). 7×7 native
