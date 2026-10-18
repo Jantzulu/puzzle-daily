@@ -721,6 +721,16 @@ export const Game: React.FC<GameProps> = ({
     if (questFloatOn && questSpawned && outcomeOverlayUp) minimizeQuestRef.current();
     // questScroll: a scroll caught mid-unfurl rolls up once it has opened.
   }, [questFloatOn, questSpawned, outcomeOverlayUp, questScroll]);
+  // The DAILY-LOCK banner ("Today's Puzzle Failed/Complete", returning to a
+  // finished daily) sits at the board's top, right where the scroll opens
+  // (user report 2026-10-18). The scroll still unfurls so the quest can be
+  // read, then, once fully open (the hint's unlock), tosses itself to the
+  // hero header and uncovers the banner. Fires once per visit: reopening the
+  // small scroll to reread it is the player's call, so it stays open.
+  const dailyLockBannerUp = !!dailyLockStatus && gameState.gameStatus === 'setup' && !replayMode;
+  useEffect(() => {
+    if (questFloatOn && questSpawned && questHintReady && dailyLockBannerUp) minimizeQuestRef.current();
+  }, [questFloatOn, questSpawned, questHintReady, dailyLockBannerUp]);
 
   // Keyboard focus stays inside whichever overlay panel is up, and returns
   // to the prior element on close (see useFocusTrap).
