@@ -502,6 +502,8 @@ export const Game: React.FC<GameProps> = ({
   const expandQuest = () => {
     const box = questBoxSnapRef.current;
     if (!box || questFloatBusy.current || !questMini) return;
+    // Never unfurl over a run's outcome (see the outcome effect below).
+    if (outcomeOverlayUp) return;
     questScrollTimers.current.forEach(clearTimeout);
     questScrollTimers.current = [];
     questFloatBusy.current = true;
@@ -708,6 +710,17 @@ export const Game: React.FC<GameProps> = ({
   const victoryOverlayVisible = gameState.gameStatus === 'victory' && !!puzzleScore && !replayMode && !enteringReplay && !victoryDismissed && !outcomeOverlayHeld;
   const gameOverOverlayVisible = showGameOver && !defeatDismissed && !replayMode && !enteringReplay && !outcomeOverlayHeld;
   const lifeLostOverlayVisible = gameState.gameStatus === 'defeat' && !showGameOver && !replayMode && !enteringReplay && !outcomeOverlayHeld;
+  // THE QUEST SCROLL YIELDS TO THE OUTCOME (user report 2026-10-17: an open
+  // scroll covered the Game Over overlay). It floats above the whole board
+  // (z-39 outside it) while the outcome overlays live inside the board's
+  // stacking context, so an open scroll (reopened mid-run to reread the
+  // quest) sat on top of them. Any outcome overlay rolls it up, as Play
+  // does, and expandQuest refuses while one is up.
+  const outcomeOverlayUp = victoryOverlayVisible || gameOverOverlayVisible || lifeLostOverlayVisible;
+  useEffect(() => {
+    if (questFloatOn && questSpawned && outcomeOverlayUp) minimizeQuestRef.current();
+    // questScroll: a scroll caught mid-unfurl rolls up once it has opened.
+  }, [questFloatOn, questSpawned, outcomeOverlayUp, questScroll]);
 
   // Keyboard focus stays inside whichever overlay panel is up, and returns
   // to the prior element on close (see useFocusTrap).
