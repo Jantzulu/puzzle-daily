@@ -1988,8 +1988,12 @@ export const Game: React.FC<GameProps> = ({
     return tiles;
   };
 
-  // Helper: build replay projectiles from timeline for a given turn index
-  const buildReplayProjectiles = (turnIndex: number): Projectile[] => {
+  // Helper: build replay projectiles from timeline for a given turn index.
+  // `snapshot` is the replayed run's own state for that turn — the map the
+  // pathfinding BFS routes against. Never the render-scope gameState: the
+  // replay handlers are stable callbacks, so theirs is a first-render closure
+  // (on a first-of-day daily that's a different puzzle entirely).
+  const buildReplayProjectiles = (turnIndex: number, snapshot: GameState): Projectile[] => {
     const lifetimes = projectileLifetimesRef.current;
     if (lifetimes.size === 0) return [];
 
@@ -2051,7 +2055,7 @@ export const Game: React.FC<GameProps> = ({
           tilePath = [{ x: Math.round(thisPos.x), y: Math.round(thisPos.y) }];
         } else if (style === 'pathfinding') {
           tilePath = findPathBFS(Math.round(prevPos.x), Math.round(prevPos.y),
-                                 Math.round(thisPos.x), Math.round(thisPos.y), gameState);
+                                 Math.round(thisPos.x), Math.round(thisPos.y), snapshot);
         } else {
           // 'grid' and 'straight' both use tile-along-line for replay; the
           // difference in live gameplay is in visual interpolation, not path.
@@ -2368,7 +2372,7 @@ export const Game: React.FC<GameProps> = ({
     }));
 
     // Replace snapshot projectiles with replay-generated ones (correct positions and timing)
-    const replayProjectiles = buildReplayProjectiles(index);
+    const replayProjectiles = buildReplayProjectiles(index, snapshot);
     copy.activeProjectiles = replayProjectiles; // Replace entirely — snapshot projectiles are stale
 
     // Apply past deferred-death commits to the snapshot. Snapshots are
@@ -2488,7 +2492,7 @@ export const Game: React.FC<GameProps> = ({
     replayStepTimerRef.current = setTimeout(() => {
       setReplayStepAnimating(false);
     }, TURN_INTERVAL_MS);
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- [] keeps this replay handler stable; copySnapshotForPlayback is a per-render helper reading replay refs (known: its pathfinding BFS sees first-render gameState)
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- [] keeps this replay handler stable; copySnapshotForPlayback is a per-render helper reading replay refs
   }, []);
 
   // Step-back and seek skip the per-turn-start reset: they jump straight to
@@ -2509,7 +2513,7 @@ export const Game: React.FC<GameProps> = ({
     });
 
     setReplayStepAnimating(false);
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- [] keeps this replay handler stable; copySnapshotForPlayback is a per-render helper reading replay refs (known: its pathfinding BFS sees first-render gameState)
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- [] keeps this replay handler stable; copySnapshotForPlayback is a per-render helper reading replay refs
   }, []);
 
   const handleReplaySeek = useCallback((turn: number) => {
@@ -2521,7 +2525,7 @@ export const Game: React.FC<GameProps> = ({
     setGameState(copy);
     setReplayTurnIndex(clamped);
     setReplayStepAnimating(false);
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- [] keeps this replay handler stable; copySnapshotForPlayback is a per-render helper reading replay refs (known: its pathfinding BFS sees first-render gameState)
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- [] keeps this replay handler stable; copySnapshotForPlayback is a per-render helper reading replay refs
   }, []);
 
   const handleReplaySpeedChange = useCallback((speed: number) => {
