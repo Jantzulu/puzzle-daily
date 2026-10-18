@@ -2687,6 +2687,16 @@ body.gate-raising .gate-shake-layer {
     transition: transform 0.3s ease;
   }
 }
+/* ARRIVES ROLLED UP (Game.tsx questArriveClosed, user call 2026-10-18): on
+   a finished daily the scroll spawns already tucked in the hero header.
+   Every close animation lands on its last frame at once and nothing glides
+   in, so no unfurl or roll-up ever shows over the board. The first tap
+   clears it and the scroll opens as usual. */
+.quest-arrive-closed * {
+  animation-duration: 0s !important;
+  animation-delay: 0s !important;
+  transition: none !important;
+}
 .quest-tucked .quest-frame-layer {
   /* -50% centers the rolled scroll on the seal ELEMENT; --qseal-dip
      (stamped by QuestBoxFrame = the art's in-piece downward offset)

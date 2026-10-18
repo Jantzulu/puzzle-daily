@@ -467,15 +467,15 @@ export const Game: React.FC<GameProps> = ({
   // objective's extra lines (its line heights are whole px).
   const questLengthChangeAt = () =>
     window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? QUEST_FLIGHT_MS / 2 : QUEST_FLIGHT_MS / 4;
-  const questOneLineHeight = (box: HTMLElement) => {
+  const questOneLineHeight = (box: HTMLElement, openH = box.offsetHeight) => {
     const objective = box.querySelector('.quest-objective') as HTMLElement | null;
     const lh = objective ? parseFloat(getComputedStyle(objective).lineHeight) : NaN;
-    if (!objective || !(lh > 0)) return box.offsetHeight;
+    if (!objective || !(lh > 0)) return openH;
     // floor, not round: the inline (?) icon can stand a few px proud of
     // its line (a two-line quest measured 38px at 17px lines), never a whole
     // line.
     const extraLines = Math.max(0, Math.floor(objective.offsetHeight / lh) - 1);
-    return box.offsetHeight - extraLines * lh;
+    return openH - extraLines * lh;
   };
   // QUEST FLOAT: minimize = the classic close (roll up, then the tuck that
   // centres the rolled scroll on the seal), with the toss to the hero header
@@ -504,6 +504,7 @@ export const Game: React.FC<GameProps> = ({
     if (!box || questFloatBusy.current || !questMini) return;
     // Never unfurl over a run's outcome (see the outcome effect below).
     if (outcomeOverlayUp) return;
+    setQuestArriveClosed(false);
     questScrollTimers.current.forEach(clearTimeout);
     questScrollTimers.current = [];
     questFloatBusy.current = true;
@@ -541,12 +542,29 @@ export const Game: React.FC<GameProps> = ({
   // both without a synchronous reset.
   const [questSpawnedFor, setQuestSpawnedFor] = useState<string | null>(null);
   const [questHintFor, setQuestHintFor] = useState<string | null>(null);
+  // ARRIVES ROLLED UP (user call 2026-10-18): loading into a daily that is
+  // already finished (the "Today's Puzzle Failed/Complete" banner at the
+  // board's top), the scroll spawns already tucked in the hero header, with
+  // no unfurl over the board. Its close animations land on their last frame
+  // (index.css .quest-arrive-closed) and the first tap opens it as usual.
+  // Read once at mount: a daily lost IN-session minimizes the normal way.
+  const questLockedOnArrival = useRef(!!dailyLockStatus);
+  const [questArriveClosed, setQuestArriveClosed] = useState(false);
   useEffect(() => {
     if (!questFloatOn || !spritesReady) return;
     const id = currentPuzzle.id;
-    const spawn = window.setTimeout(() => setQuestSpawnedFor(id), QUEST_SPAWN_DELAY_MS);
+    const spawn = window.setTimeout(() => {
+      if (questLockedOnArrival.current) {
+        questLockedOnArrival.current = false;
+        setQuestArriveClosed(true);
+        setQuestMini(true);
+        setQuestScroll('closed');
+        setQuestBoxHeight(questCollapsedH);
+      }
+      setQuestSpawnedFor(id);
+    }, QUEST_SPAWN_DELAY_MS);
     return () => window.clearTimeout(spawn);
-  }, [questFloatOn, spritesReady, currentPuzzle.id]);
+  }, [questFloatOn, spritesReady, currentPuzzle.id, questCollapsedH]);
   const questSpawned = spritesReady && questSpawnedFor === currentPuzzle.id;
   const questHintReady = questHintFor === currentPuzzle.id;
   // Pixel-snaps the skinned quest box (flex centering can land it on
@@ -721,16 +739,14 @@ export const Game: React.FC<GameProps> = ({
     if (questFloatOn && questSpawned && outcomeOverlayUp) minimizeQuestRef.current();
     // questScroll: a scroll caught mid-unfurl rolls up once it has opened.
   }, [questFloatOn, questSpawned, outcomeOverlayUp, questScroll]);
-  // The DAILY-LOCK banner ("Today's Puzzle Failed/Complete", returning to a
-  // finished daily) sits at the board's top, right where the scroll opens
-  // (user report 2026-10-18). The scroll still unfurls so the quest can be
-  // read, then, once fully open (the hint's unlock), tosses itself to the
-  // hero header and uncovers the banner. Fires once per visit: reopening the
-  // small scroll to reread it is the player's call, so it stays open.
-  const dailyLockBannerUp = !!dailyLockStatus && gameState.gameStatus === 'setup' && !replayMode;
-  useEffect(() => {
-    if (questFloatOn && questSpawned && questHintReady && dailyLockBannerUp) minimizeQuestRef.current();
-  }, [questFloatOn, questSpawned, questHintReady, dailyLockBannerUp]);
+  // The arrive-closed scroll's rolled length: the one-line length, measured
+  // once the box exists (its collapsed height is no guide, so from the open
+  // height), before the first paint.
+  useLayoutEffect(() => {
+    if (!questArriveClosed || !questSpawned || questFrameHold != null) return;
+    const box = questBoxSnapRef.current;
+    if (box) setQuestFrameHold(questOneLineHeight(box, questOpenHeight(box)));
+  });
 
   // Keyboard focus stays inside whichever overlay panel is up, and returns
   // to the prior element on close (see useFocusTrap).
@@ -3645,7 +3661,7 @@ export const Game: React.FC<GameProps> = ({
               >
               {(!questFloatOn || questSpawned) && (
               <div
-                className={`quest-box-anchor w-fit max-w-2xl mx-auto relative z-[45] -mt-[3px] mb-1${questAnchorPhaseClass}`}
+                className={`quest-box-anchor w-fit max-w-2xl mx-auto relative z-[45] -mt-[3px] mb-1${questAnchorPhaseClass}${questArriveClosed ? ' quest-arrive-closed' : ''}`}
                 onClick={questFloatOn && !questMini ? onQuestStageClick : undefined}
                 onPointerDown={questPress.onPointerDown}
                 onPointerLeave={questPress.onPointerLeave}
