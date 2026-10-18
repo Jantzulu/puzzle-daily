@@ -2452,7 +2452,6 @@ function spawnProjectile(
         initialTargetStr = `char id=${homingTarget.targetEntityId.slice(-6)}`;
       }
     }
-    // eslint-disable-next-line no-console
     console.log(
       `[HOMING-SPAWN ${pid}] style=${projectile.homingPathStyle ?? 'n/a'} ` +
       `caster=(${character.x.toFixed(2)},${character.y.toFixed(2)}) ` +

@@ -747,7 +747,6 @@ const SpellConfig: React.FC<SpellConfigProps> = ({ action, spell, context, onUpd
               {action.trigger?.mode === 'on_event' && (
                 <>
                   <select value={displayedEvent}
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     onChange={(e) => {
                       // Switching event type: when the new event is "in range"
                       // and the dev hasn't already set autoTargetRange, seed
