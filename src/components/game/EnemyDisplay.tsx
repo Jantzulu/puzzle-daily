@@ -6,6 +6,7 @@ import { RichTextRenderer } from '../editor/RichTextEditor';
 import { attributeText, attributeSubItems } from '../../utils/attributeShape';
 import { HelpButton } from './HelpOverlay';
 import { TapHintChip } from './TapHintChip';
+import { isTapHintSeen, markTapHintSeen } from './tapHintSeen';
 import { GemMesh } from './GemMesh';
 import { LintelMesh } from './LintelMesh';
 import { LintelTorch } from './LintelTorch';
@@ -61,6 +62,8 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
   // Double rAF ensures browser paints the closed (0fr) state before opening.
   const [selectedEnemyId, setSelectedEnemyId] = useState<string | null>(null);
   const [renderedEnemyId, setRenderedEnemyId] = useState<string | null>(null);
+  // Once a card's been tapped the hint stays gone until a refresh.
+  const [enemyHintSeen, setEnemyHintSeen] = useState(() => isTapHintSeen('enemy'));
   const [isOpen, setIsOpen] = useState(false);
   const prevEnemyIdRef = useRef<string | null>(null);
   const exitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -323,7 +326,13 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
               key={enemyId}
               type="button"
               aria-pressed={isSelected}
-              onClick={() => setSelectedEnemyId(isSelected ? null : enemyId)}
+              onClick={() => {
+                if (!isAllySide) {
+                  markTapHintSeen('enemy');
+                  setEnemyHintSeen(true);
+                }
+                setSelectedEnemyId(isSelected ? null : enemyId);
+              }}
               style={artGridSlotStyle(stripWidth, stripEnemyIds.length, slot)}
               // min-w-0: a card can never be widened by its own content (a
               // long name, a visit line), so the slots stay equal and on the
@@ -528,7 +537,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
           it. Enemies side only — a twin under Allies on the same page would
           double-announce. UNMOUNTS when hidden (second user call, mobile
           test): the min-h reservation left a dead gap once a card opened. */}
-      {!isAllySide && uniqueEnemyIds.length > 0 && selectedEnemyId === null && (
+      {!isAllySide && !enemyHintSeen && uniqueEnemyIds.length > 0 && selectedEnemyId === null && (
         <div className="mt-1.5 text-center">
           <TapHintChip>Tap an enemy for more info</TapHintChip>
         </div>

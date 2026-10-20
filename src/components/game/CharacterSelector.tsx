@@ -12,6 +12,7 @@ import { RichTextRenderer } from '../editor/RichTextEditor';
 import { attributeText, attributeSubItems } from '../../utils/attributeShape';
 import { HelpButton } from './HelpOverlay';
 import { TapHintChip } from './TapHintChip';
+import { isTapHintSeen, markTapHintSeen } from './tapHintSeen';
 import { MovementArrow } from './DirectionArrow';
 import { DirectionPicker, CompassArrow, CompassGlyph, COMPASS_ART_PX, type DirectionPickerEntry } from './DirectionPicker';
 import { BEARING_INITIALS } from './bearings';
@@ -163,6 +164,8 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
   // Info panel animation: grid 0fr→1fr so easing applies to real content height.
   // Double rAF ensures browser paints the closed (0fr) state before opening.
   const [renderedCharId, setRenderedCharId] = useState<string | null>(selectedCharacterId);
+  // Once a card's been tapped the hint stays gone until a refresh.
+  const [heroHintSeen, setHeroHintSeen] = useState(() => isTapHintSeen('hero'));
   const [isOpen, setIsOpen] = useState(false);
   const prevCharIdRef = useRef<string | null>(selectedCharacterId);
   const exitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -557,7 +560,12 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
               type="button"
               aria-pressed={isSelected}
               disabled={cannotSelect}
-              onClick={() => !cannotSelect && onSelectCharacter(isSelected ? null : charId)}
+              onClick={() => {
+                if (cannotSelect) return;
+                markTapHintSeen('hero');
+                setHeroHintSeen(true);
+                onSelectCharacter(isSelected ? null : charId);
+              }}
               // min-w-0 here and on the slot wrapper: a card can never be
               // widened by its own content (a long name, a stat line with
               // the compass), so the slots stay equal and on the boundaries
@@ -955,7 +963,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
           layout shift it prevented. Same chip grammar as the board's "Tap
           the dungeon" prompt; the PLACEMENT half lives on the board itself
           (see Game.tsx). */}
-      {!disabled && !(isAtMaxPlaced || (selectedCharacterId && !placedCharacterIds.includes(selectedCharacterId))) && (
+      {!disabled && !heroHintSeen && !(isAtMaxPlaced || (selectedCharacterId && !placedCharacterIds.includes(selectedCharacterId))) && (
         <div className="mt-1.5 text-center">
           <TapHintChip>Tap a hero for more info</TapHintChip>
         </div>
