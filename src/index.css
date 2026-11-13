@@ -3836,6 +3836,21 @@ body:not(.menu-gate-lowered) .quest-panel-sticky[data-jostle] .control-rail {
 /* No Reduce Motion variant (user call 2026-10-15): the flicker is minimal,
    in a project full of motion. */
 
+/* A WIN makes the light flare (LintelTorch + shared/runMood.ts): the outer
+   layer swells and settles once, while the inner layer keeps flickering.
+   Transform only; the class comes off on animationend. */
+.lintel-torch--flare .lintel-torch-light {
+  animation: torch-flare 1.3s ease-out;
+}
+
+@keyframes torch-flare {
+  0% { transform: scale(1); }
+  18% { transform: scale(2.2); }
+  45% { transform: scale(1.5); }
+  70% { transform: scale(1.75); }
+  100% { transform: scale(1); }
+}
+
 /* (dungeon-lintel-gem removed 2026-08-13: the center mark between
    DUNGEON and DETAILS retired by user call, along with the
    iconDungeonDetails theme slot that could replace it.) */

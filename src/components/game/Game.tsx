@@ -11,6 +11,7 @@ import { entityParty } from '../../engine/party';
 import { ResponsiveGameBoard, type PlacementGhost } from './AnimatedGameBoard';
 import { buildProjectileLifetimes, copySnapshotForPlayback, type ProjectileLifetimes } from './replayProjectiles';
 import { RunAnnouncer } from './RunAnnouncer';
+import { setRunMood } from '../shared/runMood';
 import { PortcullisMesh } from './PortcullisMesh';
 import { CharacterSelector } from './CharacterSelector';
 import { EnemyDisplay } from './EnemyDisplay';
@@ -734,6 +735,20 @@ export const Game: React.FC<GameProps> = ({
   const victoryOverlayVisible = gameState.gameStatus === 'victory' && !!puzzleScore && !replayMode && !enteringReplay && !victoryDismissed && !outcomeOverlayHeld;
   const gameOverOverlayVisible = showGameOver && !defeatDismissed && !replayMode && !enteringReplay && !outcomeOverlayHeld;
   const lifeLostOverlayVisible = gameState.gameStatus === 'defeat' && !showGameOver && !replayMode && !enteringReplay && !outcomeOverlayHeld;
+
+  // The run's mood, for chrome that reacts to it (the lintel torches gutter
+  // on a loss and flare on a win; shared/runMood.ts). It changes with the
+  // outcome overlays, after their hold. Replay shows old snapshots, so the
+  // mood stands still while it plays.
+  useEffect(() => {
+    if (replayMode || enteringReplay || outcomeOverlayHeld) return;
+    setRunMood(
+      gameState.gameStatus === 'defeat' ? 'defeat'
+        : gameState.gameStatus === 'victory' && puzzleScore ? 'victory'
+        : 'calm'
+    );
+  }, [gameState.gameStatus, puzzleScore, replayMode, enteringReplay, outcomeOverlayHeld]);
+  useEffect(() => () => setRunMood('calm'), []);
   // THE QUEST SCROLL YIELDS TO THE OUTCOME (user report 2026-10-17: an open
   // scroll covered the Game Over overlay). It floats above the whole board
   // (z-39 outside it) while the outcome overlays live inside the board's
