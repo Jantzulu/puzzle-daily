@@ -10,6 +10,7 @@ import { isTileBlockingMovement } from '../../engine/actions';
 import { entityParty } from '../../engine/party';
 import { ResponsiveGameBoard, type PlacementGhost } from './AnimatedGameBoard';
 import { buildProjectileLifetimes, copySnapshotForPlayback, type ProjectileLifetimes } from './replayProjectiles';
+import { RunAnnouncer } from './RunAnnouncer';
 import { PortcullisMesh } from './PortcullisMesh';
 import { CharacterSelector } from './CharacterSelector';
 import { EnemyDisplay } from './EnemyDisplay';
@@ -2561,6 +2562,15 @@ export const Game: React.FC<GameProps> = ({
                 the x-axis clips, so hallway corridors may bleed above and
                 below the board's layout box (intended illusion). */}
             <div className={`relative top-1.5 lg:top-[7px] z-10 w-full max-w-[900px] board-rise ${(replayMode || enteringReplay) ? 'overflow-hidden board-rise-collapsed ' : 'overflow-x-clip '}${gameState.gameStatus === 'defeat' && !outcomeBoltWait ? 'animate-screen-shake' : ''}`}>
+              {/* Screen readers: the run's state in words (visually hidden). */}
+              <RunAnnouncer
+                status={gameState.gameStatus}
+                placed={gameState.placedCharacters.length}
+                maxPlaceable={gameState.puzzle.maxPlaceableCharacters ?? gameState.puzzle.maxCharacters}
+                victory={gameState.gameStatus === 'victory' && puzzleScore ? { rankName: getRankName(puzzleScore.rank), points: puzzleScore.totalPoints } : null}
+                defeat={showGameOver ? { reason: defeatReason, livesRemaining } : null}
+                replay={replayMode ? { turn: replayTurnIndex, totalTurns: turnHistoryRef.current.length - 1, playing: replayPlaying } : null}
+              />
               <div
                 ref={boardFadeRef}
                 className={`transition-[opacity,transform] duration-700 ease-out ${spritesReady ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}

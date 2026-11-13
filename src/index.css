@@ -488,6 +488,19 @@ canvas {
   outline-offset: 2px;
 }
 
+/* The board's keyboard focus shows as a TILE cursor (boardKeyboard.ts), not
+   a ring around the whole canvas, whose box includes the corridor overhang. */
+.board-canvas:focus-visible {
+  outline: none;
+}
+.board-kb-cursor {
+  position: absolute;
+  pointer-events: none;
+  outline: 2px solid #d4a574;
+  outline-offset: -2px;
+  box-shadow: inset 0 0 0 3px rgba(0, 0, 0, 0.55);
+}
+
 /* Smooth scrolling */
 html {
   scroll-behavior: smooth;

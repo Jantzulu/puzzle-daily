@@ -18,6 +18,8 @@ import { isTileActiveOnTurn } from '../../engine/actions';
 import { subscribeToImageLoads, loadImage, isImageReady } from '../../utils/imageLoader';
 import { blobShadowsEnabled, drawBlobShadow, drawDeathBlobShadow, drawProjectileBlobShadow } from './blobShadows';
 import { drawLightGlow } from './lightGlow';
+import { boardLabel } from './boardKeyboard';
+import { useBoardCursor } from './useBoardCursor';
 import { hasMovementActions, enemyHasMovementActions, drawFacingArrow } from './facingArrow';
 import { drawSpellSpriteSheet, drawSpellSpriteSheetFromStartTime, drawShape, getRotationForDirection, drawDefaultProjectile, drawProjectileArt, drawParticleArt } from './spellArt';
 import { wallAOEnabled, drawWallAO, AO_VOID_OCCLUDES } from './wallAO';
@@ -2735,6 +2737,10 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
     }
   };
 
+  // Keyboard / screen-reader tile cursor (boardKeyboard.ts). Enter acts on
+  // the tile through the same onTileClick as a tap.
+  const boardCursor = useBoardCursor(gameState, onTileClick);
+
   const borderStyle = gameState.puzzle.borderConfig?.style || 'none';
   const hasBorder = borderStyle !== 'none';
 
@@ -2791,12 +2797,17 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
   const layoutCssHeight = Math.round(canvasHeight * quantizedScale) / dpr;
   const overhangLeftCss = (hallwayOverhang.x * quantizedScale) / dpr;
   const overhangTopCss = (hallwayOverhang.top * quantizedScale) / dpr;
+  // One tile in CSS px inside the layout box (the box excludes the overhang).
+  const tileCss = (TILE_SIZE * quantizedScale) / dpr;
+  const gridLeftCss = ((hasBorder ? SIDE_BORDER_SIZE : 0) * quantizedScale) / dpr;
+  const gridTopCss = ((hasBorder ? BORDER_SIZE : 0) * quantizedScale) / dpr;
 
   return (
     <div
       key={fadeKey}
       className="animate-fade-in-board"
       style={{
+        position: 'relative',
         width: layoutCssWidth,
         height: layoutCssHeight,
         overflow: 'visible'
@@ -2807,7 +2818,13 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
         width={canvasResWidth}
         height={canvasResHeight}
         onClick={handleCanvasClick}
-        className="cursor-pointer"
+        tabIndex={onTileClick ? 0 : undefined}
+        role={onTileClick ? 'application' : undefined}
+        aria-label={onTileClick ? boardLabel(gameState.puzzle.width, gameState.puzzle.height) : undefined}
+        onKeyDown={boardCursor.onKeyDown}
+        onFocus={boardCursor.onFocus}
+        onBlur={boardCursor.onBlur}
+        className="cursor-pointer board-canvas"
         style={{
           width: cssWidth,
           height: cssHeight,
@@ -2816,6 +2833,18 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
           imageRendering: 'pixelated'
         }}
       />
+      {boardCursor.cursor && (
+        <div
+          className="board-kb-cursor"
+          style={{
+            left: gridLeftCss + boardCursor.cursor.x * tileCss,
+            top: gridTopCss + boardCursor.cursor.y * tileCss,
+            width: tileCss,
+            height: tileCss,
+          }}
+        />
+      )}
+      {onTileClick && <div className="sr-only" aria-live="polite">{boardCursor.description}</div>}
     </div>
   );
 };
