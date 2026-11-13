@@ -48,11 +48,25 @@ export default defineConfig({
         // choice ships (public/fonts), but a player only ever needs the
         // theme's few faces — runtime-cached below on first use, as the
         // Google-hosted fonts were. (fonts.css itself is precached.)
-        globIgnores: ['fonts/**/*.woff2'],
+        // The error-reporting SDK chunk isn't precached either: it's only
+        // fetched once a player opts into diagnostics (src/lib/sentry.ts),
+        // and precaching would download it for everyone.
+        globIgnores: ['fonts/**/*.woff2', 'assets/sentrySdk-*.js'],
         navigateFallback: '/index.html',
         // The main chunk is over workbox's 2 MB default
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
         runtimeCaching: [
+          {
+            // The opt-in error-reporting chunk (hashed name): cached on
+            // first use so an opted-in player keeps it offline.
+            urlPattern: /\/assets\/sentrySdk-[^/?#]+\.js$/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'diagnostics',
+              expiration: { maxEntries: 4, maxAgeSeconds: 60 * 60 * 24 * 60 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
           {
             // Self-hosted font files (scripts/self-host-fonts.mjs) — never
             // change at a given path, so cache hard.

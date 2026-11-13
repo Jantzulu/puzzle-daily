@@ -15,6 +15,8 @@
 // remembered; bumping CONSENT_VERSION re-prompts everyone when the policy
 // materially changes.
 
+import { initSentry } from '../lib/sentry';
+
 const KEY = 'privacy_consent';
 export const CONSENT_VERSION = 1;
 
@@ -77,10 +79,8 @@ export function applyStartupConsent(): void {
   if (hasAnalyticsConsent()) enableErrorReporting();
 }
 
-// Lazy so neither the consent module nor its consumers (e.g. statsService)
-// statically pull the Sentry SDK — and nothing initializes it pre-consent.
+// lib/sentry is a light facade: the Sentry SDK itself is only downloaded
+// here, on opt-in, and nothing initializes it pre-consent.
 function enableErrorReporting(): void {
-  import('../lib/sentry')
-    .then(m => m.initSentry())
-    .catch(() => { /* diagnostics are best-effort */ });
+  void initSentry();
 }
