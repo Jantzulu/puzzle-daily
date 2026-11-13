@@ -26,6 +26,14 @@ export default defineConfig({
     environment: 'node',
     include: ['src/**/__tests__/**/*.test.ts'],
     globals: true,
+    // src/lib/supabase.ts refuses to load without these. Tests never talk to
+    // the network, so they get placeholders: CI has no .env (this kept the
+    // Test step red from 2026-10 until 2026-11-13), and a local run should
+    // not build a client for the real project either.
+    env: {
+      VITE_SUPABASE_URL: 'http://localhost:54321',
+      VITE_SUPABASE_ANON_KEY: 'test-anon-key',
+    },
   },
   build: {
     sourcemap: 'hidden',
