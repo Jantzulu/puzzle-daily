@@ -1,0 +1,298 @@
+import './helpers';
+import { describe, it, expect, vi } from 'vitest';
+import * as fs from 'node:fs';
+import { executeTurn, updateProjectiles, DESPAWN_SHRINK_MS, TARGET_LOST_LINGER_MS } from '../simulation';
+import { getCharacter } from '../../data/characters';
+import type { GameState, PlacedCharacter, Projectile, ProjectileVisualState } from '../../types/game';
+import { buildProjectileLifetimes, copySnapshotForPlayback } from '../../components/game/replayProjectiles';
+import { ALL_CASES } from './corpus/allCases';
+import type { CorpusCase } from './corpus/types';
+import { clearAllRegistries, registerTestCharacter, registerTestEnemy, registerTestSpell, registerTestStatusEffect, createTestCharacterDef, createTestEnemyDef, createTestPuzzle, createTestEnemy, createTestGameState, createEmptyGrid, setTile } from './helpers';
+import { Direction, ActionType, SpellTemplate, TileType, StatusEffectType } from '../../types/game';
+
+interface VOpts { id: string; spell: Record<string, unknown>; action?: Record<string, unknown>; casts?: number; w: number; h: number; walls?: Array<[number, number]>; enemies: Array<{ id: string; x: number; y: number; hp: number; reflect?: boolean; facing?: Direction }>; hero: [number, number]; facing?: Direction; maxTurns?: number }
+function variant(o: VOpts): CorpusCase {
+  return {
+    id: o.id, description: o.id,
+    setup: () => {
+      clearAllRegistries();
+      registerTestStatusEffect('reflect-status', { id: 'reflect-status', name: 'Reflect', type: StatusEffectType.REFLECT, defaultDuration: 9, stackingBehavior: 'refresh', sprites: {} } as any);
+      registerTestSpell('v-spell', { id: 'v-spell', name: 'V', description: '', thumbnailIcon: '', templateType: SpellTemplate.LINEAR, directionMode: 'current_facing', damage: 3, range: 6, projectileSpeed: 4, sprites: {}, ...o.spell } as any);
+      const behavior: any[] = [];
+      for (let i = 0; i < (o.casts ?? 1); i++) behavior.push({ type: ActionType.SPELL, spellId: 'v-spell', ...(o.action ?? {}) });
+      for (let i = 0; i < 12; i++) behavior.push({ type: ActionType.WAIT });
+      registerTestCharacter(createTestCharacterDef({ id: 'hero-caster', health: 10, behavior }));
+      const seen = new Set<string>();
+      for (const e of o.enemies) if (!seen.has(e.id)) { seen.add(e.id); registerTestEnemy(createTestEnemyDef({ id: e.id, health: e.hp })); }
+      const tiles = createEmptyGrid(o.w, o.h);
+      for (const [x, y] of o.walls ?? []) setTile(tiles, x, y, TileType.WALL);
+      return createTestGameState({
+        puzzle: createTestPuzzle({
+          width: o.w, height: o.h, tiles,
+          enemies: o.enemies.map(e => createTestEnemy({ enemyId: e.id, x: e.x, y: e.y, currentHealth: e.hp, facing: e.facing ?? Direction.WEST,
+            statusEffects: e.reflect ? [{ id: 'r1', type: StatusEffectType.REFLECT, statusAssetId: 'reflect-status', duration: 9, currentStacks: 1, appliedOnTurn: 0, sourceEntityId: 'initial', sourceIsEnemy: false, movementSkipCounter: 0 }] : undefined } as any)),
+          availableCharacters: ['hero-caster'], winConditions: [{ type: 'defeat_all_enemies' }], maxTurns: o.maxTurns ?? 6,
+        }),
+        gameStatus: 'setup',
+      });
+    },
+    placements: [{ characterId: 'hero-caster', x: o.hero[0], y: o.hero[1], facing: o.facing ?? Direction.EAST }],
+    maxTurns: 12,
+  };
+}
+const FAR = { id: 'far-dummy', x: 0, y: 4, hp: 50 };
+const HOMING = { autoTargetNearestEnemy: true, homing: true };
+const VARIANTS: CorpusCase[] = [
+  variant({ id: 'vA-reflect-late-speed2', spell: { projectileSpeed: 2, range: 8 }, w: 8, h: 5, hero: [0, 0], enemies: [{ id: 'refl', x: 3, y: 0, hp: 10, reflect: true }] }),
+  variant({ id: 'vA2-reflect-far-speed4', spell: { projectileSpeed: 4, range: 8 }, w: 8, h: 5, hero: [0, 0], enemies: [{ id: 'refl', x: 6, y: 0, hp: 10, reflect: true }] }),
+  variant({ id: 'vB1-bounce-turnleft', spell: { bounceOffWalls: true, maxBounces: 2, bounceBehavior: 'turn_left', bounceTurnDegrees: 90, range: 10 }, w: 7, h: 5, hero: [0, 2], walls: [[3, 2]], enemies: [FAR] }),
+  variant({ id: 'vB2-bounce-late-reflect', spell: { bounceOffWalls: true, maxBounces: 2, bounceBehavior: 'reflect', range: 12 }, w: 8, h: 5, hero: [0, 0], walls: [[6, 0]], enemies: [FAR] }),
+  variant({ id: 'vB3-bounce-turnright-late', spell: { bounceOffWalls: true, maxBounces: 2, bounceBehavior: 'turn_right', bounceTurnDegrees: 90, range: 12 }, w: 8, h: 6, hero: [0, 0], walls: [[6, 0]], enemies: [FAR] }),
+  variant({ id: 'vC-pierce-midgame', spell: { projectileSpeed: 2, range: 10, pierceEnemies: true }, w: 8, h: 5, hero: [0, 0], enemies: [{ id: 'g1', x: 2, y: 0, hp: 3 }, { id: 'g2', x: 4, y: 0, hp: 3 }, FAR] }),
+  variant({ id: 'vD-wall-far', spell: { range: 6 }, w: 8, h: 5, hero: [0, 0], walls: [[4, 0]], enemies: [FAR] }),
+  variant({ id: 'vD2-range1-miss', spell: { range: 1 }, w: 8, h: 5, hero: [0, 0], enemies: [FAR] }),
+  variant({ id: 'vD3-wall-adjacent', spell: { range: 6 }, w: 8, h: 5, hero: [0, 0], walls: [[1, 0]], enemies: [FAR] }),
+  variant({ id: 'vG-homing-straight-wallblocked', spell: { range: 8 }, action: { ...HOMING, homingPathStyle: 'straight', homingIgnoreWalls: false }, w: 8, h: 5, hero: [0, 0], walls: [[3, 0]], enemies: [{ id: 'g1', x: 5, y: 0, hp: 3 }] }),
+  variant({ id: 'vG2-homing-grid-wallblocked', spell: { range: 8 }, action: { ...HOMING, homingPathStyle: 'grid', homingIgnoreWalls: false }, w: 8, h: 5, hero: [0, 0], walls: [[3, 0]], enemies: [{ id: 'g1', x: 5, y: 0, hp: 3 }] }),
+  variant({ id: 'vG3-homing-straight-wallblocked-slow', spell: { range: 8, projectileSpeed: 1 }, action: { ...HOMING, homingPathStyle: 'straight', homingIgnoreWalls: false }, w: 8, h: 5, hero: [0, 0], walls: [[3, 0]], enemies: [{ id: 'g1', x: 5, y: 0, hp: 3 }] }),
+  variant({ id: 'vI-homing-straight-target-lost', spell: { range: 6, projectileSpeed: 1 }, action: { ...HOMING, homingPathStyle: 'straight' }, casts: 2, w: 8, h: 5, hero: [0, 0], enemies: [{ id: 'g1', x: 2, y: 0, hp: 3 }, { id: 'far-dummy', x: 7, y: 4, hp: 50 }] }),
+  variant({ id: 'vI2-homing-grid-target-lost', spell: { range: 6, projectileSpeed: 1 }, action: { ...HOMING, homingPathStyle: 'grid' }, casts: 2, w: 8, h: 5, hero: [0, 0], enemies: [{ id: 'g1', x: 2, y: 0, hp: 3 }, { id: 'far-dummy', x: 7, y: 4, hp: 50 }] }),
+  variant({ id: 'vR-homing-straight-reflect-slow', spell: { range: 8, projectileSpeed: 2 }, action: { ...HOMING, homingPathStyle: 'straight' }, w: 8, h: 5, hero: [0, 0], enemies: [{ id: 'refl', x: 5, y: 1, hp: 10, reflect: true }] }),
+];
+VARIANTS.push(
+  variant({ id: 'vP-pierce-final-midturn', spell: { range: 6, pierceEnemies: true }, w: 8, h: 5, hero: [0, 0], enemies: [{ id: 'g1', x: 1, y: 0, hp: 3 }, { id: 'g2', x: 3, y: 0, hp: 3 }] }),
+  variant({ id: 'vH-nonlethal-hit-on-boundary', spell: { range: 6 }, w: 8, h: 5, hero: [0, 0], enemies: [{ id: 'tank', x: 4, y: 0, hp: 10 }] }),
+  variant({ id: 'vH2-lethal-hit-on-boundary-midrun', spell: { range: 6 }, w: 8, h: 5, hero: [0, 0], enemies: [{ id: 'g1', x: 4, y: 0, hp: 3 }, FAR] }),
+  variant({ id: 'vH3-grid-homing-nonlethal', spell: { range: 8 }, action: { ...HOMING, homingPathStyle: 'grid' }, w: 8, h: 5, hero: [0, 0], enemies: [{ id: 'tank', x: 3, y: 1, hp: 10 }] }),
+);
+VARIANTS.push(
+  variant({ id: 'vZ-diagonal-linear-nonlethal', spell: { range: 6 }, w: 8, h: 8, hero: [0, 0], facing: Direction.SOUTHEAST, enemies: [{ id: 'tank', x: 4, y: 4, hp: 10 }] }),
+  variant({ id: 'vZ2-diagonal-linear-lethal-final', spell: { range: 6 }, w: 8, h: 8, hero: [0, 0], facing: Direction.SOUTHEAST, enemies: [{ id: 'g1', x: 3, y: 3, hp: 3 }] }),
+);
+const CASES: CorpusCase[] = [...ALL_CASES, ...VARIANTS];
+
+const OUT = 'C:/Users/jantz/AppData/Local/Temp/claude/C--Users-jantz-Desktop-Claude/c9c3e7ce-a4c4-406d-84fb-6050213cb9d3/scratchpad/';
+const IDS = (process.env.PROBE_IDS ?? '04,09,10,11,12,14,15,16,18').split(',');
+const FRAME = 16;
+const FRAMES_PER_TURN = 50;
+const PHASE = Number(process.env.PROBE_PHASE ?? 16);
+const TAG = process.env.PROBE_TAG ?? '';
+
+function deepCopy(state: GameState): GameState {
+  const copy = JSON.parse(JSON.stringify(state));
+  copy.tileStates = new Map();
+  if (state.tileStates) state.tileStates.forEach((v: any, k: string) => copy.tileStates.set(k, { ...v, damagedEntities: v.damagedEntities ? new Set(v.damagedEntities) : undefined }));
+  if (state.tilesBeingVacated) copy.tilesBeingVacated = new Set(state.tilesBeingVacated);
+  return copy;
+}
+// verbatim from Game.tsx
+function resetReplayProjectilesToTurnStart(copy: GameState) {
+  if (!copy.activeProjectiles) return;
+  const nowMs = Date.now();
+  for (const proj of copy.activeProjectiles) {
+    if (proj.tilePath && proj.tilePath.length > 0 && (proj as any)._turnStartTileIndex !== undefined) {
+      const startIdx = Math.min((proj as any)._turnStartTileIndex, proj.tilePath.length - 1);
+      proj.currentTileIndex = startIdx;
+      const tileTransitMs = 800 / (proj.speed || 4);
+      proj.tileEntryTime = nowMs - (startIdx * tileTransitMs);
+      proj.startTime = nowMs - (startIdx * tileTransitMs);
+    }
+  }
+}
+// mirror of drawProjectile position + shrink logic (AnimatedGameBoard.tsx 5215-5330)
+function drawn(p: Projectile, vsMap: Map<string, ProjectileVisualState>, now: number, frozen: boolean, curTurn: number) {
+  if (!p.active) return null;
+  const vs = vsMap.get(p.id);
+  const vsFresh = !!vs && (vs.lastUpdateTurn === undefined || vs.lastUpdateTurn === curTurn);
+  const useLogical = !vs || (frozen && !vsFresh);
+  const x = useLogical ? p.logicalX : vs!.x;
+  const y = useLogical ? p.logicalY : vs!.y;
+  let scale = 1;
+  let consumeAtMs: number | null = null;
+  const tileTransitMs = p.isHoming && p.tilePath && p.tilePath.length > 1 ? 800 / (p.tilePath.length - 1) : 800 / (p.speed || 4);
+  const anchorMs = p.tileEntryTime ?? p.startTime ?? now;
+  if (p.despawning && p.despawnStartTime !== undefined) {
+    const progress = Math.min(1, Math.max(0, (now - p.despawnStartTime) / TARGET_LOST_LINGER_MS));
+    const f = 1 - progress ** 3; if (f <= 0.01) return null; scale *= f;
+  } else if (p.hitResult?.deactivate && !p.hitResult.vfxSprite && !p.hitResult.deferredDeathEntityId && !p.hitResult.placeCollectibleConfig) {
+    consumeAtMs = anchorMs + p.hitResult.hitTileIndex * tileTransitMs;
+  } else if (!p.hitResult && p.tilePath && p.tilePath.length > 0) {
+    let willFizzle = false;
+    if (p.isHoming) {
+      if (p.attackData.range !== undefined && p.pathTraveled !== undefined) {
+        const remaining = p.attackData.range - p.pathTraveled;
+        willFizzle = remaining < 0.5 || (p.homingPathStyle === 'pathfinding' && remaining < 1);
+      }
+    } else willFizzle = true;
+    if (willFizzle) consumeAtMs = anchorMs + (p.tilePath.length - 1) * tileTransitMs;
+  }
+  if (consumeAtMs !== null) {
+    const tuc = consumeAtMs - now;
+    if (tuc <= DESPAWN_SHRINK_MS) {
+      const progress = Math.min(1, Math.max(0, 1 - tuc / DESPAWN_SHRINK_MS));
+      const f = 1 - progress ** 3; if (f <= 0.01) return null; scale *= f;
+    }
+  }
+  return { x, y, scale, dir: p.direction };
+}
+type D = ReturnType<typeof drawn>;
+const f2 = (n: number) => n.toFixed(2);
+const fmt = (d: D) => d ? `(${f2(d.x)},${f2(d.y)}) s=${f2(d.scale)} ${d.dir}` : '--gone--';
+const projBrief = (p: Projectile) => ({
+  id: p.id.slice(-5), active: p.active, logical: [p.logicalX, p.logicalY], start: [p.startX, p.startY], target: [p.targetX, p.targetY],
+  dir: p.direction, speed: p.speed, homing: p.isHoming, style: p.homingPathStyle,
+  tilePath: p.tilePath?.map(t => `${t.x},${t.y}`).join(' '), cti: p.currentTileIndex, lti: p.logicalTileIndex,
+  tileEntryTime: p.tileEntryTime, startTime: p.startTime, hvs: [p.homingVisualStartX, p.homingVisualStartY, p.homingVisualStartTime],
+  hitResult: p.hitResult ? { idx: p.hitResult.hitTileIndex, deact: p.hitResult.deactivate, vfx: !!p.hitResult.vfxSprite, dd: p.hitResult.deferredDeathEntityId, dmg: p.hitResult.damage } : undefined,
+  pvd: p.pendingVisualDecrements, reflected: p.reflected, reflectAt: p.reflectAtTileIndex, despawning: p.despawning, pathTraveled: p.pathTraveled,
+  tss: (p as any)._turnStartTileIndex, bounceCount: p.bounceCount,
+});
+const ents = (g: GameState) => g.puzzle.enemies.map(e => `${e.dead ? 'D' : e.pendingProjectileDeath ? 'p' : 'a'}${e.currentHealth}/${e.pendingVisualDamage ?? 0}`).join(',')
+  + ' | ' + g.placedCharacters.map(e => `${e.dead ? 'D' : e.pendingProjectileDeath ? 'p' : 'a'}${e.currentHealth}/${e.pendingVisualDamage ?? 0}`).join(',');
+
+describe('zz probe', () => {
+  for (const testCase of CASES.filter(c => IDS.some(i => c.id.startsWith(i)))) {
+    it(testCase.id, () => {
+      vi.useFakeTimers();
+      let t = 1_700_000_000_000;
+      vi.setSystemTime(t);
+      const lines: string[] = [];
+      const log = (s: string) => lines.push(s);
+
+      let gs: GameState = testCase.setup();
+      for (const p of testCase.placements) {
+        const def = getCharacter(p.characterId)!;
+        gs.placedCharacters.push({ characterId: p.characterId, x: p.x, y: p.y, facing: p.facing, currentHealth: def.health, actionIndex: 0, active: true, dead: false } as PlacedCharacter);
+      }
+      gs.gameStatus = 'running';
+      gs.projectileTimeline = [];
+      const history: GameState[] = [deepCopy(gs)];
+      const vsLive = new Map<string, ProjectileVisualState>();
+      const live: Record<number, Array<Record<string, string>>> = {};
+      const liveRaw: Record<number, Array<Record<string, D>>> = {};
+      const enemyLive: Record<number, string[]> = {};
+      const ids = new Set<string>();
+      let turns = 0;
+      const liveStart: Record<number, number> = {};
+      log(`===== ${testCase.id} LIVE =====`);
+      while (gs.gameStatus === 'running' && turns < (testCase.maxTurns ?? 40)) {
+        gs = executeTurn(deepCopy(gs));
+        liveStart[gs.currentTurn] = t;
+        turns++;
+        history.push(deepCopy(gs));
+        const turn = gs.currentTurn;
+        log(`-- after executeTurn T${turn} status=${gs.gameStatus}: ` + JSON.stringify((gs.activeProjectiles ?? []).map(projBrief)));
+        live[turn] = []; liveRaw[turn] = []; enemyLive[turn] = [];
+        const last = gs.gameStatus !== 'running';
+        const nFrames = last ? FRAMES_PER_TURN * 4 : FRAMES_PER_TURN;
+        const turnStartL = t;
+        for (let f = 1; f <= nFrames; f++) {
+          t = turnStartL + PHASE + (f - 1) * FRAME; vi.setSystemTime(t);
+          updateProjectiles(gs, vsLive);
+          const row: Record<string, string> = {}; const raw: Record<string, D> = {};
+          for (const p of gs.activeProjectiles ?? []) { ids.add(p.id); const d = drawn(p, vsLive, t, false, gs.currentTurn); row[p.id] = fmt(d); raw[p.id] = d; }
+          live[turn].push(row); liveRaw[turn].push(raw);
+          enemyLive[turn].push(ents(gs));
+        }
+        t = turnStartL + nFrames * FRAME; vi.setSystemTime(t);
+      }
+      log(`-- TIMELINE: ` + (gs.projectileTimeline ?? []).map(e => `\n   T${e.turn} ${e.type} ${e.projId.slice(-5)} @(${e.x},${e.y}) ${e.tilePath ? 'path[' + e.tilePath.map(q => `${q.x},${q.y}`).join(' ') + ']' : ''} ${e.hitTileIndex !== undefined ? 'hitIdx=' + e.hitTileIndex : ''} ${e.targetX !== undefined ? `tgt=(${e.targetX},${e.targetY})` : ''} ${e.combinedPath ? 'combined[' + e.combinedPath.map(q => `${q.x},${q.y}`).join(' ') + '] reflectAt=' + e.reflectAtTileIndex : ''} ${e.damage !== undefined ? 'dmg=' + e.damage : ''}`).join(''));
+
+      const lifetimes = buildProjectileLifetimes(gs.projectileTimeline ?? []);
+      log(`===== ${testCase.id} REPLAY (auto-play) =====`);
+      const vsRep = new Map<string, ProjectileVisualState>();
+      const rep: Record<number, Array<Record<string, string>>> = {};
+      const repRaw: Record<number, Array<Record<string, D>>> = {};
+      const enemyRep: Record<number, string[]> = {};
+      t += 5000; vi.setSystemTime(t);
+      let lastCopy: GameState | undefined;
+      for (let idx = 1; idx < history.length; idx++) {
+        const copy = copySnapshotForPlayback(history[idx], idx, lifetimes) as GameState;
+        log(`-- replay built T${idx} (pre-reset): ` + JSON.stringify((copy.activeProjectiles ?? []).map(projBrief)));
+        resetReplayProjectilesToTurnStart(copy);
+        rep[idx] = []; repRaw[idx] = []; enemyRep[idx] = [];
+        const turnStartR = t;
+        for (let f = 1; f <= FRAMES_PER_TURN; f++) {
+          t = turnStartR + PHASE + (f - 1) * FRAME; vi.setSystemTime(t);
+          updateProjectiles(copy, vsRep);
+          const row: Record<string, string> = {}; const raw: Record<string, D> = {};
+          for (const p of copy.activeProjectiles ?? []) { const d = drawn(p, vsRep, t, false, copy.currentTurn); row[p.id] = fmt(d); raw[p.id] = d; }
+          rep[idx].push(row); repRaw[idx].push(raw);
+          enemyRep[idx].push(ents(copy));
+        }
+        t = turnStartR + FRAMES_PER_TURN * FRAME; vi.setSystemTime(t);
+        lastCopy = copy;
+      }
+      if (lastCopy) {
+        const row: string[] = [];
+        for (const dt of [16, 400, 1600]) {
+          for (const p of lastCopy.activeProjectiles ?? []) row.push(`+${dt}ms ${p.id.slice(-5)}: ${fmt(drawn(p, vsRep, t + dt, true, lastCopy.currentTurn))}`);
+        }
+        log(`-- replay after final turn FROZEN draws: ${row.join(' | ') || '(no projectiles)'}  entities[${ents(lastCopy)}]`);
+      }
+      log(`===== ${testCase.id} SIDE BY SIDE (every 5th frame; * = differs) =====`);
+      for (const id of ids) {
+        log(`### proj ${id.slice(-5)}`);
+        for (let turn = 1; turn < history.length; turn++) {
+          let maxD = 0; let presenceMismatchFrames = 0; let dirMismatch = 0; let scaleMismatch = 0;
+          const nF = Math.max(live[turn].length, FRAMES_PER_TURN);
+          for (let f = 0; f < nF; f++) {
+            const l = liveRaw[turn][f]?.[id] ?? null;
+            const r = f < FRAMES_PER_TURN ? (repRaw[turn]?.[f]?.[id] ?? null) : undefined;
+            if (r !== undefined) {
+              if (!!l !== !!r) presenceMismatchFrames++;
+              else if (l && r) { maxD = Math.max(maxD, Math.hypot(l.x - r.x, l.y - r.y)); if (l.dir !== r.dir) dirMismatch++; if (Math.abs(l.scale - r.scale) > 0.05) scaleMismatch++; }
+            }
+            if ((f + 1) % 5 === 0 || f === 0) {
+              const ls = live[turn][f]?.[id] ?? '--gone--';
+              const rs = f < FRAMES_PER_TURN ? (rep[turn]?.[f]?.[id] ?? '--gone--') : '(frozen)';
+              const differs = rs !== '(frozen)' && ls !== rs;
+              if (f < FRAMES_PER_TURN || ls !== '--gone--') log(`  T${turn} +${String(PHASE + f * FRAME).padStart(4)}ms live ${ls.padEnd(30)} replay ${rs.padEnd(30)} ${differs ? '*' : ' '}  ents live[${enemyLive[turn][f] ?? ''}] rep[${enemyRep[turn]?.[f] ?? ''}]`);
+            }
+          }
+          log(`  T${turn} SUMMARY maxPosDiff=${maxD.toFixed(3)} presenceMismatchFrames=${presenceMismatchFrames} dirMismatchFrames=${dirMismatch} scaleMismatchFrames=${scaleMismatch}`);
+        }
+      }
+      log(`===== ${testCase.id} FROZEN (seek) vs live end-of-turn frame =====`);
+      for (let idx = 1; idx < history.length; idx++) {
+        t += 3000; vi.setSystemTime(t);
+        const copy = copySnapshotForPlayback(history[idx], idx, lifetimes) as GameState;
+        const empty = new Map<string, ProjectileVisualState>();
+        for (const id of ids) {
+          const p = (copy.activeProjectiles ?? []).find(q => q.id === id);
+          const at = (dt: number) => p ? fmt(drawn(p, empty, t + dt, true, idx)) : '--gone--';
+          const liveEnd = live[idx][FRAMES_PER_TURN - 1]?.[id] ?? '--gone--';
+          log(`  T${idx} ${id.slice(-5)} liveEndOfTurn ${liveEnd.padEnd(30)} frozen@0ms ${at(0).padEnd(30)} @300ms ${at(300).padEnd(30)} @2000ms ${at(2000)}  ents liveEnd[${enemyLive[idx][FRAMES_PER_TURN - 1]}] frozen[${ents(copy)}]`);
+        }
+      }
+      log('===== ' + testCase.id + ' REBASE (snapshot projectiles + clock shift) vs live =====');
+      {
+        const vsRb = new Map<string, ProjectileVisualState>();
+        t += 5000; vi.setSystemTime(t);
+        for (let idx = 1; idx < history.length; idx++) {
+          const copy = deepCopy(history[idx]);
+          const delta = t - liveStart[idx];
+          for (const p of copy.activeProjectiles ?? []) for (const k of ['startTime', 'tileEntryTime', 'homingVisualStartTime', 'despawnStartTime'] as const) if ((p as any)[k] !== undefined && (p as any)[k] !== null) (p as any)[k] += delta;
+          const nF = live[idx].length; const ts = t;
+          let maxD = 0, pres = 0, dir = 0, sc = 0, ent = 0;
+          for (let f = 1; f <= nF; f++) {
+            t = ts + PHASE + (f - 1) * FRAME; vi.setSystemTime(t);
+            updateProjectiles(copy, vsRb);
+            for (const id of ids) {
+              const p = (copy.activeProjectiles ?? []).find(q => q.id === id);
+              const r = p ? drawn(p, vsRb, t, false, copy.currentTurn) : null;
+              const l = liveRaw[idx][f - 1]?.[id] ?? null;
+              if (!!l !== !!r) pres++; else if (l && r) { maxD = Math.max(maxD, Math.hypot(l.x - r.x, l.y - r.y)); if (l.dir !== r.dir) dir++; if (Math.abs(l.scale - r.scale) > 0.05) sc++; }
+            }
+            if (ents(copy) !== enemyLive[idx][f - 1]) ent++;
+          }
+          t = ts + nF * FRAME; vi.setSystemTime(t);
+          log('  T' + idx + ' REBASE-SUMMARY maxPosDiff=' + maxD.toFixed(3) + ' presenceMismatchFrames=' + pres + ' dirMismatchFrames=' + dir + ' scaleMismatchFrames=' + sc + ' entityMismatchFrames=' + ent);
+        }
+      }
+      fs.writeFileSync(OUT + `probe${TAG}-${testCase.id}.txt`, lines.join('\n') + '\n');
+      vi.useRealTimers();
+      expect(true).toBe(true);
+    });
+  }
+});

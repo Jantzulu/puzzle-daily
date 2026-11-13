@@ -13,6 +13,11 @@
  * (currentTileIndex and the clock fields are visual-only: live leaves them
  * for the frame loop, replay seeds them. Not compared.)
  *
+ * This is a FIELD-level ruler, and a rough one: the frame-level audit in
+ * docs/replay-audit-2026-11.md found 4 of the 9 gaps below are not visible on
+ * screen (09, 10, 11, 16), and that case 13 passes here while looking wrong.
+ * It still earns its keep as a tripwire for the cases that do match.
+ *
  * KNOWN_GAPS lists cases where replay currently differs, each with what
  * differs. A listed case must STILL differ: when a fix lands, the test fails
  * until the case is taken off the list, so the list can't go stale.
@@ -31,13 +36,13 @@ import type { CorpusCase } from './corpus/types';
 
 const KNOWN_GAPS: Record<string, string> = {
   '04-linear-projectile-wall': 'resting position: live rests on the wall tile, replay one tile short',
-  '09-homing-straight-slow': 'final-turn tilePath: live keeps the whole flight, replay a single tile',
-  '10-homing-slow-moving-target': 'final-turn tilePath (straight homing)',
-  '11-homing-fast-moving-target': 'final-turn tilePath (straight homing)',
+  '09-homing-straight-slow': 'NOT VISIBLE: final-turn tilePath differs but is not used to draw straight homing',
+  '10-homing-slow-moving-target': 'NOT VISIBLE: final-turn tilePath (straight homing)',
+  '11-homing-fast-moving-target': 'NOT VISIBLE: final-turn tilePath (straight homing)',
   '12-reflect-vs-non-homing': 'resting position after a reflect',
   '14-linear-bounce-walls': 'tilePath: replay is missing the bounced return leg',
   '15-linear-pierce-multiple': 'hitTileIndex: replay stops a pierce bolt the live game left flying',
-  '16-homing-grid-moving-target': 'resting position: live is fractional, replay snaps to the tile',
+  '16-homing-grid-moving-target': 'NOT VISIBLE: live never draws its fractional resting position',
   '18-linear-pierce-distinct-ids': 'hitTileIndex (pierce)',
 };
 
