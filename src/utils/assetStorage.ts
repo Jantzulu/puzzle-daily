@@ -1,6 +1,14 @@
 import type { Character, Enemy, TileBehaviorConfig, CadenceConfig, SoundAsset, GlobalSoundConfig, GlobalHapticConfig, CollectibleEffectConfig, CollectiblePickupPermissions, Direction, HitStampKind } from '../types/game';
 import { toast } from '../components/shared/Toast';
 import { logActivity } from '../services/activityLogService';
+import { store, onBigStoreError } from './bigStore';
+
+// The asset library's keys live in IndexedDB behind `store` (see bigStore.ts);
+// every other key passes through to localStorage. A failed background write
+// there can't be reported by return value, so it's reported here.
+onBigStoreError(() => {
+  toast.error('Could not save to this device. Your last change may not survive a reload.');
+});
 
 // ============ SAFE LOCALSTORAGE UTILITIES ============
 // Handles mobile browser restrictions (Private mode, quota limits, Safari quirks)
@@ -11,9 +19,9 @@ import { logActivity } from '../services/activityLogService';
  */
 export const safeLocalStorageSet = (key: string, value: string): boolean => {
   try {
-    localStorage.setItem(key, value);
+    store.setItem(key, value);
     // Verify the save worked (some mobile browsers fail silently)
-    const verification = localStorage.getItem(key);
+    const verification = store.getItem(key);
     if (verification !== value) {
       console.error(`[Storage] Verification failed for key: ${key}. Data may be too large for mobile storage.`);
       // Alert the user about the silent failure
@@ -82,7 +90,7 @@ export interface PendingDeletion {
 }
 
 export const getPendingAssetDeletions = (): PendingDeletion[] => {
-  const stored = localStorage.getItem(PENDING_ASSET_DELETIONS_KEY);
+  const stored = store.getItem(PENDING_ASSET_DELETIONS_KEY);
   if (!stored) return [];
   try {
     return JSON.parse(stored);
@@ -96,23 +104,23 @@ export const addPendingAssetDeletion = (id: string, type: PendingDeletion['type'
   // Don't add duplicates
   if (!deletions.some(d => d.id === id)) {
     deletions.push({ id, type, deletedAt: new Date().toISOString() });
-    localStorage.setItem(PENDING_ASSET_DELETIONS_KEY, JSON.stringify(deletions));
+    store.setItem(PENDING_ASSET_DELETIONS_KEY, JSON.stringify(deletions));
   }
 };
 
 export const clearPendingAssetDeletions = (): void => {
-  localStorage.removeItem(PENDING_ASSET_DELETIONS_KEY);
+  store.removeItem(PENDING_ASSET_DELETIONS_KEY);
 };
 
 export const removePendingAssetDeletion = (id: string): void => {
   const deletions = getPendingAssetDeletions().filter(d => d.id !== id);
-  localStorage.setItem(PENDING_ASSET_DELETIONS_KEY, JSON.stringify(deletions));
+  store.setItem(PENDING_ASSET_DELETIONS_KEY, JSON.stringify(deletions));
 };
 
 // ============ HIDDEN ASSETS MANAGEMENT ============
 
 export const getHiddenAssets = (): Set<string> => {
-  const stored = localStorage.getItem(HIDDEN_ASSETS_KEY);
+  const stored = store.getItem(HIDDEN_ASSETS_KEY);
   if (!stored) return new Set();
   try {
     return new Set(JSON.parse(stored));
@@ -122,7 +130,7 @@ export const getHiddenAssets = (): Set<string> => {
 };
 
 const saveHiddenAssets = (hidden: Set<string>): void => {
-  localStorage.setItem(HIDDEN_ASSETS_KEY, JSON.stringify(Array.from(hidden)));
+  store.setItem(HIDDEN_ASSETS_KEY, JSON.stringify(Array.from(hidden)));
 };
 
 export const hideAsset = (assetId: string): void => {
@@ -155,7 +163,7 @@ export interface AssetFolder {
 }
 
 export const getFolders = (category?: AssetCategory): AssetFolder[] => {
-  const stored = localStorage.getItem(FOLDERS_STORAGE_KEY);
+  const stored = store.getItem(FOLDERS_STORAGE_KEY);
   if (!stored) return [];
   try {
     const folders: AssetFolder[] = JSON.parse(stored);
@@ -181,7 +189,7 @@ export const saveFolder = (folder: AssetFolder): boolean => {
 
 export const deleteFolder = (folderId: string): void => {
   const folders = getFolders().filter(f => f.id !== folderId);
-  localStorage.setItem(FOLDERS_STORAGE_KEY, JSON.stringify(folders));
+  store.setItem(FOLDERS_STORAGE_KEY, JSON.stringify(folders));
 
   // Track deletion for cloud sync
   addPendingAssetDeletion(folderId, 'folder');
@@ -203,7 +211,7 @@ export const renameFolder = (folderId: string, newName: string): void => {
   const folder = folders.find(f => f.id === folderId);
   if (folder) {
     folder.name = newName;
-    localStorage.setItem(FOLDERS_STORAGE_KEY, JSON.stringify(folders));
+    store.setItem(FOLDERS_STORAGE_KEY, JSON.stringify(folders));
   }
 };
 
@@ -557,7 +565,7 @@ export const saveCharacter = (character: CustomCharacter): boolean => {
 
 export const getCustomCharacters = (): CustomCharacter[] => {
   if (charactersCache !== null) return charactersCache.slice();
-  const stored = localStorage.getItem(CHARACTER_STORAGE_KEY);
+  const stored = store.getItem(CHARACTER_STORAGE_KEY);
   if (!stored) {
     charactersCache = [];
     return [];
@@ -577,7 +585,7 @@ export const deleteCharacter = (characterId: string): void => {
   const characters = getCustomCharacters();
   const char = characters.find(c => c.id === characterId);
   const filtered = characters.filter(c => c.id !== characterId);
-  localStorage.setItem(CHARACTER_STORAGE_KEY, JSON.stringify(filtered));
+  store.setItem(CHARACTER_STORAGE_KEY, JSON.stringify(filtered));
   charactersCache = null;
 
   // Track deletion for cloud sync
@@ -617,7 +625,7 @@ export const saveEnemy = (enemy: CustomEnemy): boolean => {
 
 export const getCustomEnemies = (): CustomEnemy[] => {
   if (enemiesCache !== null) return enemiesCache.slice();
-  const stored = localStorage.getItem(ENEMY_STORAGE_KEY);
+  const stored = store.getItem(ENEMY_STORAGE_KEY);
   if (!stored) {
     enemiesCache = [];
     return [];
@@ -637,7 +645,7 @@ export const deleteEnemy = (enemyId: string): void => {
   const enemies = getCustomEnemies();
   const enemy = enemies.find(e => e.id === enemyId);
   const filtered = enemies.filter(e => e.id !== enemyId);
-  localStorage.setItem(ENEMY_STORAGE_KEY, JSON.stringify(filtered));
+  store.setItem(ENEMY_STORAGE_KEY, JSON.stringify(filtered));
   enemiesCache = null;
 
   // Track deletion for cloud sync
@@ -744,7 +752,7 @@ export const saveVessel = (vessel: CustomVessel): boolean => {
 
 export const getCustomVessels = (): CustomVessel[] => {
   if (vesselsCache !== null) return vesselsCache.slice();
-  const stored = localStorage.getItem(VESSEL_STORAGE_KEY);
+  const stored = store.getItem(VESSEL_STORAGE_KEY);
   if (!stored) {
     vesselsCache = [];
     return [];
@@ -763,7 +771,7 @@ export const deleteVessel = (vesselId: string): void => {
   const vessels = getCustomVessels();
   const vessel = vessels.find(v => v.id === vesselId);
   const filtered = vessels.filter(v => v.id !== vesselId);
-  localStorage.setItem(VESSEL_STORAGE_KEY, JSON.stringify(filtered));
+  store.setItem(VESSEL_STORAGE_KEY, JSON.stringify(filtered));
   vesselsCache = null;
 
   // Track deletion for cloud sync (push/pull wiring is the cloud slice)
@@ -823,7 +831,7 @@ export const saveAlly = (ally: CustomAlly): boolean => {
 
 export const getCustomAllies = (): CustomAlly[] => {
   if (alliesCache !== null) return alliesCache.slice();
-  const stored = localStorage.getItem(ALLY_STORAGE_KEY);
+  const stored = store.getItem(ALLY_STORAGE_KEY);
   if (!stored) {
     alliesCache = [];
     return [];
@@ -842,7 +850,7 @@ export const deleteAlly = (allyId: string): void => {
   const allies = getCustomAllies();
   const ally = allies.find(a => a.id === allyId);
   const filtered = allies.filter(a => a.id !== allyId);
-  localStorage.setItem(ALLY_STORAGE_KEY, JSON.stringify(filtered));
+  store.setItem(ALLY_STORAGE_KEY, JSON.stringify(filtered));
   alliesCache = null;
 
   // Track deletion for cloud sync (push/pull wiring is the cloud slice)
@@ -875,7 +883,7 @@ export const saveTileType = (tile: CustomTileType): boolean => {
 };
 
 export const getCustomTileTypes = (): CustomTileType[] => {
-  const stored = localStorage.getItem(TILE_STORAGE_KEY);
+  const stored = store.getItem(TILE_STORAGE_KEY);
   if (!stored) return [];
 
   try {
@@ -890,7 +898,7 @@ export const deleteTileType = (tileId: string): void => {
   const tiles = getCustomTileTypes();
   const tile = tiles.find(t => t.id === tileId);
   const filtered = tiles.filter(t => t.id !== tileId);
-  localStorage.setItem(TILE_STORAGE_KEY, JSON.stringify(filtered));
+  store.setItem(TILE_STORAGE_KEY, JSON.stringify(filtered));
 
   // Track deletion for cloud sync
   addPendingAssetDeletion(tileId, 'tile_type');
@@ -920,7 +928,7 @@ export const saveCollectibleType = (collectible: CustomCollectibleType): boolean
 };
 
 export const getCustomCollectibleTypes = (): CustomCollectibleType[] => {
-  const stored = localStorage.getItem(COLLECTIBLE_STORAGE_KEY);
+  const stored = store.getItem(COLLECTIBLE_STORAGE_KEY);
   if (!stored) return [];
 
   try {
@@ -951,7 +959,7 @@ export const saveCollectible = (collectible: CustomCollectible): boolean => {
 };
 
 export const getCustomCollectibles = (): CustomCollectible[] => {
-  const stored = localStorage.getItem(COLLECTIBLE_ASSET_STORAGE_KEY);
+  const stored = store.getItem(COLLECTIBLE_ASSET_STORAGE_KEY);
   if (!stored) return [];
 
   try {
@@ -966,7 +974,7 @@ export const deleteCollectible = (collectibleId: string): void => {
   const collectibles = getCustomCollectibles();
   const collectible = collectibles.find(c => c.id === collectibleId);
   const filtered = collectibles.filter(c => c.id !== collectibleId);
-  localStorage.setItem(COLLECTIBLE_ASSET_STORAGE_KEY, JSON.stringify(filtered));
+  store.setItem(COLLECTIBLE_ASSET_STORAGE_KEY, JSON.stringify(filtered));
 
   // Track deletion for cloud sync
   addPendingAssetDeletion(collectibleId, 'collectible');
@@ -986,7 +994,7 @@ export const getAllCollectibles = (): CustomCollectible[] => {
 export const deleteCollectibleType = (collectibleId: string): void => {
   const collectibles = getCustomCollectibleTypes();
   const filtered = collectibles.filter(c => c.id !== collectibleId);
-  localStorage.setItem(COLLECTIBLE_STORAGE_KEY, JSON.stringify(filtered));
+  store.setItem(COLLECTIBLE_STORAGE_KEY, JSON.stringify(filtered));
 
   // Track deletion for cloud sync
   addPendingAssetDeletion(collectibleId, 'collectible_type');
@@ -1025,7 +1033,7 @@ export const saveSpellAsset = (spell: SpellAsset): boolean => {
 
 export const getSpellAssets = (): SpellAsset[] => {
   try {
-    const stored = localStorage.getItem(SPELL_STORAGE_KEY);
+    const stored = store.getItem(SPELL_STORAGE_KEY);
     if (!stored) return [];
     const spells = JSON.parse(stored) as SpellAsset[];
     // Migrate: range_linear was merged into magic_linear (now "Linear Projectile")
@@ -1045,7 +1053,7 @@ export const deleteSpellAsset = (spellId: string): void => {
   const spells = getSpellAssets();
   const spell = spells.find(s => s.id === spellId);
   const filtered = spells.filter(s => s.id !== spellId);
-  localStorage.setItem(SPELL_STORAGE_KEY, JSON.stringify(filtered));
+  store.setItem(SPELL_STORAGE_KEY, JSON.stringify(filtered));
 
   // Track deletion for cloud sync
   addPendingAssetDeletion(spellId, 'spell');
@@ -1099,7 +1107,7 @@ export const saveStatusEffectAsset = (effect: StatusEffectAsset): boolean => {
 const getCustomStatusEffects = (): StatusEffectAsset[] => {
   if (statusEffectsCache !== null) return statusEffectsCache.slice();
   try {
-    const stored = localStorage.getItem(STATUS_EFFECT_STORAGE_KEY);
+    const stored = store.getItem(STATUS_EFFECT_STORAGE_KEY);
     if (!stored) {
       statusEffectsCache = [];
       return [];
@@ -1122,7 +1130,7 @@ export const deleteStatusEffectAsset = (effectId: string): void => {
   const effects = getCustomStatusEffects();
   const effect = effects.find(e => e.id === effectId);
   const filtered = effects.filter(e => e.id !== effectId);
-  localStorage.setItem(STATUS_EFFECT_STORAGE_KEY, JSON.stringify(filtered));
+  store.setItem(STATUS_EFFECT_STORAGE_KEY, JSON.stringify(filtered));
   statusEffectsCache = null;
 
   // Track deletion for cloud sync
@@ -1161,12 +1169,12 @@ export const saveBorderSpriteSet = (spriteSet: SavedBorderSpriteSet): void => {
     sets.push(spriteSet);
   }
 
-  localStorage.setItem(BORDER_SPRITES_STORAGE_KEY, JSON.stringify(sets));
+  store.setItem(BORDER_SPRITES_STORAGE_KEY, JSON.stringify(sets));
 };
 
 export const getBorderSpriteSets = (): SavedBorderSpriteSet[] => {
   try {
-    const stored = localStorage.getItem(BORDER_SPRITES_STORAGE_KEY);
+    const stored = store.getItem(BORDER_SPRITES_STORAGE_KEY);
     if (!stored) return [];
     return JSON.parse(stored);
   } catch (e) {
@@ -1178,7 +1186,7 @@ export const getBorderSpriteSets = (): SavedBorderSpriteSet[] => {
 export const deleteBorderSpriteSet = (setId: string): void => {
   const sets = getBorderSpriteSets();
   const filtered = sets.filter(s => s.id !== setId);
-  localStorage.setItem(BORDER_SPRITES_STORAGE_KEY, JSON.stringify(filtered));
+  store.setItem(BORDER_SPRITES_STORAGE_KEY, JSON.stringify(filtered));
 };
 
 export const loadBorderSpriteSet = (setId: string): SavedBorderSpriteSet | null => {
@@ -1222,7 +1230,7 @@ export const savePuzzleSkin = (skin: PuzzleSkin): boolean => {
 
 export const getPuzzleSkins = (): PuzzleSkin[] => {
   try {
-    const stored = localStorage.getItem(PUZZLE_SKINS_STORAGE_KEY);
+    const stored = store.getItem(PUZZLE_SKINS_STORAGE_KEY);
     if (!stored) return [];
     return JSON.parse(stored);
   } catch (e) {
@@ -1243,7 +1251,7 @@ export const deletePuzzleSkin = (skinId: string): void => {
   const skins = getPuzzleSkins();
   const skin = skins.find(s => s.id === skinId);
   const filtered = skins.filter(s => s.id !== skinId);
-  localStorage.setItem(PUZZLE_SKINS_STORAGE_KEY, JSON.stringify(filtered));
+  store.setItem(PUZZLE_SKINS_STORAGE_KEY, JSON.stringify(filtered));
 
   // Track deletion for cloud sync
   addPendingAssetDeletion(skinId, 'skin');
@@ -1314,7 +1322,7 @@ const migrateObjectTransform = (obj: CustomObject): CustomObject => {
 
 export const getCustomObjects = (): CustomObject[] => {
   if (objectsCache !== null) return objectsCache.slice();
-  const stored = localStorage.getItem(OBJECT_STORAGE_KEY);
+  const stored = store.getItem(OBJECT_STORAGE_KEY);
   if (!stored) {
     objectsCache = [];
     return [];
@@ -1333,7 +1341,7 @@ export const deleteObject = (objectId: string): void => {
   const objects = getCustomObjects();
   const obj = objects.find(o => o.id === objectId);
   const filtered = objects.filter(o => o.id !== objectId);
-  localStorage.setItem(OBJECT_STORAGE_KEY, JSON.stringify(filtered));
+  store.setItem(OBJECT_STORAGE_KEY, JSON.stringify(filtered));
   objectsCache = null;
 
   // Track deletion for cloud sync
@@ -1376,7 +1384,7 @@ export const saveSoundAsset = (sound: SoundAsset): boolean => {
 
 export const getSoundAssets = (): SoundAsset[] => {
   try {
-    const stored = localStorage.getItem(SOUND_STORAGE_KEY);
+    const stored = store.getItem(SOUND_STORAGE_KEY);
     if (!stored) return [];
     return JSON.parse(stored);
   } catch (e) {
@@ -1392,7 +1400,7 @@ export const deleteSoundAsset = (soundId: string): void => {
   const sounds = getSoundAssets();
   const sound = sounds.find(s => s.id === soundId);
   const filtered = sounds.filter(s => s.id !== soundId);
-  localStorage.setItem(SOUND_STORAGE_KEY, JSON.stringify(filtered));
+  store.setItem(SOUND_STORAGE_KEY, JSON.stringify(filtered));
 
   // Track deletion for cloud sync
   addPendingAssetDeletion(soundId, 'sound');
@@ -1412,7 +1420,7 @@ export const saveGlobalSoundConfig = (config: GlobalSoundConfig): boolean => {
 
 export const getGlobalSoundConfig = (): GlobalSoundConfig => {
   try {
-    const stored = localStorage.getItem(GLOBAL_SOUNDS_KEY);
+    const stored = store.getItem(GLOBAL_SOUNDS_KEY);
     if (!stored) return {};
     return JSON.parse(stored);
   } catch (e) {
@@ -1431,7 +1439,7 @@ export const saveGlobalHapticConfig = (config: GlobalHapticConfig): boolean => {
 
 export const getGlobalHapticConfig = (): GlobalHapticConfig => {
   try {
-    const stored = localStorage.getItem(GLOBAL_HAPTICS_KEY);
+    const stored = store.getItem(GLOBAL_HAPTICS_KEY);
     if (!stored) return {};
     return JSON.parse(stored);
   } catch (e) {
@@ -1524,7 +1532,7 @@ const defaultHelpContent: HelpContentStorage = {
 
 export const getHelpContent = (): HelpContentStorage => {
   try {
-    const stored = localStorage.getItem(HELP_CONTENT_KEY);
+    const stored = store.getItem(HELP_CONTENT_KEY);
     if (!stored) return defaultHelpContent;
     const parsed = JSON.parse(stored) as HelpContentStorage;
     // Merge with defaults to ensure all sections exist

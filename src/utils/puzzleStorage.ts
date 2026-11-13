@@ -1,5 +1,6 @@
 import type { Puzzle } from '../types/game';
 import { safeLocalStorageSet } from './assetStorage';
+import { store } from './bigStore';
 import { toast } from '../components/shared/Toast';
 import { logActivity } from '../services/activityLogService';
 
@@ -15,7 +16,7 @@ export interface PendingPuzzleDeletion {
 }
 
 export const getPendingPuzzleDeletions = (): PendingPuzzleDeletion[] => {
-  const stored = localStorage.getItem(PENDING_PUZZLE_DELETIONS_KEY);
+  const stored = store.getItem(PENDING_PUZZLE_DELETIONS_KEY);
   if (!stored) return [];
   try {
     return JSON.parse(stored);
@@ -29,17 +30,17 @@ export const addPendingPuzzleDeletion = (id: string): void => {
   // Don't add duplicates
   if (!deletions.some(d => d.id === id)) {
     deletions.push({ id, deletedAt: new Date().toISOString() });
-    localStorage.setItem(PENDING_PUZZLE_DELETIONS_KEY, JSON.stringify(deletions));
+    store.setItem(PENDING_PUZZLE_DELETIONS_KEY, JSON.stringify(deletions));
   }
 };
 
 export const clearPendingPuzzleDeletions = (): void => {
-  localStorage.removeItem(PENDING_PUZZLE_DELETIONS_KEY);
+  store.removeItem(PENDING_PUZZLE_DELETIONS_KEY);
 };
 
 export const removePendingPuzzleDeletion = (id: string): void => {
   const deletions = getPendingPuzzleDeletions().filter(d => d.id !== id);
-  localStorage.setItem(PENDING_PUZZLE_DELETIONS_KEY, JSON.stringify(deletions));
+  store.setItem(PENDING_PUZZLE_DELETIONS_KEY, JSON.stringify(deletions));
 };
 
 export interface SavedPuzzle extends Puzzle {
@@ -52,7 +53,7 @@ export interface SavedPuzzle extends Puzzle {
 const PUZZLE_FOLDERS_KEY = 'puzzle_folders';
 
 export const getPuzzleFolders = (): string[] => {
-  const stored = localStorage.getItem(PUZZLE_FOLDERS_KEY);
+  const stored = store.getItem(PUZZLE_FOLDERS_KEY);
   if (!stored) return [];
   try {
     return JSON.parse(stored);
@@ -69,20 +70,20 @@ export const addPuzzleFolder = (folderName: string): boolean => {
   }
   folders.push(normalizedName);
   folders.sort((a, b) => a.localeCompare(b));
-  localStorage.setItem(PUZZLE_FOLDERS_KEY, JSON.stringify(folders));
+  store.setItem(PUZZLE_FOLDERS_KEY, JSON.stringify(folders));
   return true;
 };
 
 export const deletePuzzleFolder = (folderName: string): void => {
   const folders = getPuzzleFolders().filter(f => f !== folderName);
-  localStorage.setItem(PUZZLE_FOLDERS_KEY, JSON.stringify(folders));
+  store.setItem(PUZZLE_FOLDERS_KEY, JSON.stringify(folders));
 
   // Also remove folder from all puzzles that were in it
   const puzzles = getSavedPuzzles();
   const updated = puzzles.map(p =>
     p.folder === folderName ? { ...p, folder: undefined } : p
   );
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+  store.setItem(STORAGE_KEY, JSON.stringify(updated));
 };
 
 export const renamePuzzleFolder = (oldName: string, newName: string): boolean => {
@@ -95,14 +96,14 @@ export const renamePuzzleFolder = (oldName: string, newName: string): boolean =>
 
   folders[index] = normalizedNew;
   folders.sort((a, b) => a.localeCompare(b));
-  localStorage.setItem(PUZZLE_FOLDERS_KEY, JSON.stringify(folders));
+  store.setItem(PUZZLE_FOLDERS_KEY, JSON.stringify(folders));
 
   // Update all puzzles that were in the old folder
   const puzzles = getSavedPuzzles();
   const updated = puzzles.map(p =>
     p.folder === oldName ? { ...p, folder: normalizedNew } : p
   );
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+  store.setItem(STORAGE_KEY, JSON.stringify(updated));
   return true;
 };
 
@@ -147,7 +148,7 @@ export const savePuzzle = (puzzle: Puzzle): boolean => {
 };
 
 export const getSavedPuzzles = (): SavedPuzzle[] => {
-  const stored = localStorage.getItem(STORAGE_KEY);
+  const stored = store.getItem(STORAGE_KEY);
   if (!stored) return [];
 
   try {
@@ -162,7 +163,7 @@ export const deletePuzzle = (puzzleId: string): void => {
   const puzzles = getSavedPuzzles();
   const puzzle = puzzles.find(p => p.id === puzzleId);
   const filtered = puzzles.filter(p => p.id !== puzzleId);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+  store.setItem(STORAGE_KEY, JSON.stringify(filtered));
 
   // Track deletion for cloud sync
   addPendingPuzzleDeletion(puzzleId);

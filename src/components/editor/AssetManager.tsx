@@ -11,6 +11,7 @@ import { ObjectEditor } from './ObjectEditor';
 import { CollectibleEditor } from './CollectibleEditor';
 import { MediaLibraryTab } from './MediaLibraryTab';
 import { SoundEditor } from './SoundEditor';
+import { clearBigStore } from '../../utils/bigStore';
 
 type AssetTab = 'characters' | 'allies' | 'enemies' | 'vessels' | 'spells' | 'status_effects' | 'skins' | 'tiles' | 'objects' | 'collectibles' | 'sounds' | 'media';
 
@@ -51,7 +52,9 @@ export const AssetManager: React.FC = () => {
   const handleClearCache = () => {
     localStorage.clear();
     setShowClearConfirm(false);
-    window.location.reload();
+    // The asset library itself lives in IndexedDB (bigStore): empty it too,
+    // and only reload once that has landed.
+    void clearBigStore().finally(() => window.location.reload());
   };
 
   return (

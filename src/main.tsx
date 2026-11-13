@@ -3,12 +3,23 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
 import { AuthProvider } from './contexts/AuthContext'
+import { hydrateBigStore } from './utils/bigStore'
+import { showBootError } from './bootError'
 
+// The asset library lives in IndexedDB behind a synchronous in-memory copy
+// (utils/bigStore). Nothing may read it before that copy is filled, so the
+// first render waits for hydration. (Module evaluation doesn't wait, and
+// must not read the library: bigStore throws in dev if anything does.)
+// The editor keeps its old localStorage copies as a frozen backup.
 const root = document.getElementById('root')!;
-createRoot(root).render(
-  <StrictMode>
-    <AuthProvider>
-      <App />
-    </AuthProvider>
-  </StrictMode>,
-);
+hydrateBigStore({ keepLegacyCopy: true })
+  .then(() => {
+    createRoot(root).render(
+      <StrictMode>
+        <AuthProvider>
+          <App />
+        </AuthProvider>
+      </StrictMode>,
+    );
+  })
+  .catch(showBootError);
