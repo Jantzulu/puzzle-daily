@@ -6,7 +6,7 @@ import type { TileOrNull, PuzzleSkin } from '../../../types/game';
 import { TileType } from '../../../types/game';
 import { getEnemy } from '../../../data/enemies';
 import { getCharacter } from '../../../data/characters';
-import { drawSprite, getSpriteDrawHeight, ART_TILE_PX } from '../SpriteEditor';
+import { drawSprite, getSpriteDrawHeight, ART_TILE_PX } from '../../game/spriteDraw';
 import { loadTileType, loadObject, loadCollectible, resolveImageSource } from '../../../utils/assetStorage';
 import type { CustomTileType } from '../../../utils/assetStorage';
 import { loadImage } from '../../../utils/imageLoader';

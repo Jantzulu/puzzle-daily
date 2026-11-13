@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import type { CustomSprite, SpriteSheetConfig, SpriteDirection } from '../../utils/assetStorage';
 import { resolveImageSource, resolveSpriteSheetSource } from '../../utils/assetStorage';
-import { drawSprite } from './SpriteEditor';
+import { drawSprite } from '../game/spriteDraw';
 import { getPreviewBgColor, getPreviewBgImageUrl, getPreviewBgTiled, type PreviewType } from '../../utils/themeAssets';
 import { loadImage, isImageReady, subscribeToImageLoads } from '../../utils/imageLoader';
 import { satellitesPaused } from '../game/frameProfiler';

@@ -47,7 +47,7 @@ import { VersionHistoryModal } from './VersionHistoryModal';
 import { logActivity } from '../../services/activityLogService';
 import { createHistoryManager } from '../../utils/historyManager';
 import { subscribeToImageLoads } from '../../utils/imageLoader';
-import { subscribeToSpriteImageLoads, ART_TILE_PX } from './SpriteEditor';
+import { subscribeToSpriteImageLoads, ART_TILE_PX } from '../game/spriteDraw';
 import { useFilteredAssets } from './FolderDropdown';
 import { PuzzleLibraryModal } from './PuzzleLibraryModal';
 import { solvePuzzleAsync, quickValidate, type SolverResult } from '../../engine/puzzleSolver';

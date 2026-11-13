@@ -1,5 +1,5 @@
 import type { CustomSprite } from '../../utils/assetStorage';
-import { hasDeathAnimation } from '../editor/SpriteEditor';
+import { hasDeathAnimation } from './spriteDraw';
 
 // Moved out of DeathSpriteThumbnail.tsx (2026-10-18 delint): a component
 // file that also exports plain values breaks React Fast Refresh.

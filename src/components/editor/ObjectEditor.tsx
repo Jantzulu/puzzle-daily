@@ -6,9 +6,9 @@ import type { CustomObject, CustomSprite, ObjectEffectConfig, ObjectAnchorPoint 
 import { saveObject, getCustomObjects, deleteObject, getFolders, getPuzzleSkins, loadPuzzleSkin } from '../../utils/assetStorage';
 import { subscribeToImageLoads, loadImage } from '../../utils/imageLoader';
 import { StaticSpriteEditor } from './StaticSpriteEditor';
-import { getSpriteDrawHeight, ART_TILE_PX } from './SpriteEditor';
+import { getSpriteDrawHeight, ART_TILE_PX } from '../game/spriteDraw';
 import { SpriteThumbnail } from './SpriteThumbnail';
-import { drawSprite } from './SpriteEditor';
+import { drawSprite } from '../game/spriteDraw';
 import { FolderDropdown, useFilteredAssets, InlineFolderPicker } from './FolderDropdown';
 import { useBulkSelect, BulkActionBar, bulkDelete, bulkMoveToFolder, bulkExport, bulkImport } from './BulkActions';
 import { RichTextEditor } from './RichTextEditor';

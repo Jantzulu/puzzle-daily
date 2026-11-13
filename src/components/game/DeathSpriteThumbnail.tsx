@@ -1,6 +1,6 @@
 import React from 'react';
 import type { CustomSprite } from '../../utils/assetStorage';
-import { drawDeathSprite } from '../editor/SpriteEditor';
+import { drawDeathSprite } from './spriteDraw';
 
 // ============================================================================
 // DEATH SPRITE THUMBNAIL — a hero's fall, replayed off-board

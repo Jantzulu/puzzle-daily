@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { Direction, SpellTemplate, TURN_INTERVAL_MS } from '../../types/game';
 import type { SpellAsset, SpriteReference } from '../../types/game';
 import type { CustomSprite } from '../../utils/assetStorage';
-import { drawSprite } from '../editor/SpriteEditor';
+import { drawSprite } from './spriteDraw';
 import { drawProjectileArt, drawParticleArt, getRotationForDirection } from './spellArt';
 import { drawFacingArrow } from './facingArrow';
 import { turnAround } from '../../engine/utils';

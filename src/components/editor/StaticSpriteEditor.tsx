@@ -3,7 +3,7 @@ import { toast } from '../shared/Toast';
 import type { CustomSprite, SpriteSheetConfig } from '../../utils/assetStorage';
 import { getPreviewBgColor, getPreviewBgImageUrl, getPreviewBgTiled, type PreviewType } from '../../utils/themeAssets';
 import { subscribeToImageLoads } from '../../utils/imageLoader';
-import { ART_TILE_PX } from './SpriteEditor';
+import { ART_TILE_PX } from '../game/spriteDraw';
 import { MediaBrowseButton } from './MediaBrowseButton';
 
 // Preview type for static assets (tiles, items, enchantments)
