@@ -31,54 +31,7 @@ import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import { runCase, snapshotsToJson } from './corpus/harness';
-import type { CorpusCase } from './corpus/types';
-import { meleeAttackCase } from './corpus/cases/01-melee-attack';
-import { linearProjectileFastCase } from './corpus/cases/02-linear-projectile-fast';
-import { linearProjectileSlowCase } from './corpus/cases/03-linear-projectile-slow';
-import { linearProjectileWallCase } from './corpus/cases/04-linear-projectile-wall';
-import { linearProjectileSlowLandsCase } from './corpus/cases/05-linear-projectile-slow-lands';
-import { homingStraightFastCase } from './corpus/cases/06-homing-straight-fast';
-import { homingGridFastCase } from './corpus/cases/07-homing-grid-fast';
-import { homingPathfindingWallCase } from './corpus/cases/08-homing-pathfinding-wall';
-import { homingStraightSlowCase } from './corpus/cases/09-homing-straight-slow';
-import { homingSlowMovingTargetCase } from './corpus/cases/10-homing-slow-moving-target';
-import { homingFastMovingTargetCase } from './corpus/cases/11-homing-fast-moving-target';
-import { reflectVsNonHomingCase } from './corpus/cases/12-reflect-vs-non-homing';
-import { reflectVsHomingStraightCase } from './corpus/cases/13-reflect-vs-homing-straight';
-import { linearBounceWallsCase } from './corpus/cases/14-linear-bounce-walls';
-import { linearPierceMultipleCase } from './corpus/cases/15-linear-pierce-multiple';
-import { homingGridMovingTargetCase } from './corpus/cases/16-homing-grid-moving-target';
-import { homingPathfindingMovingTargetCase } from './corpus/cases/17-homing-pathfinding-moving-target';
-import { linearPierceDistinctIdsCase } from './corpus/cases/18-linear-pierce-distinct-ids';
-import { reflectVsHomingGridCase } from './corpus/cases/19-reflect-vs-homing-grid';
-import { reflectVsHomingPathfindingCase } from './corpus/cases/20-reflect-vs-homing-pathfinding';
-import { twoHeroesSimultaneousCastCase } from './corpus/cases/21-two-heroes-simultaneous-cast';
-import { homingStraightRangeShortCase } from './corpus/cases/22-homing-straight-range-short';
-
-const CASES: CorpusCase[] = [
-  meleeAttackCase,
-  linearProjectileFastCase,
-  linearProjectileSlowCase,
-  linearProjectileWallCase,
-  linearProjectileSlowLandsCase,
-  homingStraightFastCase,
-  homingGridFastCase,
-  homingPathfindingWallCase,
-  homingStraightSlowCase,
-  homingSlowMovingTargetCase,
-  homingFastMovingTargetCase,
-  reflectVsNonHomingCase,
-  reflectVsHomingStraightCase,
-  linearBounceWallsCase,
-  linearPierceMultipleCase,
-  homingGridMovingTargetCase,
-  homingPathfindingMovingTargetCase,
-  linearPierceDistinctIdsCase,
-  reflectVsHomingGridCase,
-  reflectVsHomingPathfindingCase,
-  twoHeroesSimultaneousCastCase,
-  homingStraightRangeShortCase,
-];
+import { ALL_CASES as CASES } from './corpus/allCases';
 
 const CASES_DIR = path.resolve(__dirname, 'corpus', 'cases');
 const UPDATE = process.env.UPDATE_GOLDENS === '1';
