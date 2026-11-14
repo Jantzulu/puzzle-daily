@@ -9,7 +9,7 @@ import { calculateScore, getRankEmoji, getRankName, checkSideQuests } from '../.
 import { isTileBlockingMovement } from '../../engine/actions';
 import { entityParty } from '../../engine/party';
 import { ResponsiveGameBoard, type PlacementGhost } from './AnimatedGameBoard';
-import { buildProjectileLifetimes, copySnapshotForPlayback, type ProjectileLifetimes } from './replayProjectiles';
+import { buildPlaybackState, buildProjectileLifetimes, hasLiveClocks, type PlaybackMode, type ProjectileLifetimes } from './replayProjectiles';
 import { RunAnnouncer } from './RunAnnouncer';
 import { VictoryTally } from './VictoryTally';
 import { setRunMood } from '../shared/runMood';
@@ -74,6 +74,9 @@ const OUTCOME_OVERLAY_HOLD_MS = 1500;
 // Longest the outcome beat waits for a killing bolt still in flight (a
 // reflected return leg can outlast a turn; a hidden tab never lands one).
 const OUTCOME_BOLT_WAIT_CAP_MS = 4000;
+// Longest a replay keeps animating its LAST turn while the run's final bolts
+// are still in the air (the live board animates on after the game ends).
+const REPLAY_TAIL_CAP_MS = 4000;
 
 // Distinct display names of every placed Noble (Noble-marked heroes +
 // hero-party allies), joined for quest text: "the King", "the King and
@@ -684,6 +687,14 @@ export const Game: React.FC<GameProps> = ({
   const [replayStepAnimating, setReplayStepAnimating] = useState(false);
   const replayStepTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const turnHistoryRef = useRef<GameState[]>([]);
+  // Wall-clock time each snapshot in turnHistoryRef was resolved. Replay shows
+  // a snapshot's OWN projectiles by moving their clocks from that moment to
+  // now (replayProjectiles.ts). Empty for a history regenerated headless.
+  const turnResolvedAtRef = useRef<number[]>([]);
+  // The replay turn on the board right now: the state object the board's
+  // frames mutate, and its index. Read by the replay timers.
+  const replayShownRef = useRef<{ state: GameState; index: number } | null>(null);
+  const replayModeRef = useRef(false);
   const replayEventsRef = useRef<Map<number, Set<import('../../engine/combatLog').LogEventType>>>(new Map());
   const projectileTimelineRef = useRef<ProjectileEvent[]>([]);
   const projectileLifetimesRef = useRef<ProjectileLifetimes>(new Map());
@@ -1193,6 +1204,7 @@ export const Game: React.FC<GameProps> = ({
       if (capturedPostTurnState && testMode === 'none') {
         const post = capturedPostTurnState as GameState;
         turnHistoryRef.current.push(deepCopyGameState(post));
+        turnResolvedAtRef.current.push(Date.now());
         // Mirror the accumulated timeline; executeTurn copies the array forward each turn,
         // so the latest state always holds the full event stream.
         projectileTimelineRef.current = post.projectileTimeline ? [...post.projectileTimeline] : [];
@@ -1290,6 +1302,51 @@ export const Game: React.FC<GameProps> = ({
   }, [isSimulating, gameState.gameStatus, testMode, testTurnsRemaining, livesRemaining, currentPuzzle.lives]);
 
   // Replay playback timer
+  useEffect(() => { replayModeRef.current = replayMode; }, [replayMode]);
+
+  // Put one replay turn on the board (see PlaybackMode in replayProjectiles.ts).
+  const showReplayTurn = useCallback((index: number, mode: PlaybackMode) => {
+    const state = buildPlaybackState({
+      history: turnHistoryRef.current,
+      index,
+      lifetimes: projectileLifetimesRef.current,
+      resolvedAt: turnResolvedAtRef.current,
+      mode,
+    });
+    replayShownRef.current = { state, index };
+    setGameState(state);
+    setReplayTurnIndex(index);
+  }, []);
+
+  // A turn's animation window is closing in `windowMs`. When it does, show
+  // the turn's SETTLED end state: a hit landing right at the window's edge
+  // can fall between two frames (live never loses it, because the next
+  // turn's frames follow). The LAST turn first runs on until the run's final
+  // bolts have landed, as the live board does after the game ends. A
+  // regenerated history has no snapshot bolts to settle, so it just freezes.
+  const settleReplayTurn = useCallback((windowMs: number) => {
+    if (replayStepTimerRef.current) clearTimeout(replayStepTimerRef.current);
+    const canSettle = hasLiveClocks(turnHistoryRef.current, turnResolvedAtRef.current);
+    const started = Date.now();
+    const finish = () => {
+      const shown = replayShownRef.current;
+      if (!replayModeRef.current || !shown) {
+        setReplayStepAnimating(false);
+        return;
+      }
+      const isLast = shown.index >= turnHistoryRef.current.length - 1;
+      const inFlight = !!shown.state.activeProjectiles?.some(p => p.active);
+      if (canSettle && isLast && inFlight && Date.now() - started < windowMs + REPLAY_TAIL_CAP_MS) {
+        replayStepTimerRef.current = setTimeout(finish, 100);
+        return;
+      }
+      setReplayStepAnimating(false);
+      if (canSettle) showReplayTurn(shown.index, 'settle-quiet');
+    };
+    setReplayStepAnimating(true);
+    replayStepTimerRef.current = setTimeout(finish, windowMs);
+  }, [showReplayTurn]);
+
   useEffect(() => {
     if (!replayMode || !replayPlaying) return;
 
@@ -1299,30 +1356,30 @@ export const Game: React.FC<GameProps> = ({
     const intervalMs = TURN_INTERVAL_MS / replaySpeed;
 
     const interval = setInterval(() => {
-      setReplayTurnIndex(prev => {
-        const next = prev + 1;
-        if (next >= history.length) {
-          setReplayPlaying(false);
-          return prev;
-        }
-        const copy = copySnapshotForPlayback(history[next], next, projectileLifetimesRef.current);
-        resetReplayProjectilesToTurnStart(copy);
-        setGameState(copy);
-        return next;
-      });
+      const next = (replayShownRef.current?.index ?? 0) + 1;
+      if (next >= history.length) {
+        // The last turn has had its window; let the run's final bolts land.
+        setReplayPlaying(false);
+        settleReplayTurn(0);
+        return;
+      }
+      showReplayTurn(next, 'animate');
     }, intervalMs);
 
     return () => clearInterval(interval);
-  }, [replayMode, replayPlaying, replaySpeed]);
+  }, [replayMode, replayPlaying, replaySpeed, showReplayTurn, settleReplayTurn]);
 
   // Cancel replay on puzzle change
   useEffect(() => {
+    // A run's capture belongs to its puzzle (it now outlives the replay
+    // screen, so it is dropped here whether or not a replay is open).
+    turnHistoryRef.current = [];
+    turnResolvedAtRef.current = [];
+    projectileTimelineRef.current = [];
     if (replayMode) {
       setReplayMode(false);
       setReplayPlaying(false);
-      turnHistoryRef.current = [];
       replayEventsRef.current = new Map();
-      projectileTimelineRef.current = [];
       projectileLifetimesRef.current = new Map();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- fires only on puzzle change; replayMode is a guard read fresh each render, and adding it would re-run this when startReplay sets it true and instantly cancel every replay
@@ -1564,6 +1621,7 @@ export const Game: React.FC<GameProps> = ({
     setGameState((prev) => {
       const seeded: GameState = { ...prev, gameStatus: 'running', projectileTimeline: [] };
       turnHistoryRef.current = [deepCopyGameState(seeded)];
+      turnResolvedAtRef.current = [Date.now()];
       projectileTimelineRef.current = [];
       return seeded;
     });
@@ -1835,6 +1893,7 @@ export const Game: React.FC<GameProps> = ({
       history = regen.history;
       timeline = regen.timeline;
       turnHistoryRef.current = history;
+      turnResolvedAtRef.current = []; // regenerated: rebuild bolts from the timeline
       projectileTimelineRef.current = timeline;
     }
 
@@ -1871,9 +1930,8 @@ export const Game: React.FC<GameProps> = ({
       setReplayPlaying(false);
       setReplaySpeed(1);
 
-      if (history.length > 0) {
-        setGameState(copySnapshotForPlayback(history[0], 0, projectileLifetimesRef.current));
-      }
+      setReplayStepAnimating(false);
+      if (history.length > 0) showReplayTurn(0, 'settle');
       // The board repaints instantly from end-of-run to turn 0 — cover the
       // snap with the same dark reveal that masks reset/retry repaints.
       setResetFxNonce(n => n + 1);
@@ -1896,7 +1954,7 @@ export const Game: React.FC<GameProps> = ({
     } else if (!enteringReplayRef.current) {
       startReplay();
     }
-  }, [generateTurnHistory, gameState.gameStatus, testMode]);
+  }, [generateTurnHistory, gameState.gameStatus, testMode, showReplayTurn]);
 
   // Exit replay mode - animate out then return to appropriate screen
   const handleExitReplay = useCallback(() => {
@@ -1908,9 +1966,12 @@ export const Game: React.FC<GameProps> = ({
       setDismissingReplay(false);
       setReplayMode(false);
       setJustExitedReplay(true);
-      turnHistoryRef.current = [];
+      // The run's capture (history, resolve times, timeline) is KEPT: it used
+      // to be dropped here, so a second watch of the same run silently fell
+      // back to a headless re-simulation instead of what was played. The
+      // next Play re-seeds it; a puzzle change drops it.
+      replayShownRef.current = null;
       replayEventsRef.current = new Map();
-      projectileTimelineRef.current = [];
       projectileLifetimesRef.current = new Map();
 
       if (livesRemaining <= 0) {
@@ -1939,6 +2000,9 @@ export const Game: React.FC<GameProps> = ({
 
   // Replay playback controls
   const handleReplayPlayPause = useCallback(() => {
+    // A step's window (or the last turn's tail) may still be open.
+    if (replayStepTimerRef.current) clearTimeout(replayStepTimerRef.current);
+    setReplayStepAnimating(false);
     setReplayPlaying(prev => !prev);
   }, []);
 
@@ -1955,85 +2019,34 @@ export const Game: React.FC<GameProps> = ({
     }
   };
 
-  // Reset each projectile's VISUAL anchors to its start-of-turn position so
-  // the per-frame animation plays forward through the turn. Without this,
-  // buildReplayProjectiles seeds currentTileIndex at end-of-turn, and
-  // updateProjectiles' hit-consumption (currentTileIdx >= hitResult.hitTileIndex)
-  // fires on the very first frame for any projectile whose endTurn == this
-  // turn — deactivating it before it renders.
-  //
-  // logicalX/Y is intentionally NOT reset. buildReplayProjectiles already sets
-  // it to the turn-END position, which is what the frozen state (after the
-  // animation window closes) needs to render. Overwriting to turn-start would
-  // cause a visible snap-back once replayFrozen flips on.
-  const resetReplayProjectilesToTurnStart = (copy: GameState) => {
-    if (!copy.activeProjectiles) return;
-    const nowMs = Date.now();
-    for (const proj of copy.activeProjectiles) {
-      if (proj.tilePath && proj.tilePath.length > 0 && (proj as any)._turnStartTileIndex !== undefined) {
-        const startIdx = Math.min((proj as any)._turnStartTileIndex, proj.tilePath.length - 1);
-        proj.currentTileIndex = startIdx;
-        const tileTransitMs = 800 / (proj.speed || 4);
-        proj.tileEntryTime = nowMs - (startIdx * tileTransitMs);
-        proj.startTime = nowMs - (startIdx * tileTransitMs);
-      }
-    }
-  };
-
   const handleReplayStepForward = useCallback(() => {
     setReplayPlaying(false);
-    const history = turnHistoryRef.current;
-    // Clear any existing step timer
-    if (replayStepTimerRef.current) clearTimeout(replayStepTimerRef.current);
+    const last = turnHistoryRef.current.length - 1;
+    const next = Math.min((replayShownRef.current?.index ?? 0) + 1, last);
+    showReplayTurn(next, 'animate');
+    // Animate for exactly one turn interval (matches auto-play cadence),
+    // then show the turn's settled end state. A longer window would run a
+    // slow projectile on into the next turn's motion.
+    settleReplayTurn(TURN_INTERVAL_MS);
+  }, [showReplayTurn, settleReplayTurn]);
 
-    setReplayTurnIndex(prev => {
-      const next = Math.min(prev + 1, history.length - 1);
-      const copy = copySnapshotForPlayback(history[next], next, projectileLifetimesRef.current);
-      resetReplayProjectilesToTurnStart(copy);
-      setGameState(copy);
-      return next;
-    });
-
-    // Animate for exactly one turn interval (matches auto-play cadence) then
-    // freeze. A longer window would let updateTileBasedVisual advance
-    // visualTileIndex past this turn's end position, making slow projectiles
-    // appear to land on the wrong turn.
-    setReplayStepAnimating(true);
-    replayStepTimerRef.current = setTimeout(() => {
-      setReplayStepAnimating(false);
-    }, TURN_INTERVAL_MS);
-  }, []);
-
-  // Step-back and seek skip the per-turn-start reset: they jump straight to
-  // each turn's end-of-turn state (what buildReplayProjectiles already
-  // computes) instead of re-animating that turn's motion. Matches typical
-  // media-scrubber UX and keeps the visual arrival turn consistent with
-  // auto-play for all projectile speeds.
+  // Step-back and seek jump straight to a turn's settled end state instead
+  // of re-animating its motion. Matches typical media-scrubber UX and keeps
+  // the visual arrival turn consistent with auto-play for every speed.
   const handleReplayStepBack = useCallback(() => {
     setReplayPlaying(false);
-    const history = turnHistoryRef.current;
     if (replayStepTimerRef.current) clearTimeout(replayStepTimerRef.current);
-
-    setReplayTurnIndex(prev => {
-      const next = Math.max(prev - 1, 0);
-      const copy = copySnapshotForPlayback(history[next], next, projectileLifetimesRef.current);
-      setGameState(copy);
-      return next;
-    });
-
+    showReplayTurn(Math.max((replayShownRef.current?.index ?? 0) - 1, 0), 'settle');
     setReplayStepAnimating(false);
-  }, []);
+  }, [showReplayTurn]);
 
   const handleReplaySeek = useCallback((turn: number) => {
     setReplayPlaying(false);
     if (replayStepTimerRef.current) clearTimeout(replayStepTimerRef.current);
-    const history = turnHistoryRef.current;
-    const clamped = Math.max(0, Math.min(turn, history.length - 1));
-    const copy = copySnapshotForPlayback(history[clamped], clamped, projectileLifetimesRef.current);
-    setGameState(copy);
-    setReplayTurnIndex(clamped);
+    const clamped = Math.max(0, Math.min(turn, turnHistoryRef.current.length - 1));
+    showReplayTurn(clamped, 'settle');
     setReplayStepAnimating(false);
-  }, []);
+  }, [showReplayTurn]);
 
   const handleReplaySpeedChange = useCallback((speed: number) => {
     setReplaySpeed(speed);

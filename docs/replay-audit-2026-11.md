@@ -1,5 +1,16 @@
 # Replay accuracy audit (2026-11-13)
 
+> **STATUS: option B below was built the same day.** Replay now shows each
+> snapshot's own projectiles (`buildPlaybackState` in
+> `src/components/game/replayProjectiles.ts`), and
+> `src/engine/__tests__/replay-frames.test.ts` checks it frame by frame
+> against a simulated live run on every corpus case plus six scenarios the
+> corpus lacked. The gaps listed here now apply only to the FALLBACK (a
+> history regenerated headless, e.g. a reloaded finished daily). The three
+> "live picture disagrees with the logic" questions are still open and
+> still unverified. Replay speeds other than 1x still pace bolts by the
+> wall clock.
+
 Rule being audited (user, 2026-10-18): **replay must show exactly what
 happened.** Prefer playing back what the engine recorded over re-deriving it.
 

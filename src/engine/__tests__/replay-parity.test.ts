@@ -1,5 +1,10 @@
 /**
- * Replay parity — does replay rebuild the bolts the live game actually flew?
+ * Replay parity (FALLBACK PATH) — does the timeline REBUILD reproduce the
+ * bolts the live game actually flew?
+ *
+ * Since 2026-11-13 replay normally shows each snapshot's own projectiles
+ * (checked frame by frame in replay-frames.test.ts). The rebuild tested
+ * here only runs for a history regenerated headless (no live capture).
  *
  * Replay doesn't re-simulate: components/game/replayProjectiles.ts rebuilds
  * each turn's projectiles from the engine's recorded ProjectileEvent
