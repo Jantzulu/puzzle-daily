@@ -29,13 +29,15 @@ export const SoundSettings: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
-    // Initialize audio context on first interaction
-    const initAudio = () => {
-      soundManager.initialize();
-      document.removeEventListener('click', initAudio);
+    // Wake audio on EVERY gesture, not just the first (soundManager.unlock:
+    // iOS re-suspends audio whenever the page is backgrounded). touchend and
+    // click are the events browsers accept as a gesture for audio.
+    const wakeAudio = () => soundManager.unlock();
+    const events = ['click', 'touchend', 'keydown'] as const;
+    for (const type of events) document.addEventListener(type, wakeAudio, { passive: true });
+    return () => {
+      for (const type of events) document.removeEventListener(type, wakeAudio);
     };
-    document.addEventListener('click', initAudio);
-    return () => document.removeEventListener('click', initAudio);
   }, []);
 
   const handleMasterChange = (value: number) => {

@@ -31,6 +31,12 @@ class SoundManager {
   // Pending music to play when audio context is initialized
   private pendingMusic: { base64Audio: string; loop: boolean } | null = null;
 
+  // The looping track the game currently wants, whether or not it can be
+  // heard. Remembered while sound is OFF so that turning it on starts the
+  // music straight away (it used to stay silent until a page refresh: the
+  // request made while off had simply been dropped). Cleared by stopMusic().
+  private wantedMusic: { base64Audio: string; loop: boolean } | null = null;
+
   constructor() {
     this.loadSettings();
   }
@@ -67,6 +73,21 @@ class SoundManager {
       }
     } catch (error) {
       console.error('Failed to initialize audio context:', error);
+    }
+  }
+
+  // Call from inside a user gesture (tap, click, key press). The first one
+  // creates the audio context; every later one wakes a context the browser
+  // has put to sleep. Browsers only allow that from a gesture, and iOS
+  // Safari re-suspends ("interrupts") the context whenever the page goes to
+  // the background or the phone locks, so one wake at the first click is
+  // not enough: music would stay silent after the first app switch. A no-op
+  // while the context is running.
+  public unlock(): void {
+    if (!this.audioContext) void this.initialize();
+    const context = this.audioContext;
+    if (context && context.state !== 'running') {
+      void context.resume().catch(() => { /* not allowed yet; the next gesture retries */ });
     }
   }
 
@@ -139,9 +160,11 @@ class SoundManager {
     this.applySettings();
     this.saveSettings();
 
-    // Stop music if disabled
     if (!enabled) {
-      this.stopMusic();
+      // Silence it, but remember what was wanted.
+      this.haltMusic();
+    } else if (this.wantedMusic && !this.currentMusic) {
+      void this.playMusic(this.wantedMusic.base64Audio, this.wantedMusic.loop);
     }
   }
 
@@ -215,7 +238,11 @@ class SoundManager {
 
   // Play background music (loops by default)
   public async playMusic(base64Audio: string, loop: boolean = true): Promise<void> {
-    if (!this.settings.enabled || !base64Audio) return;
+    if (!base64Audio) return;
+    // A looping track is the background music: note it even while sound is
+    // off. A one-shot stinger is not something to bring back later.
+    if (loop) this.wantedMusic = { base64Audio, loop };
+    if (!this.settings.enabled) return;
 
     // If audio context isn't initialized yet, store as pending music
     // It will be played once the user interacts and context is initialized
@@ -228,7 +255,7 @@ class SoundManager {
       await this.ensureContextRunning();
 
       // Stop current music
-      this.stopMusic();
+      this.haltMusic();
 
       const buffer = await this.decodeBase64Audio(base64Audio);
       this.currentMusic = this.audioContext!.createBufferSource();
@@ -244,8 +271,16 @@ class SoundManager {
     }
   }
 
-  // Stop background music
+  // Stop background music: the game wants silence (and no track to bring
+  // back when sound is turned on again).
   public stopMusic(): void {
+    this.wantedMusic = null;
+    this.pendingMusic = null;
+    this.haltMusic();
+  }
+
+  // Stop whatever is sounding, without forgetting what was wanted.
+  private haltMusic(): void {
     if (this.currentMusic) {
       try {
         this.currentMusic.stop();
@@ -260,7 +295,7 @@ class SoundManager {
   public pauseMusic(): void {
     if (this.currentMusic && this.audioContext) {
       this.musicPauseTime = this.audioContext.currentTime - this.musicStartTime;
-      this.stopMusic();
+      this.haltMusic();
     }
   }
 

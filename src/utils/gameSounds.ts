@@ -77,12 +77,10 @@ async function resolveSoundData(soundId: string | undefined): Promise<string | n
     return soundCache.get(soundId) || null;
   }
 
-  // Load sound asset
+  // Load sound asset. A miss is NOT cached: on the player site assets
+  // arrive after boot, and a cached miss kept that sound silent all session.
   const soundAsset = loadSoundAsset(soundId);
-  if (!soundAsset) {
-    soundCache.set(soundId, null);
-    return null;
-  }
+  if (!soundAsset) return null;
 
   // Prefer base64 data if available (faster, no network request)
   if (soundAsset.audioData) {
