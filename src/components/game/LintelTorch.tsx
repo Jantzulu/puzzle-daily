@@ -16,8 +16,8 @@ const Z = 2;
  * Nothing remembers it past the visit.
  *
  * It also reacts to the run (user pick 2026-11-13; shared/runMood.ts): a
- * lost run gutters it, the retry relights it, a win makes its light flare.
- * A torch with a `phase` follows its partner a beat later.
+ * lost run gutters it and the retry relights it. A torch with a `phase`
+ * follows its partner a beat later.
  *
  * COST (the user asked): no script runs per frame. The flame is a Web
  * Animations transform loop and the light a CSS opacity/scale flicker,
@@ -28,7 +28,6 @@ const Z = 2;
  */
 export const LintelTorch: React.FC<{ phase?: number }> = ({ phase = 0 }) => {
   const [lit, setLit] = React.useState(() => getRunMood() !== 'defeat');
-  const [flare, setFlare] = React.useState(false);
   // Whole-px placement: the lettering's flex centring can land it on a
   // half pixel, which would blur the art.
   const snapRef = useCrispSnap<HTMLButtonElement>(true);
@@ -73,15 +72,12 @@ export const LintelTorch: React.FC<{ phase?: number }> = ({ phase = 0 }) => {
     };
   }, [lit, fw, phase]);
 
-  // The run's mood: out on a loss, lit again on the retry, a flare on a win.
+  // The run's mood: out on a loss, lit again on the retry.
   React.useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | undefined;
     const off = onRunMood(mood => {
       clearTimeout(timer);
-      timer = setTimeout(() => {
-        setLit(mood !== 'defeat');
-        setFlare(mood === 'victory');
-      }, phase ? FOLLOW_MS : 0);
+      timer = setTimeout(() => setLit(mood !== 'defeat'), phase ? FOLLOW_MS : 0);
     });
     return () => { off(); clearTimeout(timer); };
   }, [phase]);
@@ -107,7 +103,7 @@ export const LintelTorch: React.FC<{ phase?: number }> = ({ phase = 0 }) => {
     <button
       ref={snapRef}
       type="button"
-      className={`lintel-torch${lit ? '' : ' lintel-torch--out'}${flare ? ' lintel-torch--flare' : ''}`}
+      className={`lintel-torch${lit ? '' : ' lintel-torch--out'}`}
       style={{
         width: fw,
         height: fh,
@@ -118,11 +114,7 @@ export const LintelTorch: React.FC<{ phase?: number }> = ({ phase = 0 }) => {
       onClick={() => setLit(l => !l)}
       aria-label={lit ? 'Put out the torch' : 'Light the torch'}
     >
-      <span
-        className="lintel-torch-light"
-        aria-hidden="true"
-        onAnimationEnd={e => { if (e.animationName === 'torch-flare') setFlare(false); }}
-      ><span /></span>
+      <span className="lintel-torch-light" aria-hidden="true"><span /></span>
       <span className="lintel-torch-frame" aria-hidden="true">
         <img ref={stripRef} src={SHEET.url} alt="" draggable={false} width={frames * fw} height={fh} />
       </span>

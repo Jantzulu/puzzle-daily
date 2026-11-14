@@ -11,6 +11,7 @@ import { entityParty } from '../../engine/party';
 import { ResponsiveGameBoard, type PlacementGhost } from './AnimatedGameBoard';
 import { buildProjectileLifetimes, copySnapshotForPlayback, type ProjectileLifetimes } from './replayProjectiles';
 import { RunAnnouncer } from './RunAnnouncer';
+import { VictoryTally } from './VictoryTally';
 import { setRunMood } from '../shared/runMood';
 import { PortcullisMesh } from './PortcullisMesh';
 import { CharacterSelector } from './CharacterSelector';
@@ -737,17 +738,13 @@ export const Game: React.FC<GameProps> = ({
   const lifeLostOverlayVisible = gameState.gameStatus === 'defeat' && !showGameOver && !replayMode && !enteringReplay && !outcomeOverlayHeld;
 
   // The run's mood, for chrome that reacts to it (the lintel torches gutter
-  // on a loss and flare on a win; shared/runMood.ts). It changes with the
-  // outcome overlays, after their hold. Replay shows old snapshots, so the
-  // mood stands still while it plays.
+  // on a loss and relight on the retry; shared/runMood.ts). It changes with
+  // the outcome overlays, after their hold. Replay shows old snapshots, so
+  // the mood stands still while it plays.
   useEffect(() => {
     if (replayMode || enteringReplay || outcomeOverlayHeld) return;
-    setRunMood(
-      gameState.gameStatus === 'defeat' ? 'defeat'
-        : gameState.gameStatus === 'victory' && puzzleScore ? 'victory'
-        : 'calm'
-    );
-  }, [gameState.gameStatus, puzzleScore, replayMode, enteringReplay, outcomeOverlayHeld]);
+    setRunMood(gameState.gameStatus === 'defeat' ? 'defeat' : 'calm');
+  }, [gameState.gameStatus, replayMode, enteringReplay, outcomeOverlayHeld]);
   useEffect(() => () => setRunMood('calm'), []);
   // THE QUEST SCROLL YIELDS TO THE OUTCOME (user report 2026-10-17: an open
   // scroll covered the Game Over overlay). It floats above the whole board
@@ -2808,33 +2805,13 @@ export const Game: React.FC<GameProps> = ({
                       </svg>
                     </button>
 
-                    {/* Trophy and Rank */}
-                    <div className="text-4xl mb-1 animate-icon-bounce animate-victory-glow">{getRankEmoji(puzzleScore.rank)}</div>
-                    <h2 className="text-xl md:text-2xl font-bold font-medieval text-moss-200 text-shadow-dungeon">
-                      {getRankName(puzzleScore.rank)}
-                    </h2>
-
-                    {/* Stats for Gold trophy */}
-                    {puzzleScore.rank === 'gold' && (
-                      <p className="text-sm text-moss-300 mt-1">
-                        ({puzzleScore.stats.charactersUsed} hero{puzzleScore.stats.charactersUsed !== 1 ? 'es' : ''}, {puzzleScore.stats.turnsUsed} turn{puzzleScore.stats.turnsUsed !== 1 ? 's' : ''})
-                      </p>
-                    )}
-
-                    {/* Total Score */}
-                    <div className="mt-3 text-2xl font-bold text-copper-300 text-shadow-glow-copper">
-                      {puzzleScore.totalPoints.toLocaleString()} pts
-                    </div>
-
-                    {/* Par Status */}
-                    <div className="mt-2 flex justify-center gap-4 text-xs">
-                      <span className={puzzleScore.parMet.characters ? 'text-moss-300' : 'text-stone-500'}>
-                        {puzzleScore.parMet.characters ? '✓' : '✗'} Hero Par ({currentPuzzle.parCharacters ?? '-'})
-                      </span>
-                      <span className={puzzleScore.parMet.turns ? 'text-moss-300' : 'text-stone-500'}>
-                        {puzzleScore.parMet.turns ? '✓' : '✗'} Turn Par ({currentPuzzle.parTurns ?? '-'})
-                      </span>
-                    </div>
+                    {/* Trophy, rank, points and par checks, played out in
+                        beats the first time a win is shown (VictoryTally.tsx). */}
+                    <VictoryTally
+                      score={puzzleScore}
+                      parCharacters={currentPuzzle.parCharacters}
+                      parTurns={currentPuzzle.parTurns}
+                    />
 
                     {/* Point Breakdown - Collapsible */}
                     <details className="mt-3 text-left text-xs bg-moss-900/50 rounded-pixel p-2 border border-moss-700">

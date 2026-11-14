@@ -1,12 +1,13 @@
 // ============================================================================
 // RUN MOOD — how the current run stands, for chrome that reacts to it
 // ============================================================================
-// The lintel torches gutter when a run is lost, relight on the retry, and
-// flare on a win (user pick 2026-11-13). Game announces the mood; anything
+// The lintel torches gutter when a run is lost and relight on the retry
+// (user pick 2026-11-13). A flare on a win was tried and dropped the same
+// day: the victory screen covers the torches. Game announces the mood; anything
 // decorative can listen without Game knowing it exists (the gate-impact
 // pattern in signWobble.ts). Flavor only: nothing here feeds the game.
 
-export type RunMood = 'calm' | 'defeat' | 'victory';
+export type RunMood = 'calm' | 'defeat';
 
 let mood: RunMood = 'calm';
 const listeners = new Set<(mood: RunMood) => void>();

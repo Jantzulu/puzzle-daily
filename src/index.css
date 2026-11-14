@@ -1474,6 +1474,54 @@ html body.theme-font-active,
   50% { filter: drop-shadow(0 0 20px rgba(234, 179, 8, 0.7)); }
 }
 
+/* THE VICTORY BEATS (VictoryTally.tsx, user pick 2026-11-13): trophy drops,
+   rank appears, points count up (script), par checks stamp. Delays are
+   from the screen appearing; the stamps' delays come from the component.
+   One rule carries BOTH trophy animations: two classes that each set
+   the animation property cancel each other (the old bounce never played). */
+.victory-trophy-drop {
+  animation:
+    victory-trophy-drop 0.55s cubic-bezier(0.3, 1.35, 0.6, 1) 0.35s both,
+    victory-glow 2s ease-in-out 0.9s infinite;
+}
+
+@keyframes victory-trophy-drop {
+  0% { opacity: 0; transform: translateY(-56px) scale(1.25); }
+  55% { opacity: 1; transform: translateY(0) scale(0.92, 1.06); }
+  78% { transform: translateY(-5px) scale(1.04, 0.97); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.victory-rank-in {
+  animation: victory-rank-in 0.3s ease-out 0.75s both;
+}
+
+@keyframes victory-rank-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.victory-points-pop {
+  animation: victory-points-pop 0.28s ease-out;
+}
+
+@keyframes victory-points-pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.14); }
+  100% { transform: scale(1); }
+}
+
+.victory-stamp {
+  display: inline-block;
+  animation: victory-stamp 0.3s cubic-bezier(0.3, 1.3, 0.6, 1) both;
+}
+
+@keyframes victory-stamp {
+  from { opacity: 0; transform: scale(1.7); }
+  60% { opacity: 1; transform: scale(0.94); }
+  to { opacity: 1; transform: scale(1); }
+}
+
 @keyframes overlay-fade-out {
   from { opacity: 1; }
   to { opacity: 0; }
@@ -3835,21 +3883,6 @@ body:not(.menu-gate-lowered) .quest-panel-sticky[data-jostle] .control-rail {
 }
 /* No Reduce Motion variant (user call 2026-10-15): the flicker is minimal,
    in a project full of motion. */
-
-/* A WIN makes the light flare (LintelTorch + shared/runMood.ts): the outer
-   layer swells and settles once, while the inner layer keeps flickering.
-   Transform only; the class comes off on animationend. */
-.lintel-torch--flare .lintel-torch-light {
-  animation: torch-flare 1.3s ease-out;
-}
-
-@keyframes torch-flare {
-  0% { transform: scale(1); }
-  18% { transform: scale(2.2); }
-  45% { transform: scale(1.5); }
-  70% { transform: scale(1.75); }
-  100% { transform: scale(1); }
-}
 
 /* (dungeon-lintel-gem removed 2026-08-13: the center mark between
    DUNGEON and DETAILS retired by user call, along with the
