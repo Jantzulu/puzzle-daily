@@ -1,5 +1,5 @@
 import type { Puzzle } from '../types/game';
-import { loadTileType, loadCollectible, loadObject, loadSpellAsset, loadStatusEffectAsset, loadVessel, loadAlly } from './assetStorage';
+import { loadTileType, loadCollectible, loadObject, loadSpellAsset, loadStatusEffectAsset, loadVessel, loadAlly, loadSoundAsset, getGlobalSoundConfig } from './assetStorage';
 import { getCharacter } from '../data/characters';
 import { getEnemy } from '../data/enemies';
 import { supabase } from '../lib/supabase';
@@ -21,7 +21,15 @@ export interface AssetDependency {
 // following the codebase's uniform reference-field vocabulary. New
 // reference fields must be added to REF_FIELDS (or use an existing name).
 
-type RefKind = 'spell' | 'status_effect' | 'collectible' | 'enemy' | 'character' | 'tile_type' | 'object' | 'unknown';
+type RefKind = 'spell' | 'status_effect' | 'collectible' | 'enemy' | 'character' | 'tile_type' | 'object' | 'sound' | 'unknown';
+
+/**
+ * The global sound settings (which sound plays for each game event, and the
+ * background music). One row for the whole game, so it belongs to no puzzle
+ * by reference: every puzzle carries it. Without that it was never
+ * published, and the player site had no sound at all (found 2026-11-13).
+ */
+export const GLOBAL_SOUND_CONFIG_ID = 'global_sound_config';
 
 const REF_FIELDS: Record<string, RefKind> = {
   spellId: 'spell',
@@ -37,7 +45,17 @@ const REF_FIELDS: Record<string, RefKind> = {
   customType: 'tile_type',
   customTileTypeId: 'tile_type',
   objectId: 'object',
+  castSound: 'sound',         // spell
+  hitSound: 'sound',          // spell
+  pickupSound: 'sound',       // collectible
 };
+
+/**
+ * A hero's or enemy's own sounds live in an object under this key
+ * ({ death, damageTaken, ... }). Its field names are too ordinary to list
+ * in REF_FIELDS, so every string under it is taken as a sound id.
+ */
+const ENTITY_SOUNDS_KEY = 'sounds';
 
 interface Resolved {
   type: string;
@@ -88,6 +106,10 @@ function resolve(id: string, kind: RefKind): Resolved | null {
       const obj = loadObject(id);
       return obj ? { type: 'object', name: obj.name, walk: obj, builtin: false } : null;
     }
+    case 'sound': {
+      const sound = loadSoundAsset(id);
+      return sound ? { type: 'sound', name: sound.name, walk: null, builtin: !!sound.isBuiltIn } : null;
+    }
     case 'unknown': {
       // Showcase attach targets can be any Slab-listable type.
       return (
@@ -109,6 +131,11 @@ function walkRefs(value: unknown, enqueue: (id: string, kind: RefKind) => void):
   for (const [key, v] of Object.entries(value as Record<string, unknown>)) {
     const kind = REF_FIELDS[key];
     if (kind && typeof v === 'string' && v) enqueue(v, kind);
+    if (key === ENTITY_SOUNDS_KEY && v && typeof v === 'object' && !Array.isArray(v)) {
+      for (const id of Object.values(v as Record<string, unknown>)) {
+        if (typeof id === 'string' && id) enqueue(id, 'sound');
+      }
+    }
     walkRefs(v, enqueue);
   }
 }
@@ -136,8 +163,17 @@ export function collectPuzzleAssetIds(puzzle: Puzzle): Map<string, { type: strin
   if (puzzle.skinId && !puzzle.skinId.startsWith('builtin_')) {
     found.set(puzzle.skinId, { type: 'skin', name: puzzle.skinId, isMissing: false });
   }
-  if (puzzle.backgroundMusicId) {
-    found.set(puzzle.backgroundMusicId, { type: 'sound', name: puzzle.backgroundMusicId, isMissing: false });
+  if (puzzle.backgroundMusicId) enqueue(puzzle.backgroundMusicId, 'sound');
+
+  // The global sound settings and every sound they name ride with every
+  // puzzle (see GLOBAL_SOUND_CONFIG_ID). The settings row holds only ids;
+  // an audio FILE is fetched when a player with sound on first needs it.
+  const globalSoundIds = Object.values(getGlobalSoundConfig()).filter(
+    (id): id is string => typeof id === 'string' && id.length > 0,
+  );
+  if (globalSoundIds.length > 0) {
+    found.set(GLOBAL_SOUND_CONFIG_ID, { type: 'global_sound_config', name: 'Global sound settings', isMissing: false });
+    for (const id of globalSoundIds) enqueue(id, 'sound');
   }
 
   // Fixpoint: resolve each id, record it, walk its asset object for more.
@@ -146,6 +182,10 @@ export function collectPuzzleAssetIds(puzzle: Puzzle): Map<string, { type: strin
     if (found.has(id)) continue;
     const resolved = resolve(id, kind);
     if (!resolved) {
+      // A deleted SOUND is only silence, and the publish dialog blocks on
+      // missing assets with no way to clear one that hangs off a spell or
+      // the global settings. So a sound that can't be found is just skipped.
+      if (kind === 'sound') continue;
       // Deleted/unknown asset — surface it (the modal offers cleanup).
       found.set(id, { type: kind === 'unknown' ? 'asset' : kind, name: id, isMissing: true });
       continue;

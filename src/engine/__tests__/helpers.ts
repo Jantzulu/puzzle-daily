@@ -35,6 +35,9 @@ const vesselRegistry = new Map<string, any>();
 // Allies are enemy-shaped assets whose PLACEMENTS carry party: 'hero' —
 // the registry stores them as-is (the real adapter is an identity today).
 const allyRegistry = new Map<string, Enemy>();
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const soundRegistry = new Map<string, any>();
+let globalSoundConfig: Record<string, string> = {};
 
 // Mirror of assetStorage.vesselToEnemyAsset for the mocked modules: vessels
 // resolve as static Enemy-shaped assets (no behavior) through getEnemy/loadEnemy.
@@ -88,6 +91,16 @@ export function registerTestAlly(ally: Enemy) {
   allyRegistry.set(ally.id, ally);
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function registerTestSound(sound: any) {
+  soundRegistry.set(sound.id, sound);
+}
+
+/** The global sound settings: game event → sound asset id. */
+export function setTestGlobalSoundConfig(config: Record<string, string>) {
+  globalSoundConfig = config;
+}
+
 export function clearAllRegistries() {
   characterRegistry.clear();
   enemyRegistry.clear();
@@ -97,6 +110,8 @@ export function clearAllRegistries() {
   statusEffectRegistry.clear();
   vesselRegistry.clear();
   allyRegistry.clear();
+  soundRegistry.clear();
+  globalSoundConfig = {};
 }
 
 // ==========================================
@@ -144,7 +159,9 @@ vi.mock('../../utils/assetStorage', () => ({
   // stores and its local-presence check reads skins/sounds. Saves write the
   // same registries the loaders read, so ensure→re-walk round-trips work.
   getPuzzleSkins: () => [],
-  getSoundAssets: () => [],
+  getSoundAssets: () => Array.from(soundRegistry.values()),
+  loadSoundAsset: (id: string) => soundRegistry.get(id) ?? null,
+  getGlobalSoundConfig: () => globalSoundConfig,
   /* eslint-disable @typescript-eslint/no-explicit-any */
   saveCharacter: (c: any) => { characterRegistry.set(c.id, c); return true; },
   saveEnemy: (e: any) => { enemyRegistry.set(e.id, e); return true; },
@@ -157,8 +174,8 @@ vi.mock('../../utils/assetStorage', () => ({
   saveCollectibleType: () => true,
   saveObject: () => true,
   savePuzzleSkin: () => true,
-  saveSoundAsset: () => true,
-  saveGlobalSoundConfig: () => true,
+  saveSoundAsset: (s: any) => { soundRegistry.set(s.id, s); return true; },
+  saveGlobalSoundConfig: (c: any) => { globalSoundConfig = c; return true; },
   saveGlobalHapticConfig: () => true,
   saveHelpSection: () => true,
   /* eslint-enable @typescript-eslint/no-explicit-any */

@@ -25,7 +25,7 @@ import { supabase } from '../lib/supabase';
 import type { DbAsset } from '../lib/supabase';
 import { localDateKey } from './localDate';
 import type { Puzzle } from '../types/game';
-import { collectPuzzleAssetIds } from './publishDependencies';
+import { collectPuzzleAssetIds, GLOBAL_SOUND_CONFIG_ID } from './publishDependencies';
 import {
   saveTileType,
   saveObject,
@@ -51,6 +51,7 @@ import {
   loadAlly,
   getPuzzleSkins,
   getSoundAssets,
+  getGlobalSoundConfig,
   type CustomTileType,
   type CustomObject,
   type CustomCharacter,
@@ -127,6 +128,7 @@ function localAssetExists(id: string): boolean {
   if (loadCollectible(id) || loadObject(id)) return true;
   if (getPuzzleSkins().some(s => s.id === id)) return true;
   if (getSoundAssets().some(s => s.id === id)) return true;
+  if (id === GLOBAL_SOUND_CONFIG_ID) return Object.keys(getGlobalSoundConfig()).length > 0;
   return false;
 }
 

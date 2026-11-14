@@ -20,6 +20,7 @@ const TYPE_ICONS: Record<string, string> = {
   object: '🏺',
   collectible: '💎',
   sound: '🔊',
+  global_sound_config: '🎚️',
 };
 
 const TYPE_LABELS: Record<string, string> = {
@@ -31,6 +32,7 @@ const TYPE_LABELS: Record<string, string> = {
   object: 'Object',
   collectible: 'Item',
   sound: 'Sound',
+  global_sound_config: 'Sound settings',
 };
 
 export const PublishDependencyModal: React.FC<PublishDependencyModalProps> = ({
