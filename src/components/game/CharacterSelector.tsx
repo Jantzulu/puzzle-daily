@@ -83,6 +83,12 @@ interface CharacterSelectorProps {
   onTest?: () => void;
   themeAssets?: ThemeAssets;
   disabled?: boolean;
+  /**
+   * The run is WON: show the roster as a record of it (user call
+   * 2026-11-13). Every hero stays visible; the ones that were placed stand
+   * at full strength and the rest are dimmed. Use with `disabled`.
+   */
+  showUsed?: boolean;
   noPanel?: boolean;
   placedCharacters?: PlacedCharacter[];
   /** The puzzle's enemies — a redirect tab's hub shows one being turned. */
@@ -120,6 +126,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
   onTest,
   themeAssets = {},
   disabled = false,
+  showUsed = false,
   noPanel = false,
   placedCharacters = [],
   enemies = [],
@@ -571,7 +578,11 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
               // the compass), so the slots stay equal and on the boundaries
               // the selection shape and the posts use.
               className={`flex-1 min-w-0 flex flex-col items-center px-1 pt-0.5 pb-2 relative transition-colors ${
-                cannotSelect
+                showUsed
+                  // After a win: the heroes who fought at full strength,
+                  // the ones left on the bench dimmed.
+                  ? (isPlaced ? 'cursor-default' : 'opacity-40 cursor-default')
+                  : cannotSelect
                   ? 'opacity-40 cursor-not-allowed'
                   : isPlaced && isSelected
                   // Placed AND actively viewed: full brightness so the
@@ -597,7 +608,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                     loop whose phases key off `cardPlaced`, so a CSS filter
                     over that canvas would be re-evaluated every frame — the
                     pinned page-decoration rule. Opacity is compositor-only. */}
-                <div className={isPlaced && !isSelected ? 'opacity-50' : undefined}>
+                <div className={isPlaced && !isSelected && !showUsed ? 'opacity-50' : undefined}>
                   <SpriteThumbnail
                     sprite={character.customSprite}
                     size={cardSpriteHeight}
@@ -971,12 +982,15 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
     </>
   );
 
+  // showUsed does its own per-card dimming; dimming the whole panel on top
+  // would mute the heroes it is there to highlight.
+  const panelDim = disabled && !showUsed ? 'opacity-60' : '';
   if (noPanel) {
-    return <div className={disabled ? 'opacity-60' : ''}>{content}</div>;
+    return <div className={panelDim}>{content}</div>;
   }
 
   return (
-    <div className={`dungeon-panel p-2 lg:p-3 ${disabled ? 'opacity-60' : ''}`}>
+    <div className={`dungeon-panel p-2 lg:p-3 ${panelDim}`}>
       {content}
     </div>
   );

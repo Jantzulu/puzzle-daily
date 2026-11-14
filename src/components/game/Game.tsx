@@ -753,6 +753,14 @@ export const Game: React.FC<GameProps> = ({
   // quest) sat on top of them. Any outcome overlay rolls it up, as Play
   // does, and expandQuest refuses while one is up.
   const outcomeOverlayUp = victoryOverlayVisible || gameOverOverlayVisible || lifeLostOverlayVisible;
+  // The hero panel now stays up after a win, and its title rides a raised
+  // layer (z-46) while the victory screen sits inside the board's z-10
+  // context, so the title would paint over the screen. This class drops it
+  // underneath for as long as the screen is up (index.css).
+  useEffect(() => {
+    document.body.classList.toggle('victory-overlay-up', victoryOverlayVisible);
+    return () => document.body.classList.remove('victory-overlay-up');
+  }, [victoryOverlayVisible]);
   useEffect(() => {
     if (questFloatOn && questSpawned && outcomeOverlayUp) minimizeQuestRef.current();
     // questScroll: a scroll caught mid-unfurl rolls up once it has opened.
@@ -2580,7 +2588,7 @@ export const Game: React.FC<GameProps> = ({
                 placed={gameState.placedCharacters.length}
                 maxPlaceable={gameState.puzzle.maxPlaceableCharacters ?? gameState.puzzle.maxCharacters}
                 victory={gameState.gameStatus === 'victory' && puzzleScore ? { rankName: getRankName(puzzleScore.rank), points: puzzleScore.totalPoints } : null}
-                defeat={showGameOver ? { reason: defeatReason, livesRemaining } : null}
+                defeat={gameState.gameStatus === 'defeat' ? { reason: defeatReason, livesRemaining } : null}
                 replay={replayMode ? { turn: replayTurnIndex, totalTurns: turnHistoryRef.current.length - 1, playing: replayPlaying } : null}
               />
               <div
@@ -3622,8 +3630,9 @@ export const Game: React.FC<GameProps> = ({
               // box as ENEMIES sits under the Dungeon Details lintel
               // (measured h3-top to edge: 3px both, user call 2026-08-01).
               <div className={`mt-2 transition-opacity ${dimmedPanelClass} ${justExitedReplay ? 'animate-slide-up' : ''}`}>
-                {/* Character Selector - visible during setup, running, defeat, and test mode */}
-                {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
+                {/* Character Selector - always visible. After a win it stays
+                    as a record: the heroes used are highlighted (showUsed). */}
+                {(
                   <CharacterSelector
                     questSlot={questFloatOn}
                     availableCharacterIds={gameState.puzzle.availableCharacters}
@@ -3637,7 +3646,8 @@ export const Game: React.FC<GameProps> = ({
                     // (user call: the small scroll takes that header spot).
                     onTest={!hideTestButtons && !questFloatOn && testMode === 'none' && gameState.gameStatus === 'setup' ? handleTestCharactersWithScroll : undefined}
                     themeAssets={themeAssets}
-                    disabled={gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none'}
+                    disabled={gameState.gameStatus !== 'setup' || testMode !== 'none'}
+                    showUsed={gameState.gameStatus === 'victory' && testMode === 'none'}
                     noPanel
                     placedCharacters={gameState.placedCharacters}
                     pendingSpellDirectionOverrides={pendingSpellDirectionOverrides}

@@ -2942,6 +2942,13 @@ body.menu-gate-instant .heroes-title-layer {
   transition: none;
 }
 
+/* The victory screen is up (Game.tsx): the title goes UNDER it. The screen
+   lives in the board's z-10 context, which the title's 46 would beat. */
+body.victory-overlay-up .heroes-title-layer {
+  z-index: 0;
+  transition: z-index 0s 0s;
+}
+
 /* ============================================
    QUEST FLOAT — the quest scroll's layout (questFloat.ts; the default
    since 2026-10-14). The skinned quest scroll leaves the page flow: open over the top of the board, minimized at half
