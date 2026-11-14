@@ -21,21 +21,28 @@ class SoundManager {
 
   private settings: SoundSettings = DEFAULT_SETTINGS;
   private loadedSounds: Map<string, AudioBuffer> = new Map();
-  private currentMusic: AudioBufferSourceNode | null = null;
-  private musicStartTime: number = 0;
-  private musicPauseTime: number = 0;
+  // MUSIC STREAMS. It plays through an <audio> element (routed into
+  // musicGain so the volume sliders and the on/off switch still apply),
+  // which starts within moments and holds only a small buffer. It used to
+  // be downloaded whole, turned into text, and decoded into memory before a
+  // note played: for a two-minute track, tens of megabytes on a phone.
+  // Sound effects are short and stay decoded buffers.
+  private musicElement: HTMLAudioElement | null = null;
+  private musicNode: MediaElementAudioSourceNode | null = null;
+  private musicSrc: string | null = null;
 
   // Cache for decoded audio buffers from base64
   private decodingPromises: Map<string, Promise<AudioBuffer>> = new Map();
 
-  // Pending music to play when audio context is initialized
-  private pendingMusic: { base64Audio: string; loop: boolean } | null = null;
+  // Music waiting for a user gesture (browsers refuse to start audio
+  // without one). unlock() starts it from inside the next gesture.
+  private pendingMusic: { src: string; loop: boolean } | null = null;
 
   // The looping track the game currently wants, whether or not it can be
   // heard. Remembered while sound is OFF so that turning it on starts the
   // music straight away (it used to stay silent until a page refresh: the
   // request made while off had simply been dropped). Cleared by stopMusic().
-  private wantedMusic: { base64Audio: string; loop: boolean } | null = null;
+  private wantedMusic: { src: string; loop: boolean } | null = null;
 
   constructor() {
     this.loadSettings();
@@ -61,16 +68,7 @@ class SoundManager {
 
       // Apply loaded settings
       this.applySettings();
-
-      // Play any pending music that was requested before initialization
-      if (this.pendingMusic) {
-        const { base64Audio, loop } = this.pendingMusic;
-        this.pendingMusic = null;
-        // Use setTimeout to allow context to fully settle
-        setTimeout(() => {
-          this.playMusic(base64Audio, loop);
-        }, 100);
-      }
+      // (Pending music is started by unlock(), from inside the gesture.)
     } catch (error) {
       console.error('Failed to initialize audio context:', error);
     }
@@ -88,6 +86,15 @@ class SoundManager {
     const context = this.audioContext;
     if (context && context.state !== 'running') {
       void context.resume().catch(() => { /* not allowed yet; the next gesture retries */ });
+    }
+    // Music that was waiting for a gesture starts now, inside it.
+    if (this.pendingMusic) {
+      const { src, loop } = this.pendingMusic;
+      this.pendingMusic = null;
+      void this.playMusic(src, loop);
+    } else if (this.settings.enabled && this.musicElement && this.musicElement.paused && !this.musicElement.ended) {
+      // The system paused it (page backgrounded, phone locked): carry on.
+      void this.musicElement.play().catch(() => { /* the next gesture retries */ });
     }
   }
 
@@ -163,8 +170,8 @@ class SoundManager {
     if (!enabled) {
       // Silence it, but remember what was wanted.
       this.haltMusic();
-    } else if (this.wantedMusic && !this.currentMusic) {
-      void this.playMusic(this.wantedMusic.base64Audio, this.wantedMusic.loop);
+    } else if (this.wantedMusic && !this.musicElement) {
+      void this.playMusic(this.wantedMusic.src, this.wantedMusic.loop);
     }
   }
 
@@ -236,38 +243,59 @@ class SoundManager {
     }
   }
 
-  // Play background music (loops by default)
-  public async playMusic(base64Audio: string, loop: boolean = true): Promise<void> {
-    if (!base64Audio) return;
+  // Play music (loops by default). `src` is anything an <audio> element
+  // can play: a file URL or a data: URL. Nothing is downloaded while sound
+  // is off: the request is only remembered.
+  public async playMusic(src: string, loop: boolean = true): Promise<void> {
+    if (!src) return;
     // A looping track is the background music: note it even while sound is
     // off. A one-shot stinger is not something to bring back later.
-    if (loop) this.wantedMusic = { base64Audio, loop };
+    if (loop) this.wantedMusic = { src, loop };
     if (!this.settings.enabled) return;
 
-    // If audio context isn't initialized yet, store as pending music
-    // It will be played once the user interacts and context is initialized
-    if (!this.audioContext) {
-      this.pendingMusic = { base64Audio, loop };
+    // Already playing this very track: leave it be (callers re-request the
+    // background music whenever assets or the puzzle change).
+    if (loop && this.musicElement && this.musicSrc === src && !this.musicElement.paused) return;
+
+    // No audio context until the first gesture: wait for unlock().
+    if (!this.audioContext || !this.musicGain) {
+      this.pendingMusic = { src, loop };
       return;
     }
 
+    this.haltMusic();
+    const element = new Audio();
+    // Needed to route a file from another origin through the audio graph
+    // (the host must allow it; Supabase Storage does).
+    if (/^https?:/i.test(src)) element.crossOrigin = 'anonymous';
+    element.loop = loop;
+    element.preload = 'auto';
+    element.src = src;
     try {
-      await this.ensureContextRunning();
-
-      // Stop current music
-      this.haltMusic();
-
-      const buffer = await this.decodeBase64Audio(base64Audio);
-      this.currentMusic = this.audioContext!.createBufferSource();
-      this.currentMusic.buffer = buffer;
-      this.currentMusic.loop = loop;
-
-      this.currentMusic.connect(this.musicGain!);
-      this.currentMusic.start(0);
-      this.musicStartTime = this.audioContext!.currentTime;
-      this.musicPauseTime = 0;
+      this.musicNode = this.audioContext.createMediaElementSource(element);
+      this.musicNode.connect(this.musicGain);
     } catch (error) {
-      console.error('Failed to play music:', error);
+      console.error('Failed to route music:', error);
+      return;
+    }
+    this.musicElement = element;
+    this.musicSrc = src;
+    // A stinger that has finished is no longer "the music".
+    element.addEventListener('ended', () => {
+      if (this.musicElement === element) this.haltMusic();
+    });
+
+    try {
+      await element.play();
+    } catch (error) {
+      if (this.musicElement !== element) return; // replaced or stopped meanwhile
+      this.haltMusic();
+      if ((error as { name?: string }).name === 'NotAllowedError') {
+        // Not inside a gesture: the next one starts it.
+        this.pendingMusic = { src, loop };
+      } else {
+        console.error('Failed to play music:', error);
+      }
     }
   }
 
@@ -281,22 +309,24 @@ class SoundManager {
 
   // Stop whatever is sounding, without forgetting what was wanted.
   private haltMusic(): void {
-    if (this.currentMusic) {
-      try {
-        this.currentMusic.stop();
-      } catch {
-        // Already stopped
-      }
-      this.currentMusic = null;
+    const element = this.musicElement;
+    this.musicElement = null;
+    this.musicSrc = null;
+    if (element) {
+      element.pause();
+      // Drop the source so the browser stops downloading it.
+      element.removeAttribute('src');
+      element.load();
+    }
+    if (this.musicNode) {
+      try { this.musicNode.disconnect(); } catch { /* already disconnected */ }
+      this.musicNode = null;
     }
   }
 
-  // Pause music (note: Web Audio API doesn't have true pause, so we stop and track time)
+  // Pause music where it is; unlock() or setEnabled(true) carries on.
   public pauseMusic(): void {
-    if (this.currentMusic && this.audioContext) {
-      this.musicPauseTime = this.audioContext.currentTime - this.musicStartTime;
-      this.haltMusic();
-    }
+    this.musicElement?.pause();
   }
 
   // Clear cached sounds

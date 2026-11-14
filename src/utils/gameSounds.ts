@@ -3,6 +3,7 @@
 
 import { soundManager } from './soundManager';
 import { loadSoundAsset, getGlobalSoundConfig } from './assetStorage';
+import { LIVE_ASSETS_UPDATED_EVENT } from './livePull';
 import { getCharacter } from '../data/characters';
 import { getEnemy } from '../data/enemies';
 import { loadSpellAsset } from './assetStorage';
@@ -97,6 +98,17 @@ async function resolveSoundData(soundId: string | undefined): Promise<string | n
 
   soundCache.set(soundId, null);
   return null;
+}
+
+/**
+ * Where a sound asset's audio can be STREAMED from: its inline data, else
+ * its file URL. Used for music, which plays through an <audio> element and
+ * so needs no download up front (resolveSoundData fetches the whole file).
+ */
+function resolveMusicSource(soundId: string | undefined): string | null {
+  if (!soundId) return null;
+  const soundAsset = loadSoundAsset(soundId);
+  return soundAsset?.audioData || soundAsset?.audioUrl || null;
 }
 
 /**
@@ -248,6 +260,8 @@ export async function playSpellSound(
  * @param puzzleMusicId - Optional puzzle-specific music ID. If provided and valid, uses this instead of global config.
  */
 export async function playBackgroundMusic(puzzleMusicId?: string): Promise<void> {
+  backgroundRequest = { puzzleMusicId };
+
   // Try puzzle-specific music first, fall back to global config
   let musicId = puzzleMusicId;
 
@@ -256,25 +270,31 @@ export async function playBackgroundMusic(puzzleMusicId?: string): Promise<void>
     musicId = config.backgroundMusic;
   }
 
-  if (!musicId) return;
-
-  const audioData = await resolveSoundData(musicId);
-  if (audioData) {
-    await soundManager.playMusic(audioData, true);
+  const source = resolveMusicSource(musicId);
+  if (source) {
+    await soundManager.playMusic(source, true);
   }
+}
+
+// The background music the game last asked for. On the player site a
+// puzzle's sounds arrive AFTER its board is up, so the first request finds
+// nothing: when assets land it is asked again. (playMusic ignores a repeat
+// of the track already playing.)
+let backgroundRequest: { puzzleMusicId?: string } | null = null;
+if (typeof window !== 'undefined') {
+  window.addEventListener(LIVE_ASSETS_UPDATED_EVENT, () => {
+    if (backgroundRequest) void playBackgroundMusic(backgroundRequest.puzzleMusicId);
+  });
 }
 
 /**
  * Play victory music stinger (if configured)
  */
 export async function playVictoryMusic(): Promise<void> {
-  const config = getGlobalSoundConfig();
-  if (config.victoryMusic) {
-    const audioData = await resolveSoundData(config.victoryMusic);
-    if (audioData) {
-      soundManager.stopMusic();
-      await soundManager.playMusic(audioData, false);
-    }
+  const source = resolveMusicSource(getGlobalSoundConfig().victoryMusic);
+  if (source) {
+    stopMusic();
+    await soundManager.playMusic(source, false);
   }
 }
 
@@ -282,13 +302,10 @@ export async function playVictoryMusic(): Promise<void> {
  * Play defeat music stinger (if configured)
  */
 export async function playDefeatMusic(): Promise<void> {
-  const config = getGlobalSoundConfig();
-  if (config.defeatMusic) {
-    const audioData = await resolveSoundData(config.defeatMusic);
-    if (audioData) {
-      soundManager.stopMusic();
-      await soundManager.playMusic(audioData, false);
-    }
+  const source = resolveMusicSource(getGlobalSoundConfig().defeatMusic);
+  if (source) {
+    stopMusic();
+    await soundManager.playMusic(source, false);
   }
 }
 
@@ -296,5 +313,6 @@ export async function playDefeatMusic(): Promise<void> {
  * Stop all music
  */
 export function stopMusic(): void {
+  backgroundRequest = null; // nothing to bring back when assets land
   soundManager.stopMusic();
 }
