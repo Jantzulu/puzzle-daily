@@ -73,12 +73,12 @@ export const LintelTorch: React.FC<{ phase?: number }> = ({ phase = 0 }) => {
     };
   }, [lit, fw, phase]);
 
-  // Going out makes a sound (chromeSounds.ts), whether a tap or a lost run
-  // put it out; not when the page opens on a torch already out, and not
-  // from a torch that is off screen.
+  // Going out and catching each make a sound (chromeSounds.ts), whether a
+  // tap or the run did it; not when the page first opens, and not from a
+  // torch that is off screen.
   const wasLit = React.useRef(lit);
   React.useEffect(() => {
-    if (wasLit.current && !lit && onScreen.current) playChromeSound('torch-out', phase ? 1 : 0);
+    if (wasLit.current !== lit && onScreen.current) playChromeSound(lit ? 'torch-lit' : 'torch-out', phase ? 1 : 0);
     wasLit.current = lit;
   }, [lit, phase]);
 
