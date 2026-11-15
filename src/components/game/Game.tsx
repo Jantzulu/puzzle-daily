@@ -28,7 +28,7 @@ import { TapHintChip } from './TapHintChip';
 import { QuestBoxFrame, QuestOrnaments, QuestPlate, QuestDivider } from './QuestBoxSkin';
 import { questSkinFrameActive, questSkinOrnamentsActive, questSkinPlateActive, questSkinDividerActive, questFrameBorders, questPlateStraddle } from './questBoxSkinData';
 import { useCrispSnap } from './panelSkins';
-import { QUEST_FLIGHT_MS, QUEST_TOSS_AFTER_ROLL_MS, QUEST_SPAWN_DELAY_MS, QUEST_HINT_BEAT_MS, QUEST_LAND_AT_S, useQuestFloatPlacement, useQuestPress } from './questFloat';
+import { QUEST_FLIGHT_MS, QUEST_TOSS_AFTER_ROLL_MS, QUEST_SPAWN_DELAY_MS, QUEST_HINT_BEAT_MS, QUEST_LAND_AT_S, QUEST_SPARKLE_AT_S, useQuestFloatPlacement, useQuestPress } from './questFloat';
 import { playChromeSound } from '../../utils/chromeSounds';
 import { playGameSound, playVictoryMusic, playDefeatMusic, playBackgroundMusic, stopMusic } from '../../utils/gameSounds';
 import { loadThemeAssets, subscribeToThemeAssets, type ThemeAssets } from '../../utils/themeAssets';
@@ -603,7 +603,9 @@ export const Game: React.FC<GameProps> = ({
   //     presses onto the board when it first appears on a puzzle; the impact
   //     lands QUEST_LAND_AT_S in, where the stamp bottoms out (its 60% mark).
   //   the UNFURL (quest-scroll-content on .quest-stage-scroll): on that first
-  //     appearance (after its CSS delay) and on every reopen.
+  //     appearance (after its CSS delay) and on every reopen. The first one
+  //     also sparkles (the scroll is still in its 'open' phase then; a
+  //     reopen runs in 'reopening').
   // Not when it arrives already rolled up in the hero header (those
   // animations are cut to nothing). A browser only lets a page make sound
   // after a tap, so on a fresh page load both are usually silent.
@@ -613,6 +615,8 @@ export const Game: React.FC<GameProps> = ({
       playChromeSound('scroll-land', 0, QUEST_LAND_AT_S);
     } else if (e.animationName === 'quest-scroll-content' && classes.contains('quest-stage-scroll')) {
       playChromeSound('scroll-unroll');
+      // A quest's FIRST unfurl on a puzzle sparkles: this is important.
+      if (questScroll === 'open') playChromeSound('scroll-sparkle', 0, QUEST_SPARKLE_AT_S);
     }
   };
   const questFloatStyle = useQuestFloatPlacement(questFloatOn && questBoxShown && questSpawned, questMini, questFloatRef);

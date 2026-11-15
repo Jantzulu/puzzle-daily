@@ -69,6 +69,12 @@ export const QUEST_PRESS_MIN_MS = 100;
  */
 export const QUEST_LAND_AT_S = 0.2;
 /**
+ * THE SPARKLE (user ask 2026-11-15): a quest's first unfurl on a puzzle
+ * sparkles, to say it matters. The glints begin this many SECONDS into the
+ * unfurl (0.65s), as the paper starts to show.
+ */
+export const QUEST_SPARKLE_AT_S = 0.15;
+/**
  * Where the open scroll's BOX top sits below the board's top edge — resting
  * close under the portcullis (user rounds 3 and 10). Measured column by
  * column in the pane (375 wide): the tightest clearance is where two spike

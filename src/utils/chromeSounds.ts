@@ -14,7 +14,7 @@
 
 import { soundManager } from './soundManager';
 
-export type ChromeSound = 'torch-out' | 'torch-lit' | 'scroll-roll' | 'scroll-unroll' | 'scroll-land';
+export type ChromeSound = 'torch-out' | 'torch-lit' | 'scroll-roll' | 'scroll-unroll' | 'scroll-land' | 'scroll-sparkle';
 
 type Recipe = (ctx: BaseAudioContext, out: AudioNode, at: number, variant: number) => void;
 
@@ -253,15 +253,20 @@ const scrollPaper = (which: 'roll' | 'unroll'): Recipe => (ctx, out, at) => {
 // The scroll arrives rolled up and stamps into place before it unfurls
 // (index.css quest-plate-stamp); the user asked for an impact there
 // (2026-11-15). Two layers, both over in a fraction of a second:
-//   thud  a low note that drops in pitch: the weight
-//   slap  a short burst of mid noise: wood and parchment meeting stone
+//   thump  a very low, very short note: the weight, felt more than heard
+//   smack  a short burst of BROAD noise: wood and parchment meeting stone
 // This one IS a real impact, so it starts at once (the torch's "knock" was
-// wrong because a torch going out is not one). Phone speakers cannot play
-// the thud's low note; the slap is what carries there.
+// wrong because a torch going out is not one).
+// The user's ear on v1: "a little less hollow box sounding". v1's note fell
+// from 150 Hz and rang for 0.16s, over a narrow band of noise at 900 Hz:
+// a ringing low note plus a boxy middle is exactly a knock on a crate. Now
+// the note is lower and half as long (a thump, not a tone), and the noise
+// is broad with its low middle cut away.
+// Phone speakers cannot play the thump; the smack is what carries there.
 const SCROLL_LAND = {
-  level: 0.14,
-  thud: { peak: 0.7, attack: 0.004, length: 0.16, from: 150, to: 62 },
-  slap: { peak: 1.2, attack: 0.002, length: 0.07, tone: 900, q: 0.8 },
+  level: 0.16,
+  thump: { peak: 0.45, attack: 0.003, length: 0.085, from: 92, to: 46 },
+  smack: { peak: 1.6, attack: 0.001, length: 0.05, above: 420, below: 3400 },
 } as const;
 
 const scrollLand: Recipe = (ctx, out, at) => {
@@ -270,35 +275,83 @@ const scrollLand: Recipe = (ctx, out, at) => {
   master.gain.value = T.level;
   master.connect(out);
 
-  // Thud.
+  // Thump.
   {
     const tone = ctx.createOscillator();
     tone.type = 'sine';
-    tone.frequency.setValueAtTime(T.thud.from, at);
-    tone.frequency.exponentialRampToValueAtTime(T.thud.to, at + T.thud.length * 0.6);
+    tone.frequency.setValueAtTime(T.thump.from, at);
+    tone.frequency.exponentialRampToValueAtTime(T.thump.to, at + T.thump.length * 0.6);
     const gain = ctx.createGain();
     gain.gain.setValueAtTime(0, at);
-    gain.gain.linearRampToValueAtTime(T.thud.peak, at + T.thud.attack);
-    gain.gain.exponentialRampToValueAtTime(T.thud.peak * 0.02, at + T.thud.length - 0.02);
-    gain.gain.linearRampToValueAtTime(0, at + T.thud.length);
+    gain.gain.linearRampToValueAtTime(T.thump.peak, at + T.thump.attack);
+    gain.gain.exponentialRampToValueAtTime(T.thump.peak * 0.02, at + T.thump.length - 0.015);
+    gain.gain.linearRampToValueAtTime(0, at + T.thump.length);
     tone.connect(gain).connect(master);
     tone.start(at);
-    tone.stop(at + T.thud.length);
+    tone.stop(at + T.thump.length);
   }
 
-  // Slap.
+  // Smack.
   {
-    const filter = ctx.createBiquadFilter();
-    filter.type = 'bandpass';
-    filter.Q.value = T.slap.q;
-    filter.frequency.value = T.slap.tone;
+    const lows = ctx.createBiquadFilter();
+    lows.type = 'highpass';
+    lows.frequency.value = T.smack.above;
+    const highs = ctx.createBiquadFilter();
+    highs.type = 'lowpass';
+    highs.frequency.value = T.smack.below;
     const gain = ctx.createGain();
     gain.gain.setValueAtTime(0, at);
-    gain.gain.linearRampToValueAtTime(T.slap.peak, at + T.slap.attack);
-    gain.gain.exponentialRampToValueAtTime(T.slap.peak * 0.02, at + T.slap.length - 0.01);
-    gain.gain.linearRampToValueAtTime(0, at + T.slap.length);
-    noise(ctx, at, 1.6, T.slap.length).connect(filter).connect(gain).connect(master);
+    gain.gain.linearRampToValueAtTime(T.smack.peak, at + T.smack.attack);
+    gain.gain.exponentialRampToValueAtTime(T.smack.peak * 0.02, at + T.smack.length - 0.01);
+    gain.gain.linearRampToValueAtTime(0, at + T.smack.length);
+    noise(ctx, at, 1.6, T.smack.length).connect(lows).connect(highs).connect(gain).connect(master);
   }
+};
+
+// ---- scroll-sparkle: the quest is important -------------------------------
+// When a quest FIRST unfurls on a puzzle, a little run of bright glints
+// rises over the scroll's swoosh (user ask 2026-11-15: "a sparkling or
+// magical effect ... this thing (the quest) is important!"). Not on a
+// reopen: the player has seen that quest already.
+// Each glint is a clear high note that starts softly and rings away, with a
+// fainter, slightly sour partner note above it (what makes a note sound
+// like a small bell and not a beep). The notes climb a major chord.
+const SCROLL_SPARKLE = {
+  level: 0.035,
+  /** The glints, low to high (Hz): G6 B6 D7 G7 B7. */
+  notes: [1568, 1976, 2349, 3136, 3951],
+  /** Seconds between one glint and the next. */
+  every: 0.06,
+  attack: 0.006,
+  /** How long each one rings (s). */
+  ring: 0.42,
+  /** The partner note: how far above, and how loud next to the main one. */
+  partner: { ratio: 2.76, level: 0.22 },
+} as const;
+
+const scrollSparkle: Recipe = (ctx, out, at) => {
+  const T = SCROLL_SPARKLE;
+  const master = ctx.createGain();
+  master.gain.value = T.level;
+  master.connect(out);
+  T.notes.forEach((hz, i) => {
+    const when = at + i * T.every;
+    // Later, higher glints are a little quieter: the run fades as it climbs.
+    const loud = 1 - i * 0.12;
+    for (const [pitch, level] of [[hz, loud], [hz * T.partner.ratio, loud * T.partner.level]] as const) {
+      const tone = ctx.createOscillator();
+      tone.type = 'sine';
+      tone.frequency.value = pitch;
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0, when);
+      gain.gain.linearRampToValueAtTime(level, when + T.attack);
+      gain.gain.exponentialRampToValueAtTime(level * 0.01, when + T.ring - 0.03);
+      gain.gain.linearRampToValueAtTime(0, when + T.ring);
+      tone.connect(gain).connect(master);
+      tone.start(when);
+      tone.stop(when + T.ring);
+    }
+  });
 };
 
 const RECIPES: Record<ChromeSound, Recipe> = {
@@ -307,6 +360,7 @@ const RECIPES: Record<ChromeSound, Recipe> = {
   'scroll-roll': scrollPaper('roll'),
   'scroll-unroll': scrollPaper('unroll'),
   'scroll-land': scrollLand,
+  'scroll-sparkle': scrollSparkle,
 };
 
 /** Draw a chrome sound into any audio context (used for measuring it). */
