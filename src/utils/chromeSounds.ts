@@ -68,15 +68,20 @@ function noise(ctx: BaseAudioContext, at: number, offset: number, seconds: numbe
 //   v3 dropped the hiss for two low narrow sweeps: "weird, almost robotic",
 //      worse than v2. Narrow bands of noise that slide in pitch are how a
 //      synthetic voice is made. Keep the noise BROAD; do not go back there.
+//   v4 (v2 again, 40% quieter, on fixed noise): the right kind of sound,
+//      "but as if made 300% more intense", and the opening "like somebody
+//      sweeping debris on the floor". So the whole sound is about half as
+//      loud again, and the woosh is shorter, quieter, and only FALLS in
+//      pitch: the rise-then-fall it had is the gesture of a broom stroke.
 // `variant` 1 (the second torch of a pair) is pitched a little lower and
 // pops at different moments, so a pair never sounds like one sound doubled.
 const TORCH_OUT = {
   /** Overall loudness of the whole sound. */
-  level: 0.42,
+  level: 0.22,
   /** A layer fades to this fraction of its peak, then to nothing. */
   floor: 0.05,
-  woosh: { peak: 0.95, swell: 0.12, length: 0.45, from: 650, crest: 1300, to: 500, q: 1 },
-  hiss: { peak: 0.36, swell: 0.12, hold: 0.06, length: 0.65, from: 5400, to: 2600 },
+  woosh: { peak: 0.6, swell: 0.1, length: 0.3, from: 950, crest: 1000, to: 450, q: 1 },
+  hiss: { peak: 0.36, swell: 0.12, hold: 0.06, length: 0.55, from: 5400, to: 2600 },
   crackle: { peak: 0.1, length: 0.006, times: [[0.24, 0.33, 0.45], [0.27, 0.38]] },
 } as const;
 
