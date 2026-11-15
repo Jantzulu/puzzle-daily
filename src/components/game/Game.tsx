@@ -2645,7 +2645,7 @@ export const Game: React.FC<GameProps> = ({
               </div>
               {!entered && (
                 // Art keeps loading behind the card.
-                <EnterGate date={currentPuzzle.date} fallbackTitle={currentPuzzle.name} onEnter={() => setEntered(true)} />
+                <EnterGate onEnter={() => setEntered(true)} />
               )}
               {entered && !spritesLoaded && (
                 // No fill: the page background shows through while loading —

@@ -1,13 +1,20 @@
 import React from 'react';
+import { localDateKey } from '../../utils/localDate';
 import { markPageEntered, puzzleDateLabel } from './enterGateState';
 
 /**
  * TAP TO ENTER (user pick 2026-11-15). A browser lets a page make no sound
  * until the visitor has tapped or clicked it, so on a fresh page load the
  * quest scroll used to land and unfurl in silence. This card stands where
- * the board will be, showing the puzzle's date, until the first tap; that
- * tap is what unlocks sound, and the board and the scroll make their
- * entrance after it.
+ * the board will be, showing today's date, until the first tap; that tap is
+ * what unlocks sound, and the board and the scroll make their entrance
+ * after it.
+ *
+ * TODAY'S date, not the puzzle's own `date` field: that field is the day
+ * the puzzle was MADE in the editor (and the built-in demo puzzle says
+ * January 1, 2026). The card only ever shows on a fresh page load, where the
+ * puzzle is the daily, so the day being played is today, by the player's
+ * own calendar (utils/localDate.ts, the same day the daily is chosen by).
  *
  * It only appears when it is needed: on a page nobody has touched yet
  * (enterGateState.ts pageAlreadyEntered). Arriving at a puzzle from
@@ -15,14 +22,8 @@ import { markPageEntered, puzzleDateLabel } from './enterGateState';
  *
  * A tap ANYWHERE on the page enters, not just on the card.
  */
-export const EnterGate: React.FC<{
-  /** The puzzle's date as stored ("YYYY-MM-DD"). */
-  date: string | undefined;
-  /** Shown when the puzzle has no readable date. */
-  fallbackTitle: string;
-  onEnter: () => void;
-}> = ({ date, fallbackTitle, onEnter }) => {
-  const title = puzzleDateLabel(date) ?? fallbackTitle;
+export const EnterGate: React.FC<{ onEnter: () => void }> = ({ onEnter }) => {
+  const [title] = React.useState(() => puzzleDateLabel(localDateKey()) ?? '');
   const enter = React.useRef(onEnter);
   React.useEffect(() => { enter.current = onEnter; });
   React.useEffect(() => {
