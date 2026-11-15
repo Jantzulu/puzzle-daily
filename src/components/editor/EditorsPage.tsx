@@ -3,13 +3,15 @@ import React, { lazy, Suspense, useState } from 'react';
 const MapEditor = lazy(() => import('./MapEditor').then(m => ({ default: m.MapEditor })));
 const PixelEditorPage = lazy(() => import('./PixelEditorPage').then(m => ({ default: m.PixelEditorPage })));
 const PanelForge = lazy(() => import('./PanelForge').then(m => ({ default: m.PanelForge })));
+const SoundForge = lazy(() => import('./soundForge/SoundForge').then(m => ({ default: m.SoundForge })));
 
-type EditorTab = 'map' | 'pixel' | 'forge';
+type EditorTab = 'map' | 'pixel' | 'forge' | 'sound';
 
 const TABS: { id: EditorTab; label: string; icon: string }[] = [
   { id: 'map', label: 'Map Editor', icon: '\uD83D\uDEE0' },
   { id: 'pixel', label: 'Pixel Editor', icon: '\uD83C\uDFA8' },
   { id: 'forge', label: 'Panel Forge', icon: '\u2692' },
+  { id: 'sound', label: 'Sound Forge', icon: '\u266a' },
 ];
 
 export const EditorsPage: React.FC = () => {
@@ -42,7 +44,7 @@ export const EditorsPage: React.FC = () => {
             <div className="text-copper-400 font-medieval text-lg animate-pulse">Loading...</div>
           </div>
         }>
-          {activeTab === 'map' ? <MapEditor /> : activeTab === 'pixel' ? <PixelEditorPage /> : <PanelForge />}
+          {activeTab === 'map' ? <MapEditor /> : activeTab === 'pixel' ? <PixelEditorPage /> : activeTab === 'forge' ? <PanelForge /> : <SoundForge />}
         </Suspense>
       </div>
     </div>
