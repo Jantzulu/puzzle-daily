@@ -192,25 +192,29 @@ const torchLit: Recipe = (ctx, out, at, variant) => {
 };
 
 // ---- scroll-roll / scroll-unroll: the quest scroll's parchment ------------
-// One layer: a broad, fairly dull band of noise (parchment, not crisp paper)
-// whose loudness FLUTTERS irregularly, the way a sheet rustles as it moves.
-// The flutter is a second stretch of noise slowed to a wobble and used as
-// the volume. It rises and falls with the roll's speed (the animation eases
-// in and out), lasts exactly as long as the animation, and drifts up in
-// pitch as the scroll rolls tight, down as it opens.
-// Level: in the range of the torch sounds the user approved; start subtle.
+// A SWOOSH with a little paper in it: one broad band of noise that swells
+// and falls with the roll's speed while its tone slides (up as the scroll
+// opens, down as it rolls shut), with a fast, shallow tremble so it is a
+// sheet moving and not just air.
+// The user's ear (2026-11-15) on v1, which had a small tone slide and a
+// slow, deep, irregular wobble in its loudness: not what an unfurling
+// scroll sounds like, "very creaky, and could maybe do with more of a
+// swoosh". The slow deep wobble was the creak: so the wobble is now fast
+// and shallow, and the slide is wide enough to hear as a swoosh.
+// (A run of dry paper ticks was tried between the two and never shipped:
+// more crackle is the opposite of what was asked.)
+// The lengths match index.css (.quest-closing 0.5s, the unfurl 0.65s).
 const SCROLL = {
-  level: 0.16,
-  floor: 0.05,
+  level: 0.2,
   peak: 0.5,
   /** Where in the sound it is loudest (0-1): the roll is fastest here. */
   crest: 0.4,
-  q: 0.5,
-  /** The rustle: how fast the loudness wobbles (Hz) and how deeply. */
-  flutter: { rate: 38, depth: 14 },
-  /** Lengths match index.css: .quest-closing 0.5s, .quest-reopening 0.65s. */
-  roll: { length: 0.5, from: 1500, to: 2300 },
-  unroll: { length: 0.65, from: 2300, to: 1500 },
+  /** How narrow the band is: higher makes the slide more of a whistle. */
+  q: 0.9,
+  /** The paper: how fast the loudness trembles (Hz) and how deeply. */
+  tremble: { rate: 90, depth: 5 },
+  roll: { length: 0.5, from: 2700, to: 1250 },
+  unroll: { length: 0.65, from: 1150, to: 2900 },
 } as const;
 
 const scrollPaper = (which: 'roll' | 'unroll'): Recipe => (ctx, out, at) => {
@@ -226,23 +230,23 @@ const scrollPaper = (which: 'roll' | 'unroll'): Recipe => (ctx, out, at) => {
   filter.frequency.setValueAtTime(P.from, at);
   filter.frequency.exponentialRampToValueAtTime(P.to, at + P.length);
 
-  // The rustle: volume = 1 + (slow noise * depth).
-  const rustle = ctx.createGain();
-  rustle.gain.value = 1;
+  // The tremble: volume = 1 + (slowed noise * depth).
+  const tremble = ctx.createGain();
+  tremble.gain.value = 1;
   const slow = ctx.createBiquadFilter();
   slow.type = 'lowpass';
-  slow.frequency.value = T.flutter.rate;
+  slow.frequency.value = T.tremble.rate;
   const depth = ctx.createGain();
-  depth.gain.value = T.flutter.depth;
-  noise(ctx, at, which === 'roll' ? 0.2 : 0.9, P.length).connect(slow).connect(depth).connect(rustle.gain);
+  depth.gain.value = T.tremble.depth;
+  noise(ctx, at, which === 'roll' ? 0.2 : 0.9, P.length).connect(slow).connect(depth).connect(tremble.gain);
 
   const gain = ctx.createGain();
   gain.gain.setValueAtTime(0, at);
   gain.gain.linearRampToValueAtTime(T.peak, at + P.length * T.crest);
-  gain.gain.exponentialRampToValueAtTime(T.peak * T.floor, at + P.length - TAIL);
+  gain.gain.exponentialRampToValueAtTime(T.peak * 0.05, at + P.length - TAIL);
   gain.gain.linearRampToValueAtTime(0, at + P.length);
 
-  noise(ctx, at, which === 'roll' ? 1.2 : 0.1, P.length).connect(filter).connect(rustle).connect(gain).connect(master);
+  noise(ctx, at, which === 'roll' ? 1.2 : 0.1, P.length).connect(filter).connect(tremble).connect(gain).connect(master);
 };
 
 const RECIPES: Record<ChromeSound, Recipe> = {

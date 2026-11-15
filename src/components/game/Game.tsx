@@ -462,7 +462,7 @@ export const Game: React.FC<GameProps> = ({
     setQuestBoxHeight(questOpenHeight(box));
     setQuestScroll('lowering');
     questScrollTimers.current.push(
-      window.setTimeout(() => { setQuestScroll('reopening'); playChromeSound('scroll-unroll'); }, 350),
+      window.setTimeout(() => setQuestScroll('reopening'), 350),
       window.setTimeout(() => { setQuestScroll('reopened'); setQuestBoxHeight(null); setQuestFrameHold(null); }, 1100),
     );
   };
@@ -596,6 +596,14 @@ export const Game: React.FC<GameProps> = ({
     if (e.target !== e.currentTarget || e.animationName !== 'quest-scroll-content' || questHintReady) return;
     const id = currentPuzzle.id;
     questScrollTimers.current.push(window.setTimeout(() => setQuestHintFor(id), QUEST_HINT_BEAT_MS));
+  };
+  // The unfurl's sound (chromeSounds.ts) starts with the unfurl itself: the
+  // same animation runs when the scroll first opens on a puzzle (after its
+  // CSS delay) and every time it reopens, so its animationstart covers both.
+  // A browser only lets a page make sound after a tap, so on a fresh page
+  // load the very first unfurl is usually silent.
+  const onQuestUnfurlStart = (e: React.AnimationEvent<HTMLDivElement>) => {
+    if (e.target === e.currentTarget && e.animationName === 'quest-scroll-content') playChromeSound('scroll-unroll');
   };
   const questFloatStyle = useQuestFloatPlacement(questFloatOn && questBoxShown && questSpawned, questMini, questFloatRef);
   // Opens on EVERY visit (user call, round 2): a fresh mount starts open;
@@ -3329,6 +3337,7 @@ export const Game: React.FC<GameProps> = ({
                     entirely while the scroll toggle rests closed. */}
                 <div
                   className={questSkinFrameActive ? 'quest-stage-scroll relative' : 'quest-stage-box relative'}
+                  onAnimationStart={questFloatOn ? onQuestUnfurlStart : undefined}
                   onAnimationEnd={questFloatOn ? onQuestUnfurlEnd : undefined}
                 >
                 <div className="quest-text-c1">
