@@ -2,6 +2,7 @@ import { supabase } from '../lib/supabase';
 import type { DbPuzzle, DbAsset } from '../lib/supabase';
 import { logActivity } from './activityLogService';
 import { localDateKey } from '../utils/localDate';
+import { withDailyDate } from '../utils/dailyState';
 import { stampPublishedAssetIds, collectPuzzleAssetIds } from '../utils/publishDependencies';
 import type { LiveContent } from '../utils/liveContentCache';
 
@@ -470,7 +471,7 @@ export async function fetchTodaysPuzzle(): Promise<DailyPuzzleResult> {
     // surfacing "nothing scheduled" to the player.
     const { data, error } = await supabase
       .from('daily_schedule')
-      .select('puzzle_id, puzzle_number, puzzles_live(*)')
+      .select('scheduled_date, puzzle_id, puzzle_number, puzzles_live(*)')
       .lte('scheduled_date', today)
       .order('scheduled_date', { ascending: false })
       .limit(1)
@@ -483,7 +484,11 @@ export async function fetchTodaysPuzzle(): Promise<DailyPuzzleResult> {
     if (!data) return { status: 'none' }; // nothing ever scheduled — normal pre-launch
 
     const puzzleLive = data.puzzles_live as unknown as DbPuzzle;
-    const puzzle = puzzleLive?.data as unknown as Puzzle;
+    const stored = puzzleLive?.data as unknown as Puzzle;
+    // The game keys the daily lock, the saved setup and its analytics by
+    // puzzle.date, so the served copy carries the day it is SCHEDULED for,
+    // not the day it was made (utils/dailyState.ts).
+    const puzzle = stored ? withDailyDate(stored, data.scheduled_date as string | null) : stored;
     return puzzle
       ? { status: 'ok', puzzle, puzzleNumber: (data.puzzle_number as number | null) ?? null }
       : { status: 'none' };
