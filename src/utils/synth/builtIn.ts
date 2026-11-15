@@ -17,7 +17,11 @@ export type BuiltInSoundId =
   | 'scroll-roll'
   | 'scroll-unroll'
   | 'scroll-land'
-  | 'scroll-sparkle';
+  | 'scroll-sparkle'
+  | 'gate-rumble'
+  | 'gate-rung'
+  | 'gate-land'
+  | 'gate-lock';
 
 export interface BuiltInSound {
   id: BuiltInSoundId;
@@ -186,6 +190,109 @@ const scrollSparkle: SynthSound = {
   })),
 };
 
+// ---- the portcullis (the menu gate) ----------------------------------------------
+// User ask 2026-11-15: sounds for the gate lowering and rising that match
+// how long the move takes and how many rungs it has, with final sounds for
+// landing and for locking at the top. The gate's motion is already exact
+// (index.css: it creeps, falls, HITS at 86% of 1.4s and rebounds twice; it
+// is winched up in four ratchet pulls and locks at 1.25s), so these are
+// PARTS, and utils/gateSounds.ts plays them at those same moments:
+//   gate-rumble  the iron moving: a low rumble with a chain shudder. Made
+//                one second long and stretched to fit each move.
+//   gate-rung    one rung passing: a small iron clink. Played once per
+//                rung as it comes out from (or goes back under) the bar.
+//   gate-land    the gate hitting the ground: the big one.
+//   gate-lock    the gate locking at the top: a clunk and a latch.
+// NOBODY HAS HEARD THESE. They follow the rules the torch and scroll
+// taught: a real impact starts at once; broad noise; a low note for weight
+// with a mid layer on top, because a phone cannot play the low note; and
+// levels kept near the approved page sounds (set by measuring).
+const gateRumble: SynthSound = {
+  version: 1,
+  level: 0.11,
+  layers: [
+    {
+      id: 'rumble', name: 'Rumble', source: 'noise', start: 0, length: 1, level: 1.2, attack: 0.55, hold: 0.35, floor: 0.7, tail: 0.06,
+      noiseSeed: 0.8, filters: [{ type: 'lowpass', cutoff: { from: 200, to: 300 } }],
+      tremble: { rate: 24, depth: 6, seed: 0.3 },
+    },
+    {
+      id: 'chain', name: 'Chain', source: 'noise', start: 0, length: 1, level: 0.16, attack: 0.55, hold: 0.35, floor: 0.7, tail: 0.06,
+      noiseSeed: 1.5, filters: [{ type: 'bandpass', q: 0.9, cutoff: { from: 2200, to: 2800 } }],
+      tremble: { rate: 40, depth: 10, seed: 1.1 },
+    },
+  ],
+};
+
+const gateRung: SynthSound = {
+  version: 1,
+  level: 0.18,
+  layers: [
+    {
+      id: 'tick', name: 'Tick', source: 'noise', start: 0, length: 0.02, level: 0.5, attack: 0, hold: 0, floor: 0.02, tail: 0.005,
+      noiseSeed: 0.5, filters: [{ type: 'highpass', cutoff: { from: 2200, to: 2200 } }],
+    },
+    {
+      id: 'ring', name: 'Ring', source: 'tone', wave: 'sine', start: 0, length: 0.09, level: 0.14, attack: 0.001, hold: 0, floor: 0.02, tail: 0.02,
+      pitch: { from: 1250, to: 1250 }, harmonics: [{ ratio: 2.4, level: 0.5 }, { ratio: 4.2, level: 0.3 }],
+    },
+  ],
+};
+
+const gateLand: SynthSound = {
+  version: 1,
+  level: 0.09,
+  layers: [
+    {
+      id: 'thump', name: 'Thump', source: 'tone', wave: 'sine', start: 0, length: 0.22, level: 0.9, attack: 0.003, hold: 0, floor: 0.02, tail: 0.03,
+      pitch: { from: 72, to: 38, arriveAt: 0.12 },
+    },
+    {
+      id: 'body', name: 'Body', source: 'noise', start: 0, length: 0.13, level: 1.4, attack: 0.001, hold: 0, floor: 0.02, tail: 0.02,
+      noiseSeed: 1.6,
+      filters: [
+        { type: 'highpass', cutoff: { from: 180, to: 180 } },
+        { type: 'lowpass', cutoff: { from: 1100, to: 1100 } },
+      ],
+    },
+    {
+      id: 'clang', name: 'Clang', source: 'tone', wave: 'sine', start: 0, length: 0.5, level: 0.1, attack: 0.001, hold: 0, floor: 0.01, tail: 0.05,
+      pitch: { from: 310, to: 310 }, harmonics: [{ ratio: 2.31, level: 0.5 }, { ratio: 3.9, level: 0.35 }, { ratio: 5.6, level: 0.2 }],
+    },
+    {
+      id: 'rattle', name: 'Rattle', source: 'noise', start: 0.01, length: 0.09, level: 0.3, attack: 0.001, hold: 0, floor: 0.05, tail: 0.02,
+      noiseSeed: 0.9, filters: [{ type: 'highpass', cutoff: { from: 2500, to: 2500 } }],
+    },
+  ],
+};
+
+const gateLock: SynthSound = {
+  version: 1,
+  level: 0.11,
+  layers: [
+    {
+      id: 'clunk', name: 'Clunk', source: 'tone', wave: 'sine', start: 0, length: 0.11, level: 0.7, attack: 0.002, hold: 0, floor: 0.02, tail: 0.02,
+      pitch: { from: 125, to: 70, arriveAt: 0.06 },
+    },
+    {
+      id: 'knock', name: 'Knock', source: 'noise', start: 0, length: 0.05, level: 0.9, attack: 0.001, hold: 0, floor: 0.02, tail: 0.01,
+      noiseSeed: 0.4,
+      filters: [
+        { type: 'highpass', cutoff: { from: 300, to: 300 } },
+        { type: 'lowpass', cutoff: { from: 1800, to: 1800 } },
+      ],
+    },
+    {
+      id: 'latch', name: 'Latch', source: 'noise', start: 0.045, length: 0.015, level: 0.5, attack: 0, hold: 0, floor: 0.02, tail: 0.004,
+      noiseSeed: 1.2, filters: [{ type: 'highpass', cutoff: { from: 1800, to: 1800 } }],
+    },
+    {
+      id: 'ring', name: 'Ring', source: 'tone', wave: 'sine', start: 0, length: 0.22, level: 0.08, attack: 0.001, hold: 0, floor: 0.01, tail: 0.03,
+      pitch: { from: 520, to: 520 }, harmonics: [{ ratio: 2.31, level: 0.4 }],
+    },
+  ],
+};
+
 export const BUILT_IN_SOUNDS: readonly BuiltInSound[] = [
   { id: 'torch-out', name: 'Torch goes out', where: 'A lintel torch is put out, by a tap or a lost run', sound: torchOut },
   { id: 'torch-lit', name: 'Torch lights', where: 'A lintel torch is lit, by a tap or a retry', sound: torchLit },
@@ -193,6 +300,10 @@ export const BUILT_IN_SOUNDS: readonly BuiltInSound[] = [
   { id: 'scroll-unroll', name: 'Scroll unfurls', where: 'The quest scroll opens (0.65s)', sound: scrollPaper(0.65, 1150, 2900, 0.1, 0.9) },
   { id: 'scroll-land', name: 'Scroll lands', where: 'The rolled scroll presses onto the board', sound: scrollLand },
   { id: 'scroll-sparkle', name: 'Quest sparkle', where: 'A quest unfurls for the first time on a puzzle', sound: scrollSparkle },
+  { id: 'gate-rumble', name: 'Gate moves', where: 'The menu gate is lowering or rising (stretched to fit the move)', sound: gateRumble },
+  { id: 'gate-rung', name: 'Gate rung', where: 'One rung of the menu gate passes the bar (once per rung)', sound: gateRung },
+  { id: 'gate-land', name: 'Gate lands', where: 'The menu gate hits the ground', sound: gateLand },
+  { id: 'gate-lock', name: 'Gate locks', where: 'The menu gate locks at the top', sound: gateLock },
 ];
 
 export function builtInSound(id: BuiltInSoundId): SynthSound {

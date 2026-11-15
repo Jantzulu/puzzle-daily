@@ -256,8 +256,14 @@ class SoundManager {
   // nodes into the destination it is given, starting at `at`.
   public playSynth(build: (context: AudioContext, destination: AudioNode, at: number) => void): void {
     if (!this.settings.enabled) return;
-    // A tap on the page furniture can be the visit's very first gesture.
-    if (!this.audioContext) this.unlock();
+    if (!this.audioContext) {
+      // Nobody has tapped this page yet: the browser would refuse to start
+      // audio, so do not make a context (it would only log a warning). The
+      // page-load sounds that land here are simply not heard.
+      if (typeof navigator !== 'undefined' && navigator.userActivation && !navigator.userActivation.hasBeenActive) return;
+      // A tap on the page furniture can be the visit's very first gesture.
+      this.unlock();
+    }
     const context = this.audioContext;
     const destination = this.sfxGain;
     if (!context || !destination) return;

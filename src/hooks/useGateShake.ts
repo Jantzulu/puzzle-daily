@@ -1,5 +1,9 @@
 import { useLayoutEffect, useRef } from 'react';
 import { announceGateImpact } from '../components/shared/signWobble';
+import { playGateSound } from '../utils/gateSounds';
+
+/** How many rungs the gate has: one per menu row (the sound clinks once for each). */
+const gateRungs = () => document.querySelectorAll('.menu-gate .nav-gate-item').length || 5;
 
 // gate-rumble-raise 1.25s + gate-clunk 0.4s (index.css), with a little slack.
 const RAISE_SHAKE_MS = 1750;
@@ -26,6 +30,9 @@ const CLUNK_AT_MS = 1250;
  * It also ANNOUNCES the two impacts (announceGateImpact), so the signs on
  * the gate and the rail can rattle. They fire under Reduce Motion too:
  * the gate still lands, only the screen shake is held still.
+ * It also plays the gate's SOUND (utils/gateSounds.ts, user ask 2026-11-15):
+ * the rumble, a clink per rung, and the landing or the lock, on the same
+ * moments as the shake. A gate turned back mid-travel has its sound cut.
  */
 export function useGateShake(open: boolean, instantClose: boolean): void {
   const wasOpen = useRef(false);
@@ -33,6 +40,8 @@ export function useGateShake(open: boolean, instantClose: boolean): void {
   // The pending impact. A toggle before it lands cancels it: a gate
   // turned back mid-travel never hits.
   const impactTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Cuts off the sound of the move under way.
+  const cutSound = useRef<(() => void) | null>(null);
 
   useLayoutEffect(() => {
     const body = document.body;
@@ -42,11 +51,16 @@ export function useGateShake(open: boolean, instantClose: boolean): void {
       body.classList.add('gate-lowering');
       if (impactTimer.current) clearTimeout(impactTimer.current);
       impactTimer.current = setTimeout(() => announceGateImpact('slam'), SLAM_AT_MS);
+      cutSound.current?.();
+      cutSound.current = playGateSound('lower', gateRungs());
     } else if (!open && wasOpen.current) {
       body.classList.remove('gate-lowering');
       if (impactTimer.current) clearTimeout(impactTimer.current);
       impactTimer.current = null;
+      cutSound.current?.();
+      cutSound.current = null;
       if (!instantClose) {
+        cutSound.current = playGateSound('raise', gateRungs());
         body.classList.add('gate-raising');
         clearTimer.current = setTimeout(() => body.classList.remove('gate-raising'), RAISE_SHAKE_MS);
         impactTimer.current = setTimeout(() => announceGateImpact('clunk'), CLUNK_AT_MS);
@@ -58,6 +72,7 @@ export function useGateShake(open: boolean, instantClose: boolean): void {
   useLayoutEffect(() => () => {
     if (clearTimer.current) clearTimeout(clearTimer.current);
     if (impactTimer.current) clearTimeout(impactTimer.current);
+    cutSound.current?.();
     document.body.classList.remove('gate-lowering', 'gate-raising');
   }, []);
 }

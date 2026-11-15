@@ -1,5 +1,6 @@
 import { useEffect, type RefObject } from 'react';
 import { resnapWithin } from '../game/panelSkins';
+import { GATE_SETTLE_STRENGTH, gateKnockStrength, playGateKnock } from '../../utils/gateSounds';
 
 // ============================================================================
 // THE LOOSE SIGN — the wobble every sign bolted to the iron shares
@@ -58,6 +59,10 @@ const GATE_IMPACT = 'gate-impact';
 /** Announce an impact at the moment it hits; its force scales every sign's rattle. */
 export const announceGateImpact = (kind: GateImpact, force = 1) => {
   window.dispatchEvent(new CustomEvent<GateImpactDetail>(GATE_IMPACT, { detail: { kind, force } }));
+  // The two smaller locks sound here (utils/gateSounds.ts). The menu
+  // gate's slam and clunk are part of its own move's sound (useGateShake).
+  if (kind === 'settle') playGateKnock(GATE_SETTLE_STRENGTH);
+  else if (kind === 'knock') playGateKnock(gateKnockStrength(force));
 };
 
 /** Up to this much lag per sign, so a row of signs rattles one by one, not as a block. */

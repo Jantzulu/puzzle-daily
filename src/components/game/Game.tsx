@@ -275,15 +275,20 @@ export const Game: React.FC<GameProps> = ({
   // menu-ride rule (index.css) toggles animation:none off again — and a
   // RUNNING settle overrides the ride transition (animations beat
   // transitions), which froze the rail while the gate lowered.
+  // It WAITS for the entry tap (EnterGate, user note 2026-11-15: the settle
+  // has a sound now, and a page plays none before its first tap): until
+  // then the rail is held at the settle's open start (.gate-settle-wait
+  // pauses it), and the tap lets it finish rising and lock.
   const [gateSettling, setGateSettling] = useState(true);
   useEffect(() => {
+    if (!entered) return;
     const id = setTimeout(() => setGateSettling(false), 1150); // settle = 0.35s delay + 0.35s stroke, then the 0.4s screen clunk keyed off this class (lockstep with .gate-settle and .gate-shake-layer:has(.gate-settle))
     // The settle LOCKS as its soft clunk starts (0.35s delay + 0.35s stroke,
     // lockstep with .gate-settle): the rail's plaques rattle (user ask
     // 2026-10-15; shared/signWobble.ts).
     const lock = setTimeout(() => announceGateImpact('settle'), 700);
     return () => { clearTimeout(id); clearTimeout(lock); };
-  }, []);
+  }, [entered]);
   // Reset reveal: masks the instant repaint on reset/retry/replay swaps.
   // Bumping the nonce fades the BOARD CONTENT from 0 -> 1 (WAAPI, no
   // remount). A flat dark cover over the container was tried and flashed
@@ -2282,7 +2287,7 @@ export const Game: React.FC<GameProps> = ({
               // menu carries its own spiked bottom while desktop still
               // docks. z-[40] stays: spikes over the board (z-10),
               // everything under the nav (z-50).
-              <div ref={gateJostleRef} className={`w-full flex flex-col items-center relative md:sticky z-[40] quest-panel-sticky${gateSettling ? ' gate-settle' : ''}`}>
+              <div ref={gateJostleRef} className={`w-full flex flex-col items-center relative md:sticky z-[40] quest-panel-sticky${gateSettling ? ' gate-settle' : ''}${gateSettling && !entered ? ' gate-settle-wait' : ''}`}>
               {/* (The quest banner used to hang here — it now hangs BELOW
                   the board, and only this rail rides sticky.) */}
               {/* Control Panel Row — Lives / Play / Max Turns riding the

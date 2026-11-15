@@ -121,6 +121,33 @@ export function layersLength(sound: SynthSound): number {
   return sound.layers.reduce((end, l) => Math.max(end, l.start + l.length), 0);
 }
 
+/**
+ * The same sound played slower or faster: every time in it multiplied by
+ * `factor` (2 = twice as long). Pitches and colours are untouched. Used to
+ * fit a sound to an animation of a different length.
+ */
+export function stretchSound(sound: SynthSound, factor: number): SynthSound {
+  const slide = (s: Slide): Slide => ({
+    ...s,
+    ...(s.via ? { via: { value: s.via.value, at: s.via.at * factor } } : {}),
+    ...(s.arriveAt !== undefined ? { arriveAt: s.arriveAt * factor } : {}),
+  });
+  return {
+    ...sound,
+    ...(sound.echo ? { echo: { ...sound.echo, time: sound.echo.time * factor } } : {}),
+    layers: sound.layers.map(l => ({
+      ...l,
+      start: l.start * factor,
+      length: l.length * factor,
+      attack: l.attack * factor,
+      hold: l.hold * factor,
+      tail: l.tail * factor,
+      ...(l.pitch ? { pitch: slide(l.pitch) } : {}),
+      ...(l.filters ? { filters: l.filters.map(f => ({ ...f, cutoff: slide(f.cutoff) })) } : {}),
+    })),
+  };
+}
+
 /** How long the whole sound lasts (s), echoes included. */
 export function soundLength(sound: SynthSound): number {
   const echo = sound.echo;
