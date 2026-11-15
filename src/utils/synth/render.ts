@@ -4,7 +4,7 @@
 // measure or draw it. No Math.random: the noise is seeded, so a sound is
 // the same every time and only a change to its numbers changes it.
 
-import type { Slide, SynthLayer, SynthSound } from './types';
+import { MAX_ECHOES, MAX_HARMONICS, type Slide, type SynthLayer, type SynthSound } from './types';
 
 export interface RenderOptions {
   /** Multiplies every pitch and filter position (0.9 = a little lower). */
@@ -83,16 +83,22 @@ function renderLayer(ctx: BaseAudioContext, out: AudioNode, at: number, layer: S
     applySlide(tone.frequency, pitch, scale, t0, layer.length);
     tones.push(tone);
     node = tone;
-    if (layer.overtone && layer.overtone.level > 0) {
-      const partner = ctx.createOscillator();
-      partner.type = layer.wave ?? 'sine';
-      applySlide(partner.frequency, pitch, scale * layer.overtone.ratio, t0, layer.length);
-      const partnerLevel = ctx.createGain();
-      partnerLevel.gain.value = layer.overtone.level;
+    // The notes stacked on the main one, each at its own level.
+    const partners = [...(layer.overtone ? [layer.overtone] : []), ...(layer.harmonics ?? [])]
+      .filter(p => p.level > 0 && p.ratio > 0)
+      .slice(0, MAX_HARMONICS);
+    if (partners.length > 0) {
       const mix = ctx.createGain();
       tone.connect(mix);
-      partner.connect(partnerLevel).connect(mix);
-      tones.push(partner);
+      for (const p of partners) {
+        const partner = ctx.createOscillator();
+        partner.type = layer.wave ?? 'sine';
+        applySlide(partner.frequency, pitch, scale * p.ratio, t0, layer.length);
+        const partnerLevel = ctx.createGain();
+        partnerLevel.gain.value = p.level;
+        partner.connect(partnerLevel).connect(mix);
+        tones.push(partner);
+      }
       node = mix;
     }
     if (layer.vibrato && layer.vibrato.depth > 0 && layer.vibrato.rate > 0) {
@@ -135,6 +141,21 @@ function renderLayer(ctx: BaseAudioContext, out: AudioNode, at: number, layer: S
     node = tremble;
   }
 
+  // A pulse: volume = 1 + (a steady wave * depth).
+  if (layer.pulse && layer.pulse.depth > 0 && layer.pulse.rate > 0) {
+    const pulse = ctx.createGain();
+    pulse.gain.value = 1;
+    const wave = ctx.createOscillator();
+    wave.frequency.value = layer.pulse.rate;
+    const depth = ctx.createGain();
+    depth.gain.value = Math.min(1, layer.pulse.depth);
+    wave.connect(depth).connect(pulse.gain);
+    wave.start(t0);
+    wave.stop(end);
+    node.connect(pulse);
+    node = pulse;
+  }
+
   // Its loudness over time: rise, hold, fade, and a straight tail to silence.
   const gain = ctx.createGain();
   const peak = layer.level;
@@ -161,6 +182,20 @@ export function renderSynthSound(ctx: BaseAudioContext, out: AudioNode, at: numb
   const master = ctx.createGain();
   master.gain.value = sound.level;
   master.connect(out);
+  // Echoes: the whole sound again, later and quieter, a fixed number of
+  // times. Separate delays, not a loop feeding itself: a loop would keep its
+  // nodes alive after the sound has died away.
+  const echo = sound.echo;
+  if (echo && echo.time > 0 && echo.fade > 0) {
+    const repeats = Math.min(MAX_ECHOES, Math.round(echo.repeats));
+    for (let i = 1; i <= repeats; i++) {
+      const delay = ctx.createDelay(echo.time * i + 0.01);
+      delay.delayTime.value = echo.time * i;
+      const level = ctx.createGain();
+      level.gain.value = Math.pow(Math.min(1, echo.fade), i);
+      master.connect(delay).connect(level).connect(out);
+    }
+  }
   for (const layer of sound.layers) {
     if (options.solo ? layer.id !== options.solo : layer.muted) continue;
     renderLayer(ctx, master, at, layer, options);

@@ -71,6 +71,15 @@ export interface SynthLayer {
   pitch?: Slide;
   /** A second, higher note sounded with it: how many times higher, how loud. */
   overtone?: { ratio: number; level: number };
+  /**
+   * More notes stacked on the main one (with `overtone`, up to
+   * MAX_HARMONICS in all): how many times higher each is, and how loud.
+   * Whole numbers blend into one richer note (an organ, a horn); numbers in
+   * between clash (a bell, a clank); a number just off 1 thickens it (a
+   * string section). This is how the sounds of OSRS are built: each of its
+   * tones is up to five such oscillators.
+   */
+  harmonics?: Array<{ ratio: number; level: number }>;
   /** A wobble in pitch: how fast (Hz) and how far (cents; 100 = one semitone). */
   vibrato?: { rate: number; depth: number };
 
@@ -85,16 +94,36 @@ export interface SynthLayer {
   filters?: FilterStage[];
   /** An irregular tremble in loudness: how fast (Hz), how deep, which noise. */
   tremble?: { rate: number; depth: number; seed: number };
+  /** A steady throb in loudness: how fast (Hz), how deep (0-1). */
+  pulse?: { rate: number; depth: number };
 }
+
+/** The most extra notes a tone can carry (the main note plus these). */
+export const MAX_HARMONICS = 4;
 
 export interface SynthSound {
   version: 1;
   /** Overall loudness of the whole sound. */
   level: number;
   layers: SynthLayer[];
+  /**
+   * Echoes of the whole sound: seconds between one and the next, how many,
+   * and how much quieter each is than the one before (0-1).
+   */
+  echo?: { time: number; repeats: number; fade: number };
 }
 
-/** How long the whole sound lasts (s): the end of its last layer. */
-export function soundLength(sound: SynthSound): number {
+/** The most echoes a sound can have. */
+export const MAX_ECHOES = 6;
+
+/** How long the sound's own layers last (s): the end of the last one. */
+export function layersLength(sound: SynthSound): number {
   return sound.layers.reduce((end, l) => Math.max(end, l.start + l.length), 0);
+}
+
+/** How long the whole sound lasts (s), echoes included. */
+export function soundLength(sound: SynthSound): number {
+  const echo = sound.echo;
+  const tail = echo && echo.repeats > 0 && echo.fade > 0 ? echo.time * Math.min(MAX_ECHOES, Math.round(echo.repeats)) : 0;
+  return layersLength(sound) + tail;
 }
