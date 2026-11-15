@@ -48,9 +48,13 @@ function noise(ctx: BaseAudioContext, at: number, offset: number, seconds: numbe
 
 // ---- torch-out: a torch snuffed -------------------------------------------
 // Three layers:
-//   puff     the flame collapsing: a short low breath of air
+//   woosh    the flame going: a breath of air that SWELLS and falls away
 //   hiss     the ember sizzling out: a thin high hiss that fades
 //   crackle  two or three tiny pops in the tail
+// Nothing starts abruptly (user ear 2026-11-14: the first version opened
+// with a low thump that read as a knock, heavier than a torch going out).
+// Both noise layers rise from silence over `swell` seconds, and the woosh
+// sits in the middle of the range, not the bottom.
 // `variant` 1 (the second torch of a pair) is pitched a little lower and
 // pops at different moments, so a pair never sounds like one sound doubled.
 const TORCH_OUT = {
@@ -58,9 +62,9 @@ const TORCH_OUT = {
   level: 0.55,
   /** A layer fades to this fraction of its peak, then to nothing. */
   floor: 0.05,
-  puff: { peak: 1.8, attack: 0.012, length: 0.22, from: 950, to: 240 },
-  hiss: { peak: 0.75, attack: 0.03, hold: 0.07, length: 0.65, from: 5400, to: 2600 },
-  crackle: { peak: 0.35, length: 0.006, times: [[0.16, 0.29, 0.41], [0.19, 0.33]] },
+  woosh: { peak: 0.95, swell: 0.09, length: 0.42, from: 650, crest: 1300, to: 500, q: 1 },
+  hiss: { peak: 0.6, swell: 0.08, hold: 0.06, length: 0.65, from: 5400, to: 2600 },
+  crackle: { peak: 0.26, length: 0.006, times: [[0.21, 0.31, 0.43], [0.24, 0.36]] },
 } as const;
 
 /** The last stretch of a layer: a straight fade to silence, so it never clicks off. */
@@ -73,19 +77,20 @@ const torchOut: Recipe = (ctx, out, at, variant) => {
   master.gain.value = T.level;
   master.connect(out);
 
-  // Puff.
+  // Woosh.
   {
     const filter = ctx.createBiquadFilter();
-    filter.type = 'lowpass';
-    filter.Q.value = 0.7;
-    filter.frequency.setValueAtTime(T.puff.from * pitch, at);
-    filter.frequency.exponentialRampToValueAtTime(T.puff.to * pitch, at + T.puff.length);
+    filter.type = 'bandpass';
+    filter.Q.value = T.woosh.q;
+    filter.frequency.setValueAtTime(T.woosh.from * pitch, at);
+    filter.frequency.exponentialRampToValueAtTime(T.woosh.crest * pitch, at + T.woosh.swell);
+    filter.frequency.exponentialRampToValueAtTime(T.woosh.to * pitch, at + T.woosh.length);
     const gain = ctx.createGain();
-    gain.gain.setValueAtTime(0.0001, at);
-    gain.gain.exponentialRampToValueAtTime(T.puff.peak, at + T.puff.attack);
-    gain.gain.exponentialRampToValueAtTime(T.puff.peak * T.floor, at + T.puff.length - TAIL);
-    gain.gain.linearRampToValueAtTime(0, at + T.puff.length);
-    noise(ctx, at, variant ? 0.37 : 0, T.puff.length, pitch).connect(filter).connect(gain).connect(master);
+    gain.gain.setValueAtTime(0, at);
+    gain.gain.linearRampToValueAtTime(T.woosh.peak, at + T.woosh.swell);
+    gain.gain.exponentialRampToValueAtTime(T.woosh.peak * T.floor, at + T.woosh.length - TAIL);
+    gain.gain.linearRampToValueAtTime(0, at + T.woosh.length);
+    noise(ctx, at, variant ? 0.37 : 0, T.woosh.length, pitch).connect(filter).connect(gain).connect(master);
   }
 
   // Hiss.
@@ -96,9 +101,9 @@ const torchOut: Recipe = (ctx, out, at, variant) => {
     filter.frequency.setValueAtTime(T.hiss.from * pitch, at);
     filter.frequency.exponentialRampToValueAtTime(T.hiss.to * pitch, at + T.hiss.length);
     const gain = ctx.createGain();
-    gain.gain.setValueAtTime(0.0001, at);
-    gain.gain.exponentialRampToValueAtTime(T.hiss.peak, at + T.hiss.attack);
-    gain.gain.setValueAtTime(T.hiss.peak, at + T.hiss.attack + T.hiss.hold);
+    gain.gain.setValueAtTime(0, at);
+    gain.gain.linearRampToValueAtTime(T.hiss.peak, at + T.hiss.swell);
+    gain.gain.setValueAtTime(T.hiss.peak, at + T.hiss.swell + T.hiss.hold);
     gain.gain.exponentialRampToValueAtTime(T.hiss.peak * T.floor, at + T.hiss.length - TAIL);
     gain.gain.linearRampToValueAtTime(0, at + T.hiss.length);
     noise(ctx, at, variant ? 0.71 : 0.5, T.hiss.length).connect(filter).connect(gain).connect(master);
