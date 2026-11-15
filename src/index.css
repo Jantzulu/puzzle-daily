@@ -4884,3 +4884,54 @@ button.dir-picker__tab:not(.dir-picker__tab--active) .dir-picker__tab-text {
   30% { opacity: 0.7; }
   36%, 100% { transform: translateY(calc(var(--fall) * var(--z) * 1px)); opacity: 0; }
 }
+
+/* ============================================
+   TAP TO ENTER (components/game/EnterGate.tsx, user pick 2026-11-15)
+   The card that stands where the board will be until the first tap: the
+   puzzle's date and a quiet "Tap to enter". Fades only (the settled Reduce
+   Motion scope: fades always run). Tight 1px carve shadows, never a blur.
+   ============================================ */
+.enter-gate {
+  -webkit-tap-highlight-color: transparent;
+  animation: enter-gate-in 0.5s ease-out both;
+}
+
+.enter-gate-date {
+  font-family: var(--theme-font-family-heading, var(--theme-font-family, 'Almendra', serif));
+  font-size: 26px;
+  line-height: 30px;
+  color: #f2e0b5;
+  text-align: center;
+  text-wrap: balance;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.85);
+}
+
+@media (min-width: 768px) {
+  .enter-gate-date {
+    font-size: 32px;
+    line-height: 36px;
+  }
+}
+
+.enter-gate-rule {
+  width: 84px;
+  height: 1px;
+  background: linear-gradient(to right, transparent, #ebc097, transparent);
+  opacity: 0.6;
+}
+
+.enter-gate-hint {
+  color: #ebc097;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.85);
+  animation: enter-gate-hint 1.8s ease-in-out infinite;
+}
+
+@keyframes enter-gate-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes enter-gate-hint {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}

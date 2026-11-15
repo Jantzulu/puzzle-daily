@@ -30,6 +30,8 @@ import { questSkinFrameActive, questSkinOrnamentsActive, questSkinPlateActive, q
 import { useCrispSnap } from './panelSkins';
 import { QUEST_FLIGHT_MS, QUEST_TOSS_AFTER_ROLL_MS, QUEST_SPAWN_DELAY_MS, QUEST_HINT_BEAT_MS, QUEST_LAND_AT_S, QUEST_SPARKLE_AT_S, useQuestFloatPlacement, useQuestPress } from './questFloat';
 import { playChromeSound } from '../../utils/chromeSounds';
+import { EnterGate } from './EnterGate';
+import { pageAlreadyEntered } from './enterGateState';
 import { playGameSound, playVictoryMusic, playDefeatMusic, playBackgroundMusic, stopMusic } from '../../utils/gameSounds';
 import { loadThemeAssets, subscribeToThemeAssets, type ThemeAssets } from '../../utils/themeAssets';
 import { WarningModal } from '../shared/WarningModal';
@@ -258,7 +260,13 @@ export const Game: React.FC<GameProps> = ({
   // and the clocks burned behind the loading overlay — at reveal the
   // entities were already marked spawned and their entrances never played.
   const [spritesReadyPuzzleId, setSpritesReadyPuzzleId] = useState<string | null>(null);
-  const spritesReady = spritesReadyPuzzleId === currentPuzzle.id;
+  const spritesLoaded = spritesReadyPuzzleId === currentPuzzle.id;
+  // TAP TO ENTER (EnterGate.tsx, user pick 2026-11-15): on a page nobody
+  // has touched yet, the board and the quest scroll wait for the first tap
+  // (the tap that lets the browser play their sounds). `spritesReady` means
+  // "show the board" everywhere below, so it waits for both.
+  const [entered, setEntered] = useState(pageAlreadyEntered);
+  const spritesReady = spritesLoaded && entered;
   // Count of puzzle sprites that failed to preload. Non-zero shows a small
   // retry pill on the board instead of rendering missing art silently.
   const [failedSpriteCount, setFailedSpriteCount] = useState(0);
@@ -2635,7 +2643,11 @@ export const Game: React.FC<GameProps> = ({
               >
                 <ResponsiveGameBoard gameState={gameState} onTileClick={handleTileClick} onProjectileKill={handleProjectileKill} replayFrozen={replayMode && !replayPlaying && !replayStepAnimating} entrancesRevealed={spritesReady} placementGhost={placementGhost} />
               </div>
-              {!spritesReady && (
+              {!entered && (
+                // Art keeps loading behind the card.
+                <EnterGate date={currentPuzzle.date} fallbackTitle={currentPuzzle.name} onEnter={() => setEntered(true)} />
+              )}
+              {entered && !spritesLoaded && (
                 // No fill: the page background shows through while loading —
                 // the board itself sits at opacity 0 underneath.
                 <div className="absolute inset-0 flex items-center justify-center">
