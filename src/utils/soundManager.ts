@@ -2,6 +2,7 @@
 // Handles sound effects, music, and volume controls
 
 import type { SoundSettings, SoundTrigger } from '../types/game';
+import { getMusicBlob } from './musicCache';
 
 // Default settings
 const DEFAULT_SETTINGS: SoundSettings = {
@@ -30,6 +31,13 @@ class SoundManager {
   private musicElement: HTMLAudioElement | null = null;
   private musicNode: MediaElementAudioSourceNode | null = null;
   private musicSrc: string | null = null;
+  // The background track is played from a copy saved on the device
+  // (musicCache.ts). While that copy is being fetched nothing sounds yet:
+  // musicLoading names the track on its way, and musicRun changes whenever
+  // the music is halted, so a load that finishes late knows it was dropped.
+  private musicLoading: string | null = null;
+  private musicRun = 0;
+  private musicObjectUrl: string | null = null;
 
   // Cache for decoded audio buffers from base64
   private decodingPromises: Map<string, Promise<AudioBuffer>> = new Map();
@@ -170,7 +178,7 @@ class SoundManager {
     if (!enabled) {
       // Silence it, but remember what was wanted.
       this.haltMusic();
-    } else if (this.wantedMusic && !this.musicElement) {
+    } else if (this.wantedMusic && !this.musicElement && !this.musicLoading) {
       void this.playMusic(this.wantedMusic.src, this.wantedMusic.loop);
     }
   }
@@ -253,8 +261,10 @@ class SoundManager {
     if (loop) this.wantedMusic = { src, loop };
     if (!this.settings.enabled) return;
 
-    // Already playing this very track: leave it be (callers re-request the
-    // background music whenever assets or the puzzle change).
+    // Already playing this very track, or already fetching it: leave it be
+    // (callers re-request the background music whenever assets or the
+    // puzzle change).
+    if (loop && this.musicLoading === src) return;
     if (loop && this.musicElement && this.musicSrc === src && !this.musicElement.paused) return;
 
     // No audio context until the first gesture: wait for unlock().
@@ -264,13 +274,32 @@ class SoundManager {
     }
 
     this.haltMusic();
+
+    // The looping background track plays from this device's saved copy,
+    // downloaded once (musicCache.ts). On the very first visit that means
+    // the music starts when the download finishes. If no copy can be had
+    // (offline, no Cache Storage) it streams from the URL instead, as a
+    // stinger always does.
+    let playable = src;
+    if (loop && /^https?:/i.test(src)) {
+      const run = this.musicRun;
+      this.musicLoading = src;
+      const blob = await getMusicBlob(src);
+      if (run !== this.musicRun) return; // halted or replaced meanwhile
+      this.musicLoading = null;
+      if (blob) {
+        this.musicObjectUrl = URL.createObjectURL(blob);
+        playable = this.musicObjectUrl;
+      }
+    }
+
     const element = new Audio();
     // Needed to route a file from another origin through the audio graph
     // (the host must allow it; Supabase Storage does).
-    if (/^https?:/i.test(src)) element.crossOrigin = 'anonymous';
+    if (/^https?:/i.test(playable)) element.crossOrigin = 'anonymous';
     element.loop = loop;
     element.preload = 'auto';
-    element.src = src;
+    element.src = playable;
     try {
       this.musicNode = this.audioContext.createMediaElementSource(element);
       this.musicNode.connect(this.musicGain);
@@ -309,6 +338,8 @@ class SoundManager {
 
   // Stop whatever is sounding, without forgetting what was wanted.
   private haltMusic(): void {
+    this.musicRun++;
+    this.musicLoading = null;
     const element = this.musicElement;
     this.musicElement = null;
     this.musicSrc = null;
@@ -321,6 +352,10 @@ class SoundManager {
     if (this.musicNode) {
       try { this.musicNode.disconnect(); } catch { /* already disconnected */ }
       this.musicNode = null;
+    }
+    if (this.musicObjectUrl) {
+      URL.revokeObjectURL(this.musicObjectUrl);
+      this.musicObjectUrl = null;
     }
   }
 
