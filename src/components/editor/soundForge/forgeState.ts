@@ -32,7 +32,7 @@ export interface ForgeState {
 
 export type ForgeAction =
   | { type: 'open'; key: SoundKey; name: string; sound: SynthSound }
-  | { type: 'edit'; key: SoundKey; sound: SynthSound; tag: string; time: number }
+  | { type: 'edit'; key: SoundKey; sound: SynthSound; tag: string; time: number; /** One step however long it takes (a drag). */ sticky?: boolean }
   | { type: 'rename'; key: SoundKey; name: string }
   | { type: 'undo'; key: SoundKey }
   | { type: 'redo'; key: SoundKey }
@@ -54,7 +54,7 @@ export function forgeReducer(state: ForgeState, action: ForgeAction): ForgeState
     case 'edit': {
       if (!current) return state;
       const s = state.stamp;
-      const sameStep = !!s && s.key === action.key && s.tag === action.tag && action.time - s.time < SAME_STEP_MS;
+      const sameStep = !!s && s.key === action.key && s.tag === action.tag && (!!action.sticky || action.time - s.time < SAME_STEP_MS);
       const past = sameStep ? current.past : [...current.past, current.sound].slice(-HISTORY);
       return {
         work: { ...state.work, [action.key]: { ...current, sound: action.sound, past, future: [] } },

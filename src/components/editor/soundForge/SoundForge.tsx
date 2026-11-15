@@ -308,6 +308,12 @@ export const SoundForge: React.FC = () => {
               if (l) editLayer({ ...l, muted: !l.muted }, once('mute'));
             }}
             onSolo={id => play(sound, id)}
+            onDragLayer={(id, change, dragId) => {
+              dispatch({
+                type: 'edit', key: selectedKey, tag: dragId, time: performance.now(), sticky: true,
+                sound: { ...sound, layers: sound.layers.map(l => (l.id === id ? { ...l, ...change } : l)) },
+              });
+            }}
           />
 
           <div className="flex flex-wrap items-center gap-1.5">

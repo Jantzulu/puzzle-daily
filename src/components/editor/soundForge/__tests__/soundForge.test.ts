@@ -69,6 +69,19 @@ describe('forge editing state', () => {
     expect(s.work[key].past).toHaveLength(3);
   });
 
+  it('a drag is one undo step however long it takes', () => {
+    let s = start();
+    const original = s.work[key].sound.level;
+    const drag = (state: ForgeState, level: number, time: number) =>
+      forgeReducer(state, { type: 'edit', key, sound: withLevel(state.work[key].sound, level), tag: 'drag-1', time, sticky: true });
+    s = drag(s, 0.3, 1000);
+    s = drag(s, 0.4, 9000); // the finger rested for eight seconds
+    s = drag(s, 0.5, 30000);
+    expect(s.work[key].past).toHaveLength(1);
+    s = forgeReducer(s, { type: 'undo', key });
+    expect(s.work[key].sound.level).toBe(original);
+  });
+
   it('an edit after an undo drops the redo', () => {
     let s = start();
     s = edit(s, 0.3, 'a', 1000);
