@@ -23,6 +23,51 @@ const Toggle: React.FC<{ on: boolean; onClick: () => void; label: string }> = ({
   </button>
 );
 
+// Defined OUT HERE, not inside SoundSettings. Inside, every change made a
+// brand-new component, so React threw the <input> away and built another on
+// each step of a drag: a finger lost the slider after the first movement
+// (user report 2026-11-15: the sliders "do not drag nicely" on mobile).
+//
+// The input fills a 28px-tall box so a finger has something to land on; the
+// 8px track is drawn under it. touch-action pan-y: a sideways drag belongs
+// to the slider, an up-and-down one still scrolls the sheet.
+const VolumeSlider: React.FC<{
+  label: string;
+  value: number;
+  onChange: (value: number) => void;
+  disabled?: boolean;
+}> = ({ label, value, onChange, disabled }) => (
+  <div>
+    <div className="flex justify-between items-center">
+      <span className="text-sm text-parchment-300">{label}</span>
+      <span className="text-xs text-stone-500">{Math.round(value * 100)}%</span>
+    </div>
+    <div className={`relative h-7${disabled ? ' opacity-50' : ''}`}>
+      <div
+        aria-hidden="true"
+        className="absolute inset-x-0 top-1/2 h-2 -translate-y-1/2 rounded-lg"
+        style={{
+          background: disabled
+            ? '#374151'
+            : `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${value * 100}%, #374151 ${value * 100}%, #374151 100%)`,
+        }}
+      />
+      <input
+        type="range"
+        min="0"
+        max="1"
+        step="0.01"
+        value={value}
+        onChange={(e) => onChange(parseFloat(e.target.value))}
+        disabled={disabled}
+        aria-label={label}
+        className="absolute inset-0 w-full h-full m-0 appearance-none bg-transparent cursor-pointer"
+        style={{ touchAction: 'pan-y' }}
+      />
+    </div>
+  </div>
+);
+
 export const SoundSettings: React.FC = () => {
   const [settings, setSettings] = useState<SoundSettingsType>(soundManager.getSettings());
   const [hapticsOn, setHapticsOn] = useState(isHapticsEnabledByPlayer());
@@ -68,37 +113,6 @@ export const SoundSettings: React.FC = () => {
     if (next) vibratePreview('tap');
   };
 
-  const VolumeSlider: React.FC<{
-    label: string;
-    value: number;
-    onChange: (value: number) => void;
-    disabled?: boolean;
-  }> = ({ label, value, onChange, disabled }) => (
-    <div className="space-y-1">
-      <div className="flex justify-between items-center">
-        <span className="text-sm text-parchment-300">{label}</span>
-        <span className="text-xs text-stone-500">{Math.round(value * 100)}%</span>
-      </div>
-      <input
-        type="range"
-        min="0"
-        max="1"
-        step="0.01"
-        value={value}
-        onChange={(e) => onChange(parseFloat(e.target.value))}
-        disabled={disabled}
-        className={`w-full h-2 rounded-lg appearance-none cursor-pointer ${
-          disabled ? 'bg-stone-700 opacity-50' : 'bg-stone-700'
-        }`}
-        style={{
-          background: disabled
-            ? '#374151'
-            : `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${value * 100}%, #374151 ${value * 100}%, #374151 100%)`,
-        }}
-      />
-    </div>
-  );
-
   return (
     <>
       <button
@@ -130,22 +144,19 @@ export const SoundSettings: React.FC = () => {
           </div>
         </div>
 
-        <div className="p-3 space-y-4">
-          {/* eslint-disable-next-line react-hooks/static-components */}
+        <div className="p-3 space-y-1">
           <VolumeSlider
             label="Master Volume"
             value={settings.masterVolume}
             onChange={handleMasterChange}
             disabled={!settings.enabled}
           />
-          {/* eslint-disable-next-line react-hooks/static-components */}
           <VolumeSlider
             label="Music"
             value={settings.musicVolume}
             onChange={handleMusicChange}
             disabled={!settings.enabled}
           />
-          {/* eslint-disable-next-line react-hooks/static-components */}
           <VolumeSlider
             label="Sound Effects"
             value={settings.sfxVolume}
