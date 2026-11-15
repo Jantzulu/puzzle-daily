@@ -62,6 +62,13 @@ export const QUEST_HINT_BEAT_MS = 100;
  */
 export const QUEST_PRESS_MIN_MS = 100;
 /**
+ * THE LANDING'S SOUND (user ask 2026-11-15): the rolled scroll stamps onto
+ * the board when it first appears (index.css quest-plate-stamp, 0.4s). The
+ * impact sounds this many SECONDS into that stamp: it bottoms out at its
+ * 60% mark (0.24s), and the sound leads the eye by a touch.
+ */
+export const QUEST_LAND_AT_S = 0.2;
+/**
  * Where the open scroll's BOX top sits below the board's top edge — resting
  * close under the portcullis (user rounds 3 and 10). Measured column by
  * column in the pane (375 wide): the tightest clearance is where two spike

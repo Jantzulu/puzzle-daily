@@ -14,7 +14,7 @@
 
 import { soundManager } from './soundManager';
 
-export type ChromeSound = 'torch-out' | 'torch-lit' | 'scroll-roll' | 'scroll-unroll';
+export type ChromeSound = 'torch-out' | 'torch-lit' | 'scroll-roll' | 'scroll-unroll' | 'scroll-land';
 
 type Recipe = (ctx: BaseAudioContext, out: AudioNode, at: number, variant: number) => void;
 
@@ -249,11 +249,64 @@ const scrollPaper = (which: 'roll' | 'unroll'): Recipe => (ctx, out, at) => {
   noise(ctx, at, which === 'roll' ? 1.2 : 0.1, P.length).connect(filter).connect(tremble).connect(gain).connect(master);
 };
 
+// ---- scroll-land: the rolled scroll pressed onto the board ----------------
+// The scroll arrives rolled up and stamps into place before it unfurls
+// (index.css quest-plate-stamp); the user asked for an impact there
+// (2026-11-15). Two layers, both over in a fraction of a second:
+//   thud  a low note that drops in pitch: the weight
+//   slap  a short burst of mid noise: wood and parchment meeting stone
+// This one IS a real impact, so it starts at once (the torch's "knock" was
+// wrong because a torch going out is not one). Phone speakers cannot play
+// the thud's low note; the slap is what carries there.
+const SCROLL_LAND = {
+  level: 0.14,
+  thud: { peak: 0.7, attack: 0.004, length: 0.16, from: 150, to: 62 },
+  slap: { peak: 1.2, attack: 0.002, length: 0.07, tone: 900, q: 0.8 },
+} as const;
+
+const scrollLand: Recipe = (ctx, out, at) => {
+  const T = SCROLL_LAND;
+  const master = ctx.createGain();
+  master.gain.value = T.level;
+  master.connect(out);
+
+  // Thud.
+  {
+    const tone = ctx.createOscillator();
+    tone.type = 'sine';
+    tone.frequency.setValueAtTime(T.thud.from, at);
+    tone.frequency.exponentialRampToValueAtTime(T.thud.to, at + T.thud.length * 0.6);
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0, at);
+    gain.gain.linearRampToValueAtTime(T.thud.peak, at + T.thud.attack);
+    gain.gain.exponentialRampToValueAtTime(T.thud.peak * 0.02, at + T.thud.length - 0.02);
+    gain.gain.linearRampToValueAtTime(0, at + T.thud.length);
+    tone.connect(gain).connect(master);
+    tone.start(at);
+    tone.stop(at + T.thud.length);
+  }
+
+  // Slap.
+  {
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.Q.value = T.slap.q;
+    filter.frequency.value = T.slap.tone;
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0, at);
+    gain.gain.linearRampToValueAtTime(T.slap.peak, at + T.slap.attack);
+    gain.gain.exponentialRampToValueAtTime(T.slap.peak * 0.02, at + T.slap.length - 0.01);
+    gain.gain.linearRampToValueAtTime(0, at + T.slap.length);
+    noise(ctx, at, 1.6, T.slap.length).connect(filter).connect(gain).connect(master);
+  }
+};
+
 const RECIPES: Record<ChromeSound, Recipe> = {
   'torch-out': torchOut,
   'torch-lit': torchLit,
   'scroll-roll': scrollPaper('roll'),
   'scroll-unroll': scrollPaper('unroll'),
+  'scroll-land': scrollLand,
 };
 
 /** Draw a chrome sound into any audio context (used for measuring it). */
@@ -262,9 +315,10 @@ export function renderChromeSound(sound: ChromeSound, ctx: BaseAudioContext, out
 }
 
 /**
- * Play a chrome sound now. Silent when sound is off, or when audio has not
- * been woken by a tap yet.
+ * Play a chrome sound now, or `delay` seconds from now (to land on a beat
+ * partway through an animation). Silent when sound is off, or when audio has
+ * not been woken by a tap yet.
  */
-export function playChromeSound(sound: ChromeSound, variant = 0): void {
-  soundManager.playSynth((ctx, out, at) => RECIPES[sound](ctx, out, at, variant));
+export function playChromeSound(sound: ChromeSound, variant = 0, delay = 0): void {
+  soundManager.playSynth((ctx, out, at) => RECIPES[sound](ctx, out, at + delay, variant));
 }

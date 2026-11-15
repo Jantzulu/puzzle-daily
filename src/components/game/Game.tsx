@@ -28,7 +28,7 @@ import { TapHintChip } from './TapHintChip';
 import { QuestBoxFrame, QuestOrnaments, QuestPlate, QuestDivider } from './QuestBoxSkin';
 import { questSkinFrameActive, questSkinOrnamentsActive, questSkinPlateActive, questSkinDividerActive, questFrameBorders, questPlateStraddle } from './questBoxSkinData';
 import { useCrispSnap } from './panelSkins';
-import { QUEST_FLIGHT_MS, QUEST_TOSS_AFTER_ROLL_MS, QUEST_SPAWN_DELAY_MS, QUEST_HINT_BEAT_MS, useQuestFloatPlacement, useQuestPress } from './questFloat';
+import { QUEST_FLIGHT_MS, QUEST_TOSS_AFTER_ROLL_MS, QUEST_SPAWN_DELAY_MS, QUEST_HINT_BEAT_MS, QUEST_LAND_AT_S, useQuestFloatPlacement, useQuestPress } from './questFloat';
 import { playChromeSound } from '../../utils/chromeSounds';
 import { playGameSound, playVictoryMusic, playDefeatMusic, playBackgroundMusic, stopMusic } from '../../utils/gameSounds';
 import { loadThemeAssets, subscribeToThemeAssets, type ThemeAssets } from '../../utils/themeAssets';
@@ -597,13 +597,23 @@ export const Game: React.FC<GameProps> = ({
     const id = currentPuzzle.id;
     questScrollTimers.current.push(window.setTimeout(() => setQuestHintFor(id), QUEST_HINT_BEAT_MS));
   };
-  // The unfurl's sound (chromeSounds.ts) starts with the unfurl itself: the
-  // same animation runs when the scroll first opens on a puzzle (after its
-  // CSS delay) and every time it reopens, so its animationstart covers both.
-  // A browser only lets a page make sound after a tap, so on a fresh page
-  // load the very first unfurl is usually silent.
-  const onQuestUnfurlStart = (e: React.AnimationEvent<HTMLDivElement>) => {
-    if (e.target === e.currentTarget && e.animationName === 'quest-scroll-content') playChromeSound('scroll-unroll');
+  // The scroll's sounds (chromeSounds.ts) start from its own animations, so
+  // they stay in step with what is seen. Heard on the anchor as they bubble:
+  //   the STAMP (quest-plate-stamp on .quest-scroll-stamp): the rolled scroll
+  //     presses onto the board when it first appears on a puzzle; the impact
+  //     lands QUEST_LAND_AT_S in, where the stamp bottoms out (its 60% mark).
+  //   the UNFURL (quest-scroll-content on .quest-stage-scroll): on that first
+  //     appearance (after its CSS delay) and on every reopen.
+  // Not when it arrives already rolled up in the hero header (those
+  // animations are cut to nothing). A browser only lets a page make sound
+  // after a tap, so on a fresh page load both are usually silent.
+  const onQuestAnimationStart = (e: React.AnimationEvent<HTMLDivElement>) => {
+    const classes = (e.target as HTMLElement).classList;
+    if (e.animationName === 'quest-plate-stamp' && classes.contains('quest-scroll-stamp') && !questArriveClosed) {
+      playChromeSound('scroll-land', 0, QUEST_LAND_AT_S);
+    } else if (e.animationName === 'quest-scroll-content' && classes.contains('quest-stage-scroll')) {
+      playChromeSound('scroll-unroll');
+    }
   };
   const questFloatStyle = useQuestFloatPlacement(questFloatOn && questBoxShown && questSpawned, questMini, questFloatRef);
   // Opens on EVERY visit (user call, round 2): a fresh mount starts open;
@@ -3206,6 +3216,7 @@ export const Game: React.FC<GameProps> = ({
               <div
                 className={`quest-box-anchor w-fit max-w-2xl mx-auto relative z-[45] -mt-[3px] mb-1${questAnchorPhaseClass}${questArriveClosed ? ' quest-arrive-closed' : ''}`}
                 onClick={questFloatOn && !questMini ? onQuestStageClick : undefined}
+                onAnimationStart={questFloatOn ? onQuestAnimationStart : undefined}
                 onPointerDown={questPress.onPointerDown}
                 onPointerLeave={questPress.onPointerLeave}
               >
@@ -3337,7 +3348,6 @@ export const Game: React.FC<GameProps> = ({
                     entirely while the scroll toggle rests closed. */}
                 <div
                   className={questSkinFrameActive ? 'quest-stage-scroll relative' : 'quest-stage-box relative'}
-                  onAnimationStart={questFloatOn ? onQuestUnfurlStart : undefined}
                   onAnimationEnd={questFloatOn ? onQuestUnfurlEnd : undefined}
                 >
                 <div className="quest-text-c1">
