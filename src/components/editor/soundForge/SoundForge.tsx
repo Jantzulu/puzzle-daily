@@ -7,11 +7,11 @@ import { chromeSoundAssetId } from '../../../utils/chromeSounds';
 import { clearSoundCache } from '../../../utils/gameSounds';
 import { soundManager } from '../../../utils/soundManager';
 import { BUILT_IN_SOUNDS } from '../../../utils/synth/builtIn';
-import { soundLength, type SynthLayer, type SynthSound } from '../../../utils/synth/types';
-import { ForgeChip, ForgeSection, ForgeSlider } from './ForgeControls';
+import { MAX_ECHOES, layersLength, soundLength, type SynthLayer, type SynthSound } from '../../../utils/synth/types';
+import { ForgeChip, ForgeSection, ForgeSlider, ForgeToggle } from './ForgeControls';
 import { ForgeTimeline, LoudnessMeter } from './ForgeTimeline';
 import { LayerPanel } from './LayerPanel';
-import { LAYER_STARTERS, SOUND_STARTERS, TIPS, cloneSound, layerFromStarter, newLayerId, nudgeLayer } from './forgeModel';
+import { LAYER_GROUPS, LAYER_STARTERS, SOUND_GROUPS, SOUND_STARTERS, TIPS, cloneSound, layerFromStarter, newLayerId, nudgeLayer } from './forgeModel';
 import { builtInKey, forgeReducer, initialForgeState, isUnsaved, keyAssetId, keyBuiltInId, mineKey, savedFor, type SoundKey } from './forgeState';
 import { auditionSound, pictureSound, type SoundPicture } from './soundPreview';
 
@@ -245,13 +245,20 @@ export const SoundForge: React.FC = () => {
           </div>
           <div className="border border-stone-700 rounded">
             <div className="px-2 py-1.5 bg-stone-800 text-xs uppercase text-stone-400">New sound from</div>
-            <div className="p-2 flex flex-wrap gap-1.5">
-              {SOUND_STARTERS.map(s => (
-                <ForgeChip key={s.id} onClick={() => startNew(s.label, s.make())} title={s.hint}>{s.label}</ForgeChip>
-              ))}
+            <div className="p-2 space-y-1.5">
               <ForgeChip onClick={() => startNew(`${name} copy`, cloneSound(sound))} title="A copy of the sound you are looking at">Copy of this</ForgeChip>
+              {SOUND_GROUPS.map((group, i) => (
+                <details key={group} open={i < 2}>
+                  <summary className="text-xs text-stone-400 cursor-pointer py-0.5">{group}</summary>
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {SOUND_STARTERS.filter(s => s.group === group).map(s => (
+                      <ForgeChip key={s.id} onClick={() => startNew(s.label, s.make())} title={s.hint}>{s.label}</ForgeChip>
+                    ))}
+                  </div>
+                </details>
+              ))}
             </div>
-            <div className="px-2 pb-2 text-[11px] text-stone-500">Rough sketches to start from, not finished sounds.</div>
+            <div className="px-2 pb-2 text-[11px] text-stone-500">Rough sketches to start from, never tuned by ear. Hover one to see what it is made of.</div>
           </div>
         </div>
 
@@ -263,6 +270,11 @@ export const SoundForge: React.FC = () => {
             </div>
           )}
 
+          {/* The controls, the meter and the picture stay in view while the
+              layer's numbers scroll under them (user ask 2026-11-15: no
+              scrolling away from the preview to change a pitch). On a phone
+              they scroll with the page: there is not the height to pin them. */}
+          <div className="space-y-2 md:sticky md:top-0 md:z-20 md:py-2" style={{ backgroundColor: 'var(--theme-bg-primary, #0a0805)' }}>
           <div className="flex flex-wrap items-center gap-2">
             {builtIn ? (
               <div className="text-base text-parchment-100 font-medium">{builtIn.name}</div>
@@ -285,17 +297,6 @@ export const SoundForge: React.FC = () => {
             </span>
           </div>
 
-          <div className="text-xs text-stone-400">
-            {builtIn ? (
-              <>
-                Plays when: {builtIn.where.toLowerCase()}. It ships with the game. Saving keeps your version on this device, where the game
-                uses it straight away; to send it to players, use Copy recipe and pass it on.
-              </>
-            ) : (
-              <>One of your sounds. Once saved it can be picked in any sound slot (spells, enemies, the global sounds) and syncs like other assets.</>
-            )}
-          </div>
-
           <LoudnessMeter picture={picture} />
 
           <ForgeTimeline
@@ -315,21 +316,38 @@ export const SoundForge: React.FC = () => {
               });
             }}
           />
+          </div>
 
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="text-xs text-stone-400 mr-1">Add a layer:</span>
-            {LAYER_STARTERS.map(s => (
-              <ForgeChip
-                key={s.id}
-                title={s.hint}
-                onClick={() => {
-                  const added = layerFromStarter(s.id);
-                  edit({ ...sound, layers: [...sound.layers, added] }, once('add'));
-                  setSelectedLayerId(added.id);
-                }}
-              >
-                + {s.label}
-              </ForgeChip>
+          <div className="text-xs text-stone-400">
+            {builtIn ? (
+              <>
+                Plays when: {builtIn.where.toLowerCase()}. It ships with the game. Saving keeps your version on this device, where the game
+                uses it straight away; to send it to players, use Copy recipe and pass it on.
+              </>
+            ) : (
+              <>One of your sounds. Once saved it can be picked in any sound slot (spells, enemies, the global sounds) and syncs like other assets.</>
+            )}
+          </div>
+
+          <div className="border border-stone-700 rounded px-2 py-1.5 space-y-1">
+            <div className="text-xs text-stone-400">Add a layer</div>
+            {LAYER_GROUPS.map(group => (
+              <div key={group} className="flex flex-wrap items-center gap-1.5">
+                <span className="w-20 shrink-0 text-[11px] text-stone-500">{group}</span>
+                {LAYER_STARTERS.filter(s => s.group === group).map(s => (
+                  <ForgeChip
+                    key={s.id}
+                    title={s.hint}
+                    onClick={() => {
+                      const added = layerFromStarter(s.id);
+                      edit({ ...sound, layers: [...sound.layers, added] }, once('add'));
+                      setSelectedLayerId(added.id);
+                    }}
+                  >
+                    + {s.label}
+                  </ForgeChip>
+                ))}
+              </div>
             ))}
           </div>
 
@@ -392,6 +410,40 @@ export const SoundForge: React.FC = () => {
                   onChange={level => edit({ ...sound, level }, 'sound-level')}
                 />
                 <div className="text-[11px] text-stone-500 tabular-nums">Length: {Math.round(soundLength(sound) * 1000)} ms · {sound.layers.length} layer{sound.layers.length === 1 ? '' : 's'}</div>
+              </ForgeSection>
+
+              <ForgeSection
+                title="Echo"
+                term="delay"
+                hint="The whole sound again, later and quieter. A short gap sounds like a small stone room; a long one like a cavern. Good for magic and for anything far away."
+                right={
+                  <ForgeToggle
+                    label="On" on={!!sound.echo}
+                    onChange={on => edit({ ...sound, echo: on ? { time: 0.12, repeats: 3, fade: 0.45 } : undefined }, once('echo'))}
+                  />
+                }
+              >
+                {sound.echo ? (
+                  <>
+                    <ForgeSlider
+                      label="Gap" stacked value={sound.echo.time} min={0.02} max={0.6} scale="log" show={{ factor: 1000, unit: 'ms', decimals: 0 }}
+                      onChange={time => edit({ ...sound, echo: { ...sound.echo!, time } }, 'echo-time')}
+                    />
+                    <ForgeSlider
+                      label="How many" stacked value={sound.echo.repeats} min={1} max={MAX_ECHOES} show={{ decimals: 0 }}
+                      onChange={repeats => edit({ ...sound, echo: { ...sound.echo!, repeats: Math.round(repeats) } }, 'echo-repeats')}
+                    />
+                    <ForgeSlider
+                      label="Each one keeps" stacked value={sound.echo.fade} min={0.05} max={0.9} show={{ factor: 100, unit: '%', decimals: 0 }}
+                      onChange={fade => edit({ ...sound, echo: { ...sound.echo!, fade } }, 'echo-fade')}
+                    />
+                    <div className="text-[11px] text-stone-500 tabular-nums">
+                      The sound itself is {Math.round(layersLength(sound) * 1000)} ms; the echoes add {Math.round((soundLength(sound) - layersLength(sound)) * 1000)} ms.
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-xs text-stone-500">Off.</div>
+                )}
               </ForgeSection>
 
               <ForgeSection title="Keep or share">

@@ -176,6 +176,7 @@ export const ForgeTimeline: React.FC<{
           <span className="absolute top-0.5 right-1 text-[9px] text-stone-600">ms</span>
         </div>
       </div>
+      <div className="md:max-h-[38vh] md:overflow-y-auto">
       {sound.layers.map(layer => {
         const selected = layer.id === selectedId;
         const points = envelopePoints(layer)
@@ -256,6 +257,7 @@ export const ForgeTimeline: React.FC<{
           </div>
         );
       })}
+      </div>
       <div className="flex flex-wrap gap-x-3 px-2 py-1 border-t border-stone-700/60 text-[10px] text-stone-500 bg-stone-900">
         <span><span className="inline-block w-2 h-2 rounded-sm align-middle mr-1" style={{ background: '#a78bfa' }} />noise</span>
         <span><span className="inline-block w-2 h-2 rounded-sm align-middle mr-1" style={{ background: '#d4a574' }} />tone</span>

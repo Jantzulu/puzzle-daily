@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { BUILT_IN_SOUNDS } from '../../../../utils/synth/builtIn';
-import { soundLength, type SynthSound } from '../../../../utils/synth/types';
-import { LAYER_STARTERS, SOUND_STARTERS, envelopePoints, layerFromStarter, noteName, nudgeLayer } from '../forgeModel';
+import { MAX_HARMONICS, layersLength, soundLength, type SynthSound } from '../../../../utils/synth/types';
+import { LAYER_GROUPS, LAYER_STARTERS, SOUND_GROUPS, SOUND_STARTERS, envelopePoints, layerFromStarter, nearestNote, noteHz, noteName, nudgeLayer } from '../forgeModel';
 import { builtInKey, forgeReducer, initialForgeState, isUnsaved, keyAssetId, keyBuiltInId, mineKey, savedFor, type ForgeState } from '../forgeState';
 
 // The audio itself cannot be rendered here (no Web Audio outside a browser;
@@ -118,18 +118,55 @@ describe('forge helpers', () => {
     expect(noteName(0)).toBe('');
   });
 
+  it('finds the note for a pitch and the pitch for a note', () => {
+    expect(noteHz(9, 4)).toBeCloseTo(440, 6); // A4
+    expect(noteHz(0, 4)).toBeCloseTo(261.626, 2); // middle C
+    expect(nearestNote(440)).toEqual({ index: 9, octave: 4, cents: 0 });
+    expect(nearestNote(noteHz(3, 5))).toEqual({ index: 3, octave: 5, cents: 0 }); // D#5
+    // 92 Hz (the scroll's thump) is not on a key: it is a little sharp of F#2.
+    const thump = nearestNote(92);
+    expect([thump.index, thump.octave]).toEqual([6, 2]);
+    expect(thump.cents).not.toBe(0);
+  });
+
   it('every starting point makes a playable layer or sound', () => {
+    const layerIds = LAYER_STARTERS.map(s => s.id);
+    expect(new Set(layerIds).size).toBe(layerIds.length);
     for (const starter of LAYER_STARTERS) {
+      expect(LAYER_GROUPS).toContain(starter.group);
       const layer = layerFromStarter(starter.id);
       expect(layer.id).toBeTruthy();
       expect(layer.length).toBeGreaterThan(0);
       expect(layer.level).toBeGreaterThan(0);
+      expect(layer.attack).toBeLessThanOrEqual(layer.length);
+      expect(layer.floor).toBeGreaterThan(0);
+      expect((layer.harmonics ?? []).length).toBeLessThanOrEqual(MAX_HARMONICS);
+      if (layer.source === 'tone') expect(layer.pitch?.from).toBeGreaterThan(0);
     }
+    const soundIds = SOUND_STARTERS.map(s => s.id);
+    expect(new Set(soundIds).size).toBe(soundIds.length);
     for (const starter of SOUND_STARTERS) {
+      expect(SOUND_GROUPS).toContain(starter.group);
       const sound = starter.make();
       expect(sound.layers.length).toBeGreaterThan(0);
       expect(soundLength(sound)).toBeGreaterThan(0);
+      // Every sketch has a measured level of its own, not the fallback.
+      expect(sound.level).not.toBe(0.2);
+      expect(sound.level).toBeGreaterThan(0.05);
+      expect(sound.level).toBeLessThan(0.6);
+      const ids = sound.layers.map(l => l.id);
+      expect(new Set(ids).size).toBe(ids.length);
     }
+  });
+
+  it('counts a sound\'s echoes in its length', () => {
+    const plain: SynthSound = { version: 1, level: 0.2, layers: [layerFromStarter('blip')] };
+    expect(soundLength(plain)).toBeCloseTo(layersLength(plain), 9);
+    const echoed: SynthSound = { ...plain, echo: { time: 0.1, repeats: 3, fade: 0.5 } };
+    expect(layersLength(echoed)).toBeCloseTo(layersLength(plain), 9);
+    expect(soundLength(echoed)).toBeCloseTo(layersLength(plain) + 0.3, 9);
+    // An echo that keeps nothing adds nothing.
+    expect(soundLength({ ...plain, echo: { time: 0.1, repeats: 3, fade: 0 } })).toBeCloseTo(layersLength(plain), 9);
   });
 
   it('traces a loudness curve that starts and ends where the layer does', () => {
