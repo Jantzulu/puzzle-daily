@@ -47,28 +47,34 @@ function noise(ctx: BaseAudioContext, at: number, offset: number, seconds: numbe
 }
 
 // ---- torch-out: a torch snuffed -------------------------------------------
-// Three layers:
-//   woosh    the flame going: a breath of air that SWELLS and falls away
-//   hiss     the ember sizzling out: a thin high hiss that fades
-//   crackle  two or three tiny pops in the tail
-// Nothing starts abruptly (user ear 2026-11-14: the first version opened
-// with a low thump that read as a knock, heavier than a torch going out).
-// Both noise layers rise from silence over `swell` seconds, and the woosh
-// sits in the middle of the range, not the bottom.
+// Two soft layers of air, nothing else:
+//   woosh   the flame going: a low breath that swells and falls away
+//   sigh    the smoke after it: a fainter, slightly higher breath that
+//           trails a little longer
+// The user's ear shaped this (2026-11-14):
+//   v1 opened with a low thump: "a knock", heavier than a torch going out.
+//      So nothing starts abruptly: both layers rise from silence over
+//      `swell` seconds.
+//   v2 had a thin high hiss and tiny pops: "sand falling onto a hard
+//      surface". So there are no pops, and nothing bright: everything goes
+//      through `ceiling`, which removes the top of the range where noise
+//      turns gritty.
 // `variant` 1 (the second torch of a pair) is pitched a little lower and
-// pops at different moments, so a pair never sounds like one sound doubled.
+// uses a different stretch of noise, so a pair never sounds like one sound
+// doubled.
 const TORCH_OUT = {
   /** Overall loudness of the whole sound. */
-  level: 0.55,
+  level: 0.45,
   /** A layer fades to this fraction of its peak, then to nothing. */
   floor: 0.05,
-  woosh: { peak: 0.95, swell: 0.09, length: 0.42, from: 650, crest: 1300, to: 500, q: 1 },
-  hiss: { peak: 0.6, swell: 0.08, hold: 0.06, length: 0.65, from: 5400, to: 2600 },
-  crackle: { peak: 0.26, length: 0.006, times: [[0.21, 0.31, 0.43], [0.24, 0.36]] },
+  /** Nothing above about this frequency (Hz) gets through. */
+  ceiling: 1500,
+  woosh: { peak: 1.5, swell: 0.14, length: 0.55, from: 420, crest: 720, to: 330, q: 0.8 },
+  sigh: { peak: 0.5, swell: 0.18, length: 0.7, from: 1300, to: 800, q: 0.7 },
 } as const;
 
 /** The last stretch of a layer: a straight fade to silence, so it never clicks off. */
-const TAIL = 0.05;
+const TAIL = 0.06;
 
 const torchOut: Recipe = (ctx, out, at, variant) => {
   const T = TORCH_OUT;
@@ -76,6 +82,16 @@ const torchOut: Recipe = (ctx, out, at, variant) => {
   const master = ctx.createGain();
   master.gain.value = T.level;
   master.connect(out);
+  // Two filters in a row: a steep cut, so no grit leaks past the ceiling.
+  const soften = ctx.createBiquadFilter();
+  soften.type = 'lowpass';
+  soften.frequency.value = T.ceiling;
+  soften.Q.value = 0.5;
+  const soften2 = ctx.createBiquadFilter();
+  soften2.type = 'lowpass';
+  soften2.frequency.value = T.ceiling;
+  soften2.Q.value = 0.5;
+  soften.connect(soften2).connect(master);
 
   // Woosh.
   {
@@ -90,36 +106,22 @@ const torchOut: Recipe = (ctx, out, at, variant) => {
     gain.gain.linearRampToValueAtTime(T.woosh.peak, at + T.woosh.swell);
     gain.gain.exponentialRampToValueAtTime(T.woosh.peak * T.floor, at + T.woosh.length - TAIL);
     gain.gain.linearRampToValueAtTime(0, at + T.woosh.length);
-    noise(ctx, at, variant ? 0.37 : 0, T.woosh.length, pitch).connect(filter).connect(gain).connect(master);
+    noise(ctx, at, variant ? 0.37 : 0, T.woosh.length, pitch).connect(filter).connect(gain).connect(soften);
   }
 
-  // Hiss.
+  // Sigh.
   {
     const filter = ctx.createBiquadFilter();
     filter.type = 'bandpass';
-    filter.Q.value = 0.8;
-    filter.frequency.setValueAtTime(T.hiss.from * pitch, at);
-    filter.frequency.exponentialRampToValueAtTime(T.hiss.to * pitch, at + T.hiss.length);
+    filter.Q.value = T.sigh.q;
+    filter.frequency.setValueAtTime(T.sigh.from * pitch, at);
+    filter.frequency.exponentialRampToValueAtTime(T.sigh.to * pitch, at + T.sigh.length);
     const gain = ctx.createGain();
     gain.gain.setValueAtTime(0, at);
-    gain.gain.linearRampToValueAtTime(T.hiss.peak, at + T.hiss.swell);
-    gain.gain.setValueAtTime(T.hiss.peak, at + T.hiss.swell + T.hiss.hold);
-    gain.gain.exponentialRampToValueAtTime(T.hiss.peak * T.floor, at + T.hiss.length - TAIL);
-    gain.gain.linearRampToValueAtTime(0, at + T.hiss.length);
-    noise(ctx, at, variant ? 0.71 : 0.5, T.hiss.length).connect(filter).connect(gain).connect(master);
-  }
-
-  // Crackle.
-  {
-    const filter = ctx.createBiquadFilter();
-    filter.type = 'highpass';
-    filter.frequency.value = 1800 * pitch;
-    const gain = ctx.createGain();
-    gain.gain.value = T.crackle.peak;
-    filter.connect(gain).connect(master);
-    T.crackle.times[variant ? 1 : 0].forEach((time, i) => {
-      noise(ctx, at + time, 0.11 * (i + 1), T.crackle.length).connect(filter);
-    });
+    gain.gain.linearRampToValueAtTime(T.sigh.peak, at + T.sigh.swell);
+    gain.gain.exponentialRampToValueAtTime(T.sigh.peak * T.floor, at + T.sigh.length - TAIL);
+    gain.gain.linearRampToValueAtTime(0, at + T.sigh.length);
+    noise(ctx, at, variant ? 0.71 : 0.5, T.sigh.length, pitch).connect(filter).connect(gain).connect(soften);
   }
 };
 
