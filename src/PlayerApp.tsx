@@ -7,6 +7,7 @@ import { useState, useEffect, useLayoutEffect, useRef, useCallback, lazy, Suspen
 import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { Game } from './components/game/Game';
 import { SoundSettings } from './components/shared/SoundSettings';
+import { DeadEndScene } from './components/shared/DeadEndScene';
 import { NavCalendar } from './components/shared/NavCalendar';
 import { ConsentBanner } from './components/shared/ConsentBanner';
 import { RouteFade } from './components/shared/RouteFade';
@@ -587,7 +588,7 @@ function NotFoundPage() {
   const frameRate = Number(themeAssets.notFoundIconFrameRate) || 10;
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] px-4 text-center">
+    <div className="flex flex-col items-center justify-center min-h-[60vh] px-4 pt-6 text-center">
       <div className="mb-4">
         {iconSrc ? (
           frameCount > 1 ? (
@@ -602,14 +603,15 @@ function NotFoundPage() {
             <img src={iconSrc} alt="Page not found" className="h-24 md:h-32 w-auto mx-auto" style={{ imageRendering: 'pixelated' }} />
           )
         ) : (
-          <span className="text-6xl">🏚️</span>
+          // No custom icon set in the theme: the dead-end scene.
+          <DeadEndScene />
         )}
       </div>
       <h1 className="text-3xl md:text-4xl font-medieval font-bold text-copper-400 text-shadow-dungeon mb-3">
-        Page Not Found
+        Dead End
       </h1>
       <p className="text-stone-400 text-lg mb-6 max-w-md">
-        This dungeon corridor leads nowhere. The path you seek does not exist.
+        This dungeon corridor leads nowhere. The page you seek does not exist.
       </p>
       <Link
         to="/"
