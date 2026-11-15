@@ -7,7 +7,9 @@ import { LIVE_ASSETS_UPDATED_EVENT } from './livePull';
 import { getCharacter } from '../data/characters';
 import { getEnemy } from '../data/enemies';
 import { loadSpellAsset } from './assetStorage';
-import type { SoundTrigger } from '../types/game';
+import { renderSynthSound } from './synth/render';
+import type { SynthSound } from './synth/types';
+import type { SoundAsset, SoundTrigger } from '../types/game';
 
 // Cache for resolved sound data (base64 audio or URL)
 const soundCache = new Map<string, string | null>();
@@ -100,6 +102,51 @@ async function resolveSoundData(soundId: string | undefined): Promise<string | n
   return null;
 }
 
+// Code-made sounds (SoundAsset.synth, edited in the Sound Forge), by sound
+// id. A sound that turned out to be an audio file is remembered as null so
+// the library is not searched again on every hit.
+const synthCache = new Map<string, SynthSound | null>();
+
+/** Play a code-made sound on the effects channel. */
+export function playSynthSound(synth: SynthSound): void {
+  soundManager.playSynth((ctx, out, at) => renderSynthSound(ctx, out, at, synth));
+}
+
+/**
+ * Play a sound asset by id, whichever kind it is: a code-made sound is
+ * rendered on the spot, an audio file goes through the decoder. Every sound
+ * slot in the game ends here, so each of them takes either kind.
+ */
+async function playSoundById(soundId: string | undefined): Promise<void> {
+  if (!soundId) return;
+  let synth = synthCache.get(soundId);
+  if (synth === undefined && !soundCache.has(soundId)) {
+    // Not looked up yet. A miss is NOT cached (see resolveSoundData).
+    const asset = loadSoundAsset(soundId);
+    if (!asset) return;
+    synth = asset.synth ?? null;
+    synthCache.set(soundId, synth);
+  }
+  if (synth) {
+    playSynthSound(synth);
+    return;
+  }
+  const audioData = await resolveSoundData(soundId);
+  if (audioData) await soundManager.playSfx(audioData);
+}
+
+/** Play a sound asset directly (the editors' preview buttons). */
+export async function playSoundAsset(asset: SoundAsset): Promise<void> {
+  if (asset.synth) {
+    playSynthSound(asset.synth);
+  } else if (asset.audioData) {
+    await soundManager.playSfx(asset.audioData);
+  } else if (asset.audioUrl) {
+    const audioData = await fetchAudioFromUrl(asset.audioUrl);
+    if (audioData) await soundManager.playSfx(audioData);
+  }
+}
+
 /**
  * Where a sound asset's audio can be STREAMED from: its inline data, else
  * its file URL. Used for music, which plays through an <audio> element and
@@ -116,6 +163,7 @@ function resolveMusicSource(soundId: string | undefined): string | null {
  */
 export function clearSoundCache(): void {
   soundCache.clear();
+  synthCache.clear();
 }
 
 /**
@@ -168,10 +216,7 @@ export async function playGameSound(trigger: SoundTrigger): Promise<void> {
       break;
   }
 
-  const audioData = await resolveSoundData(soundId);
-  if (audioData) {
-    await soundManager.playSfx(audioData);
-  }
+  await playSoundById(soundId);
 }
 
 /**
@@ -195,10 +240,7 @@ export async function playCharacterSound(
       break;
   }
 
-  const audioData = await resolveSoundData(soundId);
-  if (audioData) {
-    await soundManager.playSfx(audioData);
-  }
+  await playSoundById(soundId);
 }
 
 /**
@@ -222,10 +264,7 @@ export async function playEnemySound(
       break;
   }
 
-  const audioData = await resolveSoundData(soundId);
-  if (audioData) {
-    await soundManager.playSfx(audioData);
-  }
+  await playSoundById(soundId);
 }
 
 /**
@@ -249,10 +288,7 @@ export async function playSpellSound(
       break;
   }
 
-  const audioData = await resolveSoundData(soundId);
-  if (audioData) {
-    await soundManager.playSfx(audioData);
-  }
+  await playSoundById(soundId);
 }
 
 /**

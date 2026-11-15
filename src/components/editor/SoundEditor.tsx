@@ -14,6 +14,7 @@ import {
 } from '../../utils/assetStorage';
 import { HAPTIC_PATTERN_OPTIONS, vibratePreview, getEffectiveHapticConfig } from '../../utils/haptics';
 import { soundManager } from '../../utils/soundManager';
+import { playSoundAsset } from '../../utils/gameSounds';
 import { AssetEditorLayout } from './AssetEditorLayout';
 import { AssetBrowseTable, useBrowseSort, type BrowseColumn } from './AssetBrowseTable';
 import { FolderDropdown, useFilteredAssets, InlineFolderPicker } from './FolderDropdown';
@@ -137,7 +138,7 @@ export const SoundEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
 
   const handleSave = () => {
     if (!editing) return;
-    if (!editing.audioData && !editing.audioUrl) {
+    if (!editing.audioData && !editing.audioUrl && !editing.synth) {
       toast.warning('Please upload an audio file or provide a URL');
       return;
     }
@@ -216,7 +217,13 @@ export const SoundEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
   };
 
   const handlePlaySound = async () => {
-    if ((!editing?.audioData && !editing?.audioUrl) || isPlaying) return;
+    if ((!editing?.audioData && !editing?.audioUrl && !editing?.synth) || isPlaying) return;
+
+    // A sound made in the Sound Forge: no file to decode.
+    if (editing.synth) {
+      void playSoundAsset(editing);
+      return;
+    }
 
     setIsPlaying(true);
     try {
@@ -363,8 +370,15 @@ export const SoundEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
     {
       key: 'source',
       label: 'Source',
-      value: (s) => (s.audioData ? 'File' : s.audioUrl ? 'URL' : null),
+      value: (s) => (s.synth ? 'Forge' : s.audioData ? 'File' : s.audioUrl ? 'URL' : null),
       render: (s) => {
+        if (s.synth) {
+          return (
+            <span className="px-1.5 py-0 rounded border text-[10px] whitespace-nowrap bg-copper-900/40 text-copper-300 border-copper-700/50" title="Made in the Sound Forge (Editors > Sound Forge)">
+              Forge
+            </span>
+          );
+        }
         if (s.audioData) {
           return (
             <span className="px-1.5 py-0 rounded border text-[10px] whitespace-nowrap bg-moss-900/40 text-moss-300 border-moss-700/50">
