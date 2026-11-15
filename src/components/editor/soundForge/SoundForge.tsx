@@ -55,6 +55,8 @@ export const SoundForge: React.FC = () => {
   const [picture, setPicture] = React.useState<SoundPicture | null>(null);
   const [soundOff, setSoundOff] = React.useState(() => !soundManager.getSettings().enabled);
   const [confirmDelete, setConfirmDelete] = React.useState(false);
+  /** The sound in the list being asked about ("Delete / Keep"). */
+  const [deleteAsk, setDeleteAsk] = React.useState<SoundKey | null>(null);
   const [pasteText, setPasteText] = React.useState<string | null>(null);
 
   const builtInId = keyBuiltInId(selectedKey);
@@ -171,14 +173,20 @@ export const SoundForge: React.FC = () => {
     toast.success(`"${builtIn.name}" is back to the shipped version`);
   };
 
-  const remove = () => {
-    const id = keyAssetId(selectedKey);
+  /** Delete one of the user's sounds (saved or not yet saved). */
+  const removeSound = (key: SoundKey) => {
+    const id = keyAssetId(key);
     if (!id) return;
+    const gone = state.work[key]?.name ?? library.find(a => a.id === id)?.name ?? 'the sound';
     if (library.some(a => a.id === id)) deleteSoundAsset(id);
-    dispatch({ type: 'drop', key: selectedKey });
+    dispatch({ type: 'drop', key });
     refresh();
-    select(builtInKey('torch-out'));
+    setDeleteAsk(null);
+    setConfirmDelete(false);
+    if (key === selectedKey) select(builtInKey('torch-out'));
+    toast.success(`Deleted "${gone}"`);
   };
+  const remove = () => removeSound(selectedKey);
 
   const copyRecipe = async () => {
     if (!sound) return;
@@ -208,19 +216,37 @@ export const SoundForge: React.FC = () => {
   const unsavedNew = Object.keys(state.work).filter(k => keyAssetId(k) && !library.some(a => a.id === keyAssetId(k)));
   const row = (key: SoundKey, label: string, chip?: string) => {
     const dirty = isUnsaved(state.work[key], savedFor(key, library), !!keyBuiltInId(key));
+    const mineRow = !keyBuiltInId(key);
+    const asking = deleteAsk === key;
     return (
-      <button
+      <div
         key={key}
-        type="button"
-        onClick={() => select(key)}
-        className={`w-full flex items-center gap-1.5 px-2 py-1.5 text-left text-sm border-t border-stone-700/60 first:border-t-0 ${
+        className={`flex items-center border-t border-stone-700/60 first:border-t-0 ${
           key === selectedKey ? 'bg-stone-700 text-parchment-100' : 'text-stone-300 hover:bg-stone-800/50'
         }`}
       >
-        <span className="flex-1 min-w-0 truncate">{label}</span>
-        {chip && <span className="px-1.5 rounded border text-[10px] bg-copper-900/40 text-copper-300 border-copper-700/50">{chip}</span>}
-        {dirty && <span className="w-1.5 h-1.5 rounded-full bg-arcane-400" title="Unsaved changes" />}
-      </button>
+        <button type="button" onClick={() => select(key)} className="flex-1 min-w-0 flex items-center gap-1.5 px-2 py-1.5 text-left text-sm">
+          <span className="flex-1 min-w-0 truncate">{label}</span>
+          {chip && <span className="px-1.5 rounded border text-[10px] bg-copper-900/40 text-copper-300 border-copper-700/50">{chip}</span>}
+          {dirty && <span className="w-1.5 h-1.5 rounded-full bg-arcane-400" title="Unsaved changes" />}
+        </button>
+        {/* Delete, here in the list (user report 2026-11-15: no way to
+            delete a sound; the button was far down the page). */}
+        {mineRow && !asking && (
+          <button
+            type="button" onClick={() => setDeleteAsk(key)}
+            className="px-2 py-1.5 text-xs text-stone-500 hover:text-blood-300" title={`Delete "${label}"`} aria-label={`Delete ${label}`}
+          >
+            ✕
+          </button>
+        )}
+        {mineRow && asking && (
+          <span className="flex items-center gap-1 pr-1">
+            <ForgeChip tone="danger" onClick={() => removeSound(key)}>Delete</ForgeChip>
+            <ForgeChip onClick={() => setDeleteAsk(null)}>Keep</ForgeChip>
+          </span>
+        )}
+      </div>
     );
   };
 
