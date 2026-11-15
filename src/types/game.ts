@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // Core game type definitions
+import type { SynthSound } from '../utils/synth/types';
 
 export enum Direction {
   NORTH = 'north',
@@ -1933,6 +1934,12 @@ export interface SoundAsset {
   audioData?: string;      // Base64 encoded audio data (optional if audioUrl is provided)
   audioUrl?: string;       // URL to audio file (e.g., Supabase storage URL)
   duration?: number;       // Duration in seconds (for display)
+  /**
+   * A sound made by code instead of an audio file (utils/synth/types.ts,
+   * edited in the Sound Forge). When set, this is what plays; audioData and
+   * audioUrl are not needed.
+   */
+  synth?: SynthSound;
   createdAt: string;
   isBuiltIn?: boolean;     // True for default sounds
   folderId?: string;       // Optional folder assignment
