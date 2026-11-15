@@ -251,6 +251,36 @@ class SoundManager {
     }
   }
 
+  // Play a sound made by code (chromeSounds.ts) on the effects channel, so
+  // the volume sliders and the on/off switch apply. `build` schedules its
+  // nodes into the destination it is given, starting at `at`.
+  public playSynth(build: (context: AudioContext, destination: AudioNode, at: number) => void): void {
+    if (!this.settings.enabled) return;
+    // A tap on the page furniture can be the visit's very first gesture.
+    if (!this.audioContext) this.unlock();
+    const context = this.audioContext;
+    const destination = this.sfxGain;
+    if (!context || !destination) return;
+    const run = () => {
+      try {
+        build(context, destination, context.currentTime);
+      } catch (error) {
+        console.error('Failed to play synthesized sound:', error);
+      }
+    };
+    if (context.state === 'running') {
+      run();
+      return;
+    }
+    // Asleep (no gesture yet, or iOS suspended it in the background). From
+    // inside a tap the wake is immediate. Otherwise the sound is dropped:
+    // scheduled on a sleeping context it would go off at some later tap.
+    const asked = performance.now();
+    void context.resume().then(() => {
+      if (performance.now() - asked < 250) run();
+    }).catch(() => { /* not allowed yet */ });
+  }
+
   // Play music (loops by default). `src` is anything an <audio> element
   // can play: a file URL or a data: URL. Nothing is downloaded while sound
   // is off: the request is only remembered.

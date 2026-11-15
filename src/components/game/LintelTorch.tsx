@@ -2,6 +2,7 @@ import React from 'react';
 import { LINTEL_TORCH_SHEET as SHEET } from '../../assets/ui-kits/lintelTorch';
 import { useCrispSnap } from './panelSkins';
 import { getRunMood, onRunMood } from '../shared/runMood';
+import { playChromeSound } from '../../utils/chromeSounds';
 
 /** The second torch of a pair follows the first by this much (ms). */
 const FOLLOW_MS = 220;
@@ -71,6 +72,15 @@ export const LintelTorch: React.FC<{ phase?: number }> = ({ phase = 0 }) => {
       loopRef.current = null;
     };
   }, [lit, fw, phase]);
+
+  // Going out makes a sound (chromeSounds.ts), whether a tap or a lost run
+  // put it out; not when the page opens on a torch already out, and not
+  // from a torch that is off screen.
+  const wasLit = React.useRef(lit);
+  React.useEffect(() => {
+    if (wasLit.current && !lit && onScreen.current) playChromeSound('torch-out', phase ? 1 : 0);
+    wasLit.current = lit;
+  }, [lit, phase]);
 
   // The run's mood: out on a loss, lit again on the retry.
   React.useEffect(() => {
