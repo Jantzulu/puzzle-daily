@@ -14,7 +14,7 @@
 
 import { soundManager } from './soundManager';
 
-export type ChromeSound = 'torch-out' | 'torch-lit';
+export type ChromeSound = 'torch-out' | 'torch-lit' | 'scroll-roll' | 'scroll-unroll';
 
 type Recipe = (ctx: BaseAudioContext, out: AudioNode, at: number, variant: number) => void;
 
@@ -191,9 +191,65 @@ const torchLit: Recipe = (ctx, out, at, variant) => {
   }
 };
 
+// ---- scroll-roll / scroll-unroll: the quest scroll's parchment ------------
+// One layer: a broad, fairly dull band of noise (parchment, not crisp paper)
+// whose loudness FLUTTERS irregularly, the way a sheet rustles as it moves.
+// The flutter is a second stretch of noise slowed to a wobble and used as
+// the volume. It rises and falls with the roll's speed (the animation eases
+// in and out), lasts exactly as long as the animation, and drifts up in
+// pitch as the scroll rolls tight, down as it opens.
+// Level: in the range of the torch sounds the user approved; start subtle.
+const SCROLL = {
+  level: 0.16,
+  floor: 0.05,
+  peak: 0.5,
+  /** Where in the sound it is loudest (0-1): the roll is fastest here. */
+  crest: 0.4,
+  q: 0.5,
+  /** The rustle: how fast the loudness wobbles (Hz) and how deeply. */
+  flutter: { rate: 38, depth: 14 },
+  /** Lengths match index.css: .quest-closing 0.5s, .quest-reopening 0.65s. */
+  roll: { length: 0.5, from: 1500, to: 2300 },
+  unroll: { length: 0.65, from: 2300, to: 1500 },
+} as const;
+
+const scrollPaper = (which: 'roll' | 'unroll'): Recipe => (ctx, out, at) => {
+  const T = SCROLL;
+  const P = T[which];
+  const master = ctx.createGain();
+  master.gain.value = T.level;
+  master.connect(out);
+
+  const filter = ctx.createBiquadFilter();
+  filter.type = 'bandpass';
+  filter.Q.value = T.q;
+  filter.frequency.setValueAtTime(P.from, at);
+  filter.frequency.exponentialRampToValueAtTime(P.to, at + P.length);
+
+  // The rustle: volume = 1 + (slow noise * depth).
+  const rustle = ctx.createGain();
+  rustle.gain.value = 1;
+  const slow = ctx.createBiquadFilter();
+  slow.type = 'lowpass';
+  slow.frequency.value = T.flutter.rate;
+  const depth = ctx.createGain();
+  depth.gain.value = T.flutter.depth;
+  noise(ctx, at, which === 'roll' ? 0.2 : 0.9, P.length).connect(slow).connect(depth).connect(rustle.gain);
+
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0, at);
+  gain.gain.linearRampToValueAtTime(T.peak, at + P.length * T.crest);
+  gain.gain.exponentialRampToValueAtTime(T.peak * T.floor, at + P.length - TAIL);
+  gain.gain.linearRampToValueAtTime(0, at + P.length);
+
+  noise(ctx, at, which === 'roll' ? 1.2 : 0.1, P.length).connect(filter).connect(rustle).connect(gain).connect(master);
+};
+
 const RECIPES: Record<ChromeSound, Recipe> = {
   'torch-out': torchOut,
   'torch-lit': torchLit,
+  'scroll-roll': scrollPaper('roll'),
+  'scroll-unroll': scrollPaper('unroll'),
 };
 
 /** Draw a chrome sound into any audio context (used for measuring it). */

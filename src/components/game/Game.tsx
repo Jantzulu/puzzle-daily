@@ -29,6 +29,7 @@ import { QuestBoxFrame, QuestOrnaments, QuestPlate, QuestDivider } from './Quest
 import { questSkinFrameActive, questSkinOrnamentsActive, questSkinPlateActive, questSkinDividerActive, questFrameBorders, questPlateStraddle } from './questBoxSkinData';
 import { useCrispSnap } from './panelSkins';
 import { QUEST_FLIGHT_MS, QUEST_TOSS_AFTER_ROLL_MS, QUEST_SPAWN_DELAY_MS, QUEST_HINT_BEAT_MS, useQuestFloatPlacement, useQuestPress } from './questFloat';
+import { playChromeSound } from '../../utils/chromeSounds';
 import { playGameSound, playVictoryMusic, playDefeatMusic, playBackgroundMusic, stopMusic } from '../../utils/gameSounds';
 import { loadThemeAssets, subscribeToThemeAssets, type ThemeAssets } from '../../utils/themeAssets';
 import { WarningModal } from '../shared/WarningModal';
@@ -438,6 +439,7 @@ export const Game: React.FC<GameProps> = ({
     setQuestBoxHeight(box.offsetHeight);
     setQuestFrameHold(box.offsetHeight); // the rolled scroll keeps this length while tucked
     setQuestScroll('closing');
+    playChromeSound('scroll-roll'); // the parchment, as long as the roll-up (chromeSounds.ts)
     questScrollTimers.current.push(
       window.setTimeout(() => { setQuestScroll('closed'); setQuestBoxHeight(questCollapsedH); }, 500),
     );
@@ -460,7 +462,7 @@ export const Game: React.FC<GameProps> = ({
     setQuestBoxHeight(questOpenHeight(box));
     setQuestScroll('lowering');
     questScrollTimers.current.push(
-      window.setTimeout(() => setQuestScroll('reopening'), 350),
+      window.setTimeout(() => { setQuestScroll('reopening'); playChromeSound('scroll-unroll'); }, 350),
       window.setTimeout(() => { setQuestScroll('reopened'); setQuestBoxHeight(null); setQuestFrameHold(null); }, 1100),
     );
   };
