@@ -31,7 +31,7 @@ import { useCrispSnap } from './panelSkins';
 import { QUEST_FLIGHT_MS, QUEST_TOSS_AFTER_ROLL_MS, QUEST_SPAWN_DELAY_MS, QUEST_SPAWN_AFTER_ENTRY_MS, ENTRY_FADE_MS, QUEST_HINT_BEAT_MS, QUEST_LAND_AT_S, QUEST_SPARKLE_AT_S, QUEST_TOSS_LAND_LEAD_MS, useQuestFloatPlacement, useQuestPress } from './questFloat';
 import { playChromeSound } from '../../utils/chromeSounds';
 import { EnterGate } from './EnterGate';
-import { pageAlreadyEntered } from './enterGateState';
+import { ENTRY_GATE_AFTER_MS, startsEntered } from './enterGateState';
 import { playGameSound, playVictoryMusic, playDefeatMusic, playBackgroundMusic, stopMusic } from '../../utils/gameSounds';
 import { loadThemeAssets, subscribeToThemeAssets, type ThemeAssets } from '../../utils/themeAssets';
 import { WarningModal } from '../shared/WarningModal';
@@ -265,7 +265,10 @@ export const Game: React.FC<GameProps> = ({
   // has touched yet, the board and the quest scroll wait for the first tap
   // (the tap that lets the browser play their sounds). `spritesReady` means
   // "show the board" everywhere below, so it waits for both.
-  const [entered, setEntered] = useState(pageAlreadyEntered);
+  const [entered, setEntered] = useState(startsEntered);
+  // THE DARK ENTRY: the dark stays mounted while it lifts, after the tap.
+  const [enterGateUp, setEnterGateUp] = useState(!entered);
+  const enteredByTap = useRef(false);
   const spritesReady = spritesLoaded && entered;
   // The puzzle that was entered by tapping the card: its board fades in
   // slowly and its scroll waits (questFloat.ts ENTRY_FADE_MS). Everything
@@ -280,19 +283,26 @@ export const Game: React.FC<GameProps> = ({
   // menu-ride rule (index.css) toggles animation:none off again — and a
   // RUNNING settle overrides the ride transition (animations beat
   // transitions), which froze the rail while the gate lowered.
-  // It runs on page load WITHOUT waiting for the entry tap (user call
-  // 2026-11-15: holding the gate open until the tap, so its sound could be
-  // heard, "is not ideal"). So on a fresh load its lock is silent, like any
-  // sound before a page's first tap; arriving from elsewhere it sounds.
+  // THE DARK ENTRY (user call 2026-11-15): on a fresh page load the settle
+  // WAITS for the entry tap, paused on its first frame (.gate-settle-held),
+  // and runs as the light reaches the gate. Earlier the same day the user
+  // rejected exactly this wait ("the frozen gate is sticking out and
+  // waiting for the click to barely retract"); what changed is the dark:
+  // nobody sees the gate hang open, "it only becomes revealed as it is
+  // retracting". Arriving from elsewhere (no dark) it runs at once.
   const [gateSettling, setGateSettling] = useState(true);
+  const [gateHeld, setGateHeld] = useState(!entered);
   useEffect(() => {
-    const id = setTimeout(() => setGateSettling(false), 1150); // settle = 0.35s delay + 0.35s stroke, then the 0.4s screen clunk keyed off this class (lockstep with .gate-settle and .gate-shake-layer:has(.gate-settle))
+    if (!entered) return;
+    const wait = enteredByTap.current ? ENTRY_GATE_AFTER_MS : 0;
+    const release = setTimeout(() => setGateHeld(false), wait);
+    const id = setTimeout(() => setGateSettling(false), wait + 1150); // settle = 0.35s delay + 0.35s stroke, then the 0.4s screen clunk keyed off this class (lockstep with .gate-settle and .gate-shake-layer:has(.gate-settle))
     // The settle LOCKS as its soft clunk starts (0.35s delay + 0.35s stroke,
     // lockstep with .gate-settle): the rail's plaques rattle (user ask
     // 2026-10-15; shared/signWobble.ts).
-    const lock = setTimeout(() => announceGateImpact('settle'), 700);
-    return () => { clearTimeout(id); clearTimeout(lock); };
-  }, []);
+    const lock = setTimeout(() => announceGateImpact('settle'), wait + 700);
+    return () => { clearTimeout(release); clearTimeout(id); clearTimeout(lock); };
+  }, [entered]);
   // Reset reveal: masks the instant repaint on reset/retry/replay swaps.
   // Bumping the nonce fades the BOARD CONTENT from 0 -> 1 (WAAPI, no
   // remount). A flat dark cover over the container was tried and flashed
@@ -2296,7 +2306,7 @@ export const Game: React.FC<GameProps> = ({
               // menu carries its own spiked bottom while desktop still
               // docks. z-[40] stays: spikes over the board (z-10),
               // everything under the nav (z-50).
-              <div ref={gateJostleRef} className={`w-full flex flex-col items-center relative md:sticky z-[40] quest-panel-sticky${gateSettling ? ' gate-settle' : ''}`}>
+              <div ref={gateJostleRef} className={`w-full flex flex-col items-center relative md:sticky z-[40] quest-panel-sticky${gateSettling ? ' gate-settle' : ''}${gateHeld ? ' gate-settle-held' : ''}`}>
               {/* (The quest banner used to hang here — it now hangs BELOW
                   the board, and only this rail rides sticky.) */}
               {/* Control Panel Row — Lives / Play / Max Turns riding the
@@ -2657,9 +2667,12 @@ export const Game: React.FC<GameProps> = ({
               >
                 <ResponsiveGameBoard gameState={gameState} onTileClick={handleTileClick} onProjectileKill={handleProjectileKill} replayFrozen={replayMode && !replayPlaying && !replayStepAnimating} entrancesRevealed={spritesReady} placementGhost={placementGhost} />
               </div>
-              {!entered && (
-                // Art keeps loading behind the card.
-                <EnterGate onEnter={() => { setSlowEntryFor(currentPuzzle.id); setEntered(true); }} />
+              {enterGateUp && (
+                // Art keeps loading behind the dark (it hangs off <body>).
+                <EnterGate
+                  onEnter={() => { enteredByTap.current = true; setSlowEntryFor(currentPuzzle.id); setEntered(true); }}
+                  onGone={() => setEnterGateUp(false)}
+                />
               )}
               {entered && !spritesLoaded && (
                 // No fill: the page background shows through while loading —

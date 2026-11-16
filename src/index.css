@@ -1984,6 +1984,15 @@ body:not(.menu-gate-lowered) .control-rail.rail-riding {
   animation: gate-settle 0.35s linear 0.35s backwards;
 }
 
+/* THE DARK ENTRY: until the entry tap (and a beat after it) the settle
+   waits on its first frame, in the dark, and so does the screen's rumble
+   and clunk (Game.tsx gateHeld). The doubled class outranks the rule
+   further down that starts the screen's rumble. */
+.gate-settle.gate-settle-held,
+.gate-shake-layer:has(.gate-settle.gate-settle-held) {
+  animation-play-state: paused;
+}
+
 /* Replay exit: the control rail re-enters like the portcullis it is —
    descending from under the navbar instead of popping into place. It
    starts tucked fully behind the bar (nav z-50 covers the rail's z-40
@@ -4887,13 +4896,121 @@ button.dir-picker__tab:not(.dir-picker__tab--active) .dir-picker__tab-text {
 
 /* ============================================
    TAP TO ENTER (components/game/EnterGate.tsx, user pick 2026-11-15)
-   The card that stands where the board will be until the first tap: the
-   puzzle's date and a quiet "Tap to enter". Fades only (the settled Reduce
-   Motion scope: fades always run). Tight 1px carve shadows, never a blur.
+   The card that waits until the first tap: the puzzle's date and a quiet
+   "Tap to enter". Fades only (the settled Reduce Motion scope: fades always
+   run). Tight 1px carve shadows, never a blur.
+
+   THE DARK ENTRY (user idea, same day): the card waits in DARKNESS that
+   covers everything under the navbar (.entry-dark; EnterGate.tsx sets its
+   top to the navbar's bottom edge). On the tap (.entry-dark--lifting) the
+   torches catch and the dark lifts in four fades, ONLY OPACITY animating:
+     solid  the whole dark. Drops as the first torch catches, flickers,
+            and goes as the second catches (220 ms later, LintelTorch).
+     pool   a hole just around the torches: the first pool of light.
+     mid    a wider hole.
+     far    the widest: the last of the dark, lifting off the far end of
+            the page (on a phone, the gate at the top).
+   The holes sit at --entry-lx / --entry-ly (the torches' middle, set at
+   the tap). LOCKSTEP with enterGateState.ts ENTRY_LIFT_MS (the last fade
+   ends at 1.1 s; the layer is removed at 1.15 s).
+   Below the navbar's z-50, above everything else on the page.
    ============================================ */
+.entry-dark {
+  --entry-dark: var(--theme-bg-primary, #030302);
+  --entry-lx: 50%;
+  --entry-ly: 82%;
+  --entry-pool: 200px;
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 49;
+  touch-action: none;
+  overscroll-behavior: contain;
+}
+
+.entry-dark--lifting {
+  pointer-events: none;
+}
+
+.entry-dark-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.entry-dark-solid {
+  background: var(--entry-dark);
+}
+
+.entry-dark-pool {
+  background: radial-gradient(ellipse var(--entry-pool) 96px at var(--entry-lx) var(--entry-ly), transparent 0, transparent 40%, var(--entry-dark) 100%);
+}
+
+.entry-dark-mid {
+  background: radial-gradient(circle 48vmax at var(--entry-lx) var(--entry-ly), transparent 0, transparent 35%, var(--entry-dark) 100%);
+}
+
+.entry-dark-far {
+  background: radial-gradient(circle 100vmax at var(--entry-lx) var(--entry-ly), transparent 0, transparent 40%, var(--entry-dark) 100%);
+}
+
+.entry-dark--lifting .entry-dark-solid {
+  animation: entry-dark-catch 0.38s linear forwards;
+}
+
+.entry-dark--lifting .entry-dark-pool {
+  animation: entry-dark-lift 0.35s ease-out 0.25s forwards;
+}
+
+.entry-dark--lifting .entry-dark-mid {
+  animation: entry-dark-lift 0.4s ease-out 0.45s forwards;
+}
+
+.entry-dark--lifting .entry-dark-far {
+  animation: entry-dark-lift 0.45s ease-in-out 0.65s forwards;
+}
+
+.entry-dark--lifting .enter-gate {
+  animation: entry-dark-lift 0.18s ease-out forwards;
+}
+
+/* The first torch catches (a quick drop and a flicker back), holds, then
+   the second catches at 220 ms (58%) and the solid dark is gone. */
+@keyframes entry-dark-catch {
+  0% { opacity: 1; }
+  16% { opacity: 0.55; }
+  30% { opacity: 0.74; }
+  58% { opacity: 0.7; }
+  74% { opacity: 0.22; }
+  86% { opacity: 0.36; }
+  100% { opacity: 0; }
+}
+
+@keyframes entry-dark-lift {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
 .enter-gate {
   -webkit-tap-highlight-color: transparent;
   animation: enter-gate-in 0.5s ease-out both;
+  /* Over the dark, about where the board will be. */
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: min(100%, 520px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 16px;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
 }
 
 .enter-gate-date {
@@ -4921,6 +5038,13 @@ button.dir-picker__tab:not(.dir-picker__tab--active) .dir-picker__tab-text {
 }
 
 .enter-gate-hint {
+  /* = .theme-root .hud-label, spelled out: the dark hangs off <body>,
+     outside .theme-root. */
+  font-size: 11px;
+  line-height: 13px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   color: #ebc097;
   text-shadow: 0 1px 0 rgba(0, 0, 0, 0.85);
   animation: enter-gate-hint 1.8s ease-in-out infinite;

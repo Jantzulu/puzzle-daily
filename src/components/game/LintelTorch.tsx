@@ -3,6 +3,7 @@ import { LINTEL_TORCH_SHEET as SHEET } from '../../assets/ui-kits/lintelTorch';
 import { useCrispSnap } from './panelSkins';
 import { getRunMood, onRunMood } from '../shared/runMood';
 import { playChromeSound } from '../../utils/chromeSounds';
+import { entryIsDark, onEntryDark } from './enterGateState';
 
 /** The second torch of a pair follows the first by this much (ms). */
 const FOLLOW_MS = 220;
@@ -28,7 +29,8 @@ const Z = 2;
  * loops so a pair never burns in step.
  */
 export const LintelTorch: React.FC<{ phase?: number }> = ({ phase = 0 }) => {
-  const [lit, setLit] = React.useState(() => getRunMood() !== 'defeat');
+  // Out while the page waits in the dark for its first tap (EnterGate.tsx).
+  const [lit, setLit] = React.useState(() => getRunMood() !== 'defeat' && !entryIsDark());
   // Whole-px placement: the lettering's flex centring can land it on a
   // half pixel, which would blur the art.
   const snapRef = useCrispSnap<HTMLButtonElement>(true);
@@ -88,6 +90,17 @@ export const LintelTorch: React.FC<{ phase?: number }> = ({ phase = 0 }) => {
     const off = onRunMood(mood => {
       clearTimeout(timer);
       timer = setTimeout(() => setLit(mood !== 'defeat'), phase ? FOLLOW_MS : 0);
+    });
+    return () => { off(); clearTimeout(timer); };
+  }, [phase]);
+
+  // THE DARK ENTRY: the tap that enters the page lights the torches, the
+  // second a beat after the first, each with its sound.
+  React.useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const off = onEntryDark(dark => {
+      clearTimeout(timer);
+      if (!dark) timer = setTimeout(() => setLit(getRunMood() !== 'defeat'), phase ? FOLLOW_MS : 0);
     });
     return () => { off(); clearTimeout(timer); };
   }, [phase]);

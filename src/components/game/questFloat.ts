@@ -51,7 +51,8 @@ export const QUEST_SPAWN_DELAY_MS = 300;
  * the user then asked to "shorten it slightly" (same day).
  */
 export const ENTRY_FADE_MS = 1400;
-export const QUEST_SPAWN_AFTER_ENTRY_MS = 1000;
+// (1250 since the dark entry: the scroll lands just after the gate locks at 1.1 s.)
+export const QUEST_SPAWN_AFTER_ENTRY_MS = 1250;
 /**
  * The "tap to minimize" hint waits for the scroll (user round 5) and
  * arrives this long AFTER the unfurl has actually ended — its animationend,
