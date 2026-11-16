@@ -197,98 +197,120 @@ const scrollSparkle: SynthSound = {
 // (index.css: it creeps, falls, HITS at 86% of 1.4s and rebounds twice; it
 // is winched up in four ratchet pulls and locks at 1.25s), so these are
 // PARTS, and utils/gateSounds.ts plays them at those same moments:
-//   gate-rumble  the iron moving: a low rumble with a chain shudder. Made
-//                one second long and stretched to fit each move.
-//   gate-rung    one rung passing: a small iron clink. Played once per
-//                rung as it comes out from (or goes back under) the bar.
+//   gate-rumble  the iron moving: a low grind. Made one second long and
+//                stretched to fit each move.
+//   gate-rung    one rung passing: a heavy clank. Played once per rung as
+//                it comes out from (or goes back under) the bar.
 //   gate-land    the gate hitting the ground: the big one.
-//   gate-lock    the gate locking at the top: a clunk and a latch.
-// NOBODY HAS HEARD THESE. They follow the rules the torch and scroll
-// taught: a real impact starts at once; broad noise; a low note for weight
-// with a mid layer on top, because a phone cannot play the low note; and
-// levels kept near the approved page sounds (set by measuring).
+//   gate-lock    the gate locking at the top: a deep clunk and a latch.
+//
+// The user's ear on v1 (2026-11-15): "way too high pitched and kind of
+// silly for an enormous iron door made of iron bars". v1 had small bright
+// parts: a rung that was a tick above 2 kHz with a ring at 1250 Hz, a chain
+// hiss near 2.5 kHz, a clang at 310 Hz with partials up past 1.5 kHz. Those
+// are the sounds of something SMALL (keys, a chain on a bucket).
+// WEIGHT IS LOW AND DULL. So in v2 nothing rings above a few hundred Hz,
+// every noise layer has its top cut off around 1 kHz, the notes sit at
+// 50-200 Hz with their partials close above them (a boom, not a chime),
+// and each part lasts a little longer: big things take longer to stop.
+// The band from about 300 Hz to 1 kHz is kept in every part on purpose: it
+// is all a phone speaker can play of a sound this low.
+// Levels were set by measuring; nobody has heard these.
 const gateRumble: SynthSound = {
   version: 1,
-  level: 0.11,
+  level: 0.1,
   layers: [
     {
-      id: 'rumble', name: 'Rumble', source: 'noise', start: 0, length: 1, level: 1.2, attack: 0.55, hold: 0.35, floor: 0.7, tail: 0.06,
-      noiseSeed: 0.8, filters: [{ type: 'lowpass', cutoff: { from: 200, to: 300 } }],
-      tremble: { rate: 24, depth: 6, seed: 0.3 },
+      id: 'rumble', name: 'Rumble', source: 'noise', start: 0, length: 1, level: 1.4, attack: 0.55, hold: 0.35, floor: 0.7, tail: 0.06,
+      noiseSeed: 0.8, filters: [{ type: 'lowpass', cutoff: { from: 110, to: 170 } }],
+      tremble: { rate: 14, depth: 6, seed: 0.3 },
     },
     {
-      id: 'chain', name: 'Chain', source: 'noise', start: 0, length: 1, level: 0.16, attack: 0.55, hold: 0.35, floor: 0.7, tail: 0.06,
-      noiseSeed: 1.5, filters: [{ type: 'bandpass', q: 0.9, cutoff: { from: 2200, to: 2800 } }],
-      tremble: { rate: 40, depth: 10, seed: 1.1 },
+      id: 'grind', name: 'Grind', source: 'noise', start: 0, length: 1, level: 0.5, attack: 0.55, hold: 0.35, floor: 0.7, tail: 0.06,
+      noiseSeed: 1.5, filters: [{ type: 'bandpass', q: 0.7, cutoff: { from: 360, to: 520 } }, { type: 'lowpass', cutoff: { from: 1000, to: 1000 } }],
+      tremble: { rate: 11, depth: 10, seed: 1.1 },
     },
   ],
 };
 
 const gateRung: SynthSound = {
   version: 1,
-  level: 0.18,
+  level: 0.089,
   layers: [
     {
-      id: 'tick', name: 'Tick', source: 'noise', start: 0, length: 0.02, level: 0.5, attack: 0, hold: 0, floor: 0.02, tail: 0.005,
-      noiseSeed: 0.5, filters: [{ type: 'highpass', cutoff: { from: 2200, to: 2200 } }],
+      id: 'knock', name: 'Knock', source: 'noise', start: 0, length: 0.07, level: 1.6, attack: 0.001, hold: 0, floor: 0.02, tail: 0.015,
+      noiseSeed: 0.5,
+      filters: [
+        { type: 'highpass', cutoff: { from: 160, to: 160 } },
+        { type: 'lowpass', cutoff: { from: 950, to: 950 } },
+      ],
     },
     {
-      id: 'ring', name: 'Ring', source: 'tone', wave: 'sine', start: 0, length: 0.09, level: 0.14, attack: 0.001, hold: 0, floor: 0.02, tail: 0.02,
-      pitch: { from: 1250, to: 1250 }, harmonics: [{ ratio: 2.4, level: 0.5 }, { ratio: 4.2, level: 0.3 }],
+      id: 'weight', name: 'Weight', source: 'tone', wave: 'sine', start: 0, length: 0.1, level: 0.4, attack: 0.002, hold: 0, floor: 0.02, tail: 0.02,
+      pitch: { from: 115, to: 78, arriveAt: 0.05 },
+    },
+    {
+      id: 'iron', name: 'Iron', source: 'tone', wave: 'sine', start: 0, length: 0.16, level: 0.16, attack: 0.001, hold: 0, floor: 0.02, tail: 0.03,
+      pitch: { from: 185, to: 185 }, harmonics: [{ ratio: 1.48, level: 0.6 }, { ratio: 2.31, level: 0.35 }],
     },
   ],
 };
 
 const gateLand: SynthSound = {
   version: 1,
-  level: 0.09,
+  level: 0.21,
   layers: [
     {
-      id: 'thump', name: 'Thump', source: 'tone', wave: 'sine', start: 0, length: 0.22, level: 0.9, attack: 0.003, hold: 0, floor: 0.02, tail: 0.03,
-      pitch: { from: 72, to: 38, arriveAt: 0.12 },
+      id: 'thump', name: 'Thump', source: 'tone', wave: 'sine', start: 0, length: 0.34, level: 0.7, attack: 0.003, hold: 0, floor: 0.02, tail: 0.05,
+      pitch: { from: 62, to: 32, arriveAt: 0.16 },
     },
     {
-      id: 'body', name: 'Body', source: 'noise', start: 0, length: 0.13, level: 1.4, attack: 0.001, hold: 0, floor: 0.02, tail: 0.02,
+      id: 'body', name: 'Body', source: 'noise', start: 0, length: 0.22, level: 1.5, attack: 0.001, hold: 0, floor: 0.02, tail: 0.04,
       noiseSeed: 1.6,
       filters: [
-        { type: 'highpass', cutoff: { from: 180, to: 180 } },
-        { type: 'lowpass', cutoff: { from: 1100, to: 1100 } },
+        { type: 'highpass', cutoff: { from: 110, to: 110 } },
+        { type: 'lowpass', cutoff: { from: 800, to: 480 } },
       ],
     },
     {
-      id: 'clang', name: 'Clang', source: 'tone', wave: 'sine', start: 0, length: 0.5, level: 0.1, attack: 0.001, hold: 0, floor: 0.01, tail: 0.05,
-      pitch: { from: 310, to: 310 }, harmonics: [{ ratio: 2.31, level: 0.5 }, { ratio: 3.9, level: 0.35 }, { ratio: 5.6, level: 0.2 }],
+      id: 'boom', name: 'Boom', source: 'tone', wave: 'sine', start: 0, length: 0.7, level: 0.22, attack: 0.002, hold: 0, floor: 0.01, tail: 0.08,
+      pitch: { from: 96, to: 96 }, harmonics: [{ ratio: 1.5, level: 0.6 }, { ratio: 2.3, level: 0.35 }, { ratio: 3.1, level: 0.15 }],
     },
     {
-      id: 'rattle', name: 'Rattle', source: 'noise', start: 0.01, length: 0.09, level: 0.3, attack: 0.001, hold: 0, floor: 0.05, tail: 0.02,
-      noiseSeed: 0.9, filters: [{ type: 'highpass', cutoff: { from: 2500, to: 2500 } }],
+      id: 'shudder', name: 'Shudder', source: 'noise', start: 0.02, length: 0.28, level: 0.5, attack: 0.01, hold: 0, floor: 0.05, tail: 0.05,
+      noiseSeed: 0.9, filters: [{ type: 'bandpass', q: 0.7, cutoff: { from: 520, to: 340 } }],
+      tremble: { rate: 22, depth: 9, seed: 0.7 },
     },
   ],
 };
 
 const gateLock: SynthSound = {
   version: 1,
-  level: 0.11,
+  level: 0.21,
   layers: [
     {
-      id: 'clunk', name: 'Clunk', source: 'tone', wave: 'sine', start: 0, length: 0.11, level: 0.7, attack: 0.002, hold: 0, floor: 0.02, tail: 0.02,
-      pitch: { from: 125, to: 70, arriveAt: 0.06 },
+      id: 'clunk', name: 'Clunk', source: 'tone', wave: 'sine', start: 0, length: 0.16, level: 0.65, attack: 0.002, hold: 0, floor: 0.02, tail: 0.03,
+      pitch: { from: 92, to: 54, arriveAt: 0.08 },
     },
     {
-      id: 'knock', name: 'Knock', source: 'noise', start: 0, length: 0.05, level: 0.9, attack: 0.001, hold: 0, floor: 0.02, tail: 0.01,
+      id: 'knock', name: 'Knock', source: 'noise', start: 0, length: 0.09, level: 1.1, attack: 0.001, hold: 0, floor: 0.02, tail: 0.02,
       noiseSeed: 0.4,
       filters: [
-        { type: 'highpass', cutoff: { from: 300, to: 300 } },
-        { type: 'lowpass', cutoff: { from: 1800, to: 1800 } },
+        { type: 'highpass', cutoff: { from: 140, to: 140 } },
+        { type: 'lowpass', cutoff: { from: 900, to: 900 } },
       ],
     },
     {
-      id: 'latch', name: 'Latch', source: 'noise', start: 0.045, length: 0.015, level: 0.5, attack: 0, hold: 0, floor: 0.02, tail: 0.004,
-      noiseSeed: 1.2, filters: [{ type: 'highpass', cutoff: { from: 1800, to: 1800 } }],
+      id: 'latch', name: 'Latch', source: 'noise', start: 0.06, length: 0.03, level: 0.6, attack: 0, hold: 0, floor: 0.02, tail: 0.008,
+      noiseSeed: 1.2,
+      filters: [
+        { type: 'highpass', cutoff: { from: 350, to: 350 } },
+        { type: 'lowpass', cutoff: { from: 1500, to: 1500 } },
+      ],
     },
     {
-      id: 'ring', name: 'Ring', source: 'tone', wave: 'sine', start: 0, length: 0.22, level: 0.08, attack: 0.001, hold: 0, floor: 0.01, tail: 0.03,
-      pitch: { from: 520, to: 520 }, harmonics: [{ ratio: 2.31, level: 0.4 }],
+      id: 'iron', name: 'Iron', source: 'tone', wave: 'sine', start: 0, length: 0.32, level: 0.14, attack: 0.001, hold: 0, floor: 0.01, tail: 0.04,
+      pitch: { from: 142, to: 142 }, harmonics: [{ ratio: 1.5, level: 0.5 }, { ratio: 2.31, level: 0.3 }],
     },
   ],
 };

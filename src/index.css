@@ -1984,13 +1984,6 @@ body:not(.menu-gate-lowered) .control-rail.rail-riding {
   animation: gate-settle 0.35s linear 0.35s backwards;
 }
 
-/* Held at its open start until the entry tap (Game.tsx, EnterGate): the
-   backwards fill shows the first keyframe while the animation is paused in
-   its delay, and it runs from there once the class comes off. */
-.gate-settle-wait {
-  animation-play-state: paused;
-}
-
 /* Replay exit: the control rail re-enters like the portcullis it is —
    descending from under the navbar instead of popping into place. It
    starts tucked fully behind the bar (nav z-50 covers the rail's z-40
@@ -2480,9 +2473,7 @@ body.gate-raising .gate-shake-layer {
   100% { transform: translate(0, 0); }
 }
 
-/* :not(.gate-settle-wait): while the settle is held for the entry tap the
-   screen keeps still; the shake starts with the settle itself. */
-.gate-shake-layer:has(.gate-settle:not(.gate-settle-wait)) {
+.gate-shake-layer:has(.gate-settle) {
   animation: gate-settle-rumble 0.35s step-end 0.35s, gate-settle-clunk 0.3s step-end 0.7s;
 }
 

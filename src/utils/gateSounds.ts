@@ -80,16 +80,16 @@ export function gatePlan(move: GateMove, rungs: number): GateStep[] {
   // different in pitch, so a run of them is not one sound repeated.
   for (let k = 0; k < count; k++) {
     const at = gateTimeAt(move, (k + 0.5) / count) * seconds;
-    steps.push({ sound: 'gate-rung', at, gain: move === 'lower' ? 1 : 0.8, pitch: (move === 'lower' ? 1 : 1.12) * (k % 2 ? 0.95 : 1.04) });
+    steps.push({ sound: 'gate-rung', at, gain: move === 'lower' ? 1 : 0.8, pitch: k % 2 ? 0.94 : 1.03 });
   }
   if (move === 'lower') {
     // It hits the ground, then bounces twice, each smaller.
     steps.push({ sound: 'gate-land', at: LAND_AT * seconds, gain: 1, pitch: 1 });
-    steps.push({ sound: 'gate-land', at: REBOUNDS_AT[0] * seconds, gain: 0.28, pitch: 1.2 });
-    steps.push({ sound: 'gate-land', at: REBOUNDS_AT[1] * seconds, gain: 0.1, pitch: 1.35 });
+    steps.push({ sound: 'gate-land', at: REBOUNDS_AT[0] * seconds, gain: 0.28, pitch: 1.06 });
+    steps.push({ sound: 'gate-land', at: REBOUNDS_AT[1] * seconds, gain: 0.1, pitch: 1.1 });
   } else {
     // The pawl catches between the winch's pulls, then it locks on top.
-    for (const share of CATCHES_AT) steps.push({ sound: 'gate-rung', at: share * seconds, gain: 1.5, pitch: 0.6 });
+    for (const share of CATCHES_AT) steps.push({ sound: 'gate-rung', at: share * seconds, gain: 1.5, pitch: 0.8 });
     steps.push({ sound: 'gate-lock', at: seconds, gain: 1, pitch: 1 });
   }
   return steps.sort((a, b) => a.at - b.at);
@@ -101,8 +101,9 @@ export function gatePlan(move: GateMove, rungs: number): GateStep[] {
  *   the page-load settle   the rail is winched up its last few px and locks
  *   a grabbed gate         pulled down and let go, it knocks home
  * Both are the gate meeting its upper stop, so both are the lock sound,
- * quieter and pitched up a little (a smaller, lighter meeting). `strength`
- * is 0-1 of the menu gate's full lock.
+ * quieter. Barely pitched up: it is the same enormous gate, moving less
+ * (user's ear 2026-11-15: the first gate sounds were "way too high
+ * pitched"). `strength` is 0-1 of the menu gate's full lock.
  */
 export function playGateKnock(strength: number): void {
   const gain = Math.max(0.05, Math.min(1, strength));
@@ -111,7 +112,7 @@ export function playGateKnock(strength: number): void {
     const level = ctx.createGain();
     level.gain.value = gain;
     level.connect(out);
-    renderSynthSound(ctx, level, at, recipe, { pitch: 1.3 - 0.25 * gain });
+    renderSynthSound(ctx, level, at, recipe, { pitch: 1.08 - 0.08 * gain });
   });
 }
 
