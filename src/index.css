@@ -4904,15 +4904,21 @@ button.dir-picker__tab:not(.dir-picker__tab--active) .dir-picker__tab-text {
    covers everything under the navbar (.entry-dark; EnterGate.tsx sets its
    top to the navbar's bottom edge). On the tap (.entry-dark--lifting) the
    torches catch and the dark lifts in four fades, ONLY OPACITY animating:
-     solid  the whole dark. Drops as the first torch catches, flickers,
-            and goes as the second catches (220 ms later, LintelTorch).
+     solid  the whole dark, going as the torches catch.
      pool   a hole just around the torches: the first pool of light.
      mid    a wider hole.
      far    the widest: the last of the dark, lifting off the far end of
             the page (on a phone, the gate at the top).
+   EVERY fade only ever gets lighter, and each starts well before the one
+   before it ends, so the light grows in one motion. The first cut made the
+   solid layer FLICKER as each torch caught (down, back up, down); the
+   user saw exactly that as a fault: the area around the torches "lights
+   up, then almost immediately dims and then lights up again ... not a
+   smooth transition". The flicker belongs to the torch's own light
+   (.lintel-torch-light), never to the dark.
    The holes sit at --entry-lx / --entry-ly (the torches' middle, set at
    the tap). LOCKSTEP with enterGateState.ts ENTRY_LIFT_MS (the last fade
-   ends at 1.1 s; the layer is removed at 1.15 s).
+   ends at 1.35 s; the layer is removed at 1.4 s).
    Below the navbar's z-50, above everything else on the page.
    ============================================ */
 .entry-dark {
@@ -4957,35 +4963,23 @@ button.dir-picker__tab:not(.dir-picker__tab--active) .dir-picker__tab-text {
 }
 
 .entry-dark--lifting .entry-dark-solid {
-  animation: entry-dark-catch 0.38s linear forwards;
+  animation: entry-dark-lift 0.45s ease-out forwards;
 }
 
 .entry-dark--lifting .entry-dark-pool {
-  animation: entry-dark-lift 0.35s ease-out 0.25s forwards;
+  animation: entry-dark-lift 0.6s ease-in-out 0.1s forwards;
 }
 
 .entry-dark--lifting .entry-dark-mid {
-  animation: entry-dark-lift 0.4s ease-out 0.45s forwards;
+  animation: entry-dark-lift 0.7s ease-in-out 0.3s forwards;
 }
 
 .entry-dark--lifting .entry-dark-far {
-  animation: entry-dark-lift 0.45s ease-in-out 0.65s forwards;
+  animation: entry-dark-lift 0.85s ease-in-out 0.5s forwards;
 }
 
 .entry-dark--lifting .enter-gate {
   animation: entry-dark-lift 0.18s ease-out forwards;
-}
-
-/* The first torch catches (a quick drop and a flicker back), holds, then
-   the second catches at 220 ms (58%) and the solid dark is gone. */
-@keyframes entry-dark-catch {
-  0% { opacity: 1; }
-  16% { opacity: 0.55; }
-  30% { opacity: 0.74; }
-  58% { opacity: 0.7; }
-  74% { opacity: 0.22; }
-  86% { opacity: 0.36; }
-  100% { opacity: 0; }
 }
 
 @keyframes entry-dark-lift {
