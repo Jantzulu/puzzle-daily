@@ -205,7 +205,7 @@ const scrollSparkle: SynthSound = {
 //   gate-lock    the smaller knock: the two rebounds after the crash, the
 //                page-load settle, a grabbed gate.
 //
-// THE USER'S EAR, six rounds (2026-11-15):
+// THE USER'S EAR, seven rounds (2026-11-15):
 //   v1  "way too high pitched and kind of silly for an enormous iron door"
 //   v2  low and dull: "the pitch is better, but ... just thudding"
 //   v3  low ring + a square-wave "bite": still "missing the mark"; "it
@@ -220,9 +220,11 @@ const scrollSparkle: SynthSound = {
 //       they should be similar"; on headphones "it still seems to lack the
 //       bassy oomph of the audio file"; and "the chugging seems almost too
 //       rapid given the context of the speed of the portcullis".
-//   v6  (this): see THE BASS and THE CHUG'S SPEED below. Nobody writing
-//       these can hear them; every number is measured, then the rendered
-//       sound was measured the same way and compared.
+//   v6  more bass, a slower throb, the crash at the top too (THE BASS
+//       below). "the chugging sounds like an electric motor".
+//   v7  (this): see THE MOTOR below. Nobody writing these can hear them;
+//       every number is measured, then the rendered sound was measured
+//       the same way and compared.
 //
 // THE MEASUREMENT (the user's clip, "gate heavy open/close", a Freesound
 // community recording; only numbers were taken from it, and its opening
@@ -267,11 +269,34 @@ const scrollSparkle: SynthSound = {
 // LESSON: compare a made sound with a recording in NARROW bands and in
 // absolute level, not in shares of a few wide bands.
 //
-// THE CHUG'S SPEED (v6). The clip's winch throbs 17 times a second, but its
-// gate takes three seconds; ours takes 1.2 and the user heard 17 as too
-// fast for it. GATE_THROB below is now 9 a second, and the bright clatter
-// swells at half that, in step with it. The clacks that follow the gate's
-// own speed are the rungs (one per rung, played by gateSounds.ts).
+// THE MOTOR (v7). v6 slowed the low throb from 17 to 9 a second (the user
+// had heard 17 as too fast for a gate that moves for 1.2 s) and the user
+// heard "an electric motor". Three new yardsticks, the clip's winch against
+// v6's, say why:
+//   DOES THE PITCH HOLD STILL? The strongest low notes, looked at five
+//     times a second. The clip's wander: 75, 86, 102, 129 Hz and back, and
+//     135 to 275 Hz above them. v6's were 38, 86 and 269 Hz in every look.
+//   DOES IT KEEP TIME? How much of the low end's swelling happens at its
+//     one strongest rate. The clip: 6%. v6: about 60% (a pulse at exactly
+//     9 a second). The gaps between swells vary by 80% in the clip, by 9%
+//     in v6.
+//   WHAT SHAPE IS A SWELL? The clip is a steady bed with short bumps on
+//     it: between bumps it stays at 70% of their height. v6 fell to 25%
+//     between swells, the whole low end rising and falling smoothly.
+// A steady pitch swelling smoothly in strict time is what a motor IS. And
+// in the clip the bright clacks (about 7 a second, 0.08 to 0.28 s apart)
+// do not move the low end at all: the chug is a rumble with clacks on top,
+// not a low note that throbs. ("throbs 17 times a second (very regular)"
+// above overstated it: that is a roughness, a fifth of the swelling.)
+// v7's winch is therefore ALL NOISE and keeps no time: each low layer is
+// noise squeezed into a narrow band, which has a pitch but cannot hold it,
+// with its own slow irregular swell; the rhythm is the rungs' clacks. It
+// measures: pitch wandering (48-70, 75-129, 172-323 Hz), 5% at the
+// strongest rate, gaps varying by 60%, a bed at 70%; and still about 50%
+// of the clip's level below 270 Hz and 35-40% above.
+// LESSON: band levels say how much of each pitch there is, not how it
+// behaves in time. Also ask: does the pitch move, does it keep time, and
+// what shape is one swell.
 //
 // So the size of this gate is a low BOOM that hangs in the air, and the
 // "metal" is in the clacks and the rattle on top. Earlier notes said the
@@ -294,38 +319,44 @@ const band = (hz: number, q: number) => ({ type: 'bandpass' as const, q, cutoff:
 const below = (hz: number) => ({ type: 'lowpass' as const, cutoff: { from: hz, to: hz } });
 
 // The winch. Every layer swells in over the first quarter (the gate creeps
-// before it falls) and then holds. The low layers throb together
-// GATE_THROB times a second; the bright ones swell at half that.
+// before it falls) and then holds. ALL NOISE, and nothing in it keeps time
+// (see THE MOTOR above): no notes, no pulse. The four low layers are slowed
+// noise squeezed into narrow bands, so each has a pitch that drifts, and
+// each swells slowly on its own. The rhythm of the chug is the rungs'
+// clacks, played by gateSounds.ts.
+// Levels: the sound's own level is high and the layers low so that every
+// number here sits inside the Sound Forge's sliders.
 const whileMoving = { attack: 0.25, hold: 0.6, floor: 0.85, tail: 0.05 };
-/** How many times a second the winch chugs. ONE number to make it faster or slower. */
-const GATE_THROB = 9;
 const gateRumble: SynthSound = {
   version: 1,
-  level: 0.06,
+  level: 0.6,
   layers: [
-    // The bottom of it, felt more than heard (39 and 61 Hz): headphones and
-    // big speakers only.
-    gateNote('sub', 'Sub', 39, 0.75, 1, {
-      ...whileMoving, harmonics: [{ ratio: 1.56, level: 0.9 }],
-      pulse: { rate: GATE_THROB, depth: 0.8 }, tremble: { rate: 6, depth: 12, seed: 0.7 },
+    // The bottom of it, felt more than heard: headphones and big speakers only.
+    gateNoise('sub', 'Sub', 1.6, 1, [band(48, 1.2), below(95)], {
+      ...whileMoving, noiseRate: 0.25, noiseSeed: 0.7, tremble: { rate: 4, depth: 20, seed: 0.7 },
     }),
-    gateNote('drone', 'Drone', 86, 0.85, 1, {
-      ...whileMoving, harmonics: [{ ratio: 1.3, level: 0.7 }, { ratio: 2, level: 0.7 }, { ratio: 3.13, level: 0.9 }],
-      pulse: { rate: GATE_THROB, depth: 0.8 }, tremble: { rate: 8, depth: 10, seed: 0.3 },
+    gateNoise('drone', 'Drone', 1.4, 1, [band(92, 2.5)], {
+      ...whileMoving, noiseRate: 0.25, noiseSeed: 0.3, tremble: { rate: 5, depth: 20, seed: 0.3 },
     }),
-    gateNoise('rumble', 'Rumble', 4.2, 1, [below(420)], {
-      ...whileMoving, noiseSeed: 0.8, pulse: { rate: GATE_THROB, depth: 0.7 }, tremble: { rate: 14, depth: 6, seed: 1.1 },
+    gateNoise('growl', 'Growl', 0.85, 1, [band(170, 1.8)], {
+      ...whileMoving, noiseRate: 0.25, noiseSeed: 1.3, tremble: { rate: 6, depth: 20, seed: 1.4 },
     }),
-    gateNoise('grind', 'Grind', 1.5, 1, [band(900, 0.7)], {
-      ...whileMoving, noiseSeed: 0.35, pulse: { rate: GATE_THROB, depth: 0.5 }, tremble: { rate: 11, depth: 8, seed: 1.7 },
+    gateNoise('moan', 'Moan', 1.5, 1, [band(265, 5)], {
+      ...whileMoving, noiseRate: 0.25, noiseSeed: 1.9, tremble: { rate: 6, depth: 20, seed: 0.2 },
     }),
-    gateNoise('clatter', 'Clatter', 1.9, 1, [band(2700, 0.6)], {
-      ...whileMoving, noiseSeed: 1.5, pulse: { rate: GATE_THROB / 2, depth: 0.5 }, tremble: { rate: 30, depth: 6, seed: 0.5 },
+    gateNoise('rumble', 'Rumble', 0.2, 1, [below(420)], {
+      ...whileMoving, noiseSeed: 0.8, tremble: { rate: 6, depth: 20, seed: 1.1 },
+    }),
+    gateNoise('grind', 'Grind', 0.15, 1, [band(900, 0.7)], {
+      ...whileMoving, noiseSeed: 0.35, tremble: { rate: 8, depth: 6, seed: 1.7 },
+    }),
+    gateNoise('clatter', 'Clatter', 0.19, 1, [band(2700, 0.6)], {
+      ...whileMoving, noiseSeed: 1.5, tremble: { rate: 9, depth: 6, seed: 0.5 },
     }),
     // The top of the clatter. Noise in a band, NOT a note: a held high note
     // is the screech the user asked to leave out.
-    gateNoise('hiss', 'Hiss', 1.1, 1, [band(4300, 1.5)], {
-      ...whileMoving, noiseSeed: 0.2, pulse: { rate: GATE_THROB / 2, depth: 0.5 }, tremble: { rate: 30, depth: 6, seed: 0.9 },
+    gateNoise('hiss', 'Hiss', 0.12, 1, [band(4300, 1.5)], {
+      ...whileMoving, noiseSeed: 0.2, tremble: { rate: 9, depth: 6, seed: 0.9 },
     }),
   ],
 };
