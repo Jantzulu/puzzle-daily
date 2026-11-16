@@ -16,12 +16,22 @@ import { ENTRY_LIFT_MS, markPageEntered, puzzleDateLabel, setEntryDark } from '.
  * spreads from them, and the gate, which nobody has seen hanging open,
  * winches home as the light reaches it (Game.tsx holds its settle).
  *
- * HOW THE LIGHT SPREADS, cheaply: four layers the colour of the page, one
- * solid and three with a hole around the torches (small, medium, large).
- * They fade out one after another, so the lit pool grows in soft steps.
- * Only opacity ever animates (the mobile rule for page decoration); a mask
- * or a gradient that changes size would repaint the whole screen each
- * frame. Under Reduce Motion it is the same: fades always run.
+ * HOW THE DARK LIFTS: two layers the colour of the page, one solid and one
+ * with a wide soft hole around the torches. Both simply fade, slowly, at
+ * about the board's own pace; the holed one runs a little behind, so the
+ * torches' end of the page leads and the far end follows. Only opacity ever
+ * animates (the mobile rule for page decoration). Under Reduce Motion it is
+ * the same: fades always run.
+ * WHAT THE USER'S EYE SAID (2026-11-15/16), which is why it is this plain:
+ *   - a flicker on the dark as each torch caught read as a fault ("lights
+ *     up, then almost immediately dims and then lights up again"). The
+ *     dark only ever gets lighter.
+ *   - four quick staged fades made the heroes panel and everything below
+ *     "just pop in without fading in" (each was 0.3-0.5 s, next to a board
+ *     that takes 1.4 s). Everything now fades over more than a second.
+ *   - sparks from the torches and a warm glow swelling out of them: "I
+ *     dont like the sparks or the radiant glow". Removed; do not bring
+ *     them back.
  *
  * TODAY'S date, not the puzzle's own `date` field: that field is the day
  * the puzzle was MADE in the editor (and the built-in demo puzzle says
@@ -35,34 +45,11 @@ import { ENTRY_LIFT_MS, markPageEntered, puzzleDateLabel, setEntryDark } from '.
  *
  * A tap ANYWHERE on the page enters, the navbar included.
  *
- * THE FLOURISHES (user ask, same day: "any other effects to the transition
- * to make it more interesting"), each its own element so one can go without
- * the others, each only transform and opacity:
- *   the WASH    a warm bloom of firelight (the torch light's own colours)
- *               that swells out from the torches ahead of the lifting dark
- *               and thins away.
- *   the SPARKS  a few 2px embers thrown up from each torch as it catches.
- *   the CARD    lifts a little as it fades, instead of only fading.
+ * The card lifts a little as it fades.
  */
-
-/** One torch's embers: where each ends up (px), how long it flies and when it leaves (ms). Fixed, so every entry looks the same. */
-const SPARKS = [
-  { dx: -13, rise: -44, ms: 760, wait: 0 },
-  { dx: 7, rise: -58, ms: 880, wait: 30 },
-  { dx: -4, rise: -66, ms: 940, wait: 70 },
-  { dx: 15, rise: -36, ms: 700, wait: 90 },
-  { dx: -18, rise: -28, ms: 640, wait: 120 },
-  { dx: 3, rise: -50, ms: 820, wait: 150 },
-  { dx: 10, rise: -70, ms: 980, wait: 190 },
-  { dx: -9, rise: -54, ms: 860, wait: 230 },
-];
-/** = LintelTorch FOLLOW_MS: the second torch catches this long after the first. */
-const SECOND_TORCH_MS = 220;
 export const EnterGate: React.FC<{ onEnter: () => void; onGone: () => void }> = ({ onEnter, onGone }) => {
   const [title] = React.useState(() => puzzleDateLabel(localDateKey()) ?? '');
   const [lifting, setLifting] = React.useState(false);
-  /** Where each torch's flame is, inside the dark, at the tap. */
-  const [flames, setFlames] = React.useState<Array<{ x: number; y: number }>>([]);
   const darkRef = React.useRef<HTMLDivElement>(null);
   const calls = React.useRef({ onEnter, onGone });
   React.useEffect(() => { calls.current = { onEnter, onGone }; });
@@ -101,26 +88,14 @@ export const EnterGate: React.FC<{ onEnter: () => void; onGone: () => void }> = 
       const el = darkRef.current;
       if (el) {
         const box = el.getBoundingClientRect();
-        const lit = [...document.querySelectorAll<HTMLElement>('.lintel-torch')]
-          .map(t => ({ t, r: t.getBoundingClientRect() }))
-          .filter(({ r }) => r.width > 0 && r.bottom > box.top && r.top < window.innerHeight);
-        const torches = lit.map(({ r }) => r);
-        setFlames(lit.map(({ t, r }) => {
-          const style = getComputedStyle(t);
-          const fx = parseFloat(style.getPropertyValue('--torch-flame-x'));
-          const fy = parseFloat(style.getPropertyValue('--torch-flame-y'));
-          return {
-            x: Math.round(r.left - box.left + (Number.isFinite(fx) ? fx : r.width / 2)),
-            y: Math.round(r.top - box.top + (Number.isFinite(fy) ? fy : r.height / 3)),
-          };
-        }));
+        const torches = [...document.querySelectorAll('.lintel-torch')]
+          .map(t => t.getBoundingClientRect())
+          .filter(r => r.width > 0 && r.bottom > box.top && r.top < window.innerHeight);
         if (torches.length > 0) {
           const x = torches.reduce((sum, r) => sum + r.left + r.width / 2, 0) / torches.length;
           const y = torches.reduce((sum, r) => sum + r.top + r.height / 2, 0) / torches.length;
-          const spread = Math.max(...torches.map(r => r.right)) - Math.min(...torches.map(r => r.left));
           el.style.setProperty('--entry-lx', `${Math.round(x - box.left)}px`);
           el.style.setProperty('--entry-ly', `${Math.round(y - box.top)}px`);
-          el.style.setProperty('--entry-pool', `${Math.round(spread / 2 + 70)}px`);
         }
       }
       markPageEntered();
@@ -141,22 +116,7 @@ export const EnterGate: React.FC<{ onEnter: () => void; onGone: () => void }> = 
   return createPortal(
     <div ref={darkRef} className={`entry-dark${lifting ? ' entry-dark--lifting' : ''}`}>
       <span className="entry-dark-layer entry-dark-far" aria-hidden="true" />
-      <span className="entry-dark-layer entry-dark-mid" aria-hidden="true" />
-      <span className="entry-dark-layer entry-dark-pool" aria-hidden="true" />
       <span className="entry-dark-layer entry-dark-solid" aria-hidden="true" />
-      <span className="entry-dark-wash" aria-hidden="true" />
-      {flames.map((flame, i) => (
-        <span
-          key={i}
-          className="entry-sparks"
-          style={{ left: flame.x, top: flame.y, '--spark-torch': `${i * SECOND_TORCH_MS}ms` } as React.CSSProperties}
-          aria-hidden="true"
-        >
-          {SPARKS.map((s, k) => (
-            <i key={k} style={{ '--spark-dx': `${s.dx}px`, '--spark-rise': `${s.rise}px`, '--spark-ms': `${s.ms}ms`, '--spark-wait': `${s.wait}ms` } as React.CSSProperties} />
-          ))}
-        </span>
-      ))}
       <button type="button" className="enter-gate" aria-label={`${title}. Enter the dungeon`}>
         <span className="enter-gate-date">{title}</span>
         <span className="enter-gate-rule" aria-hidden="true" />

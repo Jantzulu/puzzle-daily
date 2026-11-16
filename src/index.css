@@ -4903,29 +4903,22 @@ button.dir-picker__tab:not(.dir-picker__tab--active) .dir-picker__tab-text {
    THE DARK ENTRY (user idea, same day): the card waits in DARKNESS that
    covers everything under the navbar (.entry-dark; EnterGate.tsx sets its
    top to the navbar's bottom edge). On the tap (.entry-dark--lifting) the
-   torches catch and the dark lifts in four fades, ONLY OPACITY animating:
-     solid  the whole dark, going as the torches catch.
-     pool   a hole just around the torches: the first pool of light.
-     mid    a wider hole.
-     far    the widest: the last of the dark, lifting off the far end of
-            the page (on a phone, the gate at the top).
-   EVERY fade only ever gets lighter, and each starts well before the one
-   before it ends, so the light grows in one motion. The first cut made the
-   solid layer FLICKER as each torch caught (down, back up, down); the
-   user saw exactly that as a fault: the area around the torches "lights
-   up, then almost immediately dims and then lights up again ... not a
-   smooth transition". The flicker belongs to the torch's own light
-   (.lintel-torch-light), never to the dark.
-   The holes sit at --entry-lx / --entry-ly (the torches' middle, set at
-   the tap). LOCKSTEP with enterGateState.ts ENTRY_LIFT_MS (the last fade
-   ends at 1.35 s; the layer is removed at 1.4 s).
+   torches catch and the dark lifts in two slow fades, ONLY OPACITY
+   animating:
+     solid  the whole dark, 0 to 1.2 s.
+     far    a wide soft hole around the torches (--entry-lx / --entry-ly,
+            their middle, set at the tap), 0.15 to 1.4 s: the torches' end
+            of the page leads a little and the far end follows.
+   Plain on purpose; EnterGate.tsx records what the user's eye rejected
+   (a flicker, quick staged fades that "pop", sparks, a warm glow).
+   LOCKSTEP with enterGateState.ts ENTRY_LIFT_MS (the last fade ends at
+   1.4 s; the layer is removed at 1.45 s).
    Below the navbar's z-50, above everything else on the page.
    ============================================ */
 .entry-dark {
   --entry-dark: var(--theme-bg-primary, #030302);
   --entry-lx: 50%;
   --entry-ly: 82%;
-  --entry-pool: 200px;
   position: fixed;
   left: 0;
   right: 0;
@@ -4934,7 +4927,6 @@ button.dir-picker__tab:not(.dir-picker__tab--active) .dir-picker__tab-text {
   z-index: 49;
   touch-action: none;
   overscroll-behavior: contain;
-  overflow: hidden; /* the wash swells past the edges */
 }
 
 .entry-dark--lifting {
@@ -4951,32 +4943,16 @@ button.dir-picker__tab:not(.dir-picker__tab--active) .dir-picker__tab-text {
   background: var(--entry-dark);
 }
 
-.entry-dark-pool {
-  background: radial-gradient(ellipse var(--entry-pool) 96px at var(--entry-lx) var(--entry-ly), transparent 0, transparent 40%, var(--entry-dark) 100%);
-}
-
-.entry-dark-mid {
-  background: radial-gradient(circle 48vmax at var(--entry-lx) var(--entry-ly), transparent 0, transparent 35%, var(--entry-dark) 100%);
-}
-
 .entry-dark-far {
-  background: radial-gradient(circle 100vmax at var(--entry-lx) var(--entry-ly), transparent 0, transparent 40%, var(--entry-dark) 100%);
+  background: radial-gradient(circle 110vmax at var(--entry-lx) var(--entry-ly), transparent 0, transparent 35%, var(--entry-dark) 100%);
 }
 
 .entry-dark--lifting .entry-dark-solid {
-  animation: entry-dark-lift 0.45s ease-out forwards;
-}
-
-.entry-dark--lifting .entry-dark-pool {
-  animation: entry-dark-lift 0.6s ease-in-out 0.1s forwards;
-}
-
-.entry-dark--lifting .entry-dark-mid {
-  animation: entry-dark-lift 0.7s ease-in-out 0.3s forwards;
+  animation: entry-dark-lift 1.2s ease-in-out forwards;
 }
 
 .entry-dark--lifting .entry-dark-far {
-  animation: entry-dark-lift 0.85s ease-in-out 0.5s forwards;
+  animation: entry-dark-lift 1.25s ease-in-out 0.15s forwards;
 }
 
 .entry-dark--lifting .enter-gate {
@@ -4986,81 +4962,6 @@ button.dir-picker__tab:not(.dir-picker__tab--active) .dir-picker__tab-text {
 @keyframes entry-card-out {
   from { opacity: 1; transform: translateY(0); }
   to { opacity: 0; transform: translateY(-10px); }
-}
-
-/* THE WASH (user ask: more to the transition): a warm bloom in the torch
-   light's own colours, over the dark. It swells out from the torches ahead
-   of the lifting dark and thins away, so the light arrives as firelight
-   and not as a grey fade. A small square scaled up (a soft gradient loses
-   nothing by it, and a small layer is cheap on a phone). */
-.entry-dark-wash {
-  position: absolute;
-  left: var(--entry-lx);
-  top: var(--entry-ly);
-  width: 60vmax;
-  height: 60vmax;
-  margin: -30vmax 0 0 -30vmax;
-  pointer-events: none;
-  opacity: 0;
-  background: radial-gradient(closest-side, rgba(255, 196, 110, 0.5), rgba(255, 150, 60, 0.22) 40%, rgba(255, 120, 40, 0));
-}
-
-.entry-dark--lifting .entry-dark-wash {
-  animation: entry-dark-wash 1.3s ease-out forwards;
-}
-
-@keyframes entry-dark-wash {
-  0% { opacity: 0; transform: scale(0.25); }
-  14% { opacity: 0.9; transform: scale(0.55); }
-  100% { opacity: 0; transform: scale(2.6); }
-}
-
-/* Reduce Motion: the wash still glows and fades, without rushing outward. */
-@media (prefers-reduced-motion: reduce) {
-  .entry-dark--lifting .entry-dark-wash {
-    animation-name: entry-dark-wash-still;
-  }
-}
-
-@keyframes entry-dark-wash-still {
-  0% { opacity: 0; transform: scale(1.4); }
-  20% { opacity: 0.7; transform: scale(1.4); }
-  100% { opacity: 0; transform: scale(1.4); }
-}
-
-/* THE SPARKS: a few 2px embers thrown up from each torch's flame as it
-   catches (the second torch's leave --spark-torch later). Whole art
-   pixels, no glow. Minimal movement: they fly under Reduce Motion too. */
-.entry-sparks {
-  position: absolute;
-  width: 0;
-  height: 0;
-  pointer-events: none;
-}
-
-.entry-sparks > i {
-  position: absolute;
-  left: -1px;
-  top: -1px;
-  width: 2px;
-  height: 2px;
-  background: #ffd27a;
-  opacity: 0;
-}
-
-.entry-sparks > i:nth-child(odd) {
-  background: #ff9a3c;
-}
-
-.entry-dark--lifting .entry-sparks > i {
-  animation: entry-spark var(--spark-ms) cubic-bezier(0.2, 0.7, 0.3, 1) calc(var(--spark-torch) + var(--spark-wait)) forwards;
-}
-
-@keyframes entry-spark {
-  0% { opacity: 0; transform: translate(0, 0); }
-  12% { opacity: 1; }
-  70% { opacity: 0.9; }
-  100% { opacity: 0; transform: translate(var(--spark-dx), var(--spark-rise)); }
 }
 
 @keyframes entry-dark-lift {

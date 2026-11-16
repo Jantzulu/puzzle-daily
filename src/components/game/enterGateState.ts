@@ -22,13 +22,15 @@ export function pageAlreadyEntered(): boolean {
 // the page is dark the torches are out; they listen here for the tap.
 
 /** The timeline after the tap (ms). LOCKSTEP with index.css `.entry-dark--lifting`. */
-export const ENTRY_LIFT_MS = 1400;
+export const ENTRY_LIFT_MS = 1450;
 /**
  * How long after the tap the gate starts its settle (its own 0.35 s pause
- * and 0.35 s stroke follow): it retracts 0.8-1.15 s in, as the last of the
- * dark lifts off it, and locks at 1.15 s.
+ * and 0.35 s stroke follow): it retracts 0.45-0.8 s in, coming out of the
+ * dark as it moves, and locks at 0.8 s. First 400 then 450; the user then
+ * asked for it to "begin its initial retraction on the click slightly
+ * earlier, even if this means its timing compared to before is different".
  */
-export const ENTRY_GATE_AFTER_MS = 450;
+export const ENTRY_GATE_AFTER_MS = 100;
 
 let dark = false;
 const darkListeners = new Set<(dark: boolean) => void>();
