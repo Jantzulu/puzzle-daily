@@ -117,8 +117,8 @@ export function playGateKnock(strength: number): void {
 }
 
 /** How strong each smaller lock is, next to the menu gate's (1). */
-export const GATE_SETTLE_STRENGTH = 0.5;
-export const gateKnockStrength = (force: number) => 0.22 + 0.2 * Math.max(0, Math.min(1, force));
+export const GATE_SETTLE_STRENGTH = 0.35;
+export const gateKnockStrength = (force: number) => 0.15 + 0.15 * Math.max(0, Math.min(1, force));
 
 /**
  * Play a move's sound now. Returns a function that cuts it off (the gate
