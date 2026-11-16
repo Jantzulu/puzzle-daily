@@ -28,7 +28,7 @@ import { TapHintChip } from './TapHintChip';
 import { QuestBoxFrame, QuestOrnaments, QuestPlate, QuestDivider } from './QuestBoxSkin';
 import { questSkinFrameActive, questSkinOrnamentsActive, questSkinPlateActive, questSkinDividerActive, questFrameBorders, questPlateStraddle } from './questBoxSkinData';
 import { useCrispSnap } from './panelSkins';
-import { QUEST_FLIGHT_MS, QUEST_TOSS_AFTER_ROLL_MS, QUEST_SPAWN_DELAY_MS, QUEST_HINT_BEAT_MS, QUEST_LAND_AT_S, QUEST_SPARKLE_AT_S, useQuestFloatPlacement, useQuestPress } from './questFloat';
+import { QUEST_FLIGHT_MS, QUEST_TOSS_AFTER_ROLL_MS, QUEST_SPAWN_DELAY_MS, QUEST_SPAWN_AFTER_ENTRY_MS, ENTRY_FADE_MS, QUEST_HINT_BEAT_MS, QUEST_LAND_AT_S, QUEST_SPARKLE_AT_S, useQuestFloatPlacement, useQuestPress } from './questFloat';
 import { playChromeSound } from '../../utils/chromeSounds';
 import { EnterGate } from './EnterGate';
 import { pageAlreadyEntered } from './enterGateState';
@@ -267,6 +267,11 @@ export const Game: React.FC<GameProps> = ({
   // "show the board" everywhere below, so it waits for both.
   const [entered, setEntered] = useState(pageAlreadyEntered);
   const spritesReady = spritesLoaded && entered;
+  // The puzzle that was entered by tapping the card: its board fades in
+  // slowly and its scroll waits (questFloat.ts ENTRY_FADE_MS). Everything
+  // else (arriving from another page, a later puzzle) keeps the quick fade.
+  const [slowEntryFor, setSlowEntryFor] = useState<string | null>(null);
+  const slowEntry = slowEntryFor === currentPuzzle.id;
   // Count of puzzle sprites that failed to preload. Non-zero shows a small
   // retry pill on the board instead of rendering missing art silently.
   const [failedSpriteCount, setFailedSpriteCount] = useState(0);
@@ -587,9 +592,9 @@ export const Game: React.FC<GameProps> = ({
         setQuestBoxHeight(questCollapsedH);
       }
       setQuestSpawnedFor(id);
-    }, QUEST_SPAWN_DELAY_MS);
+    }, slowEntry ? QUEST_SPAWN_AFTER_ENTRY_MS : QUEST_SPAWN_DELAY_MS);
     return () => window.clearTimeout(spawn);
-  }, [questFloatOn, spritesReady, currentPuzzle.id, questCollapsedH]);
+  }, [questFloatOn, spritesReady, currentPuzzle.id, questCollapsedH, slowEntry]);
   const questSpawned = spritesReady && questSpawnedFor === currentPuzzle.id;
   const questHintReady = questHintFor === currentPuzzle.id;
   // Pixel-snaps the skinned quest box (flex centering can land it on
@@ -2642,14 +2647,14 @@ export const Game: React.FC<GameProps> = ({
               />
               <div
                 ref={boardFadeRef}
-                className={`transition-[opacity,transform] duration-700 ease-out ${spritesReady ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
-                style={{ transform: spritesReady ? 'scale(1)' : 'scale(0.85)', transformOrigin: '50% 50%', willChange: 'transform, opacity' }}
+                className={`transition-[opacity,transform] ${slowEntry ? 'ease-in-out' : 'duration-700 ease-out'} ${spritesReady ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+                style={{ transform: spritesReady ? 'scale(1)' : 'scale(0.85)', transformOrigin: '50% 50%', willChange: 'transform, opacity', ...(slowEntry ? { transitionDuration: `${ENTRY_FADE_MS}ms` } : {}) }}
               >
                 <ResponsiveGameBoard gameState={gameState} onTileClick={handleTileClick} onProjectileKill={handleProjectileKill} replayFrozen={replayMode && !replayPlaying && !replayStepAnimating} entrancesRevealed={spritesReady} placementGhost={placementGhost} />
               </div>
               {!entered && (
                 // Art keeps loading behind the card.
-                <EnterGate onEnter={() => setEntered(true)} />
+                <EnterGate onEnter={() => { setSlowEntryFor(currentPuzzle.id); setEntered(true); }} />
               )}
               {entered && !spritesLoaded && (
                 // No fill: the page background shows through while loading —

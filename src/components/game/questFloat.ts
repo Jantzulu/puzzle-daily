@@ -44,6 +44,14 @@ export const QUEST_TOSS_AFTER_ROLL_MS = 600;
  */
 export const QUEST_SPAWN_DELAY_MS = 300;
 /**
+ * AFTER THE ENTRY TAP (user ask 2026-11-15: a longer fade-in once the card
+ * is tapped, "thus delaying all things that load in too"): the board takes
+ * ENTRY_FADE_MS to appear (Game.tsx; 700ms everywhere else), and the scroll
+ * waits this long, landing as the board is nearly in.
+ */
+export const ENTRY_FADE_MS = 1800;
+export const QUEST_SPAWN_AFTER_ENTRY_MS = 1300;
+/**
  * The "tap to minimize" hint waits for the scroll (user round 5) and
  * arrives this long AFTER the unfurl has actually ended — its animationend,
  * not a timer from the spawn. User round 6: the timer put the hint's
