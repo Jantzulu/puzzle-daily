@@ -4,11 +4,12 @@
 //
 // The gate's motion is exact and lives in index.css; this file mirrors its
 // two timing curves so each sound lands on the moment it is seen:
-//   LOWERING (the menu opens, 1.4s): the iron rumbles as it falls, each rung
-//     clinks as it comes out from under the bar, it LANDS at 86% of the
-//     way through, and rebounds twice.
-//   RISING (the menu closes, 1.25s): the winch hauls in four pulls, each
-//     rung clinks as it goes back under the bar, the pawl CATCHES between
+//   LOWERING (the menu opens, 1.4s): the winch chugs as it falls, each rung
+//     clacks as it comes out from under the bar, it LANDS (the crash) at
+//     86% of the way through, and rebounds twice (two smaller clanks; the
+//     crash itself rings on for two seconds).
+//   RISING (the menu closes, 1.25s): the winch chugs in four pulls, each
+//     rung clacks as it goes back under the bar, the pawl CATCHES between
 //     pulls, and it LOCKS at the top.
 // The pieces are page sounds (utils/synth/builtIn.ts: gate-rumble,
 // gate-rung, gate-land, gate-lock), so each can be tuned in the Sound Forge.
@@ -83,13 +84,16 @@ export function gatePlan(move: GateMove, rungs: number): GateStep[] {
     steps.push({ sound: 'gate-rung', at, gain: move === 'lower' ? 1 : 0.8, pitch: k % 2 ? 0.94 : 1.03 });
   }
   if (move === 'lower') {
-    // It hits the ground, then bounces twice, each smaller.
+    // It hits the ground, then bounces twice, each smaller. The bounces are
+    // the smaller clank, not the crash again: the crash rings for two
+    // seconds, and three of those a tenth of a second apart would smear
+    // into one drone.
     steps.push({ sound: 'gate-land', at: LAND_AT * seconds, gain: 1, pitch: 1 });
-    steps.push({ sound: 'gate-land', at: REBOUNDS_AT[0] * seconds, gain: 0.28, pitch: 1.06 });
-    steps.push({ sound: 'gate-land', at: REBOUNDS_AT[1] * seconds, gain: 0.1, pitch: 1.1 });
+    steps.push({ sound: 'gate-lock', at: REBOUNDS_AT[0] * seconds, gain: 0.6, pitch: 1.06 });
+    steps.push({ sound: 'gate-lock', at: REBOUNDS_AT[1] * seconds, gain: 0.25, pitch: 1.1 });
   } else {
     // The pawl catches between the winch's pulls, then it locks on top.
-    for (const share of CATCHES_AT) steps.push({ sound: 'gate-rung', at: share * seconds, gain: 1.5, pitch: 0.8 });
+    for (const share of CATCHES_AT) steps.push({ sound: 'gate-rung', at: share * seconds, gain: 1.2, pitch: 0.8 });
     steps.push({ sound: 'gate-lock', at: seconds, gain: 1, pitch: 1 });
   }
   return steps.sort((a, b) => a.at - b.at);

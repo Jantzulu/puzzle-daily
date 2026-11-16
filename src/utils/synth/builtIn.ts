@@ -197,140 +197,148 @@ const scrollSparkle: SynthSound = {
 // (index.css: it creeps, falls, HITS at 86% of 1.4s and rebounds twice; it
 // is winched up in four ratchet pulls and locks at 1.25s), so these are
 // PARTS, and utils/gateSounds.ts plays them at those same moments:
-//   gate-rumble  the iron moving: a low grind under a clattering chain.
-//                Made one second long and stretched to fit each move.
-//   gate-rung    one rung passing: an iron clank. Played once per rung.
-//   gate-land    the gate hitting the ground: the big one.
-//   gate-lock    the gate locking at the top.
+//   gate-rumble  the winch chugging while the gate moves. Made one second
+//                long and stretched to fit each move.
+//   gate-rung    one rung passing: a clack. Played once per rung.
+//   gate-land    the gate hitting the ground: the crash.
+//   gate-lock    the gate meeting a stop: locking at the top, the two
+//                rebounds after the crash, the settle, a grabbed gate.
 //
-// THE USER'S EAR, four rounds (2026-11-15):
+// THE USER'S EAR, five rounds (2026-11-15):
 //   v1  "way too high pitched and kind of silly for an enormous iron door"
 //   v2  low and dull: "the pitch is better, but ... just thudding"
 //   v3  low ring + a square-wave "bite": still "missing the mark"; "it
 //       should sound more like noises a blacksmith would make on an anvil".
-//   v4  (this) is built from a MEASUREMENT, since nobody writing these can
-//       hear them.
+//   v4  fitted to a measured recording of an ANVIL (pure notes around
+//       1.5-2 kHz). The user then supplied a recording of a real heavy gate:
+//       "has the sounds I had in mind ... the screech is too much, but the
+//       chugging sound of the winch being lowered with the crash is very
+//       close".
+//   v5  (this) is fitted to THAT recording. Nobody writing these can hear
+//       them; every number below is measured, then the rendered sound was
+//       measured the same way and compared.
 //
-// THE MEASUREMENT. A real recording of a smith hammering on an anvil
-// ("WWS Blacksmith's anvil", Work With Sounds / La Fonderie, CC BY 4.0, on
-// Wikimedia Commons), 24 of its strikes averaged:
-//   - it reaches full loudness in 2 ms, is 20 dB down at 200 ms and 40 dB
-//     down at 470 ms
-//   - over 90% of the ring is between 1.5 and 4 kHz; almost none is low
-//   - it is a handful of pure notes, each fading at its own rate:
-//       main note      1890 Hz   loudest          fades 103 dB a second
-//       x 1.12         2116 Hz   -11 dB           fades  68 dB/s: it
-//                                                 OUTLASTS the main note
-//                                                 and is what lingers
-//       x 1.50         2842 Hz   -16 dB           135 dB/s
-//       x 1.85         3499 Hz   -20 dB           140 dB/s
-//       x 2.73, 3.21   5168, 6062 Hz  -21 dB      about 160 dB/s
-//       x 0.157        296 Hz    -11 dB           gone in 100 ms: the
-//                                                 hammer's own thock
-//   - the first 30 ms also carry a splash of noise from 4 to 10 kHz
-// So an anvil is neither a low boom (v2, v3) nor a tick with a bell on it
-// (v1): it is a tight cluster of PURE notes close enough to clash, that
-// start at once and ring for half a second. Pure matters: a square or
-// sawtooth wave adds evenly spaced overtones, which is a buzz, not metal.
+// THE MEASUREMENT (the user's clip, "gate heavy open/close", a Freesound
+// community recording; only numbers were taken from it, and its opening
+// screech, a 1550 Hz whistle, was left out on the user's word):
+//   THE CHUG (the winch, about 3 s of it)
+//   - it is nearly as loud as the crash: typically 8 dB under it
+//   - the low end throbs 17 times a second (very regular), on a low note
+//     of 86 Hz with 172 and 269 Hz above it
+//   - the bright end (above 1.5 kHz) clacks about 7 times a second
+//   - where its energy is: 30% under 150 Hz, 30% 150-500, 7% 500-1500,
+//     18% 1.5-4 kHz, 16% above 4 kHz
+//   ONE CLACK in it: 45% of it between 1.5 and 4 kHz, a small cluster of
+//     pure notes at 2229, 2713, 2875, 3295 and 3531 Hz, over a low knock
+//     (108 and 194 Hz)
+//   THE CRASH
+//   - NOT a high clang: 73% of it is between 150 and 500 Hz, 19% between
+//     500 and 1500, almost nothing above
+//   - it takes 10 ms to arrive and 50 ms to peak, then HANGS: still within
+//     2 dB at 140 ms, 6 dB down at 400 ms, 14 dB at 800 ms, 23 dB at 1.5 s,
+//     30 dB at 1.8 s
+//   - its body is three pure notes close enough to grind on each other:
+//     247 Hz (the one that lasts), 291 Hz (as loud at first, gone sooner)
+//     and about 172 Hz, with 108 and 65 Hz under them, and a rattle of
+//     noise around 400-700 Hz
+//   A SMALLER CLANK, a second after the crash, a quarter of its size:
+//     brighter, its main note 495 Hz with 366, 689 and 904 Hz and a short
+//     bite of noise from 2 to 3 kHz
+// What the rendered sounds measure against that: the chug throbs 17.4 and
+// clacks 7.0 times a second, energy 34/27/6/15/17%; the crash is 69% in
+// 150-500 Hz and 6 dB down at 350 ms, 14 dB at 800 ms, 28 dB at 1.5 s.
 //
-// clang() below is that structure. `note` is the main note of the cluster
-// and `ring` stretches how long it lasts (a bigger piece of iron rings
-// longer). THE CLANGS STAY HIGH (user, the same day: "the portcullis would
-// have low undertones of the whole door moving and rumbling, but the
-// clangs would be high pitched"): the size of the gate is carried by the
-// low rumble, the grind and the landing's low note, NOT by pitching the
-// clangs down. Levels were set by measuring; nobody has heard these.
+// So the size of this gate is a low BOOM that hangs in the air, and the
+// "metal" is in the clacks and the rattle on top. Earlier notes said the
+// clangs should be high; the user's own recording says the crash is low
+// and only the clacks are bright, and the recording wins.
 
-/** One strike on iron, built from the anvil measurement (see above). */
-const clang = (note: number, ring: number): SynthLayer[] => {
-  /** A layer that starts at once and fades to 1% of itself over `seconds`. */
-  const partial = (id: string, name: string, hz: number, level: number, seconds: number, harmonics?: SynthLayer['harmonics']): SynthLayer => ({
-    id, name, source: 'tone', wave: 'sine', start: 0, length: seconds * ring, level, attack: 0.002, hold: 0, floor: 0.01, tail: 0.02 * ring,
-    pitch: { from: hz, to: hz }, ...(harmonics ? { harmonics } : {}),
-  });
-  return [
-    {
-      id: 'strike', name: 'Strike', source: 'noise', start: 0, length: 0.03, level: 2, attack: 0, hold: 0, floor: 0.02, tail: 0.008,
-      noiseSeed: 0.5, filters: [{ type: 'bandpass', q: 0.8, cutoff: { from: note * 3.4, to: note * 3.4 } }],
-    },
-    // The hammer's own thock: low, and over almost at once.
-    { ...partial('thock', 'Thock', note * 0.157, 0.5, 0.12, [{ ratio: 0.634, level: 0.35 }]), floor: 0.03 },
-    partial('ring', 'Ring', note, 1, 0.41),
-    // The note that lingers: quieter than the main one, but it outlasts it.
-    partial('sing', 'Sing', note * 1.12, 0.29, 0.62),
-    // The upper notes, which are the brightness of the first moment.
-    partial('shine', 'Shine', note * 1.504, 0.17, 0.3, [{ ratio: 1.231, level: 0.63 }, { ratio: 1.818, level: 0.49 }, { ratio: 2.132, level: 0.62 }]),
-  ];
+/** A pure note that starts almost at once and fades to 3% of itself. */
+const gateNote = (id: string, name: string, hz: number, level: number, seconds: number, more: Partial<SynthLayer> = {}): SynthLayer => ({
+  id, name, source: 'tone', wave: 'sine', start: 0, length: seconds, level, attack: 0.012, hold: 0, floor: 0.03, tail: Math.min(0.3, seconds * 0.15),
+  pitch: { from: hz, to: hz }, ...more,
+});
+
+/** A burst or bed of noise kept to one band. */
+const gateNoise = (id: string, name: string, level: number, seconds: number, filters: SynthLayer['filters'], more: Partial<SynthLayer> = {}): SynthLayer => ({
+  id, name, source: 'noise', start: 0, length: seconds, level, attack: 0.004, hold: 0, floor: 0.03, tail: Math.min(0.1, seconds * 0.2),
+  noiseSeed: 0.5, filters, ...more,
+});
+
+const band = (hz: number, q: number) => ({ type: 'bandpass' as const, q, cutoff: { from: hz, to: hz } });
+const below = (hz: number) => ({ type: 'lowpass' as const, cutoff: { from: hz, to: hz } });
+
+// The winch. Every layer swells in over the first quarter (the gate creeps
+// before it falls) and then holds. The low layers throb together 17 times
+// a second; the bright ones clack 7 times a second.
+const whileMoving = { attack: 0.25, hold: 0.6, floor: 0.85, tail: 0.05 };
+const gateRumble: SynthSound = {
+  version: 1,
+  level: 0.06,
+  layers: [
+    gateNote('drone', 'Drone', 86, 0.85, 1, {
+      ...whileMoving, harmonics: [{ ratio: 2, level: 0.7 }, { ratio: 3.13, level: 0.45 }],
+      pulse: { rate: 17, depth: 0.8 }, tremble: { rate: 8, depth: 10, seed: 0.3 },
+    }),
+    gateNoise('rumble', 'Rumble', 3.6, 1, [below(420)], {
+      ...whileMoving, noiseSeed: 0.8, pulse: { rate: 17, depth: 0.7 }, tremble: { rate: 14, depth: 6, seed: 1.1 },
+    }),
+    gateNoise('grind', 'Grind', 1.5, 1, [band(900, 0.7)], {
+      ...whileMoving, noiseSeed: 0.35, pulse: { rate: 17, depth: 0.5 }, tremble: { rate: 11, depth: 8, seed: 1.7 },
+    }),
+    gateNoise('clatter', 'Clatter', 1.9, 1, [band(2700, 0.6)], {
+      ...whileMoving, noiseSeed: 1.5, pulse: { rate: 7, depth: 0.8 }, tremble: { rate: 30, depth: 6, seed: 0.5 },
+    }),
+    // The top of the clatter. Noise in a band, NOT a note: a held high note
+    // is the screech the user asked to leave out.
+    gateNoise('hiss', 'Hiss', 1.1, 1, [band(4300, 1.5)], {
+      ...whileMoving, noiseSeed: 0.2, pulse: { rate: 7, depth: 0.8 }, tremble: { rate: 30, depth: 6, seed: 0.9 },
+    }),
+  ],
 };
 
-const gateRumble: SynthSound = {
+// One rung: a clack of the ratchet, louder than the ones in the chug.
+const gateRung: SynthSound = {
+  version: 1,
+  level: 0.1,
+  layers: [
+    gateNoise('clack', 'Clack', 3, 0.09, [band(2500, 0.7), below(4200)], { attack: 0.001, floor: 0.08, tail: 0.02 }),
+    gateNote('ting', 'Ting', 2713, 0.3, 0.16, {
+      attack: 0.002, tail: 0.03,
+      harmonics: [{ ratio: 0.82, level: 0.45 }, { ratio: 1.06, level: 0.9 }, { ratio: 1.215, level: 0.4 }, { ratio: 1.3, level: 0.4 }],
+    }),
+    gateNote('knock', 'Knock', 108, 0.8, 0.1, { attack: 0.003, floor: 0.05, tail: 0.03, harmonics: [{ ratio: 1.8, level: 0.9 }] }),
+    gateNoise('body', 'Body', 3, 0.08, [band(700, 0.7)], { attack: 0.002, floor: 0.08, tail: 0.02, noiseSeed: 1.1 }),
+  ],
+};
+
+// The crash: the whole gate hitting the ground. A short crack, then three
+// low notes that hang for over a second, with a rattle on top.
+const gateLand: SynthSound = {
   version: 1,
   level: 0.13,
   layers: [
-    {
-      id: 'rumble', name: 'Rumble', source: 'noise', start: 0, length: 1, level: 1.4, attack: 0.55, hold: 0.35, floor: 0.7, tail: 0.06,
-      noiseSeed: 0.8, filters: [{ type: 'lowpass', cutoff: { from: 110, to: 170 } }],
-      tremble: { rate: 14, depth: 6, seed: 0.3 },
-    },
-    {
-      id: 'grind', name: 'Grind', source: 'noise', start: 0, length: 1, level: 0.5, attack: 0.55, hold: 0.35, floor: 0.7, tail: 0.06,
-      noiseSeed: 1.5, filters: [{ type: 'bandpass', q: 0.7, cutoff: { from: 360, to: 520 } }],
-      tremble: { rate: 11, depth: 10, seed: 1.1 },
-    },
-    {
-      id: 'chain', name: 'Chain', source: 'tone', wave: 'sine', start: 0, length: 1, level: 0.05, attack: 0.5, hold: 0.4, floor: 0.7, tail: 0.06,
-      pitch: { from: 2100, to: 2100 }, harmonics: [{ ratio: 1.12, level: 0.5 }, { ratio: 1.504, level: 0.35 }, { ratio: 1.851, level: 0.25 }],
-      pulse: { rate: 17, depth: 0.95 }, tremble: { rate: 30, depth: 8, seed: 0.5 },
-    },
+    gateNoise('crack', 'Crack', 4, 0.09, [band(700, 0.5)], { floor: 0.1, tail: 0.03, noiseSeed: 1.6 }),
+    gateNote('boom', 'Boom', 247, 1, 2.2, { hold: 0.12 }),
+    gateNote('knell', 'Knell', 291, 0.9, 1.4, { hold: 0.12 }),
+    gateNote('under', 'Under', 172, 0.7, 2.2, { hold: 0.12, harmonics: [{ ratio: 0.63, level: 0.6 }, { ratio: 0.38, level: 0.35 }] }),
+    gateNoise('rattle', 'Rattle', 7, 1.8, [band(560, 1)], {
+      attack: 0.01, hold: 0.1, tail: 0.25, noiseSeed: 0.9, tremble: { rate: 25, depth: 8, seed: 0.4 },
+    }),
   ],
 };
 
-// One rung: a strike on a bar of the gate. The anvil's cluster, a touch
-// lower than the anvil itself (1700 Hz against 1890), ringing a little longer.
-const gateRung: SynthSound = {
-  version: 1,
-  level: 0.041,
-  layers: clang(1700, 1.1),
-};
-
-// The landing: the whole gate struck at once. A little lower and ringing
-// nearly twice as long, over a low note for its weight and a crash of
-// noise, with two short echoes off the stone.
-const gateLand: SynthSound = {
-  version: 1,
-  level: 0.11,
-  echo: { time: 0.07, repeats: 2, fade: 0.3 },
-  layers: [
-    {
-      id: 'thump', name: 'Thump', source: 'tone', wave: 'sine', start: 0, length: 0.34, level: 0.9, attack: 0.003, hold: 0, floor: 0.02, tail: 0.05,
-      pitch: { from: 62, to: 32, arriveAt: 0.16 },
-    },
-    {
-      id: 'crash', name: 'Crash', source: 'noise', start: 0, length: 0.22, level: 0.5, attack: 0.001, hold: 0, floor: 0.03, tail: 0.04,
-      noiseSeed: 1.6, filters: [{ type: 'bandpass', q: 0.5, cutoff: { from: 2600, to: 1100 } }],
-    },
-    ...clang(1480, 1.8),
-  ],
-};
-
-// The lock: the gate meeting its upper stop. Between the two in size.
+// The smaller clank: the gate meeting a stop. Brighter and much shorter
+// than the crash (the recording's second, smaller hit).
 const gateLock: SynthSound = {
   version: 1,
-  level: 0.076,
+  level: 0.085,
   layers: [
-    {
-      id: 'clunk', name: 'Clunk', source: 'tone', wave: 'sine', start: 0, length: 0.16, level: 0.7, attack: 0.002, hold: 0, floor: 0.02, tail: 0.03,
-      pitch: { from: 92, to: 54, arriveAt: 0.08 },
-    },
-    ...clang(1600, 1.4),
-    {
-      id: 'latch', name: 'Latch', source: 'noise', start: 0.07, length: 0.02, level: 0.5, attack: 0, hold: 0, floor: 0.02, tail: 0.006,
-      noiseSeed: 1.2,
-      filters: [
-        { type: 'highpass', cutoff: { from: 900, to: 900 } },
-        { type: 'lowpass', cutoff: { from: 5000, to: 5000 } },
-      ],
-    },
+    gateNoise('bite', 'Bite', 6, 0.08, [band(2400, 0.8), below(3800)], { attack: 0.001, floor: 0.1, tail: 0.02, noiseSeed: 1.2 }),
+    gateNote('clank', 'Clank', 495, 1, 0.4, {
+      attack: 0.004, harmonics: [{ ratio: 0.74, level: 0.5 }, { ratio: 1.39, level: 0.6 }, { ratio: 1.83, level: 0.55 }],
+    }),
+    gateNote('weight', 'Weight', 86, 0.6, 0.25, { attack: 0.004, harmonics: [{ ratio: 2.76, level: 0.9 }] }),
   ],
 };
 
@@ -342,9 +350,9 @@ export const BUILT_IN_SOUNDS: readonly BuiltInSound[] = [
   { id: 'scroll-land', name: 'Scroll lands', where: 'The rolled scroll presses onto the board', sound: scrollLand },
   { id: 'scroll-sparkle', name: 'Quest sparkle', where: 'A quest unfurls for the first time on a puzzle', sound: scrollSparkle },
   { id: 'gate-rumble', name: 'Gate moves', where: 'The menu gate is lowering or rising (stretched to fit the move)', sound: gateRumble },
-  { id: 'gate-rung', name: 'Gate rung', where: 'One rung of the menu gate passes the bar (once per rung)', sound: gateRung },
+  { id: 'gate-rung', name: 'Gate rung', where: 'One rung of the menu gate passes the bar: a clack (once per rung)', sound: gateRung },
   { id: 'gate-land', name: 'Gate lands', where: 'The menu gate hits the ground', sound: gateLand },
-  { id: 'gate-lock', name: 'Gate locks', where: 'The menu gate locks at the top', sound: gateLock },
+  { id: 'gate-lock', name: 'Gate locks', where: 'The menu gate meets a stop: locking at the top, the two rebounds after it lands, the page-load settle, a grabbed gate', sound: gateLock },
 ];
 
 export function builtInSound(id: BuiltInSoundId): SynthSound {

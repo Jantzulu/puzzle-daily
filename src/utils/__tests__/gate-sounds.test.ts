@@ -23,20 +23,23 @@ describe('the gate sound follows the gate', () => {
     expect(gateTimeAt('raise', 1)).toBeCloseTo(1, 6);
   });
 
-  it('lowering: a rumble, one clink per rung, the landing, two smaller rebounds', () => {
+  it('lowering: the chug, one clack per rung, the crash, two smaller rebounds', () => {
     const plan = gatePlan('lower', 5);
     const of = (sound: string) => plan.filter(s => s.sound === sound);
     expect(of('gate-rung')).toHaveLength(5);
     expect(of('gate-rumble')).toHaveLength(1);
     expect(of('gate-rumble')[0].fit).toBeCloseTo(0.86 * 1.4, 6); // it rumbles until it lands
+    // One crash (it rings for two seconds; it is not played again for the bounces).
     const lands = of('gate-land');
-    expect(lands.map(s => +s.at.toFixed(3))).toEqual([1.204, 1.316, 1.4]);
+    expect(lands.map(s => +s.at.toFixed(3))).toEqual([1.204]);
     expect(lands[0].gain).toBe(1);
-    expect(lands[1].gain).toBeLessThan(0.5); // each rebound smaller
-    expect(lands[2].gain).toBeLessThan(lands[1].gain);
+    // The two rebounds are the smaller clank, each quieter than the last.
+    const rebounds = of('gate-lock');
+    expect(rebounds.map(s => +s.at.toFixed(3))).toEqual([1.316, 1.4]);
+    expect(rebounds[0].gain).toBeLessThan(1);
+    expect(rebounds[1].gain).toBeLessThan(rebounds[0].gain);
     // Every rung has come out before the gate lands.
     for (const rung of of('gate-rung')) expect(rung.at).toBeLessThan(lands[0].at);
-    expect(of('gate-lock')).toHaveLength(0);
   });
 
   it('rising: one clink per rung, the pawl catching between pulls, the lock at the top', () => {
