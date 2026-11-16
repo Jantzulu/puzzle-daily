@@ -34,10 +34,35 @@ import { ENTRY_LIFT_MS, markPageEntered, puzzleDateLabel, setEntryDark } from '.
  * the app (a tap already happened) goes straight in, as before.
  *
  * A tap ANYWHERE on the page enters, the navbar included.
+ *
+ * THE FLOURISHES (user ask, same day: "any other effects to the transition
+ * to make it more interesting"), each its own element so one can go without
+ * the others, each only transform and opacity:
+ *   the WASH    a warm bloom of firelight (the torch light's own colours)
+ *               that swells out from the torches ahead of the lifting dark
+ *               and thins away.
+ *   the SPARKS  a few 2px embers thrown up from each torch as it catches.
+ *   the CARD    lifts a little as it fades, instead of only fading.
  */
+
+/** One torch's embers: where each ends up (px), how long it flies and when it leaves (ms). Fixed, so every entry looks the same. */
+const SPARKS = [
+  { dx: -13, rise: -44, ms: 760, wait: 0 },
+  { dx: 7, rise: -58, ms: 880, wait: 30 },
+  { dx: -4, rise: -66, ms: 940, wait: 70 },
+  { dx: 15, rise: -36, ms: 700, wait: 90 },
+  { dx: -18, rise: -28, ms: 640, wait: 120 },
+  { dx: 3, rise: -50, ms: 820, wait: 150 },
+  { dx: 10, rise: -70, ms: 980, wait: 190 },
+  { dx: -9, rise: -54, ms: 860, wait: 230 },
+];
+/** = LintelTorch FOLLOW_MS: the second torch catches this long after the first. */
+const SECOND_TORCH_MS = 220;
 export const EnterGate: React.FC<{ onEnter: () => void; onGone: () => void }> = ({ onEnter, onGone }) => {
   const [title] = React.useState(() => puzzleDateLabel(localDateKey()) ?? '');
   const [lifting, setLifting] = React.useState(false);
+  /** Where each torch's flame is, inside the dark, at the tap. */
+  const [flames, setFlames] = React.useState<Array<{ x: number; y: number }>>([]);
   const darkRef = React.useRef<HTMLDivElement>(null);
   const calls = React.useRef({ onEnter, onGone });
   React.useEffect(() => { calls.current = { onEnter, onGone }; });
@@ -76,9 +101,19 @@ export const EnterGate: React.FC<{ onEnter: () => void; onGone: () => void }> = 
       const el = darkRef.current;
       if (el) {
         const box = el.getBoundingClientRect();
-        const torches = [...document.querySelectorAll('.lintel-torch')]
-          .map(t => t.getBoundingClientRect())
-          .filter(r => r.width > 0 && r.bottom > box.top && r.top < window.innerHeight);
+        const lit = [...document.querySelectorAll<HTMLElement>('.lintel-torch')]
+          .map(t => ({ t, r: t.getBoundingClientRect() }))
+          .filter(({ r }) => r.width > 0 && r.bottom > box.top && r.top < window.innerHeight);
+        const torches = lit.map(({ r }) => r);
+        setFlames(lit.map(({ t, r }) => {
+          const style = getComputedStyle(t);
+          const fx = parseFloat(style.getPropertyValue('--torch-flame-x'));
+          const fy = parseFloat(style.getPropertyValue('--torch-flame-y'));
+          return {
+            x: Math.round(r.left - box.left + (Number.isFinite(fx) ? fx : r.width / 2)),
+            y: Math.round(r.top - box.top + (Number.isFinite(fy) ? fy : r.height / 3)),
+          };
+        }));
         if (torches.length > 0) {
           const x = torches.reduce((sum, r) => sum + r.left + r.width / 2, 0) / torches.length;
           const y = torches.reduce((sum, r) => sum + r.top + r.height / 2, 0) / torches.length;
@@ -109,6 +144,19 @@ export const EnterGate: React.FC<{ onEnter: () => void; onGone: () => void }> = 
       <span className="entry-dark-layer entry-dark-mid" aria-hidden="true" />
       <span className="entry-dark-layer entry-dark-pool" aria-hidden="true" />
       <span className="entry-dark-layer entry-dark-solid" aria-hidden="true" />
+      <span className="entry-dark-wash" aria-hidden="true" />
+      {flames.map((flame, i) => (
+        <span
+          key={i}
+          className="entry-sparks"
+          style={{ left: flame.x, top: flame.y, '--spark-torch': `${i * SECOND_TORCH_MS}ms` } as React.CSSProperties}
+          aria-hidden="true"
+        >
+          {SPARKS.map((s, k) => (
+            <i key={k} style={{ '--spark-dx': `${s.dx}px`, '--spark-rise': `${s.rise}px`, '--spark-ms': `${s.ms}ms`, '--spark-wait': `${s.wait}ms` } as React.CSSProperties} />
+          ))}
+        </span>
+      ))}
       <button type="button" className="enter-gate" aria-label={`${title}. Enter the dungeon`}>
         <span className="enter-gate-date">{title}</span>
         <span className="enter-gate-rule" aria-hidden="true" />
