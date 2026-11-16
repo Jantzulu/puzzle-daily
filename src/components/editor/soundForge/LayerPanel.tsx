@@ -348,7 +348,7 @@ export const LayerPanel: React.FC<{
     >
       {layer.pulse ? (
         <>
-          <ForgeSlider label="Speed" value={layer.pulse.rate} min={0.5} max={60} scale="log" show={{ unit: 'per s', decimals: 1 }} onChange={rate => set('pulse', { ...layer.pulse!, rate })} />
+          <ForgeSlider label="Speed" value={layer.pulse.rate} min={0.5} max={120} scale="log" show={{ unit: 'per s', decimals: 1 }} onChange={rate => set('pulse', { ...layer.pulse!, rate })} />
           <ForgeSlider label="Depth" value={layer.pulse.depth} min={0} max={1} show={{ factor: 100, unit: '%', decimals: 0 }} onChange={depth => set('pulse', { ...layer.pulse!, depth })} />
         </>
       ) : (

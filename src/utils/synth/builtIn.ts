@@ -21,7 +21,8 @@ export type BuiltInSoundId =
   | 'gate-rumble'
   | 'gate-rung'
   | 'gate-land'
-  | 'gate-lock';
+  | 'gate-lock'
+  | 'sign-creak';
 
 export interface BuiltInSound {
   id: BuiltInSoundId;
@@ -410,17 +411,64 @@ const gateLock: SynthSound = {
   ],
 };
 
+// ---- sign-creak: a sign rocking on its loose bolt -------------------------------
+// (user ask 2026-11-15: "a sound for the signs that can wobble ... something
+// creaky ... They are either metal or wood on metal bars")
+// MEASURED FIRST, from three public-domain recordings on Wikimedia Commons
+// (all by "stephan"; only numbers were taken):
+//   "Door handle creaking": the creak proper. ONE rough note, 82% of it
+//     between 600 and 1200 Hz: it starts near 1040 Hz and slides down to
+//     about 860 over half a second; a faint note three times higher; and
+//     its loudness flutters about 85 times a second, very evenly, which is
+//     the grit (without it this would be a whistle). It takes 40 ms to
+//     arrive, holds for 100, then fades slowly.
+//   "Rusty metal door clasp": a HELD whistle at 3.1 kHz, then 1.3 kHz. That
+//     is the screech the user asked to keep out of the gate; not used.
+//   "Creaky wooden casket": no note at all, a run of tiny cracks (about 67
+//     a second, then irregular) between 600 and 2400 Hz. That is the Grain.
+// So: a short knock as the sign is poked, a creak as it swings one way
+// (sliding down), a lower, softer creak as it swings back, and a grain of
+// crackle under both. Pitched a little below the door handle's (880 Hz, not
+// 1040): every earlier sound that began high was "silly" to the user's ear.
+// As long as the wobble (signWobble.ts, 0.55 s). About as loud as "Scroll
+// rolls up". Unheard when written.
+const creakNote = (id: string, name: string, from: number, to: number, start: number, length: number, level: number, more: Partial<SynthLayer> = {}): SynthLayer => ({
+  id, name, source: 'tone', wave: 'sine', start, length, level, attack: 0.035, hold: 0.07, floor: 0.25, tail: 0.05,
+  pitch: { from, to },
+  harmonics: [{ ratio: 0.5, level: 0.3 }, { ratio: 2, level: 0.12 }, { ratio: 3.05, level: 0.12 }],
+  pulse: { rate: 85, depth: 0.75 },
+  ...more,
+});
+const signCreak: SynthSound = {
+  version: 1,
+  level: 0.022,
+  layers: [
+    {
+      id: 'tick', name: 'Tick', source: 'noise', start: 0, length: 0.03, level: 2, attack: 0.001, hold: 0, floor: 0.05, tail: 0.01,
+      noiseSeed: 0.9, filters: [{ type: 'bandpass', q: 0.9, cutoff: { from: 1500, to: 1500 } }],
+    },
+    creakNote('creak', 'Creak', 880, 760, 0.01, 0.24, 1),
+    creakNote('creak-back', 'Creak back', 700, 630, 0.2, 0.33, 0.5, { attack: 0.05, hold: 0.05, floor: 0.2, tail: 0.1 }),
+    {
+      id: 'grain', name: 'Grain', source: 'noise', start: 0.01, length: 0.5, level: 1.2, attack: 0.03, hold: 0.1, floor: 0.15, tail: 0.1,
+      noiseSeed: 0.4, filters: [{ type: 'bandpass', q: 1, cutoff: { from: 1100, to: 900 } }],
+      tremble: { rate: 60, depth: 25, seed: 0.6 },
+    },
+  ],
+};
+
 export const BUILT_IN_SOUNDS: readonly BuiltInSound[] = [
   { id: 'torch-out', name: 'Torch goes out', where: 'A lintel torch is put out, by a tap or a lost run', sound: torchOut },
   { id: 'torch-lit', name: 'Torch lights', where: 'A lintel torch is lit, by a tap or a retry', sound: torchLit },
   { id: 'scroll-roll', name: 'Scroll rolls up', where: 'The quest scroll rolls shut (0.5s)', sound: scrollPaper(0.5, 2700, 1250, 1.2, 0.2) },
   { id: 'scroll-unroll', name: 'Scroll unfurls', where: 'The quest scroll opens (0.65s)', sound: scrollPaper(0.65, 1150, 2900, 0.1, 0.9) },
-  { id: 'scroll-land', name: 'Scroll lands', where: 'The rolled scroll presses onto the board', sound: scrollLand },
-  { id: 'scroll-sparkle', name: 'Quest sparkle', where: 'A quest unfurls for the first time on a puzzle', sound: scrollSparkle },
+  { id: 'scroll-land', name: 'Scroll lands', where: 'The rolled scroll presses onto the board, and lands at either end of its toss', sound: scrollLand },
+  { id: 'scroll-sparkle', name: 'Quest sparkle', where: 'The quest scroll unfurls', sound: scrollSparkle },
   { id: 'gate-rumble', name: 'Gate moves', where: 'The menu gate is lowering or rising (stretched to fit the move)', sound: gateRumble },
   { id: 'gate-rung', name: 'Gate rung', where: 'One rung of the menu gate passes the bar: a clack (once per rung)', sound: gateRung },
   { id: 'gate-land', name: 'Gate crashes', where: 'The menu gate hits the ground, or slams home at the top', sound: gateLand },
   { id: 'gate-lock', name: 'Gate knocks', where: 'The smaller knock: the two rebounds after the crash, the page-load settle, a grabbed gate', sound: gateLock },
+  { id: 'sign-creak', name: 'Sign creaks', where: 'A sign rocks on its bolt: poked, or (quieter) rattled by the gate', sound: signCreak },
 ];
 
 export function builtInSound(id: BuiltInSoundId): SynthSound {

@@ -1,6 +1,9 @@
 import { useEffect, type RefObject } from 'react';
 import { resnapWithin } from '../game/panelSkins';
 import { GATE_SETTLE_STRENGTH, gateKnockStrength, playGateKnock } from '../../utils/gateSounds';
+import { chromeSoundRecipe } from '../../utils/chromeSounds';
+import { soundManager } from '../../utils/soundManager';
+import { renderSynthSound } from '../../utils/synth/render';
 
 // ============================================================================
 // THE LOOSE SIGN — the wobble every sign bolted to the iron shares
@@ -44,6 +47,44 @@ export function wobbleSign(el: HTMLElement, side: 1 | -1, strength = 1) {
   }, () => { /* cancelled by a newer wobble */ });
 }
 
+// ─── The creak ──────────────────────────────────────────────────────────────
+// (user ask 2026-11-15: "a sound for the signs that can wobble ... something
+// creaky"). The page sound sign-creak (utils/synth/builtIn.ts), as long as
+// the wobble. Each one a little different in pitch, the two sides a touch
+// apart, so a sign poked twice does not repeat itself. Pokes in a flurry
+// share one creak: the wobble restarts, the sound does not pile up.
+const CREAK_GAP_MS = 180;
+let lastCreakAt = -Infinity;
+function playSignCreak(strength: number, side: 1 | -1, delay = 0) {
+  const now = performance.now();
+  if (now - lastCreakAt < CREAK_GAP_MS) return;
+  lastCreakAt = now;
+  const gain = Math.max(0.05, Math.min(1, strength));
+  const recipe = chromeSoundRecipe('sign-creak');
+  const pitch = (side > 0 ? 1.03 : 0.97) * (0.98 + Math.random() * 0.04);
+  const shuffle = Math.random();
+  soundManager.playSynth((ctx, out, at) => {
+    const level = ctx.createGain();
+    level.gain.value = gain;
+    level.connect(out);
+    renderSynthSound(ctx, level, at + delay, recipe, { pitch, shuffle });
+  });
+}
+
+/** A finger pokes a sign: it rocks (the poked half dips first) and creaks. */
+export function pokeSign(el: HTMLElement, side: 1 | -1) {
+  wobbleSign(el, side);
+  playSignCreak(1, side);
+}
+
+/**
+ * The gate's impacts rattle every sign at once: ONE creak for the lot, well
+ * under the poke's (the impact has its own, much larger sound), a moment
+ * after the hit.
+ */
+const IMPACT_CREAK = { slam: 0.5, clunk: 0.35, knock: 0.4, settle: 0.3 };
+const IMPACT_CREAK_DELAY_S = 0.06;
+
 // ─── The gate's impacts ─────────────────────────────────────────────────────
 
 /**
@@ -63,6 +104,7 @@ export const announceGateImpact = (kind: GateImpact, force = 1) => {
   // gate's slam and clunk are part of its own move's sound (useGateShake).
   if (kind === 'settle') playGateKnock(GATE_SETTLE_STRENGTH);
   else if (kind === 'knock') playGateKnock(gateKnockStrength(force));
+  playSignCreak(IMPACT_CREAK[kind] * force, Math.random() < 0.5 ? -1 : 1, IMPACT_CREAK_DELAY_S);
 };
 
 /** Up to this much lag per sign, so a row of signs rattles one by one, not as a block. */

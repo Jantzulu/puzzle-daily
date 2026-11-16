@@ -1,7 +1,7 @@
 import React from 'react';
 import skinJson from '../../assets/panels/rung-plaque-slices.json';
 import { Z, buildSkin, nomW, nomH, useCrispSnap, prepCanvas, drawFixed, drawTiled, whenDecoded, type SkinPiece } from './panelSkins';
-import { wobbleSign, useGateImpactWobble, type GateImpact } from '../shared/signWobble';
+import { pokeSign, useGateImpactWobble, type GateImpact } from '../shared/signWobble';
 import { plaqueHeaderStraddle, drawRungPlaque } from './rungPlaqueSkin';
 
 // ============================================================================
@@ -152,7 +152,7 @@ export const RungPlaque: React.FC<{ header?: string; children: React.ReactNode }
     if (e.button !== 0) return;
     const el = e.currentTarget;
     const r = el.getBoundingClientRect();
-    wobbleSign(el, e.clientX < r.left + r.width / 2 ? -1 : 1);
+    pokeSign(el, e.clientX < r.left + r.width / 2 ? -1 : 1);
   };
   React.useLayoutEffect(() => {
     if (!rungPlaqueActive) return;

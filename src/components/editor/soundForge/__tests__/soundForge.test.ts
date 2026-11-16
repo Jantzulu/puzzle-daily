@@ -32,6 +32,8 @@ describe('built-in page sounds', () => {
     const length = (id: string) => soundLength(BUILT_IN_SOUNDS.find(b => b.id === id)!.sound);
     expect(length('scroll-roll')).toBeCloseTo(0.5, 6); // index.css .quest-closing
     expect(length('scroll-unroll')).toBeCloseTo(0.65, 6); // the unfurl
+    expect(length('sign-creak')).toBeGreaterThan(0.45); // signWobble.ts WOBBLE_MS = 550
+    expect(length('sign-creak')).toBeLessThanOrEqual(0.55);
   });
 });
 
