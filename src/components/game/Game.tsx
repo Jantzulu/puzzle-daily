@@ -28,7 +28,7 @@ import { TapHintChip } from './TapHintChip';
 import { QuestBoxFrame, QuestOrnaments, QuestPlate, QuestDivider } from './QuestBoxSkin';
 import { questSkinFrameActive, questSkinOrnamentsActive, questSkinPlateActive, questSkinDividerActive, questFrameBorders, questPlateStraddle } from './questBoxSkinData';
 import { useCrispSnap } from './panelSkins';
-import { QUEST_FLIGHT_MS, QUEST_TOSS_AFTER_ROLL_MS, QUEST_SPAWN_DELAY_MS, QUEST_SPAWN_AFTER_ENTRY_MS, ENTRY_FADE_MS, QUEST_HINT_BEAT_MS, QUEST_LAND_AT_S, QUEST_SPARKLE_AT_S, useQuestFloatPlacement, useQuestPress } from './questFloat';
+import { QUEST_FLIGHT_MS, QUEST_TOSS_AFTER_ROLL_MS, QUEST_SPAWN_DELAY_MS, QUEST_SPAWN_AFTER_ENTRY_MS, ENTRY_FADE_MS, QUEST_HINT_BEAT_MS, QUEST_LAND_AT_S, QUEST_SPARKLE_AT_S, QUEST_TOSS_LAND_LEAD_MS, useQuestFloatPlacement, useQuestPress } from './questFloat';
 import { playChromeSound } from '../../utils/chromeSounds';
 import { EnterGate } from './EnterGate';
 import { pageAlreadyEntered } from './enterGateState';
@@ -526,6 +526,8 @@ export const Game: React.FC<GameProps> = ({
     questScrollTimers.current.push(
       window.setTimeout(() => setQuestMini(true), QUEST_TOSS_AFTER_ROLL_MS),
       window.setTimeout(() => setQuestFrameHold(oneLineH), QUEST_TOSS_AFTER_ROLL_MS + questLengthChangeAt()),
+      // It lands in the hero header: the same landing sound (user ask 2026-11-15).
+      window.setTimeout(() => playChromeSound('scroll-land'), QUEST_TOSS_AFTER_ROLL_MS + QUEST_FLIGHT_MS - QUEST_TOSS_LAND_LEAD_MS),
       window.setTimeout(() => { questFloatBusy.current = false; }, QUEST_TOSS_AFTER_ROLL_MS + QUEST_FLIGHT_MS),
     );
   };
@@ -541,6 +543,8 @@ export const Game: React.FC<GameProps> = ({
     setQuestMini(false);
     questScrollTimers.current.push(
       window.setTimeout(() => setQuestFrameHold(questOpenHeight(box)), questLengthChangeAt()),
+      // It lands back on the board, just before it opens (user ask 2026-11-15).
+      window.setTimeout(() => playChromeSound('scroll-land'), QUEST_FLIGHT_MS - QUEST_TOSS_LAND_LEAD_MS),
       window.setTimeout(() => unrollQuest(box), QUEST_FLIGHT_MS),
       window.setTimeout(() => { questFloatBusy.current = false; }, QUEST_FLIGHT_MS + 1100),
     );
@@ -620,9 +624,10 @@ export const Game: React.FC<GameProps> = ({
   //     presses onto the board when it first appears on a puzzle; the impact
   //     lands QUEST_LAND_AT_S in, where the stamp bottoms out (its 60% mark).
   //   the UNFURL (quest-scroll-content on .quest-stage-scroll): on that first
-  //     appearance (after its CSS delay) and on every reopen. The first one
-  //     also sparkles (the scroll is still in its 'open' phase then; a
-  //     reopen runs in 'reopening').
+  //     appearance (after its CSS delay) and on every reopen. Every one
+  //     sparkles (user ask 2026-11-15; it used to be the first only).
+  // The toss's two landings (in the hero header, and back on the board) play
+  // the same landing sound from minimizeQuest / expandQuest above.
   // Not when it arrives already rolled up in the hero header (those
   // animations are cut to nothing). A browser only lets a page make sound
   // after a tap, so on a fresh page load both are usually silent.
@@ -632,8 +637,8 @@ export const Game: React.FC<GameProps> = ({
       playChromeSound('scroll-land', 0, QUEST_LAND_AT_S);
     } else if (e.animationName === 'quest-scroll-content' && classes.contains('quest-stage-scroll')) {
       playChromeSound('scroll-unroll');
-      // A quest's FIRST unfurl on a puzzle sparkles: this is important.
-      if (questScroll === 'open') playChromeSound('scroll-sparkle', 0, QUEST_SPARKLE_AT_S);
+      // The unfurl sparkles: this is important.
+      playChromeSound('scroll-sparkle', 0, QUEST_SPARKLE_AT_S);
     }
   };
   const questFloatStyle = useQuestFloatPlacement(questFloatOn && questBoxShown && questSpawned, questMini, questFloatRef);

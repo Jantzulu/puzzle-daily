@@ -47,10 +47,11 @@ export const QUEST_SPAWN_DELAY_MS = 300;
  * AFTER THE ENTRY TAP (user ask 2026-11-15: a longer fade-in once the card
  * is tapped, "thus delaying all things that load in too"): the board takes
  * ENTRY_FADE_MS to appear (Game.tsx; 700ms everywhere else), and the scroll
- * waits this long, landing as the board is nearly in.
+ * waits this long, landing as the board is nearly in. First 1800 and 1300;
+ * the user then asked to "shorten it slightly" (same day).
  */
-export const ENTRY_FADE_MS = 1800;
-export const QUEST_SPAWN_AFTER_ENTRY_MS = 1300;
+export const ENTRY_FADE_MS = 1400;
+export const QUEST_SPAWN_AFTER_ENTRY_MS = 1000;
 /**
  * The "tap to minimize" hint waits for the scroll (user round 5) and
  * arrives this long AFTER the unfurl has actually ended — its animationend,
@@ -77,11 +78,19 @@ export const QUEST_PRESS_MIN_MS = 100;
  */
 export const QUEST_LAND_AT_S = 0.2;
 /**
- * THE SPARKLE (user ask 2026-11-15): a quest's first unfurl on a puzzle
- * sparkles, to say it matters. The glints begin this many SECONDS into the
- * unfurl (0.65s), as the paper starts to show.
+ * THE SPARKLE (user ask 2026-11-15): the quest's unfurl sparkles, to say
+ * it matters. First only a puzzle's first unfurl; then, at the user's ask,
+ * EVERY unfurl. The glints begin this many SECONDS into the unfurl (0.65s),
+ * as the paper starts to show.
  */
 export const QUEST_SPARKLE_AT_S = 0.15;
+/**
+ * THE TOSS LANDS (user ask 2026-11-15): the landing sound also plays each
+ * time the tossed scroll arrives, on the board "just before it opens" and
+ * in the hero header at "its fully minimized state". The toss eases to a
+ * stop, so the sound comes this long before the flight's last frame.
+ */
+export const QUEST_TOSS_LAND_LEAD_MS = 60;
 /**
  * Where the open scroll's BOX top sits below the board's top edge — resting
  * close under the portcullis (user rounds 3 and 10). Measured column by
