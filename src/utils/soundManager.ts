@@ -54,6 +54,26 @@ class SoundManager {
 
   constructor() {
     this.loadSettings();
+    this.beAmbient();
+  }
+
+  // A GAME'S SOUND, NOT A MUSIC PLAYER'S (user report 2026-11-15: on the
+  // iPhone the music "interrupts other app's sounds and causes the iphone to
+  // register it as a currently playing song, as if I was playing it from
+  // spotify"). The music plays through an <audio> element, and Safari treats
+  // a page with one of those as a media player: its sound session becomes
+  // "playback", which pauses other apps' audio and takes over the lock
+  // screen's player. The Audio Session API (Safari 16.4+) lets the page say
+  // what it is instead. "ambient" = sound that sits alongside whatever else
+  // is playing; like any game on the phone, it also goes quiet when the
+  // silent switch is on. Browsers without the API ignore this.
+  private beAmbient(): void {
+    try {
+      const session = (navigator as Navigator & { audioSession?: { type: string } }).audioSession;
+      if (session) session.type = 'ambient';
+    } catch {
+      // Not supported here: nothing to do.
+    }
   }
 
   // Initialize audio context (must be called after user interaction)
