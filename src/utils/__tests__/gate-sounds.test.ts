@@ -42,17 +42,20 @@ describe('the gate sound follows the gate', () => {
     for (const rung of of('gate-rung')) expect(rung.at).toBeLessThan(lands[0].at);
   });
 
-  it('rising: one clink per rung, the pawl catching between pulls, the lock at the top', () => {
+  it('rising: one clack per rung, the pawl catching between pulls, the crash at the top', () => {
     const plan = gatePlan('raise', 5);
     const rungs = plan.filter(s => s.sound === 'gate-rung');
     const catches = rungs.filter(s => s.pitch < 0.9);
     expect(rungs.length - catches.length).toBe(5);
     expect(catches.map(s => +s.at.toFixed(3))).toEqual([0.369, 0.663, 0.956]);
-    const lock = plan.filter(s => s.sound === 'gate-lock');
-    expect(lock).toHaveLength(1);
-    expect(lock[0].at).toBeCloseTo(GATE_SECONDS.raise, 6);
-    expect(plan[plan.length - 1].sound).toBe('gate-lock'); // nothing after the lock
-    expect(plan.filter(s => s.sound === 'gate-land')).toHaveLength(0);
+    // The top is the same crash as the landing, a touch smaller.
+    const top = plan.filter(s => s.sound === 'gate-land');
+    expect(top).toHaveLength(1);
+    expect(top[0].at).toBeCloseTo(GATE_SECONDS.raise, 6);
+    expect(top[0].gain).toBeLessThan(1);
+    expect(top[0].gain).toBeGreaterThan(0.7);
+    expect(plan[plan.length - 1].sound).toBe('gate-land'); // nothing after it
+    expect(plan.filter(s => s.sound === 'gate-lock')).toHaveLength(0);
   });
 
   it('counts the rungs it is given', () => {

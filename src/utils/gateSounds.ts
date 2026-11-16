@@ -10,7 +10,9 @@
 //     crash itself rings on for two seconds).
 //   RISING (the menu closes, 1.25s): the winch chugs in four pulls, each
 //     rung clacks as it goes back under the bar, the pawl CATCHES between
-//     pulls, and it LOCKS at the top.
+//     pulls, and it LOCKS at the top with the crash again, a touch smaller
+//     (user's ear 2026-11-15: the sound at the top "does not sound like the
+//     fully open crash, and they should be similar").
 // The pieces are page sounds (utils/synth/builtIn.ts: gate-rumble,
 // gate-rung, gate-land, gate-lock), so each can be tuned in the Sound Forge.
 // gatePlan is pure (what plays when); playGateSound schedules it.
@@ -94,7 +96,9 @@ export function gatePlan(move: GateMove, rungs: number): GateStep[] {
   } else {
     // The pawl catches between the winch's pulls, then it locks on top.
     for (const share of CATCHES_AT) steps.push({ sound: 'gate-rung', at: share * seconds, gain: 1.2, pitch: 0.8 });
-    steps.push({ sound: 'gate-lock', at: seconds, gain: 1, pitch: 1 });
+    // It slams home: the same crash as the landing, a little smaller and a
+    // little higher, so the two ends of the move are kin and not twins.
+    steps.push({ sound: 'gate-land', at: seconds, gain: 0.85, pitch: 1.04 });
   }
   return steps.sort((a, b) => a.at - b.at);
 }
@@ -104,10 +108,10 @@ export function gatePlan(move: GateMove, rungs: number): GateStep[] {
  * intense and loud than the slam of opening and closing" the menu):
  *   the page-load settle   the rail is winched up its last few px and locks
  *   a grabbed gate         pulled down and let go, it knocks home
- * Both are the gate meeting its upper stop, so both are the lock sound,
- * quieter. Barely pitched up: it is the same enormous gate, moving less
+ * Both are the gate meeting its upper stop only gently, so both are the
+ * small knock (gate-lock), quieter still. Barely pitched up: it is the same enormous gate, moving less
  * (user's ear 2026-11-15: the first gate sounds were "way too high
- * pitched"). `strength` is 0-1 of the menu gate's full lock.
+ * pitched"). `strength` is 0-1 of the knock as made.
  */
 export function playGateKnock(strength: number): void {
   const gain = Math.max(0.05, Math.min(1, strength));
