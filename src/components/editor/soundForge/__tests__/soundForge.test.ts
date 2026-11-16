@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { BUILT_IN_SOUNDS } from '../../../../utils/synth/builtIn';
 import { MAX_HARMONICS, layersLength, soundLength, type SynthSound } from '../../../../utils/synth/types';
-import { LAYER_GROUPS, LAYER_STARTERS, SOUND_GROUPS, SOUND_STARTERS, envelopePoints, layerFromStarter, nearestNote, noteHz, noteName, nudgeLayer } from '../forgeModel';
+import { LAYER_GROUPS, LAYER_STARTERS, SOUND_GROUPS, SOUND_STARTERS, copyLayer, envelopePoints, layerFromStarter, nearestNote, noteHz, noteName, nudgeLayer, pasteLayer } from '../forgeModel';
 import { builtInKey, forgeReducer, initialForgeState, isUnsaved, keyAssetId, keyBuiltInId, mineKey, savedFor, type ForgeState } from '../forgeState';
 
 // The audio itself cannot be rendered here (no Web Audio outside a browser;
@@ -186,5 +186,21 @@ describe('forge helpers', () => {
     expect(next.length).toBeGreaterThan(0);
     expect(next.attack).toBeLessThanOrEqual(next.length);
     expect(next.pitch?.from).not.toBe(layer.pitch?.from);
+  });
+
+  it('a copied layer lands in another sound as loud as it was, unmuted, under a new id', () => {
+    const source = { ...layerFromStarter('buzz'), level: 0.2, muted: true };
+    const from: SynthSound = { version: 1, level: 0.6, layers: [source] };
+    const into: SynthSound = { version: 1, level: 0.06, layers: [] };
+    const pasted = pasteLayer(copyLayer(source, from, 'Gate moves'), into);
+    expect(pasted.level * into.level).toBeCloseTo(source.level * from.level, 6); // heard the same
+    expect(pasted.level).toBeCloseTo(2, 6); // though its own number is ten times larger
+    expect(pasted.id).not.toBe(source.id);
+    expect(pasted.muted).toBeFalsy();
+    expect({ ...pasted, id: '', level: 0 }).toEqual({ ...source, id: '', level: 0, muted: undefined }); // nothing else changed
+    // The copy is its own thing: changing the source afterwards does not reach it.
+    const held = copyLayer(source, from, 'Gate moves');
+    source.length = 9;
+    expect(pasteLayer(held, into).length).not.toBe(9);
   });
 });

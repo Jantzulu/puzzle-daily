@@ -20,6 +20,35 @@ export function sameSound(a: SynthSound, b: SynthSound): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
 }
 
+// ---- carrying layers between sounds ---------------------------------------------
+// (user ask 2026-11-15: "copy layers from one sound and add it to another")
+
+/** A layer picked up from a sound, with how loud it really was there. */
+export interface CopiedLayer {
+  layer: SynthLayer;
+  /** The layer's level times its sound's level: what was actually heard. */
+  loudness: number;
+  /** The sound it came from, for the label. */
+  from: string;
+}
+
+export function copyLayer(layer: SynthLayer, sound: SynthSound, from: string): CopiedLayer {
+  return { layer: JSON.parse(JSON.stringify(layer)) as SynthLayer, loudness: layer.level * sound.level, from };
+}
+
+/**
+ * The copied layer as a new layer of `into`, AS LOUD AS IT WAS where it came
+ * from. Every sound has a level of its own (the gate's winch is 0.6, its
+ * crash 0.12), so the same layer number means a different loudness in each;
+ * the number is rescaled to keep what was heard. Never muted: a layer added
+ * in silence looks like nothing happened.
+ */
+export function pasteLayer(copied: CopiedLayer, into: SynthSound): SynthLayer {
+  const { muted: _muted, ...layer } = JSON.parse(JSON.stringify(copied.layer)) as SynthLayer;
+  const level = into.level > 0 ? copied.loudness / into.level : layer.level;
+  return { ...layer, id: newLayerId(), level: Number(level.toPrecision(4)) };
+}
+
 // ---- the reference level --------------------------------------------------------
 // "Torch goes out" is the sound the user approved by ear (2026-11-15: "sounds
 // great! Even on mobile!"). Its loudness is the yardstick the Forge shows

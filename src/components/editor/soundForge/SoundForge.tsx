@@ -11,7 +11,7 @@ import { MAX_ECHOES, layersLength, soundLength, type SynthLayer, type SynthSound
 import { ForgeChip, ForgeSection, ForgeSlider, ForgeToggle } from './ForgeControls';
 import { ForgeTimeline, LoudnessMeter } from './ForgeTimeline';
 import { LayerPanel } from './LayerPanel';
-import { LAYER_GROUPS, LAYER_STARTERS, SOUND_GROUPS, SOUND_STARTERS, TIPS, cloneSound, layerFromStarter, newLayerId, nudgeLayer } from './forgeModel';
+import { LAYER_GROUPS, LAYER_STARTERS, SOUND_GROUPS, SOUND_STARTERS, TIPS, cloneSound, copyLayer, layerFromStarter, newLayerId, nudgeLayer, pasteLayer, type CopiedLayer } from './forgeModel';
 import { builtInKey, forgeReducer, initialForgeState, isUnsaved, keyAssetId, keyBuiltInId, mineKey, savedFor, type SoundKey } from './forgeState';
 import { auditionSound, pictureSound, type SoundPicture } from './soundPreview';
 
@@ -58,6 +58,8 @@ export const SoundForge: React.FC = () => {
   /** The sound in the list being asked about ("Delete / Keep"). */
   const [deleteAsk, setDeleteAsk] = React.useState<SoundKey | null>(null);
   const [pasteText, setPasteText] = React.useState<string | null>(null);
+  /** Layers picked up with Copy, kept while moving between sounds (user ask 2026-11-15). */
+  const [copied, setCopied] = React.useState<CopiedLayer[]>([]);
 
   const builtInId = keyBuiltInId(selectedKey);
   const builtIn = builtInId ? BUILT_IN_SOUNDS.find(b => b.id === builtInId) ?? null : null;
@@ -98,6 +100,21 @@ export const SoundForge: React.FC = () => {
     edit({ ...sound, layers: sound.layers.map(l => (l.id === next.id ? next : l)) }, `${next.id}:${tag}`);
   };
   const once = (tag: string) => `${tag}:${performance.now()}`; // never merged with the edit before it
+
+  // Copy layers here, open another sound, add them there. The newest copy of
+  // a layer replaces an older one of it; the tray holds the last twelve.
+  const pickUp = (layers: readonly SynthLayer[]) => {
+    if (!sound || layers.length === 0) return;
+    const fresh = layers.map(l => copyLayer(l, sound, name));
+    setCopied(list => [...list.filter(c => !fresh.some(n => n.from === c.from && n.layer.id === c.layer.id)), ...fresh].slice(-12));
+    toast.success(`${layers.length === 1 ? `Copied "${layers[0].name}"` : `Copied ${layers.length} layers`}. Open any sound and add from "Add a layer".`);
+  };
+  const putDown = (items: readonly CopiedLayer[]) => {
+    if (!sound || items.length === 0) return;
+    const added = items.map(c => pasteLayer(c, sound));
+    edit({ ...sound, layers: [...sound.layers, ...added] }, once('paste-layer'));
+    setSelectedLayerId(added[added.length - 1].id);
+  };
 
   const select = (key: SoundKey) => {
     const open = state.work[key];
@@ -375,6 +392,18 @@ export const SoundForge: React.FC = () => {
                 ))}
               </div>
             ))}
+            {copied.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="w-20 shrink-0 text-[11px] text-stone-500">Copied</span>
+                {copied.map((c, i) => (
+                  <ForgeChip key={`${i}:${c.layer.id}`} title={`From "${c.from}". Added as loud as it was there.`} onClick={() => putDown([c])}>
+                    + {c.layer.name}
+                  </ForgeChip>
+                ))}
+                {copied.length > 1 && <ForgeChip tone="go" title="Add every copied layer to this sound" onClick={() => putDown(copied)}>+ All {copied.length}</ForgeChip>}
+                <ForgeChip title="Empty the copied layers" onClick={() => setCopied([])}>Clear</ForgeChip>
+              </div>
+            )}
           </div>
 
           <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_280px] items-start">
@@ -406,6 +435,12 @@ export const SoundForge: React.FC = () => {
                     >
                       Duplicate
                     </ForgeChip>
+                    <ForgeChip title="Pick this layer up to add it to another sound. It waits under Add a layer." onClick={() => pickUp([layer])}>
+                      Copy
+                    </ForgeChip>
+                    {sound.layers.length > 1 && (
+                      <ForgeChip title="Pick up every layer of this sound" onClick={() => pickUp(sound.layers)}>Copy all</ForgeChip>
+                    )}
                     <ForgeChip
                       tone="danger"
                       onClick={() => {
