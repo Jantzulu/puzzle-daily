@@ -14,6 +14,7 @@ import { LayerPanel } from './LayerPanel';
 import { LAYER_GROUPS, LAYER_STARTERS, SOUND_GROUPS, SOUND_STARTERS, TIPS, cloneSound, copyLayer, layerFromStarter, newLayerId, nudgeLayer, pasteLayer, type CopiedLayer } from './forgeModel';
 import { builtInKey, forgeReducer, initialForgeState, isUnsaved, keyAssetId, keyBuiltInId, mineKey, savedFor, type SoundKey } from './forgeState';
 import { auditionSound, pictureSound, type SoundPicture } from './soundPreview';
+import { MAX_RECORDING_BYTES, soundFromRecording } from './importRecording';
 
 // ============================================================================
 // SOUND FORGE (user ask 2026-11-15): make the game's sounds by hand.
@@ -37,6 +38,12 @@ import { auditionSound, pictureSound, type SoundPicture } from './soundPreview';
 //   My sounds     ordinary sound assets with a recipe (SoundAsset.synth):
 //                 they sync, back up and publish like any other sound, and
 //                 every sound slot in the game can use them.
+//
+// FROM A RECORDING (user ask 2026-11-17): "A recording..." under New sound
+// from reads any sound file and makes a first sketch of it, one layer per
+// part (each note, each band of noise, each separate hit), so that real
+// sounds can be a starting point: "I could record real life sounds and jump
+// start editing them". importRecording.ts; the file itself is not kept.
 
 const PICTURE_COLUMNS = 480;
 
@@ -58,6 +65,9 @@ export const SoundForge: React.FC = () => {
   /** The sound in the list being asked about ("Delete / Keep"). */
   const [deleteAsk, setDeleteAsk] = React.useState<SoundKey | null>(null);
   const [pasteText, setPasteText] = React.useState<string | null>(null);
+  /** True while a recording is being read and measured. */
+  const [importing, setImporting] = React.useState(false);
+  const recordingInput = React.useRef<HTMLInputElement>(null);
   /** Layers picked up with Copy, kept while moving between sounds (user ask 2026-11-15). */
   const [copied, setCopied] = React.useState<CopiedLayer[]>([]);
 
@@ -132,6 +142,26 @@ export const SoundForge: React.FC = () => {
     setSelectedKey(key);
     setSelectedLayerId(null);
     setConfirmDelete(false);
+  };
+
+  // A recording, made into a new sound of its own.
+  const importRecording = (file: File) => {
+    if (file.size > MAX_RECORDING_BYTES) {
+      toast.error('That file is too large. Trim it to the few seconds you want first.');
+      return;
+    }
+    setImporting(true);
+    soundFromRecording(file).then(
+      made => {
+        startNew(`${file.name.replace(/\.[^.]+$/, '') || 'Recording'} sketch`, made.sound);
+        toast.success(made.summary);
+      },
+      (error: unknown) => {
+        toast.error((error as Error)?.message === 'silent'
+          ? 'That recording seems to be silent.'
+          : 'Could not read that file as sound. Try an MP3, WAV or M4A.');
+      },
+    ).finally(() => setImporting(false));
   };
 
   // Undo and redo from the keyboard (not while typing in a box, which has
@@ -289,7 +319,28 @@ export const SoundForge: React.FC = () => {
           <div className="border border-stone-700 rounded">
             <div className="px-2 py-1.5 bg-stone-800 text-xs uppercase text-stone-400">New sound from</div>
             <div className="p-2 space-y-1.5">
-              <ForgeChip onClick={() => startNew(`${name} copy`, cloneSound(sound))} title="A copy of the sound you are looking at">Copy of this</ForgeChip>
+              <div className="flex flex-wrap gap-1.5">
+                <ForgeChip onClick={() => startNew(`${name} copy`, cloneSound(sound))} title="A copy of the sound you are looking at">Copy of this</ForgeChip>
+                <ForgeChip
+                  onClick={() => recordingInput.current?.click()}
+                  disabled={importing}
+                  title="Pick a sound file. It is measured and turned into layers: one for each note, each band of noise and each separate hit in it (the first 3 seconds). A first sketch to edit, not a copy; the file is not kept."
+                >
+                  {importing ? 'Listening...' : 'A recording...'}
+                </ForgeChip>
+                <input
+                  ref={recordingInput}
+                  type="file"
+                  accept="audio/*,.mp3,.wav,.m4a,.aac,.ogg,.flac,.webm"
+                  className="hidden"
+                  aria-label="A recording to make a sound from"
+                  onChange={e => {
+                    const file = e.target.files?.[0];
+                    e.target.value = ''; // the same file can be picked again
+                    if (file) importRecording(file);
+                  }}
+                />
+              </div>
               {SOUND_GROUPS.map((group, i) => (
                 <details key={group} open={i < 2}>
                   <summary className="text-xs text-stone-400 cursor-pointer py-0.5">{group}</summary>
