@@ -26,6 +26,8 @@ export type BuiltInSoundId =
   | 'entry-rumble'
   | 'card-select'
   | 'hero-place'
+  | 'hero-remove'
+  | 'hero-recall'
   | 'run-start'
   | 'run-win'
   | 'run-lose'
@@ -475,6 +477,10 @@ const signCreak: SynthSound = {
 //   card-select   a hero is selected: "something similar to the current quest
 //                 scroll landing sound"; the same for an enemy, a little lower
 //   hero-place    "a short triumphant sound/jingle that evokes horns"
+//   hero-remove   a hero taken off the board (user ask, same day): "the
+//                 inverse pattern as placing one (downwards run)"
+//   hero-recall   the trash can recalling more than one hero: "the same
+//                 little jingle except maybe fuller"
 //   run-start     the game is started: two drum beats
 //   run-win       the user wins: the hero's horn call, longer, ending on a chord
 //   run-lose      the user loses: two low horn notes falling
@@ -549,6 +555,36 @@ const heroPlace: SynthSound = {
     hornNote('second', 'Second note', 261.63, 0.09, 0.11, 0.9),
     hornNote('last', 'Last note', 329.63, 0.18, 0.36, 1, { vibrato: { rate: 5.5, depth: 10 } }),
     hornNote('under', 'Under it', 261.63, 0.18, 0.36, 0.55),
+  ],
+};
+
+// The call turned upside down: E, C, then G held, with the C an octave
+// down under it. Same notes, same timing, falling.
+const heroRemove: SynthSound = {
+  version: 1,
+  level: 0.037,
+  layers: [
+    hornNote('first', 'First note', 329.63, 0, 0.11, 0.8),
+    hornNote('second', 'Second note', 261.63, 0.09, 0.11, 0.9),
+    hornNote('last', 'Last note', 196, 0.18, 0.36, 1, { vibrato: { rate: 5.5, depth: 10 } }),
+    hornNote('under', 'Under it', 130.81, 0.18, 0.36, 0.55),
+  ],
+};
+
+// The same falling call played by a section: every note has a second horn
+// a step of the chord below it, and it lands on the whole chord (G, E, C),
+// held a little longer.
+const heroRecall: SynthSound = {
+  version: 1,
+  level: 0.037,
+  layers: [
+    hornNote('first', 'First note', 329.63, 0, 0.11, 0.8),
+    hornNote('first-low', 'First note, lower horn', 261.63, 0, 0.11, 0.55),
+    hornNote('second', 'Second note', 261.63, 0.09, 0.11, 0.9),
+    hornNote('second-low', 'Second note, lower horn', 196, 0.09, 0.11, 0.6),
+    hornNote('last', 'Last note', 196, 0.18, 0.46, 1, { vibrato: { rate: 5.5, depth: 10 } }),
+    hornNote('chord-mid', 'Chord, middle', 164.81, 0.18, 0.46, 0.6),
+    hornNote('chord-low', 'Chord, low', 130.81, 0.18, 0.46, 0.6),
   ],
 };
 
@@ -654,6 +690,8 @@ export const BUILT_IN_SOUNDS: readonly BuiltInSound[] = [
   { id: 'entry-rumble', name: 'Dungeon wakes', where: 'The first tap on the dark entry screen, as the page comes out of the dark', sound: entryRumble },
   { id: 'card-select', name: 'Card picked', where: 'A hero or an enemy card is selected (an enemy a little lower)', sound: cardSelect },
   { id: 'hero-place', name: 'Hero placed', where: 'A hero is put on the board (unless Global Sounds has its own for this)', sound: heroPlace },
+  { id: 'hero-remove', name: 'Hero removed', where: 'A hero is taken off the board, or the trash can recalls the only one (unless Global Sounds has its own for this)', sound: heroRemove },
+  { id: 'hero-recall', name: 'Heroes recalled', where: 'The trash can recalls two or more heroes at once', sound: heroRecall },
   { id: 'run-start', name: 'Run begins', where: 'Play is pressed (unless Global Sounds has its own for this)', sound: runStart },
   { id: 'run-win', name: 'Victory', where: 'The run is won (unless Global Sounds has its own for this)', sound: runWin },
   { id: 'run-lose', name: 'Defeat', where: 'The run is lost (unless Global Sounds has its own for this)', sound: runLose },

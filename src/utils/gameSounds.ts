@@ -174,6 +174,7 @@ export function clearSoundCache(): void {
  */
 const BUILT_IN_FOR: Partial<Record<SoundTrigger, ChromeSound>> = {
   character_placed: 'hero-place',
+  character_removed: 'hero-remove',
   simulation_start: 'run-start',
   victory: 'run-win',
   defeat: 'run-lose',

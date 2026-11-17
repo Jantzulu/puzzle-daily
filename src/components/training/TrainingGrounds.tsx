@@ -16,6 +16,7 @@ import { loadTileType, loadCollectible } from '../../utils/assetStorage';
 import { diffTurn } from '../../engine/combatLog';
 import type { LogEventType } from '../../engine/combatLog';
 import { playGameSound } from '../../utils/gameSounds';
+import { playChromeSound } from '../../utils/chromeSounds';
 import { vibrate } from '../../utils/haptics';
 
 /** Deep copy GameState preserving Map/Set structures */
@@ -292,6 +293,10 @@ export const TrainingGrounds: React.FC<TrainingGroundsProps> = ({ playerReveal }
     setIsSimulating(false);
     setSelectedCharacterId(null);
     vibrate('heroTrash');
+    // The same falling horn call as the Play page (Game.tsx handleWipe).
+    const recalled = gameState?.placedCharacters.length ?? 0;
+    if (recalled > 1) playChromeSound('hero-recall');
+    else if (recalled === 1) playGameSound('character_removed');
   };
 
   const handleStep = () => {

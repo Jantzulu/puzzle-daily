@@ -1735,6 +1735,10 @@ export const Game: React.FC<GameProps> = ({
     setSelectedCharacterId(null);
     setPuzzleScore(null);
     vibrate('heroTrash');
+    // The falling horn call: fuller when several heroes go at once (user ask 2026-11-16).
+    const recalled = gameState.placedCharacters.length;
+    if (recalled > 1) playChromeSound('hero-recall');
+    else if (recalled === 1) playGameSound('character_removed');
   };
 
   // Auto-reset after defeat (keeps characters, returns to setup/placement phase)
