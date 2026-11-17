@@ -322,6 +322,68 @@ describe('a sketch of a recording', () => {
     expect(notes[1].length).toBeLessThan(notes[0].length * 0.7);
   });
 
+  it('hears a stream of small notes as one layer that runs through them', () => {
+    // One voice, thirty notes a second for a second and a half: up three
+    // keys, up two, down three, climbing two octaves and more. Each note is
+    // struck and all but gone before the one after next.
+    const first = 900;
+    const keys: number[] = [];
+    for (let n = 0; n < 45; n++) keys.push(Math.floor(n / 3) * 2 + [0, 3, 5][n % 3]);
+    const stream = new Float32Array(Math.round(1.8 * SR));
+    keys.forEach((key, n) => {
+      const hz = first * Math.pow(2, key / 12);
+      const start = Math.round((0.05 + n / 30) * SR);
+      for (let i = 0; i < 0.2 * SR && start + i < stream.length; i++) {
+        const s = i / SR;
+        stream[start + i] += 0.25 * Math.sin(2 * Math.PI * hz * s) * Math.min(1, s / 0.002) * Math.exp(-45 * s);
+      }
+    });
+    const sketch = sketchFromRecording(stream, SR)!;
+    const runs = sketch.layers.map(l => l.layer).filter(l => l.run);
+    expect(runs).toHaveLength(1);
+    const layer = runs[0];
+    expect(layer.source).toBe('tone');
+    expect(layer.pitch!.to).toBe(layer.pitch!.from);
+    expect(Math.abs(12 * Math.log2(layer.pitch!.from / first))).toBeLessThan(0.3); // it starts on the first note
+    expect(layer.start).toBeLessThan(0.1);
+    expect(layer.length).toBeGreaterThan(1.3);
+    expect(layer.run!.rate).toBeGreaterThan(27);
+    expect(layer.run!.rate).toBeLessThan(33);
+    const steps = layer.run!.steps;
+    expect(steps.length).toBeGreaterThanOrEqual(40);
+    expect(steps.length).toBeLessThanOrEqual(50);
+    expect(steps[0]).toBe(0);
+    // The tune: most steps are on the note that was played at that moment.
+    let right = 0;
+    steps.forEach((step, i) => { if (keys[i] !== undefined && Math.abs(step - keys[i]) < 0.4) right++; });
+    expect(right).toBeGreaterThan(steps.length * 0.8);
+    // It goes up AND down on the way.
+    expect(steps.some((step, i) => i > 0 && step < steps[i - 1] - 1)).toBe(true);
+    expect(steps[steps.length - 1]).toBeGreaterThan(24);
+    // And nothing of it is made up in noise.
+    expect(sketch.layers.filter(l => l.kind !== 'note')).toHaveLength(0);
+  });
+
+  it('does not take a held chord whose notes are struck again in turn for a run', () => {
+    // Five pitches sounding all the while, each struck again every sixth of
+    // a second, one after another: thirty strikes a second, but no note
+    // ever dies away. These are notes that pulse.
+    const chord = [600, 840, 1175, 1860, 2100];
+    const held = new Float32Array(Math.round(1.6 * SR));
+    chord.forEach((hz, c) => {
+      for (let i = 0; i < 1.5 * SR; i++) {
+        const s = i / SR;
+        const sinceStruck = (((s - c / 30) % (1 / 6)) + 1 / 6) % (1 / 6);
+        const beat = 0.45 + 0.55 * Math.exp(-25 * sinceStruck);
+        held[i + 400] += 0.1 * Math.sin(2 * Math.PI * hz * s) * beat * Math.min(1, s / 0.05) * Math.min(1, (1.5 - s) / 0.1);
+      }
+    });
+    const sketch = sketchFromRecording(held, SR)!;
+    expect(sketch.layers.filter(l => l.layer.run)).toHaveLength(0);
+    // It is still heard, as notes.
+    expect(sketch.layers.filter(l => l.kind === 'note').length).toBeGreaterThanOrEqual(4);
+  });
+
   it('measures loudness in a band the same way every time', () => {
     const tone = ringingNote(1000, 0.5, 0, 0.5);
     const inBand = bandRms(tone, SR, 0, 0.5, 900, 1100);

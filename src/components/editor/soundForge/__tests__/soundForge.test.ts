@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { BUILT_IN_SOUNDS } from '../../../../utils/synth/builtIn';
-import { MAX_HARMONICS, layersLength, soundLength, type SynthSound } from '../../../../utils/synth/types';
+import { MAX_HARMONICS, MAX_RUN_STEPS, layersLength, runPlan, soundLength, stretchSound, type SynthLayer, type SynthSound } from '../../../../utils/synth/types';
 import { LAYER_GROUPS, LAYER_STARTERS, SOUND_GROUPS, SOUND_STARTERS, copyLayer, envelopePoints, layerFromStarter, nearestNote, noteHz, noteName, nudgeLayer, pasteLayer } from '../forgeModel';
 import { builtInKey, forgeReducer, initialForgeState, isUnsaved, keyAssetId, keyBuiltInId, mineKey, savedFor, type ForgeState } from '../forgeState';
 
@@ -110,6 +110,52 @@ describe('forge editing state', () => {
     const saved = savedFor(key, [{ id: 'chrome_torch-out', name: 'x', synth: mine, createdAt: '' }]);
     expect(saved?.edited).toBe(true);
     expect(saved?.sound.level).toBe(0.5);
+  });
+});
+
+describe('a run of notes on one layer', () => {
+  const tone = (extra: Partial<SynthLayer>): SynthLayer => ({
+    id: 'a', name: 'a', source: 'tone', start: 0, length: 1, level: 1, attack: 0, hold: 0, floor: 1, tail: 0,
+    pitch: { from: 440, to: 440 }, ...extra,
+  });
+
+  it('plays nothing without a list, a speed or a tone', () => {
+    expect(runPlan(tone({}))).toEqual([]);
+    expect(runPlan(tone({ run: { rate: 10, steps: [] } }))).toEqual([]);
+    expect(runPlan(tone({ run: { rate: 0, steps: [0, 7] } }))).toEqual([]);
+    expect(runPlan({ ...tone({ run: { rate: 10, steps: [0, 7] } }), source: 'noise' })).toEqual([]);
+  });
+
+  it('steps through the list once at its speed, in keys from the pitch, and then holds', () => {
+    const plan = runPlan(tone({ run: { rate: 10, steps: [0, 4, 7, 12] } }));
+    expect(plan.map(step => step.cents)).toEqual([0, 400, 700, 1200]);
+    plan.forEach((step, i) => expect(step.at).toBeCloseTo(i * 0.1, 9));
+  });
+
+  it('goes round when told to, for as long as the layer lasts', () => {
+    const plan = runPlan(tone({ length: 0.5, run: { rate: 10, steps: [0, 7], loop: true } }));
+    expect(plan.map(step => step.cents)).toEqual([0, 700, 0, 700, 0]);
+    expect(plan[plan.length - 1].at).toBeLessThan(0.5);
+  });
+
+  it('plays only the steps the layer is long enough to reach', () => {
+    const plan = runPlan(tone({ length: 0.25, run: { rate: 10, steps: [0, 2, 4, 5, 7, 9] } }));
+    expect(plan.map(step => step.cents)).toEqual([0, 200, 400]);
+  });
+
+  it('never plays more of a list than the format allows', () => {
+    const steps = Array.from({ length: MAX_RUN_STEPS + 40 }, (_, i) => i);
+    const plan = runPlan(tone({ length: 3, run: { rate: 60, steps } }));
+    expect(plan.length).toBeLessThanOrEqual(MAX_RUN_STEPS);
+    expect(Math.max(...plan.map(step => step.cents))).toBe((MAX_RUN_STEPS - 1) * 100);
+  });
+
+  it('keeps its notes in step when the sound is stretched', () => {
+    const sound: SynthSound = { version: 1, level: 1, layers: [tone({ run: { rate: 10, steps: [0, 4, 7], pluck: 0.5 } })] };
+    const slow = stretchSound(sound, 2);
+    expect(slow.layers[0].run).toEqual({ rate: 5, steps: [0, 4, 7], pluck: 0.5 });
+    // Twice as long, half the speed: the same notes at the same points of the sound.
+    expect(runPlan(slow.layers[0]).map(step => step.at / 2)).toEqual(runPlan(sound.layers[0]).map(step => step.at));
   });
 });
 

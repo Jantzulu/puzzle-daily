@@ -4,7 +4,7 @@
 // measure or draw it. No Math.random: the noise is seeded, so a sound is
 // the same every time and only a change to its numbers changes it.
 
-import { MAX_ECHOES, MAX_HARMONICS, type Slide, type SynthLayer, type SynthSound } from './types';
+import { MAX_ECHOES, MAX_HARMONICS, runPlan, type Slide, type SynthLayer, type SynthSound } from './types';
 
 export interface RenderOptions {
   /** Multiplies every pitch and filter position (0.9 = a little lower). */
@@ -110,6 +110,30 @@ function renderLayer(ctx: BaseAudioContext, out: AudioNode, at: number, layer: S
       for (const t of tones) depth.connect(t.detune);
       wobble.start(t0);
       wobble.stop(end);
+    }
+    // A run: the pitch steps through its list. The steps are set on each
+    // oscillator's detune, which ADDS to its pitch, so a run can ride a
+    // bend and a wobble both.
+    const plan = runPlan(layer);
+    for (const step of plan) for (const t of tones) t.detune.setValueAtTime(step.cents, t0 + step.at);
+    // ...and, plucked, each step starts full and fades before the next.
+    const pluck = Math.min(1, Math.max(0, layer.run?.pluck ?? 0));
+    if (plan.length > 0 && pluck > 0) {
+      const each = 1 / layer.run!.rate;
+      const low = Math.max(1e-4, 1 - pluck);
+      const struck = ctx.createGain();
+      struck.gain.value = 1;
+      for (const step of plan) {
+        const at = t0 + step.at;
+        // (Two thousandths of a second to rise: a straight jump would click.)
+        const rise = Math.min(0.002, each / 4);
+        if (step.at > 0) struck.gain.setValueAtTime(low, at);
+        else struck.gain.setValueAtTime(1, at);
+        if (step.at > 0) struck.gain.linearRampToValueAtTime(1, at + rise);
+        struck.gain.exponentialRampToValueAtTime(low, Math.min(end, at + each));
+      }
+      node.connect(struck);
+      node = struck;
     }
     for (const t of tones) {
       t.start(t0);

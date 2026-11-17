@@ -2,6 +2,7 @@ import React from 'react';
 import { MAX_HARMONICS, type FilterStage, type FilterType, type Slide, type SynthLayer, type Wave } from '../../../utils/synth/types';
 import { ForgeChip, ForgeSection, ForgeSlider, ForgeToggle } from './ForgeControls';
 import { NotePicker } from './NotePicker';
+import { RunEditor } from './RunEditor';
 
 // Everything that shapes ONE layer. Each group has a plain name, the trade's
 // word beside it, and a line saying what it does to the sound, so the
@@ -9,7 +10,8 @@ import { NotePicker } from './NotePicker';
 // numbers sit under "Fine control" in their group.
 //
 // ORDER: what gives the layer its character comes first, right under
-// "Made of": for a tone its Pitch and Stacked notes, for noise its Colour.
+// "Made of": for a tone its Pitch, its Run (RunEditor.tsx) and Stacked
+// notes, for noise its Colour.
 // Timing and loudness follow (they can also be set by dragging the bars).
 
 const SECONDS = { factor: 1000, unit: 'ms', decimals: 0 } as const;
@@ -377,7 +379,7 @@ export const LayerPanel: React.FC<{
   return (
     <div className="space-y-3">
       {layer.source === 'tone'
-        ? [madeOf, pitchSection, stackSection, when, loudness, colour, tremble, pulse]
+        ? [madeOf, pitchSection, <RunEditor key="run" layer={layer} onChange={onChange} />, stackSection, when, loudness, colour, tremble, pulse]
         : [madeOf, colour, when, loudness, tremble, pulse, texture]}
     </div>
   );

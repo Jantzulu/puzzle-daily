@@ -21,6 +21,8 @@
 //      (the ring of struck metal, a shimmer whose pitches pulse in turn)
 //      stay separate layers. When there are more notes than room, they are
 //      taken evenly from across the sound, not all from its loudest part.
+//      A STREAM of small notes one after another (dozens a second: a
+//      flourish, an arpeggio) is ONE layer with a RUN: see findRun.
 //   4. Everything else is NOISE, split into five fixed bands (rumble, body,
 //      grit, hiss, air). Each band with enough in it becomes a noise layer,
 //      UNLESS what is in it is notes there was no room to name: a sound
@@ -41,7 +43,7 @@
 // it (`band`). Pure functions of the samples: no audio context, no clock,
 // nothing random. The recording itself is never kept.
 
-import { MAX_HARMONICS, type FilterStage, type SynthLayer } from './types';
+import { MAX_HARMONICS, MAX_RUN_STEPS, type FilterStage, type SynthLayer } from './types';
 
 /** The longest stretch that is used (s): a layer can start up to 2 s in and last 3. */
 export const SKETCH_SECONDS = 3;
@@ -50,6 +52,8 @@ const MAX_HITS = 3;
 const MAX_NOTES = 20;
 /** Of which an instrument's struck notes (each a whole stack of overtones) may be this many. */
 const MAX_STRUCK = 16;
+/** The followed notes kept beside a run (see findRun). */
+const BESIDE_A_RUN = 6;
 const MAX_LAYERS = 20;
 
 /** The noise bands: a plain name, its edges (Hz), and whether its noise is slowed (more low end to work with). */
@@ -457,7 +461,9 @@ export function sketchFromRecording(samples: Float32Array, sampleRate: number): 
       mixTarget: target,
       layer: {
         id: `note${i + 1}`,
-        name: `Note ${noteLabel(steady ? note.from : Math.sqrt(note.from * note.to))} (${Math.round(note.from)}${steady ? '' : `-${Math.round(note.to)}`} Hz)`,
+        name: note.run
+          ? `Run of ${note.run.count} notes (${noteLabel(note.from)} to ${noteLabel(note.run.highest)})`
+          : `Note ${noteLabel(steady ? note.from : Math.sqrt(note.from * note.to))} (${Math.round(note.from)}${steady ? '' : `-${Math.round(note.to)}`} Hz)`,
         source: 'tone', wave: 'sine',
         start: round(start, 3), length: round(length, 3), level: 1,
         attack: round(note.shape.attack, 3), hold: round(note.shape.hold, 3), floor: round(note.shape.floor, 3), tail: round(note.shape.tail, 3),
@@ -469,6 +475,7 @@ export function sketchFromRecording(samples: Float32Array, sampleRate: number): 
         ...(note.harmonics.length > 0 ? { harmonics: note.harmonics } : {}),
         ...(note.shape.tremble ? { tremble: { ...note.shape.tremble, seed: round(0.21 + 0.17 * i, 2) } } : {}),
         ...(note.shape.pulse ? { pulse: note.shape.pulse } : {}),
+        ...(note.run ? { run: { rate: note.run.rate, steps: note.run.steps, ...(note.run.pluck > 0 ? { pluck: note.run.pluck } : {}) } } : {}),
       },
     });
   });
@@ -643,6 +650,8 @@ interface FoundNote {
   harmonics: Array<{ ratio: number; level: number }>;
   bands: Array<readonly [number, number]>;
   energy: number;
+  /** When this "note" is a whole stream of them: its steps (see findRun). */
+  run?: { rate: number; steps: number[]; pluck: number; count: number; highest: number };
 }
 
 interface Partial {
@@ -1116,6 +1125,269 @@ function findStruckNotes(x: Float32Array, sampleRate: number): StruckNote[] {
   return notes;
 }
 
+// ---- a run: a stream of small notes ---------------------------------------------------
+//
+// THE USER'S EAR on a magic flourish (2026-11-17), after two rounds of
+// getting it wrong: "there are a lot of sequential notes that have an 8 bit
+// quality to them, its almost like a stream of running up and down notes
+// and the converter isnt catching it". Looked at through a window short
+// enough to see it (23 ms, every 3 ms), the clip is ONE voice playing about
+// 85 notes in two seconds, each a thirtieth of a second long, zig-zagging
+// up a scale. Nothing above can hold that: a note must last a tenth of a
+// second to be followed, and a layer was one note. So the sound format was
+// given a RUN (types.ts: a layer's note steps through a list, so many steps
+// a second), and this finds one:
+//   1. ONSETS, through the short window: instants where new sound appears.
+//   2. At each, the pitch that is NEW (the spectrum just after, less just
+//      before): it must stand sharp and alone, as a note does and a knock
+//      does not. Of two, the one that is not the note before still ringing.
+//   3. It is a run only if it is plainly one: a dozen notes or more, nearly
+//      every onset a note, quick (ten a second at least), and MOVING (five
+//      pitches or more, and most notes not the note before). A beat on two
+//      pitches, a tune of long notes and anything made of noise all fail,
+//      and are heard the old way.
+//   4. The notes are laid on a grid of equal steps (the layer's Speed) and
+//      written as keys up or down from the first.
+
+interface FoundRun {
+  /** Each note: when it is struck and when it has rung away (s), and its pitch. */
+  notes: Array<{ at: number; end: number; hz: number; amp: number }>;
+  note: FoundNote;
+}
+
+function findRun(x: Float32Array, sampleRate: number): FoundRun | null {
+  const N = 1024;
+  const H = 128;
+  const binHz = sampleRate / N;
+  const hopS = H / sampleRate;
+  const lo = Math.max(3, Math.round(300 / binHz));
+  const hi = Math.min(N / 2 - 3, Math.round(9000 / binHz));
+  const frames = spectrogram(x, 0, x.length, N, H).map(frame => frame.map(Math.sqrt));
+  if (frames.length < 40) return null;
+  let top = 0;
+  for (const frame of frames) for (let i = lo; i < hi; i++) if (frame[i] > top) top = frame[i];
+  if (!(top > 0)) return null;
+
+  // 1. Onsets: how much louder each part of the spectrum is than 12 ms before.
+  const scale = 1000 / top;
+  const BACK = 4;
+  const flux = frames.map((frame, k) => {
+    if (k < BACK) return 0;
+    const before = frames[k - BACK];
+    let s = 0;
+    for (let i = lo; i < hi; i++) {
+      const d = Math.log(1 + scale * frame[i]) - Math.log(1 + scale * before[i]);
+      if (d > 0) s += d;
+    }
+    return s;
+  });
+  const fluxTop = Math.max(...flux);
+  // (Judged against the strongest onset NEARBY, a quarter of a second
+  // either side: a run that begins softly has soft onsets, and against the
+  // loudest of the whole sound its opening notes were passed over.)
+  const NEARBY = Math.round(0.25 / hopS);
+  const onsets: number[] = [];
+  for (let k = 2; k < flux.length - 2; k++) {
+    if (flux[k] < fluxTop * 0.04) continue;
+    if (!(flux[k] >= flux[k - 1] && flux[k] > flux[k + 1] && flux[k] >= flux[k - 2] && flux[k] > flux[k + 2])) continue;
+    let nearTop = 0;
+    for (let j = Math.max(0, k - NEARBY); j <= Math.min(flux.length - 1, k + NEARBY); j++) if (flux[j] > nearTop) nearTop = flux[j];
+    if (flux[k] < nearTop * 0.25) continue;
+    const last = onsets[onsets.length - 1];
+    if (last !== undefined && k - last < 6) { if (flux[k] > flux[last]) onsets[onsets.length - 1] = k; continue; }
+    onsets.push(k);
+  }
+  if (onsets.length < 12) return null;
+
+  // 2. The new pitches at each: one, or the two strongest.
+  interface Heard { frame: number; bin: number; hz: number; amp: number }
+  const heard: Heard[][] = [];
+  for (const k of onsets) {
+    const after = frames[Math.min(frames.length - 1, k + 2)];
+    const before = frames[Math.max(0, k - 6)];
+    const fresh = new Float64Array(N / 2);
+    let total = 0;
+    for (let i = 1; i < N / 2; i++) {
+      fresh[i] = Math.max(0, after[i] - before[i]);
+      if (i >= lo && i < hi) total += fresh[i] * fresh[i];
+    }
+    const peaks: Array<{ bin: number; size: number }> = [];
+    for (let i = lo; i < hi; i++) {
+      if (!(fresh[i] > fresh[i - 1] && fresh[i] >= fresh[i + 1]) || fresh[i] < top * 0.02) continue;
+      const around: number[] = [];
+      for (let j = Math.max(1, i - 15); j <= Math.min(N / 2 - 1, i + 15); j++) if (Math.abs(j - i) > 2) around.push(fresh[j]);
+      if (fresh[i] < median(around) * 6) continue; // not sharp: a knock, a hiss
+      // (Struck, or struck again: a good part of it was not there a moment before.)
+      if (fresh[i] < after[i] * 0.3) continue;
+      peaks.push({ bin: i, size: fresh[i] });
+    }
+    peaks.sort((p, q) => q.size - p.size);
+    const two = peaks.filter((p, i) => i === 0 || (p.size >= peaks[0].size * 0.4 && Math.abs(Math.log(p.bin / peaks[0].bin)) > 0.08)).slice(0, 2);
+    let theirs = 0;
+    for (const p of two) for (let d = -2; d <= 2; d++) theirs += fresh[p.bin + d] * fresh[p.bin + d];
+    if (two.length === 0 || theirs < total * 0.35) continue;
+    const pitchOf = (bin: number): number => {
+      const l = Math.log(after[bin - 1] + 1e-30);
+      const m = Math.log(after[bin] + 1e-30);
+      const r = Math.log(after[bin + 1] + 1e-30);
+      const shift = l - 2 * m + r !== 0 ? (0.5 * (l - r)) / (l - 2 * m + r) : 0;
+      return (bin + Math.max(-0.5, Math.min(0.5, shift))) * binHz;
+    };
+    heard.push(two.map(p => ({ frame: k, bin: p.bin, hz: pitchOf(p.bin), amp: after[p.bin] })));
+  }
+  if (heard.length < 12) return null;
+
+  // ONE LINE through them. Where two pitches are new at once, one is often
+  // the note before still ringing, or a second, quieter voice far above or
+  // below. Taken onset by onset (the louder; then "not the last note"), the
+  // line hopped between voices two octaves apart. So the whole line is
+  // chosen at once: the one that keeps to the louder pitch, without playing
+  // the same note twice running, without leaping about.
+  const cost = (from: Heard, to: Heard): number => {
+    const octaves = Math.abs(Math.log2(to.hz / from.hz));
+    return (octaves < 0.03 ? 0.8 : 0) + 0.5 * Math.min(1, octaves);
+  };
+  const worth = (choices: Heard[], c: number): number => choices[c].amp / Math.max(...choices.map(h => h.amp));
+  let scores = heard[0].map((_, c) => worth(heard[0], c));
+  const cameFrom: number[][] = [heard[0].map(() => -1)];
+  for (let n = 1; n < heard.length; n++) {
+    const next: number[] = [];
+    const back: number[] = [];
+    heard[n].forEach((to, c) => {
+      let bestFrom = 0;
+      let bestScore = -Infinity;
+      heard[n - 1].forEach((from, p) => {
+        const s = scores[p] - cost(from, to);
+        if (s > bestScore) { bestScore = s; bestFrom = p; }
+      });
+      next.push(bestScore + worth(heard[n], c));
+      back.push(bestFrom);
+    });
+    scores = next;
+    cameFrom.push(back);
+  }
+  const found: Heard[] = [];
+  let choice = scores.indexOf(Math.max(...scores));
+  for (let n = heard.length - 1; n >= 0; n--) {
+    found.unshift(heard[n][choice]);
+    choice = cameFrom[n][choice];
+  }
+
+  // The longest stretch of them with no pause in it.
+  let from = 0;
+  let best: [number, number] = [0, 0];
+  for (let i = 1; i <= found.length; i++) {
+    if (i < found.length && (found[i].frame - found[i - 1].frame) * hopS <= 0.3) continue;
+    if (i - from > best[1] - best[0]) best = [from, i];
+    from = i;
+  }
+  let stream = found.slice(best[0], best[1]);
+  // Without a lead-in that is not part of it: a few twinkles in another
+  // register before the run begins (more than an octave from where the next
+  // notes are), and anything faint at either end.
+  for (let i = Math.floor(stream.length / 4); i >= 1; i--) {
+    if (Math.abs(Math.log2(stream[i].hz / stream[i - 1].hz)) > 1) { stream = stream.slice(i); break; }
+  }
+  const loud = stream.map(note => note.amp).sort((p, q) => p - q);
+  const faint = (loud[Math.min(loud.length - 1, Math.floor(loud.length * 0.9))] ?? 0) * 0.05;
+  while (stream.length > 0 && stream[0].amp < faint) stream = stream.slice(1);
+  while (stream.length > 0 && stream[stream.length - 1].amp < faint) stream = stream.slice(0, -1);
+
+  // 3. Is it plainly a run?
+  if (stream.length < 12) return null;
+  const inStretch = onsets.filter(k => k >= stream[0].frame && k <= stream[stream.length - 1].frame).length;
+  if (stream.length < inStretch * 0.7) return null;
+  const gaps: number[] = [];
+  let moved = 0;
+  for (let i = 1; i < stream.length; i++) {
+    gaps.push((stream[i].frame - stream[i - 1].frame) * hopS);
+    if (Math.abs(Math.log(stream[i].hz / stream[i - 1].hz)) > 0.03) moved++;
+  }
+  const between = median(gaps);
+  if (between > 0.1 || moved < (stream.length - 1) * 0.6) return null;
+  const pitches: number[] = [];
+  for (const note of stream) if (!pitches.some(hz => Math.abs(Math.log(hz / note.hz)) < 0.03)) pitches.push(note.hz);
+  if (pitches.length < 5) return null;
+
+  // How long each rings: until it is down to a tenth, or struck again.
+  const level = (j: number, bin: number) => Math.max(frames[j][bin - 1], frames[j][bin], frames[j][bin + 1]);
+  let diedAway = 0;
+  const notes = stream.map((note, n) => {
+    let peak = 0;
+    for (let j = note.frame; j < Math.min(frames.length, note.frame + 8); j++) peak = Math.max(peak, level(j, note.bin));
+    const again = stream.find((other, m) => m > n && Math.abs(Math.log(other.hz / note.hz)) < 0.02);
+    const limit = Math.min(frames.length - 1, again ? again.frame - 1 : frames.length - 1, note.frame + Math.round(0.6 / hopS));
+    let end = Math.min(limit, note.frame + 3);
+    while (end < limit && level(end, note.bin) > peak * 0.1) end++;
+    if (level(end, note.bin) <= peak * 0.1) diedAway++;
+    return { at: note.frame * hopS, end: end * hopS, hz: note.hz, amp: peak, frame: note.frame, bin: note.bin };
+  });
+  // A RUN'S NOTES COME AND GO. A chord that is HELD while its notes are
+  // struck again and again in turn (a spell's shimmer: the same five
+  // pitches, thirty strikes a second) passes every test above, but none of
+  // its notes ever dies away: each is still sounding when it is struck
+  // again. That is notes that pulse, and is heard the old way (the user's
+  // ear had already called that sketch "WAY closer").
+  if (diedAway < notes.length * 0.6) return null;
+
+  // 4. On a grid of equal steps.
+  const start = notes[0].at;
+  const lastAt = notes[notes.length - 1].at;
+  // (The usual time from one note to the next: the average of the gaps near
+  // the middle one. The middle gap itself is a whole number of 3 ms looks,
+  // and a speed read off it ran a twentieth fast: every dozen steps a note
+  // was played twice.)
+  const usual = gaps.filter(gap => gap > between * 0.7 && gap < between * 1.3);
+  let rate = Math.max(4, Math.min(60, usual.length / usual.reduce((s, gap) => s + gap, 0)));
+  if ((lastAt - start) * rate + 1 > MAX_RUN_STEPS) rate = (MAX_RUN_STEPS - 1) / (lastAt - start);
+  rate = Math.round(rate * 10) / 10;
+  const count = Math.min(MAX_RUN_STEPS, Math.floor((lastAt - start) * rate + 0.5) + 1);
+  const steps: number[] = [];
+  let at = 0;
+  for (let s = 0; s < count; s++) {
+    const when = start + (s + 0.5) / rate;
+    while (at + 1 < notes.length && notes[at + 1].at <= when) at++;
+    steps.push(round(12 * Math.log2(notes[at].hz / notes[0].hz), 2));
+  }
+  // Its loudness: the notes swell and die away as a whole.
+  const amps = notes.map(note => note.amp).sort((p, q) => p - q);
+  const full = amps[Math.min(amps.length - 1, Math.floor(amps.length * 0.9))];
+  const firstFull = notes.find(note => note.amp >= full * 0.7)!;
+  let lastFull = firstFull;
+  for (const note of notes) if (note.amp >= full * 0.7) lastFull = note;
+  const end = Math.min(x.length / sampleRate, Math.max(lastAt + 1 / rate, notes[notes.length - 1].end));
+  const length = Math.max(0.05, end - start);
+  const tail = Math.min(0.08, Math.max(0.005, length * 0.15));
+  const attack = Math.min(length * 0.8, Math.max(0.003, firstFull.at - start));
+  const shape: Shape = {
+    start,
+    length,
+    attack,
+    hold: Math.max(0, Math.min(lastFull.at - firstFull.at, length - attack - tail)),
+    floor: Math.max(0.01, Math.min(1, notes[notes.length - 1].amp / full)),
+    tail,
+  };
+  // How far each note has faded when the next is struck.
+  const faded: number[] = [];
+  for (let n = 0; n + 1 < notes.length; n++) {
+    const j = Math.max(notes[n].frame + 1, notes[n + 1].frame - 1);
+    if (notes[n].amp > 0) faded.push(Math.min(1, level(j, notes[n].bin) / notes[n].amp));
+  }
+  const pluck = Math.round(Math.max(0, Math.min(0.9, 1 - median(faded))) * 20) / 20;
+  return {
+    notes,
+    note: {
+      shape,
+      from: Math.max(30, Math.min(8000, notes[0].hz)),
+      to: Math.max(30, Math.min(8000, notes[0].hz)),
+      harmonics: [],
+      bands: pitches.sort((p, q) => p - q).map(hz => [hz * 0.96, hz * 1.04] as const),
+      energy: notes.reduce((s, note) => s + note.amp * note.amp, 0),
+      run: { rate, steps, pluck, count: notes.length, highest: Math.max(...pitches) },
+    },
+  };
+}
+
 function followNotes(x: Float32Array, sampleRate: number): { notes: FoundNote[]; pitchesAt: (seconds: number) => number[] } {
   const trackHop = TRACK_HOP / sampleRate;
   // TWO LOOKS, because no one window suits every pitch. Low notes need a
@@ -1137,6 +1409,13 @@ function followNotes(x: Float32Array, sampleRate: number): { notes: FoundNote[];
     const after = p.amp[Math.min(p.amp.length - 1, k + 6 - p.start)];
     return after <= before * 1.5;
   }));
+  // A stream of small notes (see findRun). Not looked for where an
+  // instrument was found: a phrase of plucked strings is notes, each with
+  // its stack of overtones.
+  const run = struck.length === 0 ? findRun(x, sampleRate) : null;
+  /** Is `hz` a note of the run, struck and still ringing at `seconds`? */
+  const inTheRun = (seconds: number, hz: number): boolean => !!run && run.notes.some(note =>
+    seconds >= note.at - 0.03 && seconds <= note.end + 0.03 && Math.abs(Math.log(hz / note.hz)) < 0.03);
   /** Is `hz` one of the multiples of a struck note sounding at `seconds`? */
   const inAStack = (seconds: number, hz: number): boolean => struck.some(note => {
     if (seconds < note.at - 0.03 || seconds > note.end + 0.03) return false;
@@ -1149,8 +1428,10 @@ function followNotes(x: Float32Array, sampleRate: number): { notes: FoundNote[];
     // outlast the note's measured end: a string rings on quietly.)
     let inside = 0;
     let atBirth = 0;
+    // (The same of a run's notes: a followed pitch that is one of them
+    // ringing is the run, heard twice.)
     for (let k = p.start; k <= p.end; k++) {
-      if (!inAStack(k * trackHop, p.hz[k - p.start])) continue;
+      if (!inAStack(k * trackHop, p.hz[k - p.start]) && !inTheRun(k * trackHop, p.hz[k - p.start])) continue;
       inside++;
       if (k < p.start + 8) atBirth++;
     }
@@ -1173,6 +1454,7 @@ function followNotes(x: Float32Array, sampleRate: number): { notes: FoundNote[];
       if (seconds < note.at - 0.03 || seconds > note.end + 0.03) continue;
       for (let m = 1; m * note.hz < 11000; m++) now.push(m * note.hz);
     }
+    if (run) for (const note of run.notes) if (seconds >= note.at - 0.03 && seconds <= note.end + 0.03) now.push(note.hz);
     return now;
   };
 
@@ -1349,7 +1631,9 @@ function followNotes(x: Float32Array, sampleRate: number): { notes: FoundNote[];
   // weightiest note that starts in it; what room the empty stretches leave
   // goes by weight (how much of the sound a note is moment by moment:
   // "which notes are kept").
-  const room = Math.max(0, MAX_NOTES - played.length);
+  // (Beside a run, only a handful: the run is the sound, and the rest is
+  // what rings on behind it.)
+  const room = run ? BESIDE_A_RUN : Math.max(0, MAX_NOTES - played.length);
   const byWeight = [...found].sort((p, q) => weights.get(q)! - weights.get(p)!);
   const followed: FoundNote[] = [];
   if (byWeight.length > room && room >= 2) {
@@ -1364,7 +1648,7 @@ function followNotes(x: Float32Array, sampleRate: number): { notes: FoundNote[];
   }
   for (const note of byWeight) if (followed.length < room && !followed.includes(note)) followed.push(note);
   return {
-    notes: [...played, ...followed].sort((p, q) => p.shape.start - q.shape.start),
+    notes: [...played, ...(run ? [run.note] : []), ...followed].sort((p, q) => p.shape.start - q.shape.start),
     pitchesAt,
   };
 }

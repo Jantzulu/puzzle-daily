@@ -189,6 +189,13 @@ export const LAYER_STARTERS: readonly LayerStarter[] = [
       pitch: { from: 520, to: 130 }, filters: [{ type: 'lowpass', cutoff: { from: 4000, to: 900 } }],
     }),
   },
+  {
+    id: 'run', label: 'Run', group: 'Notes', hint: 'A chord played one note at a time, the old-game way: a pickup, a flourish',
+    make: () => ({
+      name: 'Run', source: 'tone', wave: 'square', start: 0, length: 0.32, level: 0.1, attack: 0.002, hold: 0.22, floor: 0.3, tail: 0.03,
+      pitch: steady(note('C', 5)), run: { rate: 16, steps: [0, 4, 7, 12], loop: true },
+    }),
+  },
   // ---- instruments
   {
     id: 'pluck', label: 'Harp', group: 'Instruments', hint: 'A plucked string: starts bright at once, then dulls as it dies away',

@@ -82,6 +82,16 @@ export interface SynthLayer {
   harmonics?: Array<{ ratio: number; level: number }>;
   /** A wobble in pitch: how fast (Hz) and how far (cents; 100 = one semitone). */
   vibrato?: { rate: number; depth: number };
+  /**
+   * A RUN: the note does not hold still, it steps through a list, so many
+   * steps a second (an arpeggio: how an old game plays a chord, a trill or
+   * a flourish on one voice). Each step says how far from the layer's own
+   * Pitch it sits, in semitones (12 = an octave up, -12 down; it need not
+   * be whole). `loop` starts the list again when it runs out; without it
+   * the last step is held. `pluck` (0-1) makes each step fade by that much
+   * before the next, so the notes sound struck instead of joined.
+   */
+  run?: { rate: number; steps: number[]; loop?: boolean; pluck?: number };
 
   // ---- noise ----------------------------------------------------------------
   /** Which stretch of the noise it uses (s into a 2s buffer). */
@@ -100,6 +110,31 @@ export interface SynthLayer {
 
 /** The most extra notes a tone can carry (the main note plus these). */
 export const MAX_HARMONICS = 4;
+
+/** The most steps a run's list can hold. */
+export const MAX_RUN_STEPS = 128;
+/** The most steps one layer plays, however fast and however long (a looped run goes round). */
+const MAX_RUN_PLAYED = 720;
+
+/**
+ * What a layer's run plays: when each step begins (s from the layer's
+ * start) and how far from the layer's pitch it sits (cents). Empty when the
+ * layer has no run. The player and the editor's picture both read this, so
+ * they cannot disagree.
+ */
+export function runPlan(layer: SynthLayer): Array<{ at: number; cents: number }> {
+  const run = layer.run;
+  if (layer.source !== 'tone' || !run || !(run.rate > 0) || run.steps.length === 0 || !(layer.length > 0)) return [];
+  const steps = run.steps.slice(0, MAX_RUN_STEPS);
+  const each = 1 / run.rate;
+  const plan: Array<{ at: number; cents: number }> = [];
+  for (let i = 0; i < MAX_RUN_PLAYED && i * each < layer.length; i++) {
+    if (!run.loop && i >= steps.length) break; // the last step is held
+    const semitones = steps[i % steps.length];
+    plan.push({ at: i * each, cents: Number.isFinite(semitones) ? semitones * 100 : 0 });
+  }
+  return plan;
+}
 
 export interface SynthSound {
   version: 1;
@@ -143,6 +178,7 @@ export function stretchSound(sound: SynthSound, factor: number): SynthSound {
       hold: l.hold * factor,
       tail: l.tail * factor,
       ...(l.pitch ? { pitch: slide(l.pitch) } : {}),
+      ...(l.run ? { run: { ...l.run, rate: l.run.rate / factor } } : {}),
       ...(l.filters ? { filters: l.filters.map(f => ({ ...f, cutoff: slide(f.cutoff) })) } : {}),
     })),
   };
