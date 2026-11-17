@@ -808,6 +808,13 @@ export const Game: React.FC<GameProps> = ({
   const victoryOverlayVisible = gameState.gameStatus === 'victory' && !!puzzleScore && !replayMode && !enteringReplay && !victoryDismissed && !outcomeOverlayHeld;
   const gameOverOverlayVisible = showGameOver && !defeatDismissed && !replayMode && !enteringReplay && !outcomeOverlayHeld;
   const lifeLostOverlayVisible = gameState.gameStatus === 'defeat' && !showGameOver && !replayMode && !enteringReplay && !outcomeOverlayHeld;
+  // THE GAME IS OVER (won, out of lives, or a daily already finished): the
+  // portcullis rail STAYS, "as if it never left", with its Play stone dimmed
+  // and dead (user call 2026-11-17). It used to unmount on a win, leaving
+  // the result banner where the rail had been, and to show CONCEDE after
+  // the last life was lost.
+  const runOver = testMode === 'none' && (gameState.gameStatus === 'victory' || showGameOver || !!dailyLockStatus);
+  const playDimmed = gameState.placedCharacters.length === 0 || runOver;
 
   // THE QUEST SCROLL YIELDS TO THE OUTCOME (user report 2026-10-17: an open
   // scroll covered the Game Over overlay). It floats above the whole board
@@ -1664,6 +1671,8 @@ export const Game: React.FC<GameProps> = ({
     if (dailyLockStatus) {
       return;
     }
+    // The stone is disabled once the game is over; this is the same rule in code.
+    if (gameState.gameStatus === 'victory' || showGameOver) return;
     if (gameState.placedCharacters.length === 0) {
       setWarningModal({ isOpen: true, message: 'Place at least one hero on the board before starting!' });
       return;
@@ -2286,7 +2295,7 @@ export const Game: React.FC<GameProps> = ({
           {/* Game Board - The Dungeon */}
           <div ref={gameBoardRef} className="flex-1 flex flex-col items-center w-full overflow-visible">
             {/* Quest & Control Panel - combined HUD at top, overlaps navbar border */}
-            {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none' || replayMode) && (
+            {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || gameState.gameStatus === 'victory' || testMode !== 'none' || replayMode) && (
               // z-[40]: above the board (z-10) so the spikes hang over the
               // dungeon, but BELOW the nav (z-50) so the rising gate bars
               // can never paint on top of the navbar or the open menu's
@@ -2455,15 +2464,16 @@ export const Game: React.FC<GameProps> = ({
                           {testTurnsRemaining}
                         </span>
                       </div>
-                    ) : gameState.gameStatus === 'setup' ? (
+                    ) : gameState.gameStatus === 'setup' || runOver ? (
                       themeAssets.actionButtonPlayImage ? (
                         <button
                           onClick={handlePlay}
+                          disabled={runOver}
                           // hit-44: the themed Play art is h-6 (24px) and this
                           // branch is PLAYER-FACING whenever a theme supplies
                           // its own button image — the worst tap target in the
                           // game. The slop costs no layout.
-                          className={`relative transition-all hit-44 ${gameState.placedCharacters.length === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105 active:scale-95'}`}
+                          className={`relative transition-all hit-44 ${playDimmed ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105 active:scale-95'}`}
                         >
                           <img
                             src={themeAssets.actionButtonPlayImage}
@@ -2475,6 +2485,7 @@ export const Game: React.FC<GameProps> = ({
                       ) : (
                         <button
                           onClick={handlePlay}
+                          disabled={runOver}
                           // h-9 (36px), not h-10: the rail's box is the 44px
                           // nav rung now, so the tallest child sets the paint
                           // at 4+36+4. hit-44 keeps the TARGET at 44px while
@@ -2488,7 +2499,7 @@ export const Game: React.FC<GameProps> = ({
                           // the skin (face only) — a whole-button opacity
                           // would dim the never-dimming frame too.
                           className={`gem-btn relative w-[120px] shrink-0 h-9 font-bold text-sm lg:text-base transition-all flex items-center justify-center !py-0 hit-44 ${
-                            gameState.placedCharacters.length === 0
+                            playDimmed
                               ? playStoneSkinActive ? 'cursor-not-allowed' : 'opacity-50 cursor-not-allowed'
                               : ''
                           }`}
@@ -2499,7 +2510,7 @@ export const Game: React.FC<GameProps> = ({
                               win via the branch above); the painted Play
                               Stone supersedes the mesh in turn. */}
                           {playStoneSkinActive
-                            ? <PlayStoneSkin dimmed={gameState.placedCharacters.length === 0} />
+                            ? <PlayStoneSkin dimmed={playDimmed} />
                             : <GemMesh tone="emerald" phase={0} />}
                           {/* All-caps bold + carved-header tracking — the
                               register of the panel titles below the board
@@ -2524,7 +2535,7 @@ export const Game: React.FC<GameProps> = ({
                             className="relative uppercase tracking-[0.05em]"
                             style={playStoneSkinActive ? {
                               top: 1,
-                              opacity: gameState.placedCharacters.length === 0 ? PLAY_STONE_DIM : 1,
+                              opacity: playDimmed ? PLAY_STONE_DIM : 1,
                               transition: PLAY_STONE_LIT_TRANSITION,
                             } : undefined}
                           >Play</span>
