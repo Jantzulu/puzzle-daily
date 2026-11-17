@@ -13,8 +13,9 @@
 //   1. Trim the silence; keep at most three seconds (the Forge's reach).
 //   2. Find the separate HITS (a knock, then a rattle), up to three. A run
 //      of more than three is treated as one continuous sound.
-//   3. In each hit, find the NOTES: steady pitches that stand well clear of
-//      what is around them and last. Each becomes a tone layer.
+//   3. In each hit, find the NOTES: steady pitches that stand clear of what
+//      is around them and last, up to six. Each becomes a tone layer. (The
+//      ring of struck metal is several such pitches close together.)
 //   4. Everything else is NOISE, split into five fixed bands (rumble, body,
 //      grit, hiss, air). Each band with enough in it becomes a noise layer.
 //   5. Each layer's loudness over time (how fast it arrives, how long it
@@ -38,8 +39,8 @@ import type { FilterStage, SynthLayer } from './types';
 export const SKETCH_SECONDS = 3;
 /** No more separate hits than this; a longer run is one continuous sound. */
 const MAX_HITS = 3;
-const MAX_NOTES_PER_HIT = 3;
-const MAX_LAYERS = 12;
+const MAX_NOTES_PER_HIT = 6;
+const MAX_LAYERS = 14;
 
 /** The noise bands: a plain name, its edges (Hz), and whether its noise is slowed (more low end to work with). */
 const NOISE_BANDS: ReadonlyArray<{ id: string; name: string; lo: number; hi: number; slow: boolean }> = [
@@ -346,30 +347,51 @@ export function sketchFromRecording(samples: Float32Array, sampleRate: number): 
     const active = totals.map(v => v > totalTop * 0.05);
     const activeCount = active.filter(Boolean).length || 1;
 
-    // -- notes: a peak well clear of its neighbourhood, there most of the time
-    const mean = new Float64Array(N / 2);
-    frames.forEach((f, k) => { if (active[k]) for (let i = 0; i < N / 2; i++) mean[i] += f[i] / activeCount; });
+    // -- notes: a pitch standing clear of its neighbourhood, and lasting.
+    // Looked for in a FINE spectrum (11 Hz a step). The first cut looked in
+    // the coarse one used for timing (43 Hz a step) and asked for 10 dB of
+    // clearance: struck metal, whose ring is half a dozen close pitches each
+    // only 10-14 dB clear even in a fine look, got NO notes at all, and its
+    // ring came out as hiss (the user's sword-on-armour, 2026-11-17: "it is
+    // missing some of the metallic highs"; the loudness up there was right,
+    // the kind of sound was wrong).
+    const FINE = 4096;
+    const fineHz = sampleRate / FINE;
+    const mean = new Float64Array(FINE / 2);
+    let looks = 0;
+    for (let at = a - FINE / 2; at < b; at += FINE / 4) {
+      const power = framePower(x, Math.round(at), FINE, a, b);
+      for (let i = 0; i < FINE / 2; i++) mean[i] += power[i];
+      looks++;
+    }
     const meanTotal = mean.reduce((s, v) => s + v, 0);
-    const clear = activeCount >= 6 ? 10 : activeCount >= 3 ? 20 : 40; // fewer looks, stricter
+    const clear = looks >= 8 ? 6.3 : looks >= 4 ? 10 : 25; // 8 dB with plenty of looks; stricter with few
     const candidates: Array<{ bin: number; power: number }> = [];
-    for (let i = Math.max(2, Math.ceil(40 / binHz)); i < Math.min(N / 2 - 3, Math.floor(8000 / binHz)); i++) {
-      if (!(mean[i] > mean[i - 1] && mean[i] >= mean[i + 1] && mean[i] > mean[i - 2] && mean[i] >= mean[i + 2])) continue;
+    // From 55 Hz up: below that a "note" is a thump nobody hears as a pitch, and it
+    // would take a place from a ringing one (it did, in the sword-on-armour).
+    for (let i = Math.max(4, Math.ceil(55 / fineHz)); i < Math.min(FINE / 2 - 4, Math.floor(8000 / fineHz)); i++) {
+      let isTop = true;
+      for (let j = i - 3; j <= i + 3 && isTop; j++) if (j !== i && mean[j] > mean[i]) isTop = false;
+      if (!isTop) continue;
+      const reach = Math.max(30, Math.round(i * 0.15));
       const around: number[] = [];
-      for (let j = Math.max(1, Math.floor(i / 1.3)); j <= Math.min(N / 2 - 1, Math.ceil(i * 1.3) + 6); j++) if (Math.abs(j - i) > 3) around.push(mean[j]);
-      const power = mean[i - 1] + mean[i] + mean[i + 1];
-      if (mean[i] < clear * median(around) || power < meanTotal * 0.01) continue;
-      // There most of the time the hit is sounding?
+      for (let j = Math.max(1, i - reach); j <= Math.min(FINE / 2 - 1, i + reach); j++) if (Math.abs(j - i) > 5) around.push(mean[j]);
+      const power = mean[i - 2] + mean[i - 1] + mean[i] + mean[i + 1] + mean[i + 2];
+      if (mean[i] < clear * median(around) || power < meanTotal * 0.007) continue;
+      // Does it LAST? Clear of its neighbours in the timing frames for 70 ms,
+      // or for half the time the hit is sounding if that is shorter.
+      const c = Math.max(2, Math.min(N / 2 - 3, Math.round((i * fineHz) / binHz)));
       let present = 0;
       frames.forEach((f, k) => {
         if (!active[k]) return;
         const near: number[] = [];
-        for (let j = Math.max(1, i - 20); j <= Math.min(N / 2 - 1, i + 20); j++) if (Math.abs(j - i) > 2) near.push(f[j]);
-        if (Math.max(f[i - 1], f[i], f[i + 1]) > 5 * median(near)) present++;
+        for (let j = Math.max(1, c - 20); j <= Math.min(N / 2 - 1, c + 20); j++) if (Math.abs(j - c) > 2) near.push(f[j]);
+        if (Math.max(f[c - 1], f[c], f[c + 1]) > 4 * median(near)) present++;
       });
-      if (present / activeCount >= 0.5) candidates.push({ bin: i, power });
+      if (present >= Math.min(12, activeCount * 0.5)) candidates.push({ bin: i, power });
     }
     candidates.sort((p, q) => q.power - p.power);
-    const notes: Array<{ bin: number; hz: number; lo: number; hi: number }> = [];
+    const notes: Array<{ hz: number; lo: number; hi: number }> = [];
     for (const c of candidates) {
       if (notes.length >= MAX_NOTES_PER_HIT) break;
       // Its pitch, finer than one bin: where the top of the bump really is.
@@ -377,10 +399,10 @@ export function sketchFromRecording(samples: Float32Array, sampleRate: number): 
       const m = Math.log(mean[c.bin] + 1e-30);
       const r = Math.log(mean[c.bin + 1] + 1e-30);
       const shift = l - 2 * m + r !== 0 ? (0.5 * (l - r)) / (l - 2 * m + r) : 0;
-      const hz = (c.bin + Math.max(-0.5, Math.min(0.5, shift))) * binHz;
+      const hz = (c.bin + Math.max(-0.5, Math.min(0.5, shift))) * fineHz;
       if (notes.some(n => Math.abs(Math.log(n.hz / hz)) < 0.06)) continue;
       const half = Math.max(2 * binHz, hz * 0.04);
-      notes.push({ bin: c.bin, hz, lo: hz - half, hi: hz + half });
+      notes.push({ hz, lo: hz - half, hi: hz + half });
     }
     const noteBins = new Set<number>();
     for (const n of notes) for (let j = Math.floor(n.lo / binHz); j <= Math.ceil(n.hi / binHz); j++) noteBins.add(j);

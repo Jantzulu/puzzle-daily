@@ -94,8 +94,9 @@ export async function soundFromRecording(file: Blob): Promise<ImportedSound> {
   if (!sketch) throw new Error('silent');
   const sound = await soundFromSketch(sketch);
 
-  const notes = sketch.layers.filter(part => part.kind === 'note').length;
-  const bands = sketch.layers.length - notes;
+  // Counted from the finished sound: setting the levels can drop a layer.
+  const notes = sound.layers.filter(layer => layer.source === 'tone').length;
+  const bands = sound.layers.length - notes;
   const parts = [
     notes > 0 ? `${notes} note${notes === 1 ? '' : 's'}` : '',
     bands > 0 ? `${bands} band${bands === 1 ? '' : 's'} of noise` : '',
