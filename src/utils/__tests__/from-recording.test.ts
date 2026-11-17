@@ -235,6 +235,93 @@ describe('a sketch of a recording', () => {
     }
   });
 
+  it('hears a sparkle of many small bells as notes that rise, with no noise and no slides', () => {
+    // A soft low run of eight bells, then a hundred and twenty small ones,
+    // eighty a second, each a twentieth of a second long, on a scale of
+    // fixed pitches 2.7% apart, climbing. Far more notes than there is room
+    // for, and close enough together for a followed pitch to step from one
+    // bell onto the next.
+    const cloud = new Float32Array(Math.round(2.2 * SR));
+    const bell = (hz: number, at: number, level: number, fade: number) => {
+      const start = Math.round(at * SR);
+      for (let i = 0; i < 0.15 * SR && start + i < cloud.length; i++) {
+        const s = i / SR;
+        cloud[start + i] += level * Math.sin(2 * Math.PI * hz * s) * Math.min(1, s / 0.002) * Math.exp(-fade * s);
+      }
+    };
+    for (let n = 0; n < 8; n++) bell(900 * Math.pow(1.09, n), 0.03 + n * 0.05, 0.03, 12);
+    const scale = Array.from({ length: 24 }, (_, n) => 2300 * Math.pow(1.027, n));
+    for (let n = 0; n < 120; n++) {
+      const step = Math.min(scale.length - 1, Math.floor(n / 6) + [0, 2, 1, 3][n % 4]);
+      bell(scale[step], 0.45 + n * 0.0125, 0.2, 50);
+    }
+    const sketch = sketchFromRecording(cloud, SR)!;
+    // Nothing but notes: what there was no room to name is NOT made up in noise.
+    expect(sketch.layers.filter(l => l.kind !== 'note')).toHaveLength(0);
+    const notes = sketch.layers.map(l => l.layer).sort((p, q) => p.start - q.start);
+    expect(notes.length).toBeGreaterThanOrEqual(8);
+    expect(notes.length).toBeLessThanOrEqual(20);
+    // Every bell stands on its pitch: stepping from one to the next is not a slide.
+    for (const note of notes) expect(note.pitch!.to).toBe(note.pitch!.from);
+    // It rises: the soft opening is there, low, before the bright run begins.
+    const opening = notes.filter(n => n.start < 0.4);
+    expect(opening.length).toBeGreaterThanOrEqual(2);
+    for (const note of opening) expect(note.pitch!.from).toBeLessThan(1800);
+    const late = notes.filter(n => n.start > 1.2).map(n => n.pitch!.from);
+    expect(late.length).toBeGreaterThan(0);
+    expect(Math.min(...late)).toBeGreaterThan(2500);
+  });
+
+  it('gives a note that beats in strict time a pulse, not a tremble, and lets it swell in', () => {
+    // A steady tone swelling in over a quarter of a second, its loudness
+    // going up and down ten times a second.
+    const seconds = 1.2;
+    const tone = new Float32Array(Math.round((seconds + 0.1) * SR));
+    for (let i = 0; i < seconds * SR; i++) {
+      const t = i / SR;
+      const beat = 1 + 0.5 * Math.sin(2 * Math.PI * 10 * t);
+      tone[i + 500] = 0.3 * Math.sin(2 * Math.PI * 880 * t) * beat * Math.min(1, t / 0.25) * Math.min(1, (seconds - t) / 0.2);
+    }
+    const sketch = sketchFromRecording(tone, SR)!;
+    const notes = sketch.layers.filter(l => l.kind === 'note').map(l => l.layer);
+    expect(notes).toHaveLength(1);
+    expect(notes[0].tremble).toBeUndefined();
+    expect(notes[0].pulse).toBeDefined();
+    expect(notes[0].pulse!.rate).toBeGreaterThan(9);
+    expect(notes[0].pulse!.rate).toBeLessThan(11);
+    expect(notes[0].pulse!.depth).toBeGreaterThan(0.3);
+    expect(notes[0].pulse!.depth).toBeLessThan(0.75);
+    // It swelled in: the top of its first beat is not the note arriving.
+    expect(notes[0].attack).toBeGreaterThan(0.1);
+  });
+
+  it('never gives noise a pulse, however regular its bursts', () => {
+    const count = Math.round(1.2 * SR);
+    const chug = noise(count, 7);
+    for (let i = 0; i < count; i++) chug[i] *= 0.25 * (1 + 0.8 * Math.sin((2 * Math.PI * 9 * i) / SR));
+    const sketch = sketchFromRecording(chug, SR)!;
+    expect(sketch.layers.length).toBeGreaterThan(0);
+    for (const part of sketch.layers) expect(part.layer.pulse).toBeUndefined();
+  });
+
+  it('keeps a pitch that is a whole multiple but goes its own way as a layer of its own', () => {
+    // A drone held for a second, and a pitch exactly three times it that
+    // starts with it and is gone in a third of the time.
+    const both = new Float32Array(Math.round(1.2 * SR));
+    for (let i = 0; i < 1.0 * SR; i++) {
+      const t = i / SR;
+      const edge = Math.min(1, t / 0.02) * Math.min(1, (1.0 - t) / 0.05);
+      both[i + 500] = 0.3 * Math.sin(2 * Math.PI * 300 * t) * edge + 0.3 * Math.sin(2 * Math.PI * 900 * t) * Math.min(1, t / 0.02) * Math.exp(-12 * t);
+    }
+    const sketch = sketchFromRecording(both, SR)!;
+    const notes = sketch.layers.filter(l => l.kind === 'note').map(l => l.layer).sort((a, b) => a.pitch!.from - b.pitch!.from);
+    expect(notes).toHaveLength(2);
+    expect(Math.round(notes[0].pitch!.from / 10) * 10).toBe(300);
+    expect(Math.round(notes[1].pitch!.from / 10) * 10).toBe(900);
+    expect(notes[0].harmonics ?? []).toHaveLength(0);
+    expect(notes[1].length).toBeLessThan(notes[0].length * 0.7);
+  });
+
   it('measures loudness in a band the same way every time', () => {
     const tone = ringingNote(1000, 0.5, 0, 0.5);
     const inBand = bandRms(tone, SR, 0, 0.5, 900, 1100);
