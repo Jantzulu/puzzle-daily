@@ -4925,8 +4925,9 @@ button.dir-picker__tab:not(.dir-picker__tab--active) .dir-picker__tab-text {
   top: 0;
   bottom: 0;
   z-index: 49;
-  touch-action: none;
-  overscroll-behavior: contain;
+  /* It does not block scrolling (it once did, touch-action: none, and a
+     page that loaded part-way down could not be scrolled back: user report
+     2026-11-16). Its top follows the navbar as the page moves. */
 }
 
 .entry-dark--lifting {

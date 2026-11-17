@@ -54,6 +54,19 @@ export const EnterGate: React.FC<{ onEnter: () => void; onGone: () => void }> = 
   const calls = React.useRef({ onEnter, onGone });
   React.useEffect(() => { calls.current = { onEnter, onGone }; });
 
+  // START AT THE TOP (user report 2026-11-16: "you can load into the landing
+  // page with it having been scrolled partially down, and it does not let
+  // you scroll the page on mobile"). A reload puts the page back where it
+  // was scrolled to; the entry is staged from the top (the gate is up
+  // there), so while the dark is up the browser is told not to do that.
+  // The dark itself no longer blocks scrolling (index.css).
+  React.useLayoutEffect(() => {
+    const before = history.scrollRestoration;
+    history.scrollRestoration = 'manual';
+    window.scrollTo(0, 0);
+    return () => { history.scrollRestoration = before; };
+  }, []);
+
   // The dark starts where the navbar ends.
   React.useLayoutEffect(() => {
     const el = darkRef.current;
