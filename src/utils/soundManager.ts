@@ -55,6 +55,66 @@ class SoundManager {
   constructor() {
     this.loadSettings();
     this.beAmbient();
+    this.watchForReturn();
+  }
+
+  // BACK FROM THE BACKGROUND (user report 2026-11-16: "Tabbing out of Safari
+  // (at least) on iphone and back into it completely breaks the sounds ...
+  // The page has to be wholly reset to restore them").
+  // A known iOS Safari fault (WebKit bugs 276016, 281566, 283419): after the
+  // page has been in the background its audio context can come back DEAD in
+  // one of two ways the old wake-up (resume() on every tap) could not see:
+  //   - it says "running" but its clock has stopped, so nothing is ever
+  //     woken because nothing looks asleep; or
+  //   - it says "interrupted" and resume() never takes.
+  // What the people who hit it found works is a NEW audio context. So:
+  // when the page returns, and after every wake-up, the clock is checked a
+  // moment later; a context caught dead is marked `frozen`, and the next
+  // tap (a new context may only start inside one) rebuilds everything:
+  // context, volume nodes, and the music, which is asked for again.
+  // A context whose clock is moving is never touched, so on a computer,
+  // where switching tabs harms nothing, the music plays on undisturbed.
+  private frozen = false;
+
+  private watchForReturn(): void {
+    if (typeof document === 'undefined' || typeof window === 'undefined') return;
+    const back = () => {
+      if (document.visibilityState !== 'visible') return;
+      const context = this.audioContext;
+      if (!context) return;
+      // Ask first (outside a tap this may be refused), then look at the clock.
+      if (context.state !== 'running') void context.resume().catch(() => { /* the next tap retries */ });
+      this.checkClock(context, 400);
+    };
+    document.addEventListener('visibilitychange', back);
+    window.addEventListener('pageshow', back);
+  }
+
+  /** In `wait` ms: is this context really going? Running with a stopped clock, or still not running after a tap woke it, is dead. */
+  private checkClock(context: AudioContext, wait: number, wokenByTap = false): void {
+    if (typeof window === 'undefined') return;
+    const before = context.currentTime;
+    window.setTimeout(() => {
+      if (this.audioContext !== context || document.visibilityState !== 'visible') return;
+      if (context.state === 'running') this.frozen = context.currentTime === before;
+      else if (wokenByTap) this.frozen = true;
+    }, wait);
+  }
+
+  /** Throw the dead context away and start again. Call from inside a tap. */
+  private rebuild(): void {
+    const old = this.audioContext;
+    this.frozen = false;
+    this.haltMusic(); // its node belongs to the old context
+    this.audioContext = null;
+    this.masterGain = null;
+    this.musicGain = null;
+    this.sfxGain = null;
+    if (old) void old.close().catch(() => { /* already gone */ });
+    this.beAmbient();
+    void this.initialize(); // nothing in it waits, so the new context exists on the next line
+    const music = this.wantedMusic;
+    if (music && this.settings.enabled) void this.playMusic(music.src, music.loop);
   }
 
   // A GAME'S SOUND, NOT A MUSIC PLAYER'S (user report 2026-11-15: on the
@@ -110,10 +170,18 @@ class SoundManager {
   // not enough: music would stay silent after the first app switch. A no-op
   // while the context is running.
   public unlock(): void {
+    if (this.frozen && this.audioContext) {
+      // Came back from the background dead (see BACK FROM THE BACKGROUND).
+      this.rebuild();
+      return;
+    }
     if (!this.audioContext) void this.initialize();
     const context = this.audioContext;
     if (context && context.state !== 'running') {
       void context.resume().catch(() => { /* not allowed yet; the next gesture retries */ });
+      // A tap is allowed to wake it. If it is still not going shortly after,
+      // it never will be: the next tap starts afresh.
+      this.checkClock(context, 600, true);
     }
     // Music that was waiting for a gesture starts now, inside it.
     if (this.pendingMusic) {
@@ -276,6 +344,9 @@ class SoundManager {
   // nodes into the destination it is given, starting at `at`.
   public playSynth(build: (context: AudioContext, destination: AudioNode, at: number) => void): void {
     if (!this.settings.enabled) return;
+    // A sound is nearly always the answer to a tap: if the context came back
+    // from the background dead, this is the moment to replace it.
+    if (this.frozen && this.audioContext) this.rebuild();
     if (!this.audioContext) {
       // Nobody has tapped this page yet: the browser would refuse to start
       // audio, so do not make a context (it would only log a warning). The
