@@ -10,7 +10,7 @@
 // OTHER. The file is read, measured and dropped; nothing of it is stored.
 
 import { renderSynthSound } from '../../../utils/synth/render';
-import { bandRms, loudest50ms, sketchFromRecording, type RecordingSketch } from '../../../utils/synth/fromRecording';
+import { bandsRms, loudest50ms, sketchFromRecording, type RecordingSketch } from '../../../utils/synth/fromRecording';
 import type { SynthSound } from '../../../utils/synth/types';
 import { REFERENCE } from './forgeModel';
 
@@ -43,7 +43,7 @@ export async function soundFromSketch(sketch: RecordingSketch): Promise<SynthSou
   for (const part of sketch.layers) {
     const layer = part.layer;
     const alone = await render(draft, sketch.seconds, layer.id);
-    const made = bandRms(alone, SAMPLE_RATE, layer.start, layer.start + layer.length, part.band[0], part.band[1]);
+    const made = bandsRms(alone, SAMPLE_RATE, layer.start, layer.start + layer.length, part.bands);
     wanted.push(made > 1e-9 ? part.target / made : 0);
   }
   if (!(Math.max(...wanted) > 0)) throw new Error('nothing to make');
@@ -59,8 +59,9 @@ export async function soundFromSketch(sketch: RecordingSketch): Promise<SynthSou
     sketch.layers.forEach((part, i) => {
       if (!(wanted[i] > 0)) return;
       const layer = part.layer;
-      const got = bandRms(mix, SAMPLE_RATE, layer.start, layer.start + layer.length, part.band[0], part.band[1]);
-      if (got > 1e-9) wanted[i] *= Math.max(0.25, Math.min(4, part.target / got));
+      const got = bandsRms(mix, SAMPLE_RATE, layer.start, layer.start + layer.length, part.bands);
+      // (Against everything the recording has there, since the mix has everything too.)
+      if (got > 1e-9) wanted[i] *= Math.max(0.25, Math.min(4, part.mixTarget / got));
     });
   }
   const top = Math.max(...wanted);

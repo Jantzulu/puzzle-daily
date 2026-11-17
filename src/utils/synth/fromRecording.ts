@@ -13,9 +13,12 @@
 //   1. Trim the silence; keep at most three seconds (the Forge's reach).
 //   2. Find the separate HITS (a knock, then a rattle), up to three. A run
 //      of more than three is treated as one continuous sound.
-//   3. In each hit, find the NOTES: steady pitches that stand clear of what
-//      is around them and last, up to six. Each becomes a tone layer. (The
-//      ring of struck metal is several such pitches close together.)
+//   3. Find the NOTES by FOLLOWING each clear pitch through time, from the
+//      moment it appears to the moment it is gone. Each becomes a tone layer
+//      with its own start, length and slide. Pitches that begin together
+//      and are whole multiples of the lowest are ONE note with overtones
+//      (a plucked string, a horn); pitches that are not (the ring of struck
+//      metal) stay separate layers.
 //   4. Everything else is NOISE, split into five fixed bands (rumble, body,
 //      grit, hiss, air). Each band with enough in it becomes a noise layer.
 //   5. Each layer's loudness over time (how fast it arrives, how long it
@@ -33,14 +36,14 @@
 // it (`band`). Pure functions of the samples: no audio context, no clock,
 // nothing random. The recording itself is never kept.
 
-import type { FilterStage, SynthLayer } from './types';
+import { MAX_HARMONICS, type FilterStage, type SynthLayer } from './types';
 
 /** The longest stretch that is used (s): a layer can start up to 2 s in and last 3. */
 export const SKETCH_SECONDS = 3;
 /** No more separate hits than this; a longer run is one continuous sound. */
 const MAX_HITS = 3;
-const MAX_NOTES_PER_HIT = 6;
-const MAX_LAYERS = 14;
+const MAX_NOTES = 12;
+const MAX_LAYERS = 16;
 
 /** The noise bands: a plain name, its edges (Hz), and whether its noise is slowed (more low end to work with). */
 const NOISE_BANDS: ReadonlyArray<{ id: string; name: string; lo: number; hi: number; slow: boolean }> = [
@@ -54,10 +57,12 @@ const NOISE_BANDS: ReadonlyArray<{ id: string; name: string; lo: number; hi: num
 export interface SketchLayer {
   /** The layer, at level 1: its real level is set by comparing a render with `target`. */
   layer: SynthLayer;
-  /** Where this part of the sound lives (Hz). */
-  band: readonly [number, number];
-  /** How loud that band was in the recording over the layer's own stretch (RMS, in sample units). */
+  /** Where this part of the sound lives (Hz): one stretch of the spectrum, or one per overtone. */
+  bands: ReadonlyArray<readonly [number, number]>;
+  /** How loud THIS PART was in the recording over the layer's own stretch (RMS, in sample units). */
   target: number;
+  /** How loud everything in those bands was over that stretch: what the finished mix should reach there. */
+  mixTarget: number;
   /** 'note' or the noise band's id. */
   kind: string;
 }
@@ -170,6 +175,16 @@ export function bandRms(x: Float32Array, sampleRate: number, t0: number, t1: num
   let windowSum = 0;
   for (const v of hann(BAND_N)) windowSum += v * v;
   return Math.sqrt((2 * sum) / (Math.max(1, count) * BAND_N * windowSum));
+}
+
+/** The same, over several stretches of the spectrum at once. */
+export function bandsRms(x: Float32Array, sampleRate: number, t0: number, t1: number, bands: ReadonlyArray<readonly [number, number]>): number {
+  let sum = 0;
+  for (const [lo, hi] of bands) {
+    const one = bandRms(x, sampleRate, t0, t1, lo, hi);
+    sum += one * one;
+  }
+  return Math.sqrt(sum);
 }
 
 /** The loudest 50 ms of [from, to) (RMS). */
@@ -331,151 +346,89 @@ export function sketchFromRecording(samples: Float32Array, sampleRate: number): 
     return [Math.min(x.length, a * hop), Math.min(x.length, b * hop)];
   });
 
-  // 3-5. In each hit: the notes, then the noise bands, each with its shape.
+  // 3. The notes, followed through time.
+  const { notes, pitchesAt } = followNotes(x, sampleRate);
+  const found: SketchLayer[] = [];
+  notes.forEach((note, i) => {
+    const start = Math.min(2, note.shape.start);
+    const length = Math.min(SKETCH_SECONDS, note.shape.length);
+    const target = bandsRms(x, sampleRate, start, start + length, note.bands);
+    const steady = note.from === note.to;
+    found.push({
+      kind: 'note',
+      bands: note.bands,
+      target,
+      mixTarget: target,
+      layer: {
+        id: `note${i + 1}`,
+        name: `Note ${noteLabel(steady ? note.from : Math.sqrt(note.from * note.to))} (${Math.round(note.from)}${steady ? '' : `-${Math.round(note.to)}`} Hz)`,
+        source: 'tone', wave: 'sine',
+        start: round(start, 3), length: round(length, 3), level: 1,
+        attack: round(note.shape.attack, 3), hold: round(note.shape.hold, 3), floor: round(note.shape.floor, 3), tail: round(note.shape.tail, 3),
+        pitch: {
+          from: round(note.from, 1),
+          to: round(note.to, 1),
+          ...(note.via !== undefined ? { via: { value: round(note.via, 1), at: round(length / 2, 3) } } : {}),
+        },
+        ...(note.harmonics.length > 0 ? { harmonics: note.harmonics } : {}),
+        ...(note.shape.tremble ? { tremble: { ...note.shape.tremble, seed: round(0.21 + 0.17 * i, 2) } } : {}),
+      },
+    });
+  });
+
+  // 4-6. In each hit: what is left once the notes are taken out, band by band.
   const N = 1024;
   const H = 256;
   const binHz = sampleRate / N;
-  const found: Array<SketchLayer & { energy: number }> = [];
+  let windowSum = 0;
+  for (const v of hann(N)) windowSum += v * v;
   bounds.forEach(([a, b], h) => {
     if (b - a < 16) return;
     const prefix = hitPeaks.length > 1 ? `${h + 1} · ` : '';
     const idPrefix = hitPeaks.length > 1 ? `hit${h + 1}-` : '';
     const frames = spectrogram(x, a, b, N, H);
-    const frameTime = (k: number) => (a - N / 2 + k * H + N / 2) / sampleRate; // the frame's middle
-    const totals = frames.map(f => f.reduce((s, v) => s + v, 0));
-    const totalTop = Math.max(...totals);
-    const active = totals.map(v => v > totalTop * 0.05);
-    const activeCount = active.filter(Boolean).length || 1;
-
-    // -- notes: a pitch standing clear of its neighbourhood, and lasting.
-    // Looked for in a FINE spectrum (11 Hz a step). The first cut looked in
-    // the coarse one used for timing (43 Hz a step) and asked for 10 dB of
-    // clearance: struck metal, whose ring is half a dozen close pitches each
-    // only 10-14 dB clear even in a fine look, got NO notes at all, and its
-    // ring came out as hiss (the user's sword-on-armour, 2026-11-17: "it is
-    // missing some of the metallic highs"; the loudness up there was right,
-    // the kind of sound was wrong).
-    const FINE = 4096;
-    const fineHz = sampleRate / FINE;
-    const mean = new Float64Array(FINE / 2);
-    let looks = 0;
-    for (let at = a - FINE / 2; at < b; at += FINE / 4) {
-      const power = framePower(x, Math.round(at), FINE, a, b);
-      for (let i = 0; i < FINE / 2; i++) mean[i] += power[i];
-      looks++;
-    }
-    const meanTotal = mean.reduce((s, v) => s + v, 0);
-    const clear = looks >= 8 ? 6.3 : looks >= 4 ? 10 : 25; // 8 dB with plenty of looks; stricter with few
-    const candidates: Array<{ bin: number; power: number }> = [];
-    // From 55 Hz up: below that a "note" is a thump nobody hears as a pitch, and it
-    // would take a place from a ringing one (it did, in the sword-on-armour).
-    for (let i = Math.max(4, Math.ceil(55 / fineHz)); i < Math.min(FINE / 2 - 4, Math.floor(8000 / fineHz)); i++) {
-      let isTop = true;
-      for (let j = i - 3; j <= i + 3 && isTop; j++) if (j !== i && mean[j] > mean[i]) isTop = false;
-      if (!isTop) continue;
-      const reach = Math.max(30, Math.round(i * 0.15));
-      const around: number[] = [];
-      for (let j = Math.max(1, i - reach); j <= Math.min(FINE / 2 - 1, i + reach); j++) if (Math.abs(j - i) > 5) around.push(mean[j]);
-      const power = mean[i - 2] + mean[i - 1] + mean[i] + mean[i + 1] + mean[i + 2];
-      if (mean[i] < clear * median(around) || power < meanTotal * 0.007) continue;
-      // Does it LAST? Clear of its neighbours in the timing frames for 70 ms,
-      // or for half the time the hit is sounding if that is shorter.
-      const c = Math.max(2, Math.min(N / 2 - 3, Math.round((i * fineHz) / binHz)));
-      let present = 0;
-      frames.forEach((f, k) => {
-        if (!active[k]) return;
-        const near: number[] = [];
-        for (let j = Math.max(1, c - 20); j <= Math.min(N / 2 - 1, c + 20); j++) if (Math.abs(j - c) > 2) near.push(f[j]);
-        if (Math.max(f[c - 1], f[c], f[c + 1]) > 4 * median(near)) present++;
-      });
-      if (present >= Math.min(12, activeCount * 0.5)) candidates.push({ bin: i, power });
-    }
-    candidates.sort((p, q) => q.power - p.power);
-    const notes: Array<{ hz: number; lo: number; hi: number }> = [];
-    for (const c of candidates) {
-      if (notes.length >= MAX_NOTES_PER_HIT) break;
-      // Its pitch, finer than one bin: where the top of the bump really is.
-      const l = Math.log(mean[c.bin - 1] + 1e-30);
-      const m = Math.log(mean[c.bin] + 1e-30);
-      const r = Math.log(mean[c.bin + 1] + 1e-30);
-      const shift = l - 2 * m + r !== 0 ? (0.5 * (l - r)) / (l - 2 * m + r) : 0;
-      const hz = (c.bin + Math.max(-0.5, Math.min(0.5, shift))) * fineHz;
-      if (notes.some(n => Math.abs(Math.log(n.hz / hz)) < 0.06)) continue;
-      const half = Math.max(2 * binHz, hz * 0.04);
-      notes.push({ hz, lo: hz - half, hi: hz + half });
-    }
-    const noteBins = new Set<number>();
-    for (const n of notes) for (let j = Math.floor(n.lo / binHz); j <= Math.ceil(n.hi / binHz); j++) noteBins.add(j);
-
-    const t0 = frameTime(0);
+    const t0 = a / sampleRate; // the first frame's middle
     const hopS = H / sampleRate;
-    const smear = (N / sampleRate) * 0.75;
-
-    notes.forEach((n, i) => {
-      const loBin = Math.max(1, Math.floor(n.lo / binHz));
-      const hiBin = Math.min(N / 2 - 1, Math.ceil(n.hi / binHz));
-      const noteEnv = frames.map(f => { let s = 0; for (let j = loBin; j <= hiBin; j++) s += f[j]; return Math.sqrt(s); });
-      const shape = shapeOf(noteEnv, hopS, t0, smear);
-      if (!shape) return;
-      // Does the pitch move? Compare where the bump sits early and late.
-      const strong = noteEnv.map((v, k) => (v > Math.max(...noteEnv) * 0.3 ? k : -1)).filter(k => k >= 0);
-      const centre = (k: number) => { let num = 0; let den = 0; for (let j = loBin; j <= hiBin; j++) { num += j * frames[k][j]; den += frames[k][j]; } return den > 0 ? (num / den) * binHz : n.hz; };
-      const third = Math.max(1, Math.floor(strong.length / 3));
-      const early = median(strong.slice(0, third).map(centre));
-      const late = median(strong.slice(-third).map(centre));
-      const moves = strong.length >= 6 && Math.abs(Math.log(late / early)) > 0.02;
-      const fromHz = moves ? n.hz * (early / ((early + late) / 2)) : n.hz;
-      const toHz = moves ? n.hz * (late / ((early + late) / 2)) : n.hz;
-      const start = Math.min(2, shape.start);
-      const length = Math.min(SKETCH_SECONDS, shape.length);
-      found.push({
-        kind: 'note',
-        band: [n.lo, n.hi],
-        target: bandRms(x, sampleRate, start, start + length, n.lo, n.hi),
-        energy: noteEnv.reduce((s, v) => s + v * v, 0),
-        layer: {
-          id: `${idPrefix}note${i + 1}`,
-          name: `${prefix}Note ${noteLabel(n.hz)} (${Math.round(n.hz)} Hz)`,
-          source: 'tone', wave: 'sine',
-          start: round(start, 3), length: round(length, 3), level: 1,
-          attack: round(shape.attack, 3), hold: round(shape.hold, 3), floor: round(shape.floor, 3), tail: round(shape.tail, 3),
-          pitch: { from: round(Math.max(30, Math.min(8000, fromHz)), 1), to: round(Math.max(30, Math.min(8000, toHz)), 1) },
-          ...(shape.tremble ? { tremble: { ...shape.tremble, seed: round(0.21 + 0.17 * found.length, 2) } } : {}),
-        },
-      });
+    // A sudden start, seen through the measuring window, takes about this long to arrive.
+    const smear = (N / sampleRate) * 0.45;
+    // Which bins a note is sitting in, frame by frame.
+    const noteBins = frames.map((_, j) => {
+      const taken = new Set<number>();
+      const when = (a + j * H) / sampleRate;
+      for (const hz of pitchesAt(when)) {
+        const c = Math.round(hz / binHz);
+        for (let d = -2; d <= 2; d++) taken.add(c + d);
+      }
+      return taken;
     });
-
-    // -- noise: what is left, band by band
     NOISE_BANDS.forEach((bandDef, i) => {
       const loBin = Math.max(1, Math.ceil(bandDef.lo / binHz));
       const hiBin = Math.min(N / 2 - 1, Math.floor(bandDef.hi / binHz));
       if (hiBin < loBin) return;
-      const bandEnv = frames.map(f => { let s = 0; for (let j = loBin; j <= hiBin; j++) if (!noteBins.has(j)) s += f[j]; return Math.sqrt(s); });
-      const energy = bandEnv.reduce((s, v) => s + v * v, 0);
+      const rest = frames.map((frame, j) => { let s = 0; for (let k = loBin; k <= hiBin; k++) if (!noteBins[j].has(k)) s += frame[k]; return s; });
       // (How much a band of plain noise this wide strays by itself.)
-      const shape = shapeOf(bandEnv, hopS, t0, smear, 0.6 / Math.sqrt(hiBin - loBin + 1));
+      const shape = shapeOf(rest.map(Math.sqrt), hopS, t0, smear, 0.6 / Math.sqrt(hiBin - loBin + 1));
       if (!shape) return;
       const start = Math.min(2, shape.start);
       const length = Math.min(SKETCH_SECONDS, shape.length);
-      // How loud the band was, less the notes sitting in it.
-      const all = bandRms(x, sampleRate, start, start + length, bandDef.lo, bandDef.hi);
-      let rest = all * all;
-      for (const n of notes) {
-        if (n.hz < bandDef.lo || n.hz >= bandDef.hi) continue;
-        const note = bandRms(x, sampleRate, start, start + length, n.lo, n.hi);
-        rest -= note * note;
-      }
+      // How loud the band's own noise was over that stretch (measured as
+      // bandRms measures), and how loud the band was with everything in it.
+      const j0 = Math.max(0, Math.round((start - t0) / hopS));
+      const j1 = Math.min(rest.length, Math.max(j0 + 1, Math.round((start + length - t0) / hopS)));
+      let sum = 0;
+      for (let j = j0; j < j1; j++) sum += rest[j];
+      const target = Math.sqrt((2 * sum) / ((j1 - j0) * N * windowSum));
+      const mixTarget = Math.max(target, bandRms(x, sampleRate, start, start + length, bandDef.lo, bandDef.hi));
       // A band that is nearly all note has no noise worth a layer of its own.
-      if (rest < all * all * 0.03) return;
-      const target = Math.sqrt(rest);
+      if (target * target < mixTarget * mixTarget * 0.03) return;
       const filters: FilterStage[] = [];
       if (i > 0) filters.push({ type: 'highpass', cutoff: { from: bandDef.lo, to: bandDef.lo } });
       if (i < NOISE_BANDS.length - 1) filters.push({ type: 'lowpass', cutoff: { from: bandDef.hi, to: bandDef.hi } });
       found.push({
         kind: bandDef.id,
-        band: [bandDef.lo, bandDef.hi],
+        bands: [[bandDef.lo, bandDef.hi]],
         target,
-        energy,
+        mixTarget,
         layer: {
           id: `${idPrefix}${bandDef.id}`,
           name: `${prefix}${bandDef.name}`,
@@ -493,12 +446,12 @@ export function sketchFromRecording(samples: Float32Array, sampleRate: number): 
 
   // Keep what matters: nothing more than 24 dB under the strongest part, and
   // at most MAX_LAYERS, the strongest first; then back in time order.
-  const strongest = Math.max(0, ...found.map(f => f.target));
+  const strongest = Math.max(0, ...found.map(part => part.target));
   const kept = found
-    .filter(f => f.target > strongest / 16 && f.target > 0)
+    .filter(part => part.target > strongest / 16 && part.target > 0)
     .sort((p, q) => q.target - p.target)
     .slice(0, MAX_LAYERS)
-    .sort((p, q) => p.layer.start - q.layer.start || p.band[0] - q.band[0]);
+    .sort((p, q) => p.layer.start - q.layer.start || p.bands[0][0] - q.bands[0][0]);
   if (kept.length === 0) return null;
 
   return {
@@ -507,6 +460,314 @@ export function sketchFromRecording(samples: Float32Array, sampleRate: number): 
     hits: runTogether ? 1 : hitPeaks.length,
     runTogether,
     loudness: loudest50ms(x, sampleRate),
-    layers: kept.map(({ layer, band, target, kind }) => ({ layer, band, target, kind })),
+    layers: kept,
+  };
+}
+
+// ---- following the notes through time ------------------------------------------------
+//
+// HOW (and why it replaced a simpler way). The first cut took one long look
+// at each hit and called every clear peak in it a note sounding for the
+// whole hit. That is right for one struck thing, and wrong for anything
+// that plays notes ONE AFTER ANOTHER: three clips the user sent to tune
+// this against (a rising run of bells, a harpsichord phrase, a thump that
+// leaves one long tone ringing; 2026-11-17) all came out as a chord held
+// from start to finish.
+// So: look every 6 ms; in each look take the pitches standing clear of
+// what is around them; join each to the pitch it continues from the look
+// before (within 3%, which also follows a slide). What comes out is a set
+// of TRACKS, each one pitch from the moment it appears to the moment it is
+// gone. A track that is short, patchy, weak or never very clear is dropped:
+// noise throws up clear peaks too, but not in one place for a tenth of a
+// second.
+
+const TRACK_N = 2048;
+const TRACK_HOP = 256;
+
+interface Track { frames: number[]; hz: number[]; amp: number[]; clear: number[] }
+
+interface FoundNote {
+  shape: Shape;
+  from: number;
+  to: number;
+  /** The pitch half-way, when the slide is not a straight one. */
+  via?: number;
+  harmonics: Array<{ ratio: number; level: number }>;
+  bands: Array<readonly [number, number]>;
+  energy: number;
+}
+
+interface Partial {
+  start: number; // frame
+  end: number;
+  hz: number[]; // one per frame from start to end
+  amp: number[];
+  energy: number;
+  peak: number;
+  mean: number;
+  /** How long a sudden start takes to show through the window this was seen with (s). */
+  smear: number;
+}
+
+/**
+ * Follow the pitches between `loHz` and `hiHz`, looking through a window
+ * of `n` samples. Returns the ones good enough to be notes.
+ */
+function followPitches(x: Float32Array, sampleRate: number, n: number, loHz: number, hiHz: number): Partial[] {
+  const hzPerBin = sampleRate / n;
+  const lowBin = Math.max(4, Math.ceil(loHz / hzPerBin));
+  const highBin = Math.min(n / 2 - 4, Math.floor(hiHz / hzPerBin));
+  const frames = spectrogram(x, 0, x.length, n, TRACK_HOP);
+  const totals = frames.map(frame => { let s = 0; for (let i = 1; i < frame.length; i++) s += frame[i]; return s; });
+  const loudest = Math.max(0, ...totals);
+  const everything = totals.reduce((s, v) => s + v, 0);
+  if (!(loudest > 0)) return [];
+  // A steady tone of amplitude A shows as this much power in its three bins.
+  const toAmplitude = (power: number) => (Math.sqrt(power / 1.5) * 4) / n;
+
+  const open: Track[] = [];
+  const closed: Track[] = [];
+  frames.forEach((frame, k) => {
+    const peaks: Array<{ hz: number; amp: number; clear: number }> = [];
+    if (totals[k] > loudest * 0.0005) {
+      for (let i = lowBin; i < highBin; i++) {
+        if (!(frame[i] > frame[i - 1] && frame[i] >= frame[i + 1] && frame[i] > frame[i - 2] && frame[i] >= frame[i + 2])) continue;
+        const power = frame[i - 1] + frame[i] + frame[i + 1];
+        if (power < totals[k] * 0.003) continue;
+        const reach = Math.max(16, Math.round(i * 0.12));
+        const around: number[] = [];
+        for (let j = Math.max(1, i - reach); j <= Math.min(n / 2 - 1, i + reach); j++) if (Math.abs(j - i) > 3) around.push(frame[j]);
+        const clear = frame[i] / (median(around) + 1e-30);
+        if (clear < 5) continue;
+        // Its pitch, finer than one bin: where the top of the bump really is.
+        const l = Math.log(frame[i - 1] + 1e-30);
+        const m = Math.log(frame[i] + 1e-30);
+        const r = Math.log(frame[i + 1] + 1e-30);
+        const shift = l - 2 * m + r !== 0 ? (0.5 * (l - r)) / (l - 2 * m + r) : 0;
+        peaks.push({ hz: (i + Math.max(-0.5, Math.min(0.5, shift))) * hzPerBin, amp: toAmplitude(power), clear });
+      }
+      peaks.sort((p, q) => q.amp - p.amp);
+      peaks.length = Math.min(peaks.length, 16);
+    }
+    // Where each open track is: the middle of its last few looks (one wild
+    // reading must not throw it off its pitch).
+    const where = new Map<Track, number>();
+    for (const track of open) where.set(track, median(track.hz.slice(-5)));
+    const taken = new Set<Track>();
+    for (const peak of peaks) {
+      let best: Track | null = null;
+      let off = 0.03;
+      let shadowed = false;
+      for (const track of open) {
+        const d = Math.abs(Math.log(peak.hz / where.get(track)!));
+        if (d >= 0.03) continue;
+        if (taken.has(track)) { shadowed = true; continue; }
+        if (d < off) { best = track; off = d; }
+      }
+      if (!best) {
+        // A second bump beside a pitch already being followed (a tone that
+        // beats or wavers shows two) is that same pitch, not a new note.
+        if (shadowed) continue;
+        best = { frames: [], hz: [], amp: [], clear: [] };
+        open.push(best);
+        where.set(best, peak.hz);
+      }
+      taken.add(best);
+      best.frames.push(k); best.hz.push(peak.hz); best.amp.push(peak.amp); best.clear.push(peak.clear);
+    }
+    // A pitch not seen for six looks (35 ms) has stopped.
+    for (let i = open.length - 1; i >= 0; i--) {
+      const track = open[i];
+      if (k - track.frames[track.frames.length - 1] > 6) { closed.push(track); open.splice(i, 1); }
+    }
+  });
+  closed.push(...open);
+
+  // The same pitch picked up again a moment later is one note, not two.
+  closed.sort((p, q) => p.frames[0] - q.frames[0]);
+  for (let i = 0; i < closed.length; i++) {
+    for (let j = i + 1; j < closed.length; j++) {
+      const a = closed[i];
+      const b = closed[j];
+      const gap = b.frames[0] - a.frames[a.frames.length - 1];
+      if (gap <= 0 || gap > 20) continue; // up to 116 ms apart
+      if (Math.abs(Math.log(median(b.hz.slice(0, 8)) / median(a.hz.slice(-8)))) > 0.025) continue;
+      a.frames.push(...b.frames); a.hz.push(...b.hz); a.amp.push(...b.amp); a.clear.push(...b.clear);
+      closed.splice(j, 1);
+      j--;
+    }
+  }
+
+  // Keep the tracks that are really notes; fill the looks each one missed.
+  const partials: Partial[] = [];
+  for (const track of closed) {
+    const start = track.frames[0];
+    const end = track.frames[track.frames.length - 1];
+    const span = end - start + 1;
+    // Long enough (two windows: looks 6 ms apart through a 93 ms window are
+    // nearly the same look, so one window's length proves nothing), seen in
+    // most of its looks, clear, and not tiny.
+    const longEnough = Math.max(16, Math.round((2 * n) / TRACK_HOP));
+    const clear = median(track.clear);
+    if (span < longEnough || track.frames.length < 14 || track.frames.length < span * 0.45 || clear < 8) continue;
+    // A NOTE, OR A RUMBLE WITH A FAVOURITE PITCH? A winch's rumble keeps
+    // exciting the same few resonances, and they follow like notes do: as
+    // long, as clear (9-14 dB) and as steady as the ringing pitches of a
+    // struck gate. Told apart by ear the answer was plain (as steady notes
+    // the winch was "an electric motor"; as noise it was right). What
+    // differs is the shape: a struck thing is loudest at once and dies
+    // away; a resonance fed by noise comes and goes for as long as the
+    // noise does. So a pitch is a note if it is UNMISTAKABLE (17 dB clear:
+    // an instrument, a synthesised tone, a whistle), or if it is STRUCK
+    // (loudest in its first third, well down by its end). Anything else
+    // stays in the noise, where its band's tremble carries it.
+    if (clear < 50) {
+      let top = 0;
+      for (let i = 1; i < track.amp.length; i++) if (track.amp[i] > track.amp[top]) top = i;
+      const ending = median(track.amp.slice(-Math.max(2, Math.round(track.amp.length * 0.15))));
+      const struck = track.frames[top] - start <= span * 0.35 && ending <= track.amp[top] * 0.4;
+      if (!struck) continue;
+    }
+    const energy = track.amp.reduce((s, v) => s + v * v, 0);
+    // (Its share of the sound, in the units the looks were taken in.)
+    const share = track.amp.reduce((s, v) => s + 1.5 * ((v * n) / 4) * ((v * n) / 4), 0) / everything;
+    if (share < 0.004) continue;
+    const hz: number[] = [];
+    const amp: number[] = [];
+    let at = 0;
+    for (let k = start; k <= end; k++) {
+      if (track.frames[at + 1] !== undefined && track.frames[at + 1] <= k) at++;
+      hz.push(track.hz[at]);
+      amp.push(track.frames[at] === k ? track.amp[at] : track.amp[at] * 0.35); // a look that missed it: it was faint there
+    }
+    partials.push({ start, end, hz, amp, energy, peak: Math.max(...amp), mean: median(hz), smear: (n / sampleRate) * 0.45 });
+  }
+  return partials;
+}
+
+/**
+ * How long the pitch `hz` takes to ARRIVE around `at` seconds (from a tenth
+ * of its level there to most of it), measured with a window only three of
+ * its cycles long. The windows that find and follow a note are far too long
+ * to say whether it was struck or swelled in: through them a 50 ms fade-in
+ * and a pluck look the same.
+ */
+function arrival(x: Float32Array, sampleRate: number, hz: number, at: number): number {
+  const size = Math.max(256, Math.round((3 / hz) * sampleRate));
+  const step = Math.max(32, Math.round(size / 4));
+  const first = Math.max(0, Math.round((at - 0.08) * sampleRate));
+  const last = Math.min(x.length - size, Math.round((at + 0.25) * sampleRate));
+  const turn = (2 * Math.PI * hz) / sampleRate;
+  const levels: number[] = [];
+  for (let s = first; s <= last; s += step) {
+    let re = 0;
+    let im = 0;
+    for (let i = 0; i < size; i++) {
+      const v = x[s + i] * (0.5 - 0.5 * Math.cos((2 * Math.PI * i) / size));
+      re += v * Math.cos(turn * i);
+      im -= v * Math.sin(turn * i);
+    }
+    levels.push(Math.sqrt(re * re + im * im));
+  }
+  const top = Math.max(0, ...levels);
+  if (!(top > 0)) return 0.003;
+  const up = levels.findIndex(v => v >= top * 0.7);
+  let on = up;
+  while (on > 0 && levels[on - 1] > top * 0.1) on--;
+  const rise = ((up - on) * step) / sampleRate;
+  // Anything quicker than the window can see is a strike.
+  return rise <= (size * 0.45 + step) / sampleRate ? 0.003 : rise;
+}
+
+function followNotes(x: Float32Array, sampleRate: number): { notes: FoundNote[]; pitchesAt: (seconds: number) => number[] } {
+  // TWO LOOKS, because no one window suits every pitch. Low notes need a
+  // long window to be told apart at all (at 46 ms a harpsichord's low
+  // strings, 86 Hz apart with overtones every 86 Hz, ran together and never
+  // stood "clear": they came out as rumble). High ones need a short one to
+  // be timed (a rising run of bells is a new note every tenth of a second).
+  const partials = [
+    ...followPitches(x, sampleRate, TRACK_N * 2, 55, 700),
+    ...followPitches(x, sampleRate, TRACK_N, 700, 8000),
+  ];
+
+  // Every pitch good enough to be a note is left out of the noise, WHETHER
+  // OR NOT it ends up kept as one (there is room for twelve): a clear pitch
+  // must never come back as hiss. First try, only the kept notes were left
+  // out, and a harpsichord's unkept overtones came out as five long bands
+  // of noise. A pitch that is NOT good enough (a dull thump, a flicker)
+  // stays in the noise, where it belongs: second try, those were left out
+  // too, and a low thump that was a third of a sound vanished from it.
+  const everyPitch = [...partials];
+  const pitchesAt = (seconds: number): number[] => {
+    const k = Math.round(seconds / (TRACK_HOP / sampleRate));
+    const now: number[] = [];
+    for (const p of everyPitch) if (k >= p.start && k <= p.end) now.push(p.hz[k - p.start]);
+    return now;
+  };
+
+  // Pitches that begin together and are whole multiples of the lowest are
+  // one note and its overtones.
+  partials.sort((p, q) => p.mean - q.mean);
+  const used = new Set<Partial>();
+  const groups: Partial[][] = [];
+  for (const low of partials) {
+    if (used.has(low)) continue;
+    used.add(low);
+    const group = [low];
+    for (const high of partials) {
+      if (used.has(high) || high.mean <= low.mean) continue;
+      if (Math.abs(high.start - low.start) > 8) continue; // within 46 ms (the two looks time a start a little differently)
+      const shared = Math.min(high.end, low.end) - Math.max(high.start, low.start) + 1;
+      if (shared < Math.min(high.end - high.start, low.end - low.start) * 0.5) continue;
+      const ratio = high.mean / low.mean;
+      const whole = Math.round(ratio);
+      if (whole < 2 || whole > 12 || Math.abs(ratio - whole) > 0.02 * whole) continue;
+      used.add(high);
+      group.push(high);
+    }
+    groups.push(group);
+  }
+
+  const hop = TRACK_HOP / sampleRate;
+  const found: FoundNote[] = [];
+  for (const group of groups) {
+    // The note's own pitch is the lowest of the group, unless that one is
+    // much the weakest (then the strongest leads, and the rest are told
+    // from it).
+    const strongest = group.reduce((p, q) => (q.peak > p.peak ? q : p));
+    const main = group[0].peak >= strongest.peak / 1.2 ? group[0] : strongest;
+    const others = group.filter(p => p !== main).sort((p, q) => q.peak - p.peak).slice(0, MAX_HARMONICS);
+    const shape = shapeOf(main.amp, hop, main.start * hop, main.smear, 0.2);
+    if (!shape) continue;
+    shape.attack = Math.min(arrival(x, sampleRate, main.hz[0], shape.start), shape.length * 0.8);
+    shape.hold = Math.max(0, Math.min(shape.hold, shape.length - shape.attack - shape.tail));
+    const third = Math.max(1, Math.floor(main.hz.length / 3));
+    const early = median(main.hz.slice(0, third));
+    const late = median(main.hz.slice(-third));
+    const middle = median(main.hz.slice(third, Math.max(third + 1, main.hz.length - third)));
+    const moves = Math.abs(Math.log(late / early)) > 0.012;
+    const clampHz = (hz: number) => Math.max(30, Math.min(8000, hz));
+    const from = clampHz(moves ? early : main.mean);
+    const to = clampHz(moves ? late : main.mean);
+    const bent = moves && Math.abs(Math.log(middle / Math.sqrt(early * late))) > 0.02;
+    const members = [main, ...others];
+    found.push({
+      shape,
+      from,
+      to,
+      ...(bent ? { via: clampHz(middle) } : {}),
+      harmonics: others.map(p => ({ ratio: round(p.mean / main.mean, 3), level: round(Math.min(1.2, p.peak / main.peak), 2) })),
+      bands: members.map(p => {
+        const lo = Math.min(...p.hz);
+        const hi = Math.max(...p.hz);
+        const half = Math.max(30, p.mean * 0.04);
+        return [Math.max(20, lo - half), hi + half] as const;
+      }),
+      energy: members.reduce((s, p) => s + p.energy, 0),
+    });
+  }
+  return {
+    notes: found.sort((p, q) => q.energy - p.energy).slice(0, MAX_NOTES).sort((p, q) => p.shape.start - q.shape.start),
+    pitchesAt,
   };
 }

@@ -91,6 +91,65 @@ describe('a sketch of a recording', () => {
     expect(new Set(sketch.layers.map(l => l.layer.id)).size).toBe(sketch.layers.length); // ids never collide
   });
 
+  it('hears notes played one after another as separate notes, each starting when it does', () => {
+    // Three plucked notes a quarter of a second apart, each still ringing
+    // when the next begins: no silence between them, so they are one "hit".
+    const run = new Float32Array(Math.round(1.3 * SR));
+    [392, 494, 587].forEach((hz, n) => {
+      const start = Math.round((0.05 + n * 0.25) * SR);
+      for (let i = 0; start + i < run.length; i++) {
+        const t = i / SR;
+        run[start + i] += 0.3 * Math.sin(2 * Math.PI * hz * t) * Math.exp(-5 * t);
+      }
+    });
+    const sketch = sketchFromRecording(run, SR)!;
+    const notes = sketch.layers.filter(l => l.kind === 'note').map(l => l.layer).sort((a, b) => a.start - b.start);
+    expect(notes).toHaveLength(3);
+    expect(notes.map(n => Math.round(n.pitch!.from / 10) * 10)).toEqual([390, 490, 590]);
+    expect(notes[1].start - notes[0].start).toBeGreaterThan(0.18);
+    expect(notes[1].start - notes[0].start).toBeLessThan(0.32);
+    expect(notes[2].start - notes[1].start).toBeGreaterThan(0.18);
+    expect(notes[2].start - notes[1].start).toBeLessThan(0.32);
+  });
+
+  it('keeps a note and its overtones together as one layer', () => {
+    // One plucked string: 220 Hz with its 2nd and 3rd overtones.
+    const pluck = new Float32Array(Math.round(0.9 * SR));
+    for (let i = 0; i < 0.8 * SR; i++) {
+      const t = i / SR;
+      const fade = Math.exp(-4 * t);
+      pluck[i + 500] = fade * (0.3 * Math.sin(2 * Math.PI * 220 * t) + 0.15 * Math.sin(2 * Math.PI * 440 * t) + 0.1 * Math.sin(2 * Math.PI * 660 * t));
+    }
+    const sketch = sketchFromRecording(pluck, SR)!;
+    const notes = sketch.layers.filter(l => l.kind === 'note').map(l => l.layer);
+    expect(notes).toHaveLength(1);
+    expect(notes[0].pitch!.from).toBeGreaterThan(215);
+    expect(notes[0].pitch!.from).toBeLessThan(225);
+    const ratios = (notes[0].harmonics ?? []).map(h => Math.round(h.ratio)).sort();
+    expect(ratios).toEqual([2, 3]);
+    for (const h of notes[0].harmonics!) expect(h.level).toBeLessThan(1); // quieter than the note itself
+  });
+
+  it('does not take a rumble that favours a pitch for a note', () => {
+    // Noise ringing a resonance at 270 Hz for as long as it lasts: it has a
+    // pitch, but it is not struck and does not die away.
+    const raw = noise(Math.round(1.6 * SR), 99);
+    const rumble = new Float32Array(raw.length);
+    const r = 0.997;
+    const turn = (2 * Math.PI * 270) / SR;
+    let y1 = 0;
+    let y2 = 0;
+    for (let i = 0; i < raw.length; i++) {
+      const y = raw[i] * 0.01 + 2 * r * Math.cos(turn) * y1 - r * r * y2;
+      y2 = y1;
+      y1 = y;
+      rumble[i] = y;
+    }
+    const sketch = sketchFromRecording(rumble, SR)!;
+    expect(sketch.layers.filter(l => l.kind === 'note')).toHaveLength(0);
+    expect(sketch.layers.some(l => l.kind === 'body')).toBe(true); // it is there, as noise in its band
+  });
+
   it('hears a pitch that falls as a slide', () => {
     const seconds = 0.7;
     const out = new Float32Array(Math.round((seconds + 0.1) * SR));
