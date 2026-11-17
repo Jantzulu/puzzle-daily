@@ -8,6 +8,7 @@ import { getCharacter } from '../data/characters';
 import { getEnemy } from '../data/enemies';
 import { loadSpellAsset } from './assetStorage';
 import { renderSynthSound } from './synth/render';
+import { playChromeSound, type ChromeSound } from './chromeSounds';
 import type { SynthSound } from './synth/types';
 import type { SoundAsset, SoundTrigger } from '../types/game';
 
@@ -167,6 +168,18 @@ export function clearSoundCache(): void {
 }
 
 /**
+ * The sound that ships with the game for a moment (utils/synth/builtIn.ts,
+ * editable in the Sound Forge), played when Global Sounds has nothing of
+ * its own set for it (user ask 2026-11-16).
+ */
+const BUILT_IN_FOR: Partial<Record<SoundTrigger, ChromeSound>> = {
+  character_placed: 'hero-place',
+  simulation_start: 'run-start',
+  victory: 'run-win',
+  defeat: 'run-lose',
+};
+
+/**
  * Play a global game sound trigger
  */
 export async function playGameSound(trigger: SoundTrigger): Promise<void> {
@@ -216,6 +229,11 @@ export async function playGameSound(trigger: SoundTrigger): Promise<void> {
       break;
   }
 
+  if (!soundId) {
+    const builtIn = BUILT_IN_FOR[trigger];
+    if (builtIn) playChromeSound(builtIn);
+    return;
+  }
   await playSoundById(soundId);
 }
 

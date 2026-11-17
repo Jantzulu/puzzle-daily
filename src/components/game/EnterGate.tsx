@@ -2,6 +2,7 @@ import React from 'react';
 import { createPortal } from 'react-dom';
 import { localDateKey } from '../../utils/localDate';
 import { ENTRY_LIFT_MS, markPageEntered, puzzleDateLabel, setEntryDark } from './enterGateState';
+import { playChromeSound } from '../../utils/chromeSounds';
 
 /**
  * TAP TO ENTER (user pick 2026-11-15). A browser lets a page make no sound
@@ -112,6 +113,7 @@ export const EnterGate: React.FC<{ onEnter: () => void; onGone: () => void }> = 
         }
       }
       markPageEntered();
+      playChromeSound('entry-rumble'); // a low rumble as the page comes out of the dark (user ask 2026-11-16)
       setEntryDark(false); // the torches catch
       setLifting(true);
       calls.current.onEnter();

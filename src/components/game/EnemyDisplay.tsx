@@ -17,6 +17,7 @@ import { StripDividers } from './StripDividers';
 import { SelectionStrip, SelectionDrawer } from './SelectionShape';
 import { useElementWidth, artGridSlotStyle } from '../../hooks/useElementWidth';
 import { subscribeToImageLoads } from '../../utils/imageLoader';
+import { playChromeSound } from '../../utils/chromeSounds';
 
 // Every enemy/ally opens a drawer (its info panel always renders).
 const alwaysOpensDrawer = () => true;
@@ -331,6 +332,8 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
                   markTapHintSeen('enemy');
                   setEnemyHintSeen(true);
                 }
+                // The heroes' pick sound, a little lower (user ask 2026-11-16).
+                if (!isSelected) playChromeSound('card-select', 1);
                 setSelectedEnemyId(isSelected ? null : enemyId);
               }}
               style={artGridSlotStyle(stripWidth, stripEnemyIds.length, slot)}

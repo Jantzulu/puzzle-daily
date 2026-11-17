@@ -1828,7 +1828,7 @@ export const Game: React.FC<GameProps> = ({
     const puzzleLives = currentPuzzle.lives ?? 3;
     const isUnlimitedLives = puzzleLives === 0;
 
-    playGameSound('defeat');
+    playChromeSound('run-concede'); // giving up has its own sound, not the defeat's (user ask 2026-11-16)
 
     // Set game state to defeat so the defeat overlay appears with buttons
     setGameState(prev => ({ ...prev, gameStatus: 'defeat' as const }));
@@ -3715,7 +3715,7 @@ export const Game: React.FC<GameProps> = ({
                     availableCharacterIds={gameState.puzzle.availableCharacters}
                     enemies={gameState.puzzle.enemies}
                     selectedCharacterId={testMode === 'none' && gameState.gameStatus === 'setup' ? selectedCharacterId : null}
-                    onSelectCharacter={testMode === 'none' && gameState.gameStatus === 'setup' ? (id: string | null) => { setSelectedCharacterId(id); if (id) vibrate('heroSelect'); } : () => {}}
+                    onSelectCharacter={testMode === 'none' && gameState.gameStatus === 'setup' ? (id: string | null) => { setSelectedCharacterId(id); if (id) { vibrate('heroSelect'); playChromeSound('card-select'); } } : () => {}}
                     placedCharacterIds={gameState.placedCharacters.map(c => c.characterId)}
                     maxPlaceable={gameState.puzzle.maxPlaceableCharacters ?? gameState.puzzle.maxCharacters}
                     onClearAll={testMode === 'none' && gameState.gameStatus === 'setup' ? handleWipe : undefined}

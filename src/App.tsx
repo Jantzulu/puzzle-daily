@@ -14,6 +14,7 @@ import { PaintedNavIcon } from './components/shared/PaintedNavIcon';
 import { navChromeIcon } from './assets/icons/navChrome';
 import { satellitesPaused } from './components/game/frameProfiler';
 import { GateBeamMesh, GateSign } from './components/shared/GateMesh';
+import { playChromeSound } from './utils/chromeSounds';
 import { PortcullisMesh } from './components/game/PortcullisMesh';
 import { getLatestPostTimestamp } from './services/newsService';
 import { ToastContainer } from './components/shared/Toast';
@@ -699,7 +700,12 @@ function Navigation() {
                 // scroll, so same-page picks left the target out of view.
                 // instant: a tapped link means GO — no winch-up over the
                 // arriving page.
-                onClick={() => { closeMobileMenu(true); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                onClick={() => {
+                  // Footsteps to another page (user ask 2026-11-16); not for the page already open.
+                  if (!isActive(item.to)) playChromeSound('page-turn');
+                  closeMobileMenu(true);
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
                 className={`nav-gate-item block px-8 py-2.5 text-center ${isActive(item.to) ? 'nav-gate-item-active' : ''}`}
               >
                 <GateBeamMesh first={i === 0} />

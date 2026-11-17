@@ -22,7 +22,15 @@ export type BuiltInSoundId =
   | 'gate-rung'
   | 'gate-land'
   | 'gate-lock'
-  | 'sign-creak';
+  | 'sign-creak'
+  | 'entry-rumble'
+  | 'card-select'
+  | 'hero-place'
+  | 'run-start'
+  | 'run-win'
+  | 'run-lose'
+  | 'run-concede'
+  | 'page-turn';
 
 export interface BuiltInSound {
   id: BuiltInSoundId;
@@ -457,6 +465,180 @@ const signCreak: SynthSound = {
   ],
 };
 
+// ---- the game's own moments ---------------------------------------------------------
+// User ask 2026-11-16, with what they had in mind for each, "and I can edit
+// them from there": these are STARTING POINTS for the Sound Forge, written
+// from the description and set to a level by measurement next to the sounds
+// the user has approved. Nobody has heard them.
+//   entry-rumble  "a low pitched rumble (not too loud) as the puzzle emerges
+//                 from the darkness"
+//   card-select   a hero is selected: "something similar to the current quest
+//                 scroll landing sound"; the same for an enemy, a little lower
+//   hero-place    "a short triumphant sound/jingle that evokes horns"
+//   run-start     the game is started: two drum beats
+//   run-win       the user wins: the hero's horn call, longer, ending on a chord
+//   run-lose      the user loses: two low horn notes falling
+//   run-concede   the user concedes: one horn note sinking
+//   page-turn     a page picked from the menu: "brief footsteps in an echoey
+//                 dungeon"
+
+/** The swell of the entry rumble: half a second in, half a second out. */
+const rumbleSwell = { attack: 0.5, hold: 0.25, floor: 0.25, tail: 0.5 };
+const entryRumble: SynthSound = {
+  version: 1,
+  level: 0.18,
+  layers: [
+    // The winch's rumble (the gate's, above) without anything on top: slowed
+    // noise in narrow low bands, each drifting on its own. Sub and Drone are
+    // for headphones and big speakers; Body is what a phone can play.
+    gateNoise('sub', 'Sub', 1.6, 1.5, [band(48, 1.2), below(95)], { ...rumbleSwell, noiseRate: 0.25, noiseSeed: 0.7, tremble: { rate: 4, depth: 20, seed: 0.7 } }),
+    gateNoise('drone', 'Drone', 1.4, 1.5, [band(92, 2.5)], { ...rumbleSwell, noiseRate: 0.25, noiseSeed: 0.3, tremble: { rate: 5, depth: 20, seed: 0.3 } }),
+    gateNoise('body', 'Body', 0.6, 1.5, [band(230, 1.2)], { ...rumbleSwell, noiseRate: 0.25, noiseSeed: 1.3, tremble: { rate: 6, depth: 20, seed: 1.4 } }),
+    gateNoise('air', 'Air', 0.12, 1.5, [below(500)], { ...rumbleSwell, noiseSeed: 0.8 }),
+  ],
+};
+
+// A lighter cousin of "Scroll lands": the same two parts, shorter and a
+// little higher, so picking a card is a tap and not a thud.
+const cardSelect: SynthSound = {
+  version: 1,
+  level: 0.12,
+  layers: [
+    {
+      id: 'thump', name: 'Thump', source: 'tone', wave: 'sine',
+      start: 0, length: 0.07, level: 0.4, attack: 0.003, hold: 0, floor: 0.02, tail: 0.015,
+      pitch: { from: 112, to: 58, arriveAt: 0.04 },
+    },
+    {
+      id: 'tap', name: 'Tap', source: 'noise',
+      start: 0, length: 0.04, level: 1.4, attack: 0.001, hold: 0, floor: 0.02, tail: 0.01,
+      noiseSeed: 1.2,
+      filters: [
+        { type: 'highpass', cutoff: { from: 500, to: 500 } },
+        { type: 'lowpass', cutoff: { from: 3000, to: 3000 } },
+      ],
+    },
+  ],
+};
+
+/**
+ * A horn note. A horn is a bright, buzzing wave (sawtooth) with its top
+ * taken off; what makes it BLOWN is that the top opens for an instant as
+ * the note starts and then settles (the lowpass slides up, then back down).
+ * Kept low (G3 to G4): every sound that began high was "silly" to the user.
+ */
+const hornNote = (id: string, name: string, hz: number, start: number, length: number, level: number, more: Partial<SynthLayer> = {}): SynthLayer => ({
+  id, name, source: 'tone', wave: 'sawtooth', start, length, level,
+  attack: 0.025, hold: length * 0.45, floor: 0.45, tail: Math.min(0.08, length * 0.3),
+  pitch: { from: hz, to: hz },
+  filters: [{ type: 'lowpass', cutoff: { from: 500, via: { value: 1900, at: Math.min(0.07, length * 0.5) }, to: 1200 } }],
+  ...more,
+});
+/** The same horn played soft and dark, for the sad calls. */
+const dull = (peak: number, rest: number): Pick<SynthLayer, 'filters' | 'attack'> => ({
+  attack: 0.05,
+  filters: [{ type: 'lowpass', cutoff: { from: 400, via: { value: peak, at: 0.09 }, to: rest } }],
+});
+
+// "ta-ta-TAA": G, C, then E held over the C. A rising major call.
+const heroPlace: SynthSound = {
+  version: 1,
+  level: 0.037,
+  layers: [
+    hornNote('first', 'First note', 196, 0, 0.11, 0.8),
+    hornNote('second', 'Second note', 261.63, 0.09, 0.11, 0.9),
+    hornNote('last', 'Last note', 329.63, 0.18, 0.36, 1, { vibrato: { rate: 5.5, depth: 10 } }),
+    hornNote('under', 'Under it', 261.63, 0.18, 0.36, 0.55),
+  ],
+};
+
+// Two beats of a low drum, the second harder: a note that drops fast (the
+// skin) under a short slap (the stick). The slap is what a phone plays.
+const drumBeat = (id: string, name: string, start: number, level: number): SynthLayer[] => [
+  {
+    id: `${id}-skin`, name: `${name} skin`, source: 'tone', wave: 'sine',
+    start, length: 0.22, level, attack: 0.004, hold: 0, floor: 0.04, tail: 0.05,
+    pitch: { from: 130, to: 55, arriveAt: 0.09 },
+  },
+  {
+    id: `${id}-slap`, name: `${name} slap`, source: 'noise',
+    start, length: 0.05, level: level * 2, attack: 0.002, hold: 0, floor: 0.05, tail: 0.015,
+    noiseSeed: start + 0.3,
+    filters: [{ type: 'bandpass', q: 0.8, cutoff: { from: 900, to: 900 } }],
+  },
+];
+const runStart: SynthSound = {
+  version: 1,
+  level: 0.1,
+  layers: [...drumBeat('first', 'First', 0, 0.6), ...drumBeat('second', 'Second', 0.17, 1)],
+};
+
+// The hero's call, grown: G, C, E, then G held over the whole chord, in a
+// hall (two echoes).
+const runWin: SynthSound = {
+  version: 1,
+  level: 0.05,
+  echo: { time: 0.19, repeats: 2, fade: 0.3 },
+  layers: [
+    hornNote('first', 'First note', 196, 0, 0.14, 0.8),
+    hornNote('second', 'Second note', 261.63, 0.12, 0.14, 0.85),
+    hornNote('third', 'Third note', 329.63, 0.24, 0.14, 0.9),
+    hornNote('last', 'Last note', 392, 0.36, 0.8, 1, { vibrato: { rate: 5.5, depth: 12 } }),
+    hornNote('chord-low', 'Chord, low', 261.63, 0.36, 0.8, 0.5),
+    hornNote('chord-mid', 'Chord, middle', 329.63, 0.36, 0.8, 0.5),
+  ],
+};
+
+// Two low notes falling a small step apart (E flat to C: the sad interval),
+// the second sagging in pitch as it dies, over one soft drum.
+const runLose: SynthSound = {
+  version: 1,
+  level: 0.07,
+  layers: [
+    hornNote('first', 'First note', 155.56, 0, 0.45, 0.9, dull(1000, 700)),
+    hornNote('last', 'Last note', 130.81, 0.4, 0.8, 1, { ...dull(900, 500), pitch: { from: 130.81, to: 122 }, floor: 0.2 }),
+    {
+      id: 'drum', name: 'Drum', source: 'tone', wave: 'sine',
+      start: 0, length: 0.25, level: 0.9, attack: 0.004, hold: 0, floor: 0.04, tail: 0.06,
+      pitch: { from: 95, to: 45, arriveAt: 0.1 },
+    },
+  ],
+};
+
+// One soft note that sinks (G down to E): giving up, not being beaten.
+const runConcede: SynthSound = {
+  version: 1,
+  level: 0.045,
+  layers: [
+    hornNote('sink', 'Sinking note', 196, 0, 0.55, 1, { ...dull(1000, 600), pitch: { from: 196, to: 164.81 }, floor: 0.2 }),
+  ],
+};
+
+// Three footsteps, each a touch quieter, in a stone hall (three echoes): a
+// dull scuff of noise (the sole) over a tiny low knock (the heel).
+const footstep = (n: number, start: number, hz: number, level: number): SynthLayer[] => [
+  {
+    id: `step-${n}`, name: `Step ${n}`, source: 'noise',
+    start, length: 0.07, level, attack: 0.003, hold: 0, floor: 0.05, tail: 0.02,
+    noiseSeed: 0.3 * n,
+    filters: [
+      { type: 'bandpass', q: 0.8, cutoff: { from: hz, to: hz } },
+      { type: 'lowpass', cutoff: { from: 1500, to: 1500 } },
+    ],
+  },
+  {
+    id: `heel-${n}`, name: `Heel ${n}`, source: 'tone', wave: 'sine',
+    start, length: 0.06, level: level * 0.2, attack: 0.003, hold: 0, floor: 0.05, tail: 0.02,
+    pitch: { from: 100, to: 55, arriveAt: 0.04 },
+  },
+];
+const pageTurn: SynthSound = {
+  version: 1,
+  level: 0.2,
+  echo: { time: 0.11, repeats: 3, fade: 0.4 },
+  layers: [...footstep(1, 0, 520, 1), ...footstep(2, 0.17, 430, 0.85), ...footstep(3, 0.34, 500, 0.7)],
+};
+
 export const BUILT_IN_SOUNDS: readonly BuiltInSound[] = [
   { id: 'torch-out', name: 'Torch goes out', where: 'A lintel torch is put out, by a tap or a lost run', sound: torchOut },
   { id: 'torch-lit', name: 'Torch lights', where: 'A lintel torch is lit, by a tap or a retry', sound: torchLit },
@@ -469,6 +651,14 @@ export const BUILT_IN_SOUNDS: readonly BuiltInSound[] = [
   { id: 'gate-land', name: 'Gate crashes', where: 'The menu gate hits the ground, or slams home at the top', sound: gateLand },
   { id: 'gate-lock', name: 'Gate knocks', where: 'The smaller knock: the two rebounds after the crash, the page-load settle, a grabbed gate', sound: gateLock },
   { id: 'sign-creak', name: 'Sign creaks', where: 'A sign rocks on its bolt: poked, or (quieter) rattled by the gate', sound: signCreak },
+  { id: 'entry-rumble', name: 'Dungeon wakes', where: 'The first tap on the dark entry screen, as the page comes out of the dark', sound: entryRumble },
+  { id: 'card-select', name: 'Card picked', where: 'A hero or an enemy card is selected (an enemy a little lower)', sound: cardSelect },
+  { id: 'hero-place', name: 'Hero placed', where: 'A hero is put on the board (unless Global Sounds has its own for this)', sound: heroPlace },
+  { id: 'run-start', name: 'Run begins', where: 'Play is pressed (unless Global Sounds has its own for this)', sound: runStart },
+  { id: 'run-win', name: 'Victory', where: 'The run is won (unless Global Sounds has its own for this)', sound: runWin },
+  { id: 'run-lose', name: 'Defeat', where: 'The run is lost (unless Global Sounds has its own for this)', sound: runLose },
+  { id: 'run-concede', name: 'Conceded', where: 'The player concedes a run', sound: runConcede },
+  { id: 'page-turn', name: 'Page changes', where: 'Another page is picked from the menu', sound: pageTurn },
 ];
 
 export function builtInSound(id: BuiltInSoundId): SynthSound {
