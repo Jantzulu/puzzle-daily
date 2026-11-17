@@ -130,6 +130,40 @@ describe('a sketch of a recording', () => {
     for (const h of notes[0].harmonics!) expect(h.level).toBeLessThan(1); // quieter than the note itself
   });
 
+  it('hears a phrase on a plucked instrument as its notes, with no noise behind them', () => {
+    // Four plucked strings a fifth of a second apart. Each is a note with a
+    // stack of eight overtones, the second and third STRONGER than the note
+    // itself (as on a harpsichord's low strings), all dying away together.
+    const pitches = [98, 147, 196, 131];
+    const strength = [0.4, 1, 0.8, 0.5, 0.3, 0.25, 0.15, 0.1];
+    const phrase = new Float32Array(Math.round(1.3 * SR));
+    pitches.forEach((hz, n) => {
+      const start = Math.round((0.03 + n * 0.2) * SR);
+      for (let i = 0; start + i < phrase.length; i++) {
+        const t = i / SR;
+        let v = 0;
+        strength.forEach((a, m) => { v += a * Math.sin(2 * Math.PI * hz * (m + 1) * t); });
+        phrase[start + i] += 0.08 * v * Math.exp(-7 * t);
+      }
+    });
+    const sketch = sketchFromRecording(phrase, SR)!;
+    const notes = sketch.layers.filter(l => l.kind === 'note').map(l => l.layer).sort((a, b) => a.start - b.start);
+    // The melody: the four notes themselves, in order, not their overtones.
+    expect(notes.map(n => Math.round(n.pitch!.from))).toEqual(pitches);
+    for (let n = 1; n < notes.length; n++) {
+      expect(notes[n].start - notes[n - 1].start).toBeGreaterThan(0.15);
+      expect(notes[n].start - notes[n - 1].start).toBeLessThan(0.25);
+    }
+    for (const note of notes) {
+      // Each carries overtones at whole multiples, the strongest louder than the note.
+      expect(note.harmonics!.length).toBeGreaterThanOrEqual(3);
+      for (const h of note.harmonics!) expect(Number.isInteger(h.ratio)).toBe(true);
+      expect(Math.max(...note.harmonics!.map(h => h.level))).toBeGreaterThan(1);
+    }
+    // And the timbre is not mistaken for noise.
+    expect(sketch.layers.filter(l => l.kind !== 'note')).toHaveLength(0);
+  });
+
   it('does not take a rumble that favours a pitch for a note', () => {
     // Noise ringing a resonance at 270 Hz for as long as it lasts: it has a
     // pitch, but it is not struck and does not die away.

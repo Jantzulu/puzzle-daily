@@ -42,8 +42,8 @@ import { MAX_HARMONICS, type FilterStage, type SynthLayer } from './types';
 export const SKETCH_SECONDS = 3;
 /** No more separate hits than this; a longer run is one continuous sound. */
 const MAX_HITS = 3;
-const MAX_NOTES = 12;
-const MAX_LAYERS = 16;
+const MAX_NOTES = 16;
+const MAX_LAYERS = 20;
 
 /** The noise bands: a plain name, its edges (Hz), and whether its noise is slowed (more low end to work with). */
 const NOISE_BANDS: ReadonlyArray<{ id: string; name: string; lo: number; hi: number; slow: boolean }> = [
@@ -179,12 +179,27 @@ export function bandRms(x: Float32Array, sampleRate: number, t0: number, t1: num
 
 /** The same, over several stretches of the spectrum at once. */
 export function bandsRms(x: Float32Array, sampleRate: number, t0: number, t1: number, bands: ReadonlyArray<readonly [number, number]>): number {
-  let sum = 0;
+  if (bands.length === 1) return bandRms(x, sampleRate, t0, t1, bands[0][0], bands[0][1]);
+  const from = Math.max(0, Math.round(t0 * sampleRate));
+  const to = Math.min(x.length, Math.round(t1 * sampleRate));
+  if (to <= from) return 0;
+  // One look at each frame, however many stretches are asked for; a bin
+  // that two stretches share is counted once.
+  const hz = sampleRate / BAND_N;
+  const wanted = new Uint8Array(BAND_N / 2);
   for (const [lo, hi] of bands) {
-    const one = bandRms(x, sampleRate, t0, t1, lo, hi);
-    sum += one * one;
+    for (let i = Math.max(1, Math.ceil(lo / hz)); i <= Math.min(BAND_N / 2 - 1, Math.floor(hi / hz)); i++) wanted[i] = 1;
   }
-  return Math.sqrt(sum);
+  let sum = 0;
+  let count = 0;
+  for (let at = from - BAND_N / 2; at < to; at += BAND_N / 4) {
+    const power = framePower(x, Math.round(at), BAND_N, from, to);
+    for (let i = 1; i < BAND_N / 2; i++) if (wanted[i]) sum += power[i];
+    count++;
+  }
+  let windowSum = 0;
+  for (const v of hann(BAND_N)) windowSum += v * v;
+  return Math.sqrt((2 * sum) / (Math.max(1, count) * BAND_N * windowSum));
 }
 
 /** The loudest 50 ms of [from, to) (RMS). */
@@ -419,8 +434,11 @@ export function sketchFromRecording(samples: Float32Array, sampleRate: number): 
       for (let j = j0; j < j1; j++) sum += rest[j];
       const target = Math.sqrt((2 * sum) / ((j1 - j0) * N * windowSum));
       const mixTarget = Math.max(target, bandRms(x, sampleRate, start, start + length, bandDef.lo, bandDef.hi));
-      // A band that is nearly all note has no noise worth a layer of its own.
-      if (target * target < mixTarget * mixTarget * 0.03) return;
+      // A band that is mostly note has no noise worth a layer of its own: the
+      // little that is left would be heard as a hiss under the notes for as
+      // long as they play (a harpsichord phrase, the user's ear: "this
+      // overbearing hiss in the background").
+      if (target * target < mixTarget * mixTarget * 0.15) return;
       const filters: FilterStage[] = [];
       if (i > 0) filters.push({ type: 'highpass', cutoff: { from: bandDef.lo, to: bandDef.lo } });
       if (i < NOISE_BANDS.length - 1) filters.push({ type: 'lowpass', cutoff: { from: bandDef.hi, to: bandDef.hi } });
@@ -679,16 +697,257 @@ function arrival(x: Float32Array, sampleRate: number, hz: number, at: number): n
   return rise <= (size * 0.45 + step) / sampleRate ? 0.003 : rise;
 }
 
+// ---- struck notes: an instrument playing ---------------------------------------------
+//
+// A plucked or struck string is ONE note with a tall stack of overtones at
+// whole multiples of it, often stronger than the note itself. Followed
+// pitch by pitch (above), a harpsichord phrase came out wrong in both ways
+// the user's ear reported (2026-11-17): the overtones were taken for notes
+// of their own ("not the same melody"), and the many that were not kept
+// came back as noise ("reading the timbre of the harpsichord as noise").
+// So an instrument is heard differently:
+//   1. Find each ONSET: the instant a lot of new sound appears at once.
+//   2. Look at what is NEW there (the spectrum just after, less the one
+//      just before, so notes still ringing do not count) and find the
+//      pitch whose whole stack of multiples accounts for it best.
+//   3. Accept it only if the stack really is one: enough of its first
+//      eight multiples present, each sitting where a multiple should, and
+//      together a good share of the new sound. Struck metal and bells
+//      (whose pitches are not multiples of anything) fail this and are
+//      left to the followed pitches.
+//   4. The note sounds until its stack has died away or is struck again.
+// Every multiple of a sounding note is then kept out of the noise, kept as
+// a layer's overtone or not.
+
+interface StruckNote {
+  /** When it is struck (s). */
+  at: number;
+  /** When its stack has all but died away (s): later than the layer made of it, if other notes fed it. */
+  end: number;
+  hz: number;
+  /** How strong each multiple is: [the note, twice it, three times it, ...]. */
+  amps: number[];
+  shape: Shape;
+  energy: number;
+}
+
+function findStruckNotes(x: Float32Array, sampleRate: number): StruckNote[] {
+  const N = 1024;
+  const H = 256;
+  const binHz = sampleRate / N;
+  const frames = spectrogram(x, 0, x.length, N, H);
+  let loudest = 0;
+  for (const frame of frames) for (let i = 2; i < N / 2; i++) if (frame[i] > loudest) loudest = frame[i];
+  if (!(loudest > 0)) return [];
+  const scale = 1000 / Math.sqrt(loudest);
+  // 1. Onsets: how much louder each part of the spectrum got since the last look.
+  const flux = frames.map((frame, k) => {
+    if (k === 0) return 0;
+    const before = frames[k - 1];
+    let s = 0;
+    for (let i = 2; i < N / 2; i++) {
+      const d = Math.log(1 + scale * Math.sqrt(frame[i])) - Math.log(1 + scale * Math.sqrt(before[i]));
+      if (d > 0) s += d;
+    }
+    return s;
+  });
+  const fluxTop = Math.max(...flux);
+  const onsets: number[] = [];
+  for (let k = 1; k < flux.length - 2; k++) {
+    if (flux[k] < fluxTop * 0.2) continue;
+    if (!(flux[k] >= flux[k - 1] && flux[k] > flux[k + 1] && flux[k] >= (flux[k - 2] ?? 0) && flux[k] > flux[k + 2])) continue;
+    const last = onsets[onsets.length - 1];
+    if (last !== undefined && k - last < 10) { if (flux[k] > flux[last]) onsets[onsets.length - 1] = k; continue; }
+    onsets.push(k);
+  }
+
+  const FINE = 4096;
+  const fineHz = sampleRate / FINE;
+  const found: Array<Omit<StruckNote, 'shape' | 'end' | 'energy'> & { frame: number; share: number }> = [];
+  for (const k of onsets) {
+    const at = (k * H) / sampleRate;
+    // 2. What is new: just after, less just before.
+    const after = framePower(x, Math.round((at + 0.015) * sampleRate), FINE, 0, x.length);
+    const before = framePower(x, Math.round((at - 0.015) * sampleRate) - FINE, FINE, 0, x.length);
+    const fresh = new Float64Array(FINE / 2);
+    let total = 0;
+    const lowBin = Math.ceil(55 / fineHz);
+    const highBin = Math.floor(6000 / fineHz);
+    for (let i = 1; i < FINE / 2; i++) {
+      fresh[i] = Math.max(0, Math.sqrt(after[i]) - Math.sqrt(before[i]));
+      if (i >= lowBin && i <= highBin) total += fresh[i] * fresh[i];
+    }
+    if (!(total > 0)) continue;
+    const near = (spectrum: Float64Array, hz: number): number => {
+      const c = hz / fineHz;
+      let best = 0;
+      for (let i = Math.max(1, Math.floor(c * 0.975)); i <= Math.min(FINE / 2 - 1, Math.ceil(c * 1.025)); i++) if (spectrum[i] > best) best = spectrum[i];
+      return best;
+    };
+    const work = Float64Array.from(fresh);
+    for (let voice = 0; voice < 2; voice++) {
+      let guess = 0;
+      let salience = 0;
+      for (let hz = 55; hz < 1500; hz *= 1.005) {
+        let s = 0;
+        for (let m = 1; m <= 12 && m * hz < 8000; m++) s += near(work, m * hz) / Math.sqrt(m);
+        if (s > salience) { salience = s; guess = hz; }
+      }
+      if (!(guess > 0)) break;
+      // 3. Is it really one stack? Where each multiple truly sits says what
+      //    the note is, and how well they agree says whether it is one.
+      const firstEight: number[] = [];
+      for (let m = 1; m <= 8 && m * guess < 8000; m++) firstEight.push(near(work, m * guess));
+      const tallest = Math.max(...firstEight);
+      let weight = 0;
+      let weighted = 0;
+      const estimates: Array<[number, number]> = [];
+      firstEight.forEach((amp, i) => {
+        // (Only the first six say where the note is: a stiff string's higher
+        // multiples sit a little sharp.)
+        if (amp < tallest * 0.1 || i >= 6) return;
+        const m = i + 1;
+        const c = (m * guess) / fineHz;
+        let b = Math.round(c);
+        for (let j = Math.max(2, Math.floor(c * 0.975)); j <= Math.min(FINE / 2 - 2, Math.ceil(c * 1.025)); j++) if (work[j] > work[b]) b = j;
+        const l = work[b - 1];
+        const mid = work[b];
+        const r = work[b + 1];
+        const shift = l - 2 * mid + r !== 0 ? (0.5 * (l - r)) / (l - 2 * mid + r) : 0;
+        const estimate = ((b + Math.max(-0.5, Math.min(0.5, shift))) * fineHz) / m;
+        estimates.push([estimate, amp]);
+        weight += amp;
+        weighted += amp * estimate;
+      });
+      const hz = weighted / weight;
+      const disagreement = estimates.reduce((s, [estimate, amp]) => s + amp * Math.abs(estimate / hz - 1), 0) / weight;
+      const amps: number[] = [];
+      for (let m = 1; m <= 16 && m * hz < 8000; m++) amps.push(near(work, m * hz));
+      const present = amps.slice(0, 8).filter(a => a >= tallest * 0.1).length;
+      // How much of what is (still) new the stack accounts for. A LOW note's
+      // multiples are so close together that they cover most of the spectrum
+      // whatever is in it (a 55 Hz "note" accounted for 85% of a gate's
+      // crash by standing everywhere), so the share is judged against what
+      // such a comb would cover by chance.
+      let explained = 0;
+      let remaining = 0;
+      for (let i = lowBin; i <= highBin; i++) remaining += work[i] * work[i];
+      for (let m = 1; m * hz < 6000; m++) {
+        const c = Math.round((m * hz) / fineHz);
+        for (let j = c - 1; j <= c + 1; j++) if (j >= lowBin && j <= highBin) explained += work[j] * work[j];
+      }
+      const byChance = Math.min(0.95, (3 * fineHz) / hz);
+      const beyondChance = remaining > 0 ? (explained / remaining - byChance) / (1 - byChance) : 0;
+      const share = explained / total;
+      // (A lone pitch with no overtones is not a stack: it is left to the followed
+      // pitches, which also follow it if it slides.)
+      const isStack = weight > 0 && present >= (hz > 450 ? 2 : 3) && disagreement <= 0.02
+        && beyondChance >= 0.25 && share >= (voice === 0 ? 0.25 : 0.1);
+      if (!isStack) break;
+      found.push({ at, frame: k, hz, amps, share });
+      for (let m = 1; m * hz < 11000; m++) {
+        const c = Math.round((m * hz) / fineHz);
+        for (let j = c - 3; j <= c + 3; j++) if (j > 0 && j < FINE / 2) work[j] = 0;
+      }
+    }
+  }
+
+  // A stray stack or two in a sound that is otherwise not an instrument is
+  // more likely a rumble whose resonances happen to line up (the winch gave
+  // a few): an instrument is believed only where it accounts for a good
+  // part of the onsets.
+  const struckOnsets = new Set(found.map(note => note.frame)).size;
+  if (struckOnsets < onsets.length * 0.4) return [];
+
+  // 4. How long each one sounds: the loudness of its stack, look by look.
+  const hopS = H / sampleRate;
+  const notes: StruckNote[] = [];
+  found.forEach(note => {
+    const multiples: number[] = [];
+    for (let m = 1; m <= Math.min(10, note.amps.length); m++) multiples.push(Math.round((m * note.hz) / binHz));
+    const startFrame = Math.max(0, note.frame - 2);
+    const again = found.find(other => other.frame > note.frame && Math.abs(Math.log(other.hz / note.hz)) < 0.03);
+    const lastFrame = again ? again.frame - 1 : frames.length - 1;
+    const env: number[] = [];
+    for (let j = startFrame; j <= lastFrame; j++) {
+      let s = 0;
+      for (const c of multiples) for (let b = c - 1; b <= c + 1; b++) if (b > 0 && b < N / 2) s += frames[j][b];
+      env.push(Math.sqrt(s));
+    }
+    let top = 0;
+    for (let j = 1; j < Math.min(env.length, 24); j++) if (env[j] > env[top]) top = j;
+    // The LAYER stops once the stack is down to a twentieth, or at a later
+    // onset that feeds it again (another note sharing its multiples: it
+    // rises there after having fallen). Only at an onset: two close strings
+    // beat against each other, and a dip and swell between onsets is not a
+    // new note (a chord's two notes were cut to 75 ms by that).
+    let stop = env.length - 1;
+    let lowest = env[top];
+    for (let j = top + 1; j < env.length; j++) {
+      if (env[j] < env[top] * 0.05) { stop = j; break; }
+      const frame = startFrame + j;
+      const atAnOnset = onsets.some(o => o !== note.frame && Math.abs(o - frame) <= 2);
+      if (atAnOnset && lowest < env[top] * 0.6 && Math.max(env[j], env[j + 1] ?? 0, env[j + 2] ?? 0, env[j + 3] ?? 0) > lowest * 1.3) { stop = Math.max(top + 1, j - 2); break; }
+      if (env[j] < lowest) lowest = env[j];
+    }
+    // The STACK goes on ringing, fed or not, until it is all but gone: for
+    // that long its multiples are kept out of the noise.
+    let quiet = env.length - 1;
+    for (let j = top + 1; j < env.length; j++) if (env[j] < env[top] * 0.03) { quiet = j; break; }
+    const shape = shapeOf(env.slice(0, stop + 1), hopS, startFrame * hopS, (N / sampleRate) * 0.45);
+    if (!shape || shape.length < 0.08) return;
+    notes.push({
+      at: note.at,
+      end: Math.max(shape.start + shape.length, (startFrame + quiet) * hopS),
+      hz: note.hz,
+      amps: note.amps,
+      shape,
+      energy: env.slice(0, stop + 1).reduce((s, v) => s + v * v, 0),
+    });
+  });
+  return notes;
+}
+
 function followNotes(x: Float32Array, sampleRate: number): { notes: FoundNote[]; pitchesAt: (seconds: number) => number[] } {
+  const trackHop = TRACK_HOP / sampleRate;
   // TWO LOOKS, because no one window suits every pitch. Low notes need a
   // long window to be told apart at all (at 46 ms a harpsichord's low
   // strings, 86 Hz apart with overtones every 86 Hz, ran together and never
   // stood "clear": they came out as rumble). High ones need a short one to
   // be timed (a rising run of bells is a new note every tenth of a second).
-  const partials = [
+  const tracked = [
     ...followPitches(x, sampleRate, TRACK_N * 2, 55, 700),
     ...followPitches(x, sampleRate, TRACK_N, 700, 8000),
   ];
+  // An instrument's notes (see above). A "struck note" on a pitch that was
+  // already sounding and did not jump in loudness there is that same tone
+  // going on (a held synthesised tone swelling a little), not a pluck.
+  const struck = findStruckNotes(x, sampleRate).filter(note => !tracked.some(p => {
+    const k = Math.round(note.at / trackHop);
+    if (Math.abs(Math.log(p.mean / note.hz)) > 0.03 || p.start > k - 10 || p.end < k + 8) return false;
+    const before = p.amp[Math.max(0, k - 3 - p.start)];
+    const after = p.amp[Math.min(p.amp.length - 1, k + 6 - p.start)];
+    return after <= before * 1.5;
+  }));
+  /** Is `hz` one of the multiples of a struck note sounding at `seconds`? */
+  const inAStack = (seconds: number, hz: number): boolean => struck.some(note => {
+    if (seconds < note.at - 0.03 || seconds > note.end + 0.03) return false;
+    const m = Math.round(hz / note.hz);
+    return m >= 1 && Math.abs(hz / note.hz - m) <= 0.03 * m;
+  });
+  const partials = tracked.filter(p => {
+    // A followed pitch that BEGINS as one of a struck note's multiples, or is
+    // one for most of its life, is that note, not another. (It may well
+    // outlast the note's measured end: a string rings on quietly.)
+    let inside = 0;
+    let atBirth = 0;
+    for (let k = p.start; k <= p.end; k++) {
+      if (!inAStack(k * trackHop, p.hz[k - p.start])) continue;
+      inside++;
+      if (k < p.start + 8) atBirth++;
+    }
+    return atBirth < 5 && inside < (p.end - p.start + 1) * 0.6;
+  });
 
   // Every pitch good enough to be a note is left out of the noise, WHETHER
   // OR NOT it ends up kept as one (there is room for twelve): a clear pitch
@@ -702,6 +961,10 @@ function followNotes(x: Float32Array, sampleRate: number): { notes: FoundNote[];
     const k = Math.round(seconds / (TRACK_HOP / sampleRate));
     const now: number[] = [];
     for (const p of everyPitch) if (k >= p.start && k <= p.end) now.push(p.hz[k - p.start]);
+    for (const note of struck) {
+      if (seconds < note.at - 0.03 || seconds > note.end + 0.03) continue;
+      for (let m = 1; m * note.hz < 11000; m++) now.push(m * note.hz);
+    }
     return now;
   };
 
@@ -766,8 +1029,40 @@ function followNotes(x: Float32Array, sampleRate: number): { notes: FoundNote[];
       energy: members.reduce((s, p) => s + p.energy, 0),
     });
   }
+  // The struck notes, each with its four strongest overtones.
+  const played: FoundNote[] = struck
+    .sort((p, q) => q.energy - p.energy)
+    .slice(0, MAX_NOTES)
+    .map(note => {
+      const shape = { ...note.shape };
+      const overtones = note.amps
+        .map((amp, i) => ({ multiple: i + 1, amp }))
+        .slice(1)
+        .sort((p, q) => q.amp - p.amp)
+        .slice(0, MAX_HARMONICS)
+        .filter(o => o.amp > Math.max(...note.amps) * 0.05)
+        .sort((p, q) => p.multiple - q.multiple);
+      const strongest = note.amps.indexOf(Math.max(...note.amps)) + 1;
+      shape.attack = Math.min(arrival(x, sampleRate, strongest * note.hz, shape.start), shape.length * 0.8);
+      shape.hold = Math.max(0, Math.min(shape.hold, shape.length - shape.attack - shape.tail));
+      const hz = Math.max(30, Math.min(8000, note.hz));
+      const base = Math.max(note.amps[0], 1e-12);
+      return {
+        shape,
+        from: hz,
+        to: hz,
+        // (An overtone can be several times stronger than a low string's own note.)
+        harmonics: overtones.map(o => ({ ratio: o.multiple, level: round(Math.min(3, o.amp / base), 2) })),
+        bands: [1, ...overtones.map(o => o.multiple)].map(m => {
+          const half = Math.max(25, m * hz * 0.03);
+          return [Math.max(20, m * hz - half), m * hz + half] as const;
+        }),
+        energy: note.energy,
+      };
+    });
+  const followed = found.sort((p, q) => q.energy - p.energy).slice(0, Math.max(0, MAX_NOTES - played.length));
   return {
-    notes: found.sort((p, q) => q.energy - p.energy).slice(0, MAX_NOTES).sort((p, q) => p.shape.start - q.shape.start),
+    notes: [...played, ...followed].sort((p, q) => p.shape.start - q.shape.start),
     pitchesAt,
   };
 }

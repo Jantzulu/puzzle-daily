@@ -233,7 +233,7 @@ export const LayerPanel: React.FC<{
             onChange={ratio => setStack(stack.map((q, k) => (k === i ? { ...q, ratio } : q)), `stack-ratio-${i}`)}
           />
           <ForgeSlider
-            label="Its level" value={p.level} min={0} max={1.2} show={{ decimals: 2 }}
+            label="Its level" value={p.level} min={0} max={3} show={{ decimals: 2 }}
             onChange={level => setStack(stack.map((q, k) => (k === i ? { ...q, level } : q)), `stack-level-${i}`)}
           />
         </div>
