@@ -40,10 +40,12 @@ import { playChromeSound } from '../../utils/chromeSounds';
  * withDailyDate). The daily is chosen by the player's own calendar day, so
  * "once real levels are scheduled, it should never differ from somebody's
  * current date"; and when it does differ (a gap in the schedule serves the
- * last scheduled daily; nothing scheduled at all leaves the built-in puzzle,
- * dated January 1, 2026) the card says which puzzle this really is.
- * For a day it showed TODAY'S date instead, to hide that January 1; the
- * user chose the puzzle's date back.
+ * last scheduled daily) the card says which puzzle this really is. With
+ * nothing scheduled at all the built-in puzzle stands in for today and
+ * carries today's date (data/puzzles getTodaysPuzzle), so the card shows
+ * today.
+ * For a day it showed TODAY'S date whatever the puzzle; the user chose the
+ * puzzle's date back.
  * `date` is undefined until Game knows which puzzle that is (the same-day
  * copy on the device, or the answer from the server): the line waits empty,
  * holding its height, and fades in. A puzzle with no usable date of its own
