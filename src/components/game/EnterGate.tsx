@@ -34,11 +34,20 @@ import { playChromeSound } from '../../utils/chromeSounds';
  *     dont like the sparks or the radiant glow". Removed; do not bring
  *     them back.
  *
- * TODAY'S date, not the puzzle's own `date` field: that field is the day
- * the puzzle was MADE in the editor (and the built-in demo puzzle says
- * January 1, 2026). This only ever shows on a fresh page load, where the
- * puzzle is the daily, so the day being played is today, by the player's
- * own calendar (utils/localDate.ts, the same day the daily is chosen by).
+ * THE DATE IS THE PUZZLE'S (user call 2026-11-16): "the date associated
+ * with the puzzle they would be about to play", that is, the day the daily
+ * is SCHEDULED for (a served daily carries it in `date`; supabaseService
+ * withDailyDate). The daily is chosen by the player's own calendar day, so
+ * "once real levels are scheduled, it should never differ from somebody's
+ * current date"; and when it does differ (a gap in the schedule serves the
+ * last scheduled daily; nothing scheduled at all leaves the built-in puzzle,
+ * dated January 1, 2026) the card says which puzzle this really is.
+ * For a day it showed TODAY'S date instead, to hide that January 1; the
+ * user chose the puzzle's date back.
+ * `date` is undefined until Game knows which puzzle that is (the same-day
+ * copy on the device, or the answer from the server): the line waits empty,
+ * holding its height, and fades in. A puzzle with no usable date of its own
+ * shows today's.
  *
  * It only appears when it is needed: on a page nobody has touched yet
  * (enterGateState.ts startsEntered). Arriving at a puzzle from elsewhere in
@@ -48,8 +57,16 @@ import { playChromeSound } from '../../utils/chromeSounds';
  *
  * The card lifts a little as it fades.
  */
-export const EnterGate: React.FC<{ onEnter: () => void; onGone: () => void }> = ({ onEnter, onGone }) => {
-  const [title] = React.useState(() => puzzleDateLabel(localDateKey()) ?? '');
+export const EnterGate: React.FC<{
+  /** The puzzle's day (YYYY-MM-DD), or undefined while it is not known yet. */
+  date: string | undefined;
+  /** False until Game knows which puzzle is about to be played. */
+  known: boolean;
+  onEnter: () => void;
+  onGone: () => void;
+}> = ({ date, known, onEnter, onGone }) => {
+  const [today] = React.useState(() => puzzleDateLabel(localDateKey()) ?? '');
+  const title = known ? (puzzleDateLabel(date) ?? today) : '';
   const [lifting, setLifting] = React.useState(false);
   const darkRef = React.useRef<HTMLDivElement>(null);
   const calls = React.useRef({ onEnter, onGone });
@@ -132,8 +149,8 @@ export const EnterGate: React.FC<{ onEnter: () => void; onGone: () => void }> = 
     <div ref={darkRef} className={`entry-dark${lifting ? ' entry-dark--lifting' : ''}`}>
       <span className="entry-dark-layer entry-dark-far" aria-hidden="true" />
       <span className="entry-dark-layer entry-dark-solid" aria-hidden="true" />
-      <button type="button" className="enter-gate" aria-label={`${title}. Enter the dungeon`}>
-        <span className="enter-gate-date">{title}</span>
+      <button type="button" className="enter-gate" aria-label={title ? `${title}. Enter the dungeon` : 'Enter the dungeon'}>
+        <span className={`enter-gate-date${title ? '' : ' enter-gate-date--waiting'}`}>{title}</span>
         <span className="enter-gate-rule" aria-hidden="true" />
         <span className="enter-gate-hint hud-label">Tap to enter</span>
       </button>

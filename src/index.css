@@ -4998,12 +4998,21 @@ button.dir-picker__tab:not(.dir-picker__tab--active) .dir-picker__tab-text {
   text-align: center;
   text-wrap: balance;
   text-shadow: 0 1px 0 rgba(0, 0, 0, 0.85);
+  /* The date arrives once the day's puzzle is known (EnterGate.tsx): the
+     line keeps its height while it waits, and fades in. */
+  min-height: 30px;
+  transition: opacity 0.4s ease-out;
+}
+
+.enter-gate-date--waiting {
+  opacity: 0;
 }
 
 @media (min-width: 768px) {
   .enter-gate-date {
     font-size: 32px;
     line-height: 36px;
+    min-height: 36px;
   }
 }
 

@@ -722,6 +722,12 @@ export const Game: React.FC<GameProps> = ({
     ).length === 0,
   } : null;
 
+  // Is the puzzle on the board the one the player is about to play? Known at
+  // once from the same-day copy on the device (or a puzzle handed in); else
+  // when the server has answered, or failed to. The entry card's date waits
+  // for it (EnterGate.tsx; user call 2026-11-16).
+  const [dailySettled, setDailySettled] = useState(() => !!puzzleProp || !!cachedDaily);
+
   // Cloud puzzle number (from daily_schedule)
   const [puzzleNumber, setPuzzleNumber] = useState<number | null>(() => cachedDaily?.puzzleNumber ?? null);
 
@@ -904,6 +910,7 @@ export const Game: React.FC<GameProps> = ({
     fetchCloudTodaysPuzzle().then(async (result) => {
       if (cancelled) return;
       if (result.status !== 'ok') {
+        setDailySettled(true);
         // Cloud unreachable with no same-day cache: the player is on the
         // local fallback and deserves to know.
         if (result.status === 'error' && !cachedDaily && !puzzleProp) {
@@ -939,8 +946,10 @@ export const Game: React.FC<GameProps> = ({
         setPlacementAim(null);
         return cloudPuzzle;
       });
+      setDailySettled(true);
     }).catch(() => {
       if (cancelled) return;
+      setDailySettled(true);
       if (!cachedDaily && !puzzleProp) setDailyNotice('offline');
     });
     return () => { cancelled = true; };
@@ -2674,6 +2683,8 @@ export const Game: React.FC<GameProps> = ({
               {enterGateUp && (
                 // Art keeps loading behind the dark (it hangs off <body>).
                 <EnterGate
+                  date={currentPuzzle.date}
+                  known={dailySettled}
                   onEnter={() => { enteredByTap.current = true; setSlowEntryFor(currentPuzzle.id); setEntered(true); }}
                   onGone={() => setEnterGateUp(false)}
                 />
