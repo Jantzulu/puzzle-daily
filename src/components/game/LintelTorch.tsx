@@ -1,7 +1,6 @@
 import React from 'react';
 import { LINTEL_TORCH_SHEET as SHEET } from '../../assets/ui-kits/lintelTorch';
 import { useCrispSnap } from './panelSkins';
-import { getRunMood, onRunMood } from '../shared/runMood';
 import { playChromeSound } from '../../utils/chromeSounds';
 import { entryIsDark, onEntryDark } from './enterGateState';
 
@@ -17,9 +16,12 @@ const Z = 2;
  * out (a puff of smoke, the light dies away), and another tap relights it.
  * Nothing remembers it past the visit.
  *
- * It also reacts to the run (user pick 2026-11-13; shared/runMood.ts): a
- * lost run gutters it and the retry relights it. A torch with a `phase`
- * follows its partner a beat later.
+ * It does NOT react to the run. For three days (2026-11-13 to 16) a lost
+ * run put the torches out and the retry relit them; the user removed it:
+ * on a phone the torches are off screen when a run ends, so their sounds
+ * played "for a not obvious reason". Do not bring it back.
+ * A torch with a `phase` follows its partner a beat later when the dark
+ * entry lights them (EnterGate.tsx).
  *
  * COST (the user asked): no script runs per frame. The flame is a Web
  * Animations transform loop and the light a CSS opacity/scale flicker,
@@ -30,7 +32,7 @@ const Z = 2;
  */
 export const LintelTorch: React.FC<{ phase?: number }> = ({ phase = 0 }) => {
   // Out while the page waits in the dark for its first tap (EnterGate.tsx).
-  const [lit, setLit] = React.useState(() => getRunMood() !== 'defeat' && !entryIsDark());
+  const [lit, setLit] = React.useState(() => !entryIsDark());
   // Whole-px placement: the lettering's flex centring can land it on a
   // half pixel, which would blur the art.
   const snapRef = useCrispSnap<HTMLButtonElement>(true);
@@ -75,24 +77,14 @@ export const LintelTorch: React.FC<{ phase?: number }> = ({ phase = 0 }) => {
     };
   }, [lit, fw, phase]);
 
-  // Going out and catching each make a sound (chromeSounds.ts), whether a
-  // tap or the run did it; not when the page first opens, and not from a
-  // torch that is off screen.
+  // Going out and catching each make a sound (chromeSounds.ts): on a tap,
+  // and as the dark entry lights them; not when the page first opens, and
+  // not from a torch that is off screen.
   const wasLit = React.useRef(lit);
   React.useEffect(() => {
     if (wasLit.current !== lit && onScreen.current) playChromeSound(lit ? 'torch-lit' : 'torch-out', phase ? 1 : 0);
     wasLit.current = lit;
   }, [lit, phase]);
-
-  // The run's mood: out on a loss, lit again on the retry.
-  React.useEffect(() => {
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const off = onRunMood(mood => {
-      clearTimeout(timer);
-      timer = setTimeout(() => setLit(mood !== 'defeat'), phase ? FOLLOW_MS : 0);
-    });
-    return () => { off(); clearTimeout(timer); };
-  }, [phase]);
 
   // THE DARK ENTRY: the tap that enters the page lights the torches, the
   // second a beat after the first, each with its sound.
@@ -100,7 +92,7 @@ export const LintelTorch: React.FC<{ phase?: number }> = ({ phase = 0 }) => {
     let timer: ReturnType<typeof setTimeout> | undefined;
     const off = onEntryDark(dark => {
       clearTimeout(timer);
-      if (!dark) timer = setTimeout(() => setLit(getRunMood() !== 'defeat'), phase ? FOLLOW_MS : 0);
+      if (!dark) timer = setTimeout(() => setLit(true), phase ? FOLLOW_MS : 0);
     });
     return () => { off(); clearTimeout(timer); };
   }, [phase]);

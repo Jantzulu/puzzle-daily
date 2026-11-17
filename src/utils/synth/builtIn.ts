@@ -676,8 +676,8 @@ const pageTurn: SynthSound = {
 };
 
 export const BUILT_IN_SOUNDS: readonly BuiltInSound[] = [
-  { id: 'torch-out', name: 'Torch goes out', where: 'A lintel torch is put out, by a tap or a lost run', sound: torchOut },
-  { id: 'torch-lit', name: 'Torch lights', where: 'A lintel torch is lit, by a tap or a retry', sound: torchLit },
+  { id: 'torch-out', name: 'Torch goes out', where: 'A lintel torch is put out by a tap', sound: torchOut },
+  { id: 'torch-lit', name: 'Torch lights', where: 'A lintel torch is lit: by a tap, or as the dark entry lifts', sound: torchLit },
   { id: 'scroll-roll', name: 'Scroll rolls up', where: 'The quest scroll rolls shut (0.5s)', sound: scrollPaper(0.5, 2700, 1250, 1.2, 0.2) },
   { id: 'scroll-unroll', name: 'Scroll unfurls', where: 'The quest scroll opens (0.65s)', sound: scrollPaper(0.65, 1150, 2900, 0.1, 0.9) },
   { id: 'scroll-land', name: 'Scroll lands', where: 'The rolled scroll presses onto the board, and lands at either end of its toss', sound: scrollLand },
