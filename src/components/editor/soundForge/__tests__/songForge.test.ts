@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
-  STEPS_PER_BAR, hzKey, isSong, keyHz, noteEvents, noteSound, ringOut, songSeconds, soundRoot, stepSeconds,
+  STEPS_PER_BAR, hzKey, isSong, keyHz, noteEvents, notePitch, noteSound, ringOut, songSeconds, soundRoot, stepSeconds,
   type SongTrack, type SynthSong,
 } from '../../../../utils/synth/song';
 import type { SynthSound } from '../../../../utils/synth/types';
 import {
-  INSTRUMENTS, SCALES, addNote, fitNote, gridRows, inScale, keyName, newSong, noteAt, noteCount, removeNote, replaceNote,
+  DRUM_KIT, INSTRUMENTS, SCALES, addNote, drumTrack, fitNote, gridRows, inScale, keyName, kitRows, newSong, noteAt, noteCount, removeNote, replaceNote,
   scaleById, songReducer, trackFrom, withBars, type SongState,
 } from '../songModel';
 
@@ -111,6 +111,45 @@ describe('a song: what plays when', () => {
     expect(isSong({ tempo: 120, length: 16 })).toBe(false);
     expect(isSong({ version: 1, level: 1, layers: [] })).toBe(false); // a sound
     expect(isSong({ ...song(), tracks: [{ id: 'x', notes: [{ at: 0 }], instrument: tone(440) }] })).toBe(false);
+  });
+});
+
+describe('a drum part', () => {
+  it('is a kit of eight drums, each a sound of its own, one to a row', () => {
+    const drums = drumTrack();
+    expect(drums.kit).toHaveLength(8);
+    expect(new Set(drums.kit!.map(d => d.key)).size).toBe(8);
+    // Cymbals at the top of the grid, the kick at the bottom.
+    expect(kitRows(drums).map(r => r.label)).toEqual(['Crash', 'Open hat', 'Hat', 'Clap', 'High tom', 'Low tom', 'Snare', 'Kick']);
+    expect(kitRows(drums).map(r => r.key)).toEqual(DRUM_KIT.map(d => d.key));
+    expect(isSong(song({ tracks: [drums] }))).toBe(true);
+    for (const drum of drums.kit!) {
+      expect(drum.sound.layers.length).toBeGreaterThan(0);
+      for (const layer of drum.sound.layers) {
+        expect(layer.length).toBeGreaterThan(0);
+        expect(layer.tail).toBeLessThan(layer.length);
+      }
+    }
+  });
+
+  it('plays the drum a note is on, as it is: not higher or lower', () => {
+    const drums = { ...drumTrack(), notes: [{ at: 0, length: 1, key: 36 }, { at: 4, length: 1, key: 38 }, { at: 4, length: 1, key: 99 }] };
+    const events = noteEvents(song({ tracks: [drums] }));
+    // The note on a key with no drum plays nothing.
+    expect(events.map(e => [e.note.key, e.pitch])).toEqual([[36, 1], [38, 1]]);
+    expect(notePitch(drums, 49)).toBe(1);
+    const kick = drums.kit!.find(d => d.key === 36)!.sound;
+    const snare = drums.kit!.find(d => d.key === 38)!.sound;
+    expect(noteSound(drums, drums.notes[0], 0.125).layers).toEqual(kick.layers);
+    expect(noteSound(drums, drums.notes[1], 0.125).layers).toEqual(snare.layers);
+    // A soft hit, on a part turned down, in a song turned down.
+    expect(noteSound({ ...drums, level: 0.5 }, { at: 0, length: 1, key: 36, level: 0.5 }, 0.125, 0.5).level).toBeCloseTo(0.125, 9);
+  });
+
+  it('rings on after the end for as long as its longest drum', () => {
+    const drums = drumTrack();
+    const crash = drums.kit!.find(d => d.key === 49)!.sound;
+    expect(ringOut(song({ tracks: [drums] }))).toBeCloseTo(crash.layers[0].length, 6);
   });
 });
 

@@ -5,15 +5,16 @@
 // what it read into a song.
 //
 // WHAT IS KEPT: every part's notes, on the grid's sixteenths; the first
-// tempo; an instrument of the same family as the one the file asked for.
-// WHAT IS NOT, and the summary says so each time it matters: the drum kit
-// (the Forge has no kit: in MIDI each key of that part is a different drum),
-// tempo changes after the first, anything finer than a sixteenth (triplets
-// are pulled onto the grid), more than eight parts, more than MAX_BARS.
+// tempo; an instrument of the same family as the one the file asked for;
+// the drums, on the Forge's kit of eight (MIDI has some sixty drums and
+// rattles: each is played on the nearest of the eight, see drumFor).
+// WHAT IS NOT, and the summary says so each time it matters: tempo changes
+// after the first, anything finer than a sixteenth (triplets are pulled
+// onto the grid), more than eight parts, more than MAX_BARS.
 
 import { MAX_BARS, STEPS_PER_BAR, STEPS_PER_BEAT, type SongNote, type SynthSong } from '../../../utils/synth/song';
 import { readMidi, type MidiFile, type MidiPart } from '../../../utils/synth/midi';
-import { INSTRUMENTS, SCALES, inScale, trackFrom, type Instrument } from './songModel';
+import { INSTRUMENTS, SCALES, drumTrack, inScale, trackFrom, type Instrument } from './songModel';
 
 export const MAX_MIDI_BYTES = 2 * 1024 * 1024;
 const MAX_PARTS = 8;
@@ -46,6 +47,27 @@ export function instrumentFor(program: number): Instrument {
   }
 }
 
+/**
+ * The drum of the Forge's kit (by its key) that stands in for a General
+ * MIDI drum key, or null for one with nothing like it in the kit (whistles,
+ * a triangle, wood blocks: better left out than played as a wrong drum).
+ */
+export function drumFor(key: number): number | null {
+  if (key === 35 || key === 36) return 36; // bass drums
+  if (key === 37 || key === 38 || key === 40) return 38; // side stick, snares
+  if (key === 39) return 39; // hand clap
+  if (key === 41 || key === 43 || key === 45 || key === 47) return 45; // floor and low toms
+  if (key === 48 || key === 50) return 50; // high toms
+  if (key === 42 || key === 44) return 42; // closed and pedal hi-hat
+  if (key === 46) return 46; // open hi-hat
+  if (key === 49 || key === 52 || key === 55 || key === 57) return 49; // crash, china, splash
+  if (key === 51 || key === 53 || key === 59) return 42; // ride cymbals: a steady tick
+  if (key === 54 || key === 69 || key === 70 || key === 82) return 42; // tambourine, cabasa, maracas, shaker
+  if (key === 60 || key === 62 || key === 65) return 50; // high bongo, conga, timbale
+  if (key === 61 || key === 63 || key === 64 || key === 66) return 45; // low bongo, congas, timbale
+  return null;
+}
+
 export interface ImportedSong {
   song: SynthSong;
   /** One line for the person: what was made of the file, and what was left out. */
@@ -55,15 +77,18 @@ export interface ImportedSong {
 export function songFromMidi(midi: MidiFile): ImportedSong {
   const perStep = midi.ticksPerBeat / STEPS_PER_BEAT;
   const toStep = (tick: number) => Math.round(tick / perStep);
-  const drums = midi.parts.filter(p => p.channel === DRUM_CHANNEL);
+  // Every drum hit of the file, whichever of its tracks it is on: one drum part.
+  const hits = midi.parts.filter(p => p.channel === DRUM_CHANNEL).flatMap(p => p.notes).filter(n => drumFor(n.key) !== null);
   const pitched = midi.parts.filter(p => p.channel !== DRUM_CHANNEL && p.notes.length > 0);
-  if (pitched.length === 0) throw new Error(drums.length > 0 ? 'only drums' : 'no notes');
-  // The busiest eight, kept in the file's order.
-  const kept = [...pitched].sort((a, b) => b.notes.length - a.notes.length).slice(0, MAX_PARTS);
+  if (pitched.length === 0 && hits.length === 0) throw new Error('no notes');
+  // The busiest eight (seven beside a drum part), kept in the file's order.
+  const room = MAX_PARTS - (hits.length > 0 ? 1 : 0);
+  const kept = [...pitched].sort((a, b) => b.notes.length - a.notes.length).slice(0, room);
   const parts = pitched.filter(p => kept.includes(p));
 
   // It starts where its first note does: the silence before it is left behind.
-  const lead = Math.floor(Math.min(...parts.map(p => Math.min(...p.notes.map(n => toStep(n.tick))))) / STEPS_PER_BAR) * STEPS_PER_BAR;
+  const firstTick = Math.min(...parts.map(p => Math.min(...p.notes.map(n => n.tick))), ...hits.map(n => n.tick));
+  const lead = Math.floor(toStep(firstTick) / STEPS_PER_BAR) * STEPS_PER_BAR;
   const maxSteps = MAX_BARS * STEPS_PER_BAR;
   let cut = 0;
   let pulled = 0;
@@ -99,21 +124,42 @@ export function songFromMidi(midi: MidiFile): ImportedSong {
     const made = trackFrom(part.name || `${voice.label} ${i + 1}`, voice.make(), voice.held);
     return { ...made, notes };
   }).filter(track => track.notes.length > 0);
-  if (tracks.length === 0) throw new Error('no notes');
 
   // The scale the notes keep to, if they keep to one: its rows are the grid.
+  // (Before the drums are added: a drum's key is not a pitch.)
   const keys = tracks.flatMap(track => track.notes.map(n => n.key));
+
+  if (hits.length > 0) {
+    const taken = new Set<string>();
+    const notes: SongNote[] = [];
+    for (const hit of hits) {
+      const at = toStep(hit.tick) - lead;
+      if (at >= maxSteps) { cut++; continue; }
+      const key = drumFor(hit.key)!;
+      const id = `${at}:${key}`;
+      if (taken.has(id)) continue;
+      taken.add(id);
+      const level = Math.round(Math.max(0.3, Math.min(1.3, hit.velocity / 96)) * 20) / 20;
+      notes.push({ at, length: 1, key, ...(level !== 1 ? { level } : {}) });
+      lastEnd = Math.max(lastEnd, at + 1);
+    }
+    notes.sort((a, b) => a.at - b.at || a.key - b.key);
+    if (notes.length > 0) tracks.push({ ...drumTrack(), notes });
+  }
+  if (tracks.length === 0) throw new Error('no notes');
   let view = { home: 0, scale: 'all', low: 48, high: 84 };
   let bestFit = 0;
   for (const scale of SCALES.filter(s => s.id === 'major' || s.id === 'minor')) {
     for (let home = 0; home < 12; home++) {
       const fit = keys.filter(k => inScale(k, home, scale)).length / keys.length;
       // (Every major scale is also a minor one three keys down: the first found is kept.)
-      if (fit > bestFit + 1e-9) { bestFit = fit; if (fit >= 0.97) view = { ...view, home, scale: scale.id }; }
+      if (keys.length > 0 && fit > bestFit + 1e-9) { bestFit = fit; if (fit >= 0.97) view = { ...view, home, scale: scale.id }; }
     }
   }
-  view.low = Math.max(12, Math.floor(Math.min(...keys) / 12) * 12);
-  view.high = Math.min(108, Math.ceil((Math.max(...keys) + 1) / 12) * 12);
+  if (keys.length > 0) {
+    view.low = Math.max(12, Math.floor(Math.min(...keys) / 12) * 12);
+    view.high = Math.min(108, Math.ceil((Math.max(...keys) + 1) / 12) * 12);
+  }
 
   const bars = Math.min(MAX_BARS, Math.max(1, Math.ceil(lastEnd / STEPS_PER_BAR)));
   const song: SynthSong = {
@@ -128,8 +174,8 @@ export function songFromMidi(midi: MidiFile): ImportedSong {
 
   const total = tracks.reduce((sum, track) => sum + track.notes.length, 0);
   let summary = `${tracks.length} part${tracks.length === 1 ? '' : 's'}, ${total} notes, ${bars} bar${bars === 1 ? '' : 's'} at ${song.tempo} beats a minute.`;
-  if (drums.length > 0) summary += ' The drum part was left out (there is no drum kit yet).';
-  if (pitched.length > parts.length) summary += ` Only the ${MAX_PARTS} busiest parts were kept, of ${pitched.length}.`;
+  if (hits.length > 0) summary += " Its drums are played on the Forge's kit.";
+  if (pitched.length > parts.length) summary += ` Only the ${room} busiest parts were kept, of ${pitched.length}.`;
   if (cut > 0) summary += ` It was cut at ${MAX_BARS} bars.`;
   if (midi.tempoChanges > 0) summary += ' Its changes of speed were not followed.';
   if (counted > 0 && pulled > counted * 0.1) summary += ' Many of its notes fall between the squares (triplets or a loose performance) and were moved to the nearest.';

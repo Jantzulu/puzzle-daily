@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { MidiError, readMidi } from '../../../../utils/synth/midi';
 import { STEPS_PER_BAR, isSong } from '../../../../utils/synth/song';
-import { instrumentFor, songFromMidi } from '../importMidi';
+import { drumFor, instrumentFor, songFromMidi } from '../importMidi';
 
 // A MIDI file is a few plain bytes, so the ones used here are written out by
 // hand: what is in them is known exactly.
@@ -79,7 +79,7 @@ describe('a song from a MIDI file', () => {
     const { song, summary } = songFromMidi(readMidi(tune()));
     expect(isSong(song)).toBe(true);
     expect(song.tempo).toBe(120);
-    expect(song.tracks).toHaveLength(1); // the drum part is left out
+    expect(song.tracks).toHaveLength(2); // the tune, and the drums
     const part = song.tracks[0];
     expect(part.name).toBe('Melody');
     expect(part.held).toBe(true); // a flute holds its notes
@@ -90,8 +90,8 @@ describe('a song from a MIDI file', () => {
     ]);
     expect(song.length % STEPS_PER_BAR).toBe(0);
     expect(song.length).toBe(2 * STEPS_PER_BAR);
-    expect(summary).toMatch(/1 part, 3 notes, 2 bars at 120/);
-    expect(summary).toMatch(/drum part was left out/);
+    expect(summary).toMatch(/2 parts, 4 notes, 2 bars at 120/);
+    expect(summary).toMatch(/drums are played on the Forge's kit/);
     expect(summary).toMatch(/changes of speed/);
   });
 
@@ -127,10 +127,48 @@ describe('a song from a MIDI file', () => {
     expect(song.length).toBe(STEPS_PER_BAR);
   });
 
+  it('puts the drums on the kit: one part, each hit on the nearest of its eight drums', () => {
+    const { song } = songFromMidi(readMidi(tune()));
+    const drums = song.tracks[1];
+    expect(drums.name).toBe('Drums');
+    expect(drums.kit).toHaveLength(8);
+    // The kick struck at a beat and a half (square 6), a little harder than firm.
+    expect(drums.notes).toEqual([{ at: 6, length: 1, key: 36, level: 1.15 }]);
+    // The scale is read from the tune alone: a drum's key is not a pitch.
+    expect(song.view).toMatchObject({ scale: 'major', home: 0 });
+
+    // General MIDI's many drums, on the kit's eight.
+    expect([35, 36].map(drumFor)).toEqual([36, 36]);
+    expect([37, 38, 40].map(drumFor)).toEqual([38, 38, 38]);
+    expect([42, 44, 51].map(drumFor)).toEqual([42, 42, 42]);
+    expect(drumFor(46)).toBe(46);
+    expect([49, 57].map(drumFor)).toEqual([49, 49]);
+    expect([41, 47, 48, 50].map(drumFor)).toEqual([45, 45, 50, 50]);
+    expect(drumFor(39)).toBe(39);
+    expect(drumFor(81)).toBeNull(); // a triangle: nothing like it in the kit
+  });
+
+  it('makes a song of a file that is drums alone', () => {
+    const beat = file(header(1, BEAT, 0), chunk('MTrk', [
+      ...ev(0, 0x99, 36, 96), ...ev(0, 0x99, 42, 96), // kick and hat together
+      ...ev(BEAT, 0x99, 38, 96), ...ev(0, 0x99, 42, 96), // snare and hat a beat later
+      ...ev(0, 0x99, 81, 96), // and a triangle, which the kit has not got
+      ...END,
+    ]));
+    const { song } = songFromMidi(readMidi(beat));
+    expect(isSong(song)).toBe(true);
+    expect(song.tracks).toHaveLength(1);
+    expect(song.tracks[0].notes).toEqual([
+      { at: 0, length: 1, key: 36 }, { at: 0, length: 1, key: 42 },
+      { at: 4, length: 1, key: 38 }, { at: 4, length: 1, key: 42 },
+    ]);
+    expect(song.length).toBe(STEPS_PER_BAR);
+  });
+
   it('says so when there is nothing it can play', () => {
-    const drumsOnly = file(header(1, BEAT, 0), chunk('MTrk', [...ev(0, 0x99, 36, 100), ...ev(60, 0x89, 36, 0), ...END]));
-    expect(() => songFromMidi(readMidi(drumsOnly))).toThrow('only drums');
     expect(() => songFromMidi(readMidi(file(header(1, BEAT, 0), chunk('MTrk', END))))).toThrow('no notes');
+    const triangleOnly = file(header(1, BEAT, 0), chunk('MTrk', [...ev(0, 0x99, 81, 100), ...ev(60, 0x89, 81, 0), ...END]));
+    expect(() => songFromMidi(readMidi(triangleOnly))).toThrow('no notes');
   });
 
   it('picks an instrument by family', () => {

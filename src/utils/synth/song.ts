@@ -49,6 +49,15 @@ export interface SongNote {
   level?: number;
 }
 
+/** One drum of a kit: the key that plays it, what it is called, and its sound. */
+export interface SongDrum {
+  key: number;
+  name: string;
+  sound: SynthSound;
+  /** The name of the sound standing in for the kit's own, when one is. */
+  from?: string;
+}
+
 export interface SongTrack {
   id: string;
   name: string;
@@ -62,6 +71,15 @@ export interface SongTrack {
    * drawn (a harp, a bell, a drum).
    */
   held?: boolean;
+  /**
+   * A DRUM KIT (user go-ahead 2026-11-17). A part with a kit is not one
+   * instrument played higher and lower: each KEY is a different drum, played
+   * as it is. A note's key picks the drum; a note on a key the kit does not
+   * have plays nothing. The keys are the ones MIDI gives drums (36 the kick,
+   * 38 the snare, 42 the closed hat...), so a MIDI drum part reads straight
+   * in. `instrument`, `root` and `held` are not used by such a part.
+   */
+  kit?: SongDrum[];
   level: number;
   muted?: boolean;
   notes: SongNote[];
@@ -133,9 +151,9 @@ export function soundRoot(sound: SynthSound): number {
  * does not.
  */
 export function noteSound(track: SongTrack, note: SongNote, seconds: number, songLevel = 1): SynthSound {
-  const instrument = track.instrument;
+  const instrument = track.kit?.find(d => d.key === note.key)?.sound ?? track.instrument;
   const level = instrument.level * track.level * songLevel * (note.level ?? 1);
-  if (!track.held) return { ...instrument, level };
+  if (!track.held || track.kit) return { ...instrument, level };
   return {
     ...instrument,
     level,
@@ -150,6 +168,11 @@ export function noteSound(track: SongTrack, note: SongNote, seconds: number, son
       };
     }),
   };
+}
+
+/** What to multiply the track's sound's pitch by to play a key: a drum is played as it is. */
+export function notePitch(track: SongTrack, key: number): number {
+  return track.kit ? 1 : Math.pow(2, (key - track.root) / 12);
 }
 
 export interface NoteEvent {
@@ -175,12 +198,13 @@ export function noteEvents(song: SynthSong): NoteEvent[] {
     if (track.muted || !(track.level > 0)) return;
     for (const note of track.notes) {
       if (!(note.length > 0) || note.at < 0 || note.at >= song.length) continue;
+      if (track.kit && !track.kit.some(d => d.key === note.key)) continue; // no such drum
       events.push({
         time: note.at * step,
         seconds: note.length * step,
         track: t,
         note,
-        pitch: Math.pow(2, (note.key - track.root) / 12),
+        pitch: notePitch(track, note.key),
       });
     }
   });
@@ -216,7 +240,8 @@ export function ringOut(song: SynthSong): number {
   let longest = 0;
   for (const track of song.tracks) {
     if (track.muted) continue;
-    longest = Math.max(longest, track.held ? Math.max(0, ...track.instrument.layers.map(l => l.tail)) : layersLength(track.instrument));
+    if (track.kit) longest = Math.max(longest, ...track.kit.map(d => layersLength(d.sound)));
+    else longest = Math.max(longest, track.held ? Math.max(0, ...track.instrument.layers.map(l => l.tail)) : layersLength(track.instrument));
   }
   return Math.min(4, longest);
 }
@@ -245,5 +270,6 @@ export function isSong(value: unknown): value is SynthSong {
   const v = value as SynthSong | null;
   return !!v && typeof v === 'object' && typeof v.tempo === 'number' && typeof v.length === 'number' && Array.isArray(v.tracks)
     && v.tracks.every(t => t && typeof t.id === 'string' && Array.isArray(t.notes) && !!t.instrument && Array.isArray(t.instrument.layers)
+      && (t.kit === undefined || (Array.isArray(t.kit) && t.kit.every(d => d && typeof d.key === 'number' && !!d.sound && Array.isArray(d.sound.layers))))
       && t.notes.every(n => n && typeof n.at === 'number' && typeof n.length === 'number' && typeof n.key === 'number'));
 }

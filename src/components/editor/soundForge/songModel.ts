@@ -4,7 +4,7 @@
 // note). Plain functions: no React, no audio, so they can be tested.
 
 import { HIGHEST_KEY, LOWEST_KEY, MAX_BARS, STEPS_PER_BAR, soundRoot, type SongNote, type SongTrack, type SynthSong } from '../../../utils/synth/song';
-import type { SynthSound } from '../../../utils/synth/types';
+import type { SynthLayer, SynthSound } from '../../../utils/synth/types';
 import { LAYER_STARTERS, NOTE_NAMES } from './forgeModel';
 
 // ---- scales -----------------------------------------------------------------------
@@ -47,6 +47,8 @@ export interface Row {
   key: number;
   /** A note sits on this key although the scale does not have it: shown so the note can be seen and moved. */
   stray: boolean;
+  /** A drum's row: its name, shown in place of the key's. */
+  label?: string;
 }
 
 /**
@@ -102,8 +104,94 @@ export const INSTRUMENTS: readonly Instrument[] = [
   fromLayer('blip', false),
 ];
 
+// ---- the drum kit -------------------------------------------------------------------
+// Eight drums, each a Forge sound of a layer or two, built the way drum
+// machines have always built them: a kick is a low note that drops, a snare
+// a crack of noise over a short note, a hat a tick of very high noise, a
+// cymbal the same let ring. None has been heard by anyone: like the
+// instruments they are there to be played, and any of them can be swapped
+// for a sound made in the Sounds half. Their levels were set by measuring
+// them beside the instruments (the kick peaks at about twice the harp, the
+// snare a little under the kick, hats and cymbals level with the harp),
+// not by ear. The keys are General MIDI's.
+
+export interface KitDrum {
+  key: number;
+  name: string;
+  hint: string;
+  make: () => SynthSound;
+}
+
+type Recipe = Omit<SynthLayer, 'id' | 'start' | 'floor'> & { start?: number; floor?: number };
+const drumSound = (...layers: Recipe[]): SynthSound => ({
+  version: 1,
+  level: 1,
+  layers: layers.map((layer, i) => ({ id: String.fromCharCode(97 + i), start: 0, floor: 0.02, ...layer })),
+});
+const highs = (hz: number) => [{ type: 'highpass' as const, cutoff: { from: hz, to: hz } }];
+
+/** The kit, in the order its rows are shown: cymbals at the top, the kick at the bottom. */
+export const DRUM_KIT: readonly KitDrum[] = [
+  {
+    key: 49, name: 'Crash', hint: 'A cymbal struck and left to ring: the start of a section',
+    make: () => drumSound({ name: 'Crash', source: 'noise', length: 0.9, level: 0.16, attack: 0.001, hold: 0, floor: 0.01, tail: 0.12, noiseSeed: 0.2, filters: highs(4500) }),
+  },
+  {
+    key: 46, name: 'Open hat', hint: 'The hi-hat left open: a short splash',
+    make: () => drumSound({ name: 'Open hat', source: 'noise', length: 0.26, level: 0.14, attack: 0.001, hold: 0, tail: 0.05, noiseSeed: 0.9, filters: highs(7000) }),
+  },
+  {
+    key: 42, name: 'Hat', hint: 'The hi-hat closed: a tick. The steady pulse of most beats',
+    make: () => drumSound({ name: 'Hat', source: 'noise', length: 0.045, level: 0.16, attack: 0.001, hold: 0, tail: 0.012, noiseSeed: 0.6, filters: highs(7000) }),
+  },
+  {
+    key: 39, name: 'Clap', hint: 'Hands clapped: three quick bursts of noise that blur into one',
+    make: () => {
+      const burst = (start: number, length: number, level: number): Recipe => ({
+        name: 'Clap', source: 'noise', start, length, level, attack: 0.001, hold: 0, tail: Math.min(0.03, length / 3), noiseSeed: 1.2 + start * 7,
+        filters: [{ type: 'bandpass', q: 1.2, cutoff: { from: 1200, to: 1200 } }],
+      });
+      return drumSound(burst(0, 0.012, 0.5), burst(0.013, 0.012, 0.5), burst(0.026, 0.15, 0.6));
+    },
+  },
+  {
+    key: 50, name: 'High tom', hint: 'A small drum: a note that drops and rings a little',
+    make: () => drumSound({ name: 'High tom', source: 'tone', wave: 'sine', length: 0.2, level: 0.28, attack: 0.002, hold: 0, tail: 0.03, pitch: { from: 270, to: 170, arriveAt: 0.08 } }),
+  },
+  {
+    key: 45, name: 'Low tom', hint: 'A bigger drum, lower',
+    make: () => drumSound({ name: 'Low tom', source: 'tone', wave: 'sine', length: 0.26, level: 0.3, attack: 0.002, hold: 0, tail: 0.04, pitch: { from: 180, to: 100, arriveAt: 0.1 } }),
+  },
+  {
+    key: 38, name: 'Snare', hint: 'The crack on the second and fourth beat: noise over a short note',
+    make: () => drumSound(
+      { name: 'Rattle', source: 'noise', length: 0.15, level: 0.2, attack: 0.001, hold: 0, tail: 0.03, noiseSeed: 1.4, filters: highs(1100) },
+      { name: 'Skin', source: 'tone', wave: 'triangle', length: 0.09, level: 0.2, attack: 0.001, hold: 0, tail: 0.02, pitch: { from: 230, to: 170, arriveAt: 0.04 } },
+    ),
+  },
+  {
+    key: 36, name: 'Kick', hint: 'The bass drum: the thump on the beat',
+    make: () => drumSound(
+      { name: 'Thump', source: 'tone', wave: 'sine', length: 0.22, level: 0.42, attack: 0.002, hold: 0.01, tail: 0.04, pitch: { from: 170, to: 52, arriveAt: 0.08 } },
+      { name: 'Beater', source: 'noise', length: 0.008, level: 0.1, attack: 0, hold: 0, tail: 0.003, noiseSeed: 0.5, filters: highs(1500) },
+    ),
+  },
+];
+
+/** The rows of a drum part's grid: one to a drum, in the kit's order. */
+export function kitRows(track: SongTrack): Row[] {
+  return (track.kit ?? []).map(drum => ({ key: drum.key, stray: false, label: drum.name }));
+}
+
 let counter = 0;
 export const newTrackId = (): string => `t${Date.now().toString(36)}${(counter++).toString(36)}`;
+
+/** A drum part with the kit and no hits yet. */
+export function drumTrack(name = 'Drums'): SongTrack {
+  const kit = DRUM_KIT.map(drum => ({ key: drum.key, name: drum.name, sound: drum.make() }));
+  const kick = kit[kit.length - 1];
+  return { id: newTrackId(), name, instrument: kick.sound, root: kick.key, level: 1, notes: [], kit };
+}
 
 /** A track playing `sound`, with no notes yet. */
 export function trackFrom(name: string, sound: SynthSound, held: boolean): SongTrack {

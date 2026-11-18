@@ -7,7 +7,7 @@ import { clearSoundCache } from '../../../utils/gameSounds';
 import { soundManager } from '../../../utils/soundManager';
 import {
   BEATS_PER_BAR, HIGHEST_KEY, LOWEST_KEY, MAX_BARS, MAX_TEMPO, MIN_TEMPO, STEPS_PER_BAR, STEPS_PER_BEAT,
-  isSong, noteSound, songSeconds, soundRoot, stepSeconds, type SongNote, type SongTrack, type SynthSong,
+  isSong, notePitch, noteSound, songSeconds, soundRoot, stepSeconds, type SongDrum, type SongNote, type SongTrack, type SynthSong,
 } from '../../../utils/synth/song';
 import { playSong, type SongPlayback } from '../../../utils/synth/songPlayer';
 import { ForgeChip, ForgeSection, ForgeSlider, ForgeToggle } from './ForgeControls';
@@ -15,7 +15,7 @@ import { NOTE_NAMES, cloneSound } from './forgeModel';
 import { MAX_MIDI_BYTES, songFromMidiFile } from './importMidi';
 import { MidiError } from '../../../utils/synth/midi';
 import { PianoRoll } from './PianoRoll';
-import { INSTRUMENTS, SCALES, cloneSong, gridRows, newSong, noteCount, sameSong, scaleById, songReducer, trackFrom, withBars } from './songModel';
+import { DRUM_KIT, INSTRUMENTS, SCALES, cloneSong, drumTrack, gridRows, kitRows, newSong, noteCount, sameSong, scaleById, songReducer, trackFrom, withBars } from './songModel';
 import { auditionSound } from './soundPreview';
 
 // ============================================================================
@@ -134,7 +134,7 @@ export const SongForge: React.FC<{ /** False while the Sounds half is on show: i
     if (!song || !track) return;
     const seconds = steps * stepSeconds(song);
     const note: SongNote = { at: 0, length: steps, key };
-    auditionSound(noteSound(track, note, seconds, song.level), { pitch: Math.pow(2, (key - track.root) / 12) });
+    auditionSound(noteSound(track, note, seconds, song.level), { pitch: notePitch(track, key) });
   };
 
   // ---- editing --------------------------------------------------------------
@@ -180,7 +180,6 @@ export const SongForge: React.FC<{ /** False while the Sounds half is on show: i
       (error: unknown) => {
         const message = (error as Error)?.message;
         toast.error(error instanceof MidiError ? message
-          : message === 'only drums' ? 'That file holds only a drum part, and there is no drum kit yet.'
           : message === 'no notes' ? 'That MIDI file has no notes in it.'
           : 'Could not read that as a MIDI file (.mid).');
       },
@@ -281,11 +280,18 @@ export const SongForge: React.FC<{ /** False while the Sounds half is on show: i
 
   if (!song || !track) return <div className="p-4 text-sm text-stone-400">That song is gone. Pick another from the list.</div>;
 
-  const rows = gridRows(view.low, view.high, view.home, scale, track.notes);
+  const kit = track.kit ?? null;
+  const rows = kit ? kitRows(track) : gridRows(view.low, view.high, view.home, scale, track.notes);
   const bars = Math.round(song.length / STEPS_PER_BAR);
   const savedSongs = library.filter(a => a.song);
   const unsavedNew = Object.keys(state.work).filter(id => !savedSongs.some(a => a.id === id));
   const mySounds = library.filter(a => a.synth && !a.id.startsWith('chrome_'));
+  /** Give one drum of the kit another sound: one of the user's own, or (no `from`) the kit's own back. */
+  const setDrum = (drum: SongDrum, sound: SongDrum['sound'], from?: string) => {
+    if (!kit) return;
+    const next: SongDrum = { key: drum.key, name: drum.name, sound, ...(from ? { from } : {}) };
+    editTrack({ ...track, kit: kit.map(d => (d.key === drum.key ? next : d)) }, once('drum'));
+  };
   const setInstrument = (label: string, sound: SynthSong['tracks'][number]['instrument'], held: boolean) => {
     const wasNamedForIt = INSTRUMENTS.some(i => i.label === track.name) || mySounds.some(a => a.name === track.name);
     editTrack({ ...track, name: wasNamedForIt ? label : track.name, instrument: sound, root: soundRoot(sound), held }, once('instrument'));
@@ -336,7 +342,7 @@ export const SongForge: React.FC<{ /** False while the Sounds half is on show: i
               <ForgeChip
                 onClick={() => midiInput.current?.click()}
                 disabled={importing}
-                title="Pick a MIDI file (.mid): a song written in any music program, or an old tune found as MIDI. Its notes come in on the grid, one part for each instrument, played on the Forge's instruments. The drum part is left out."
+                title="Pick a MIDI file (.mid): a song written in any music program, or an old tune found as MIDI. Its notes come in on the grid, one part for each instrument, played on the Forge's instruments, and its drums on the Forge's kit."
               >
                 {importing ? 'Reading...' : 'A MIDI file...'}
               </ForgeChip>
@@ -408,6 +414,16 @@ export const SongForge: React.FC<{ /** False while the Sounds half is on show: i
               >
                 + Add a part
               </ForgeChip>
+              <ForgeChip
+                title="A drum part: a kit of eight drums, one to a row. Tap squares for hits"
+                disabled={song.tracks.length >= 8}
+                onClick={() => {
+                  edit({ ...song, tracks: [...song.tracks, drumTrack()] }, once('add-track'));
+                  setTrackIndex(song.tracks.length);
+                }}
+              >
+                + Add drums
+              </ForgeChip>
             </div>
             <div className="flex flex-wrap items-center gap-1.5">
               <span className="text-xs text-stone-400 w-16 shrink-0">This part</span>
@@ -435,7 +451,13 @@ export const SongForge: React.FC<{ /** False while the Sounds half is on show: i
           </div>
 
           {/* ---- what the grid shows ---- */}
-          <div className="border border-stone-700 rounded px-2 py-1.5 space-y-1.5">
+          {kit && (
+            <div className="border border-stone-700 rounded px-2 py-1.5 text-[11px] text-stone-500">
+              A drum part: each row is one drum of the kit, the cymbals at the top and the kick at the bottom. Tap a square for a hit, tap a hit to remove it;
+              tap a drum's name to hear it. A common beat to start from: a kick on beats 1 and 3, a snare on 2 and 4, and a hat on every half beat.
+            </div>
+          )}
+          {!kit && <div className="border border-stone-700 rounded px-2 py-1.5 space-y-1.5">
             <div className="flex flex-wrap items-center gap-1.5">
               <span className="text-xs text-stone-400 w-16 shrink-0">Scale</span>
               {SCALES.map(s => (
@@ -465,13 +487,14 @@ export const SongForge: React.FC<{ /** False while the Sounds half is on show: i
               {scale.hint}. Only the scale's keys have rows, so no square is a wrong note. Tap a square for a note, tap a note to remove it; with a mouse, drag a
               note to move it and drag its right end to stretch it.
             </div>
-          </div>
+          </div>}
 
           <PianoRoll
             notes={track.notes}
             rows={rows}
             length={song.length}
-            noteLength={noteLength}
+            noteLength={kit ? 1 : noteLength}
+            hits={!!kit}
             playhead={playhead}
             onChange={(notes, tag, sticky) => editTrack({ ...track, notes }, tag, sticky)}
             onSound={soundKey}
@@ -483,7 +506,40 @@ export const SongForge: React.FC<{ /** False while the Sounds half is on show: i
           </div>
 
           <div className="grid gap-3 lg:grid-cols-2 items-start">
-            <ForgeSection
+            {kit && (
+              <ForgeSection
+                title="The kit"
+                term="this part's drums"
+                hint="One drum to a row of the grid. Any sound made in the Sounds half can stand in for a drum: it is played as it is, not higher or lower."
+              >
+                <div className="space-y-1">
+                  {kit.map(drum => (
+                    <div key={drum.key} className="flex items-center gap-1.5">
+                      <ForgeChip tone="go" onClick={() => soundKey(drum.key, 1)} title={`Hear the ${drum.name.toLowerCase()}`}>▶</ForgeChip>
+                      <span className="text-xs text-parchment-100 w-16 shrink-0">{drum.name}</span>
+                      <select
+                        value={drum.from ? 'mine' : 'kit'}
+                        aria-label={`The sound of the ${drum.name.toLowerCase()}`}
+                        title={DRUM_KIT.find(d => d.key === drum.key)?.hint}
+                        onChange={e => {
+                          const own = DRUM_KIT.find(d => d.key === drum.key);
+                          const mine = mySounds.find(a => a.id === e.target.value);
+                          if (mine?.synth) setDrum(drum, cloneSound(mine.synth), mine.name);
+                          else if (e.target.value === 'kit' && own) setDrum(drum, own.make());
+                        }}
+                        className="flex-1 min-w-0 px-2 py-1 bg-stone-900 border border-stone-700 rounded text-parchment-100 text-xs"
+                      >
+                        <option value="kit">The kit's own</option>
+                        {drum.from && <option value="mine">{drum.from} (a copy kept in the song)</option>}
+                        {mySounds.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                      </select>
+                    </div>
+                  ))}
+                </div>
+                <ForgeSlider label="Level" term="this part" value={track.level} min={0} max={2} show={{ decimals: 2 }} onChange={level => editTrack({ ...track, level }, 'level')} />
+              </ForgeSection>
+            )}
+            {!kit && <ForgeSection
               title="Instrument"
               term="this part's voice"
               hint="What plays this part's notes. Any sound made in the Sounds half can be an instrument: every note plays it higher or lower."
@@ -511,7 +567,7 @@ export const SongForge: React.FC<{ /** False while the Sounds half is on show: i
                   : 'Not held: every note rings out its own length however long it is drawn, like a harp, a bell or a drum.'}
               </div>
               <ForgeSlider label="Level" term="this part" value={track.level} min={0} max={2} show={{ decimals: 2 }} onChange={level => editTrack({ ...track, level }, 'level')} />
-            </ForgeSection>
+            </ForgeSection>}
 
             <div className="space-y-3">
               <ForgeSection title="The whole song">
