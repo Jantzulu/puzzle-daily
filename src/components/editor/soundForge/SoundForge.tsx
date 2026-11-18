@@ -39,6 +39,9 @@ import { MAX_RECORDING_BYTES, soundFromRecording } from './importRecording';
 //                 they sync, back up and publish like any other sound, and
 //                 every sound slot in the game can use them.
 //
+// SONGS (user ask 2026-11-17) are the Forge's other half: SongForge.tsx,
+// reached by the Sounds | Songs tabs in ForgeHome.tsx.
+//
 // FROM A RECORDING (user ask 2026-11-17): "A recording..." under New sound
 // from reads any sound file and makes a first sketch of it, one layer per
 // part (each note, each band of noise, each separate hit), so that real
@@ -53,7 +56,10 @@ const isRecipe = (value: unknown): value is SynthSound => {
     && v.layers.every(l => l && typeof l.id === 'string' && (l.source === 'noise' || l.source === 'tone') && typeof l.length === 'number');
 };
 
-export const SoundForge: React.FC = () => {
+export const SoundForge: React.FC<{
+  /** False while the Songs half of the Forge is on show (ForgeHome.tsx): this half stays mounted, keeping its unsaved work, but its keys are not its own. */
+  active?: boolean;
+}> = ({ active = true }) => {
   const [library, setLibrary] = React.useState<SoundAsset[]>(() => getSoundAssets());
   const [state, dispatch] = React.useReducer(forgeReducer, library, initialForgeState);
   const [selectedKey, setSelectedKey] = React.useState<SoundKey>(() => builtInKey('torch-out'));
@@ -167,6 +173,7 @@ export const SoundForge: React.FC = () => {
   // Undo and redo from the keyboard (not while typing in a box, which has
   // its own).
   React.useEffect(() => {
+    if (!active) return;
     const onKey = (e: KeyboardEvent) => {
       if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
       const tag = (e.target as HTMLElement | null)?.tagName;
@@ -177,13 +184,19 @@ export const SoundForge: React.FC = () => {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [selectedKey]);
+  }, [active, selectedKey]);
 
   // ---- saving ---------------------------------------------------------------
   const refresh = () => {
     clearSoundCache(); // the game's sound slots pick the new version up
     setLibrary(getSoundAssets());
   };
+  // Coming back from the Songs half: the library may have changed there.
+  React.useEffect(() => {
+    if (!active) return;
+    const id = window.setTimeout(() => setLibrary(getSoundAssets()), 0);
+    return () => window.clearTimeout(id);
+  }, [active]);
 
   const save = () => {
     if (!sound) return;

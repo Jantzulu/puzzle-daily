@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // Core game type definitions
 import type { SynthSound } from '../utils/synth/types';
+import type { SynthSong } from '../utils/synth/song';
 
 export enum Direction {
   NORTH = 'north',
@@ -1940,6 +1941,12 @@ export interface SoundAsset {
    * audioUrl are not needed.
    */
   synth?: SynthSound;
+  /**
+   * A song written in the Sound Forge (utils/synth/song.ts): notes played on
+   * instruments that are themselves code-made sounds. When set, this is
+   * what plays (once through, in a sound slot); no audio file is needed.
+   */
+  song?: SynthSong;
   createdAt: string;
   isBuiltIn?: boolean;     // True for default sounds
   folderId?: string;       // Optional folder assignment

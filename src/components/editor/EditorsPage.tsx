@@ -3,7 +3,7 @@ import React, { lazy, Suspense, useState } from 'react';
 const MapEditor = lazy(() => import('./MapEditor').then(m => ({ default: m.MapEditor })));
 const PixelEditorPage = lazy(() => import('./PixelEditorPage').then(m => ({ default: m.PixelEditorPage })));
 const PanelForge = lazy(() => import('./PanelForge').then(m => ({ default: m.PanelForge })));
-const SoundForge = lazy(() => import('./soundForge/SoundForge').then(m => ({ default: m.SoundForge })));
+const SoundForge = lazy(() => import('./soundForge/ForgeHome').then(m => ({ default: m.ForgeHome })));
 
 type EditorTab = 'map' | 'pixel' | 'forge' | 'sound';
 

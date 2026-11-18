@@ -138,7 +138,7 @@ export const SoundEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
 
   const handleSave = () => {
     if (!editing) return;
-    if (!editing.audioData && !editing.audioUrl && !editing.synth) {
+    if (!editing.audioData && !editing.audioUrl && !editing.synth && !editing.song) {
       toast.warning('Please upload an audio file or provide a URL');
       return;
     }
@@ -217,10 +217,10 @@ export const SoundEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
   };
 
   const handlePlaySound = async () => {
-    if ((!editing?.audioData && !editing?.audioUrl && !editing?.synth) || isPlaying) return;
+    if ((!editing?.audioData && !editing?.audioUrl && !editing?.synth && !editing?.song) || isPlaying) return;
 
-    // A sound made in the Sound Forge: no file to decode.
-    if (editing.synth) {
+    // A sound or a song made in the Sound Forge: no file to decode.
+    if (editing.synth || editing.song) {
       void playSoundAsset(editing);
       return;
     }
@@ -370,8 +370,15 @@ export const SoundEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
     {
       key: 'source',
       label: 'Source',
-      value: (s) => (s.synth ? 'Forge' : s.audioData ? 'File' : s.audioUrl ? 'URL' : null),
+      value: (s) => (s.song ? 'Song' : s.synth ? 'Forge' : s.audioData ? 'File' : s.audioUrl ? 'URL' : null),
       render: (s) => {
+        if (s.song) {
+          return (
+            <span className="px-1.5 py-0 rounded border text-[10px] whitespace-nowrap bg-arcane-900/40 text-arcane-300 border-arcane-700/50" title="A song written in the Sound Forge (Editors > Sound Forge > Songs)">
+              Song
+            </span>
+          );
+        }
         if (s.synth) {
           return (
             <span className="px-1.5 py-0 rounded border text-[10px] whitespace-nowrap bg-copper-900/40 text-copper-300 border-copper-700/50" title="Made in the Sound Forge (Editors > Sound Forge)">

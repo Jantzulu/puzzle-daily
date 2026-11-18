@@ -10,6 +10,8 @@ import { loadSpellAsset } from './assetStorage';
 import { renderSynthSound } from './synth/render';
 import { playChromeSound, type ChromeSound } from './chromeSounds';
 import type { SynthSound } from './synth/types';
+import type { SynthSong } from './synth/song';
+import { playSong } from './synth/songPlayer';
 import type { SoundAsset, SoundTrigger } from '../types/game';
 
 // Cache for resolved sound data (base64 audio or URL)
@@ -107,6 +109,14 @@ async function resolveSoundData(soundId: string | undefined): Promise<string | n
 // id. A sound that turned out to be an audio file is remembered as null so
 // the library is not searched again on every hit.
 const synthCache = new Map<string, SynthSound | null>();
+// Songs (SoundAsset.song), the same way. In a sound slot a song is played
+// once through: a jingle for a win, a pickup, a door.
+const songCache = new Map<string, SynthSong | null>();
+
+/** Play a song once through on the effects channel. */
+export function playSongOnce(song: SynthSong): void {
+  soundManager.playSynth((ctx, out) => { playSong(ctx, out, song); });
+}
 
 /** Play a code-made sound on the effects channel. */
 export function playSynthSound(synth: SynthSound): void {
@@ -127,6 +137,12 @@ async function playSoundById(soundId: string | undefined): Promise<void> {
     if (!asset) return;
     synth = asset.synth ?? null;
     synthCache.set(soundId, synth);
+    songCache.set(soundId, asset.song ?? null);
+  }
+  const song = songCache.get(soundId);
+  if (song) {
+    playSongOnce(song);
+    return;
   }
   if (synth) {
     playSynthSound(synth);
@@ -138,7 +154,9 @@ async function playSoundById(soundId: string | undefined): Promise<void> {
 
 /** Play a sound asset directly (the editors' preview buttons). */
 export async function playSoundAsset(asset: SoundAsset): Promise<void> {
-  if (asset.synth) {
+  if (asset.song) {
+    playSongOnce(asset.song);
+  } else if (asset.synth) {
     playSynthSound(asset.synth);
   } else if (asset.audioData) {
     await soundManager.playSfx(asset.audioData);
@@ -165,6 +183,7 @@ function resolveMusicSource(soundId: string | undefined): string | null {
 export function clearSoundCache(): void {
   soundCache.clear();
   synthCache.clear();
+  songCache.clear();
 }
 
 /**
