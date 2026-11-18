@@ -6,7 +6,7 @@ import {
 import type { SynthSound } from '../../../../utils/synth/types';
 import {
   DRUM_KIT, INSTRUMENTS, SCALES, addNote, drumTrack, fitNote, gridRows, inScale, keyName, kitRows, newSong, noteAt, noteCount, removeNote, replaceNote,
-  scaleById, songReducer, trackFrom, withBars, type SongState,
+  runRows, scaleById, songReducer, strengthOpacity, strengthenNote, trackFrom, withBars, withStrength, type SongState,
 } from '../songModel';
 
 // A song (utils/synth/song.ts) is arithmetic on notes: when each starts,
@@ -184,6 +184,23 @@ describe('the song editor: scales and rows', () => {
   });
 });
 
+describe('the rows of a run', () => {
+  it('are the keys of the scale around the layer own pitch, highest first', () => {
+    expect(runRows(-2, 4, scaleById('all'), [0])).toEqual([4, 3, 2, 1, 0, -1, -2]);
+    // Major, home on the pitch itself: no row for the keys that would clash.
+    expect(runRows(-5, 12, scaleById('major'), [0, 4, 7, 12])).toEqual([12, 11, 9, 7, 5, 4, 2, 0, -1, -3, -5]);
+  });
+
+  it('always show the keys the steps are on, in the scale and the range or not', () => {
+    // A step on +3 (not in major), one far above the range, and one between two keys (shown on the nearer).
+    const rows = runRows(0, 7, scaleById('major'), [0, 3, 19, 4.4]);
+    expect(rows).toContain(3);
+    expect(rows[0]).toBe(19);
+    expect(rows).toContain(4);
+    expect(rows).not.toContain(1);
+  });
+});
+
 describe('the song editor: notes', () => {
   const length = 2 * STEPS_PER_BAR;
 
@@ -243,6 +260,36 @@ describe('the song editor: notes', () => {
     const fresh = newSong();
     expect(fresh.tracks).toHaveLength(1);
     expect(fresh.length % STEPS_PER_BAR).toBe(0);
+  });
+});
+
+describe('the song editor: how hard a note is struck', () => {
+  it('writes a strength into a note, and nothing for the ordinary one', () => {
+    const note = { at: 0, length: 2, key: 60 };
+    expect(withStrength(note, 0.5)).toEqual({ ...note, level: 0.5 });
+    expect(withStrength(note, 1)).toEqual(note);
+    expect(withStrength({ ...note, level: 0.5 }, 1)).toEqual(note); // back to ordinary: the level is taken out
+    expect(withStrength(note, 0.62).level).toBeCloseTo(0.6, 9); // to the nearest twentieth
+    expect(withStrength(note, 9).level).toBe(1.5);
+    expect(withStrength(note, 0).level).toBe(0.2);
+  });
+
+  it('sets one note of a part, leaving the rest', () => {
+    const notes = [{ at: 0, length: 2, key: 60 }, { at: 0, length: 2, key: 64 }, { at: 4, length: 2, key: 60 }];
+    const softer = strengthenNote(notes, notes[1], 0.4);
+    expect(softer).toEqual([notes[0], { ...notes[1], level: 0.4 }, notes[2]]);
+    // Already that strong: the very same list, so nothing is recorded as an edit.
+    expect(strengthenNote(softer, softer[1], 0.4)).toBe(softer);
+    expect(strengthenNote(notes, notes[0], 1)).toBe(notes);
+  });
+
+  it('is what the note plays at, and how solid it is drawn', () => {
+    const t = track();
+    expect(noteSound(t, withStrength({ at: 0, length: 1, key: 69 }, 0.5), 0.1).level).toBeCloseTo(0.25, 9); // half of the instrument's 0.5
+    expect(strengthOpacity(0.3)).toBeLessThan(strengthOpacity(1));
+    expect(strengthOpacity(1)).toBeLessThan(strengthOpacity(1.3));
+    expect(strengthOpacity(undefined)).toBe(strengthOpacity(1));
+    expect(strengthOpacity(0)).toBeGreaterThanOrEqual(0.3); // never too faint to find
   });
 });
 

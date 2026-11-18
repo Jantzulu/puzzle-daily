@@ -65,6 +65,23 @@ export function gridRows(low: number, high: number, home: number, scale: Scale, 
   return rows;
 }
 
+/**
+ * The rows of a RUN's grid (RunEditor), highest first. A run's steps are
+ * counted in keys from the layer's own Pitch, which is the scale's home:
+ * the rows are the keys of the scale between `low` and `high`, and any
+ * other key a step already sits on (so no step is ever out of sight).
+ */
+export function runRows(low: number, high: number, scale: Scale, steps: readonly number[]): number[] {
+  const used = new Set(steps.map(s => Math.round(s)));
+  const top = Math.max(high, ...used);
+  const bottom = Math.min(low, ...used);
+  const rows: number[] = [];
+  for (let offset = top; offset >= bottom; offset--) {
+    if (inScale(offset, 0, scale) || used.has(offset)) rows.push(offset);
+  }
+  return rows;
+}
+
 // ---- instruments ------------------------------------------------------------------
 
 export interface Instrument {
@@ -254,6 +271,32 @@ export function replaceNote(notes: readonly SongNote[], old: SongNote, next: Son
 export function removeNote(notes: readonly SongNote[], old: SongNote): SongNote[] {
   return notes.filter(n => !sameNote(n, old));
 }
+
+// ---- how hard a note is struck ------------------------------------------------------
+// SongNote.level: 1 is the part as it is set, lower is gentler, higher is an
+// accent. It is what makes a tune breathe: a strong first beat, soft notes
+// between. A level of 1 is not written into the note.
+
+export const MIN_STRENGTH = 0.2;
+export const MAX_STRENGTH = 1.5;
+
+/** A note at a strength (to the nearest twentieth, inside the range). */
+export function withStrength(note: SongNote, strength: number): SongNote {
+  const level = Math.round(Math.min(MAX_STRENGTH, Math.max(MIN_STRENGTH, strength)) * 20) / 20;
+  const { level: _old, ...plain } = note;
+  void _old;
+  return level === 1 ? plain : { ...plain, level };
+}
+
+/** The track's notes with one of them set to a strength. The same list back when nothing changes. */
+export function strengthenNote(notes: readonly SongNote[], old: SongNote, strength: number): readonly SongNote[] {
+  const next = withStrength(old, strength);
+  if ((next.level ?? 1) === (old.level ?? 1)) return notes;
+  return notes.map(n => (sameNote(n, old) ? next : n));
+}
+
+/** How solid a note is drawn for its strength (0-1): gentle notes are fainter. */
+export const strengthOpacity = (level: number | undefined): number => Math.min(1, Math.max(0.3, 0.2 + 0.65 * (level ?? 1)));
 
 /** The song at a new length in bars. Notes that no longer start inside it are dropped; ones that overhang are cut. */
 export function withBars(song: SynthSong, bars: number): SynthSong {

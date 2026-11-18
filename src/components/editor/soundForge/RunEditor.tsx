@@ -2,16 +2,27 @@ import React from 'react';
 import { MAX_RUN_STEPS, runPlan, type SynthLayer } from '../../../utils/synth/types';
 import { ForgeChip, ForgeSection, ForgeSlider, ForgeToggle } from './ForgeControls';
 import { noteName } from './forgeModel';
+import { SCALES, runRows, scaleById } from './songModel';
 
 // A RUN (user ask 2026-11-17, after a recording of a magic flourish turned
 // out to be a stream of 85 tiny notes that no single layer could hold): the
 // layer's note steps through a list, so many steps a second. It is how an
 // old game plays a chord, a trill or a flourish on one voice.
 //
-// The list is shown as a STAIRCASE: one bar per step, higher bars are
-// higher notes. A bar is picked by tapping it; the picked step is moved with
-// the slider under the picture. Steps the layer is too short to reach are
-// drawn faint, so "why can't I hear the end" answers itself.
+// The list is written on a GRID, like a song (it replaced a staircase of
+// bars and a slider that moved one picked step at a time: the user had
+// found picking notes one by one slow). One column to a step, one row to a
+// key; the square filled in a column is that step's note.
+//
+//   tap a square              that step plays that key
+//   drag across (mouse, pen)  each step it crosses is set as it goes
+//   tap the "+" column        another step, on the key tapped
+//
+// The row marked with the layer's own Pitch is where a step of 0 sits; the
+// scale buttons leave out the rows that would clash with it. Steps the
+// layer is too short to reach are drawn faint, so "why can't I hear the
+// end" answers itself. On a touch screen a drag scrolls, so there it is tap
+// only, as on the song grid.
 
 type Run = NonNullable<SynthLayer['run']>;
 
@@ -22,9 +33,14 @@ const SHAPES: ReadonlyArray<{ label: string; hint: string; steps: number[] }> = 
   { label: 'Trill', hint: 'Two notes in turn: an alarm, a flutter', steps: [0, 3] },
 ];
 
-const PICTURE_H = 72;
+const COL_W = 18;
+const ROW_H = 14;
+const GUTTER_W = 40;
+/** The rows shown to begin with (keys from Pitch), and the furthest they can be widened to. */
+const SHOWN = { low: -5, high: 17 };
+const LIMIT = { low: -36, high: 48 };
 
-/** 0 -> "same", 7 -> "+7", -2.5 -> "-2.5". */
+/** 0 -> "0", 7 -> "+7", -2.5 -> "−2.5". */
 const offsetLabel = (semitones: number): string => {
   const rounded = Math.round(semitones * 100) / 100;
   return rounded === 0 ? '0' : `${rounded > 0 ? '+' : '−'}${Math.abs(rounded)}`;
@@ -37,6 +53,14 @@ export const RunEditor: React.FC<{
 }> = ({ layer, onChange }) => {
   const run = layer.run;
   const [picked, setPicked] = React.useState(0);
+  const [scaleId, setScaleId] = React.useState('all');
+  const [shown, setShown] = React.useState(SHOWN);
+  const grid = React.useRef<HTMLDivElement>(null);
+  const drawing = React.useRef(false);
+  /** The steps as the drag in hand has left them: two moves can arrive before the screen has caught up with the first. */
+  const live = React.useRef<number[] | null>(null);
+  /** A finger is down on this square: it becomes a tap only if it lifts without the grid having scrolled. */
+  const touched = React.useRef<{ col: number; offset: number } | null>(null);
   const setRun = (next: Run | undefined, tag: string) => onChange({ ...layer, run: next }, tag);
   const base = layer.pitch?.from ?? 440;
 
@@ -63,11 +87,34 @@ export const RunEditor: React.FC<{
   const at = Math.min(picked, steps.length - 1);
   const heard = runPlan(layer).length;
   const reached = run.loop ? steps.length : Math.min(steps.length, heard);
-  const low = Math.min(0, ...steps);
-  const high = Math.max(0, ...steps);
-  const span = Math.max(1, high - low);
   const setSteps = (next: number[], tag: string) => setRun({ ...run, steps: next }, tag);
   const stepHz = (semitones: number) => base * Math.pow(2, semitones / 12);
+  const rows = runRows(shown.low, shown.high, scaleById(scaleId), steps);
+  const rowOf = new Map(rows.map((offset, i) => [offset, i]));
+  const canAdd = steps.length < MAX_RUN_STEPS;
+  const columns = steps.length + (canAdd ? 1 : 0);
+
+  const cellAt = (e: React.PointerEvent): { col: number; offset: number | undefined } => {
+    const box = grid.current!.getBoundingClientRect();
+    return { col: Math.floor((e.clientX - box.left) / COL_W), offset: rows[Math.floor((e.clientY - box.top) / ROW_H)] };
+  };
+  /** Set a step to a key; in the column after the last, add a step there. */
+  const put = (col: number, offset: number | undefined) => {
+    if (offset === undefined || col < 0) return;
+    const now = live.current ?? steps;
+    let next = now;
+    if (col >= now.length) {
+      if (now.length >= MAX_RUN_STEPS) return;
+      next = [...now, offset];
+      setPicked(now.length);
+    } else {
+      setPicked(col);
+      if (now[col] !== offset) next = now.map((s, i) => (i === col ? offset : s));
+    }
+    if (next === now) return;
+    if (drawing.current) live.current = next;
+    setSteps(next, 'run-draw');
+  };
 
   return section(
     <>
@@ -76,33 +123,99 @@ export const RunEditor: React.FC<{
         onChange={rate => setRun({ ...run, rate }, 'run-rate')}
       />
 
-      {/* The staircase. */}
-      <div
-        className="flex items-end gap-px rounded border border-stone-700 bg-stone-900 px-1 pt-1"
-        style={{ height: PICTURE_H + 6 }}
-        role="listbox"
-        aria-label="The steps of the run"
-      >
-        {steps.map((semitones, i) => {
-          const chosen = i === at;
-          const faint = i >= reached;
-          return (
-            <button
-              key={i}
-              type="button"
-              role="option"
-              aria-selected={chosen}
-              aria-label={`Step ${i + 1}: ${offsetLabel(semitones)} keys, ${noteName(stepHz(semitones))}`}
-              title={`Step ${i + 1}: ${offsetLabel(semitones)} (${noteName(stepHz(semitones))})`}
-              onClick={() => setPicked(i)}
-              className={`flex-1 min-w-0 rounded-t-sm ${chosen ? 'bg-arcane-400' : 'bg-copper-600 hover:bg-copper-500'} ${faint ? 'opacity-30' : ''}`}
-              style={{ height: 8 + ((semitones - low) / span) * (PICTURE_H - 8) }}
+      <div className="flex flex-wrap items-center gap-1">
+        <span className="text-[11px] text-stone-400 mr-0.5">Keys shown</span>
+        {SCALES.map(s => (
+          <ForgeChip key={s.id} active={s.id === scaleId} onClick={() => setScaleId(s.id)} title={`${s.hint}. Its home is the note in Pitch`}>{s.label}</ForgeChip>
+        ))}
+        <span className="ml-auto flex gap-1">
+          <ForgeChip disabled={shown.low - 12 < LIMIT.low} onClick={() => setShown(v => ({ ...v, low: v.low - 12 }))} title="Show an octave more below">▼ Lower</ForgeChip>
+          <ForgeChip disabled={shown.high + 12 > LIMIT.high} onClick={() => setShown(v => ({ ...v, high: v.high + 12 }))} title="Show an octave more above">▲ Higher</ForgeChip>
+        </span>
+      </div>
+
+      {/* The grid. */}
+      <div className="flex rounded border border-stone-700 bg-stone-900 overflow-auto" style={{ maxHeight: 344 }}>
+        <div className="sticky left-0 z-10 shrink-0 bg-stone-900 border-r border-stone-700" style={{ width: GUTTER_W }}>
+          {rows.map(offset => (
+            <div
+              key={offset}
+              title={offset === 0 ? 'The note in Pitch: a step of 0' : `${offsetLabel(offset)} keys from Pitch`}
+              className={`text-right pr-1.5 text-[10px] tabular-nums border-b border-stone-800 ${offset === 0 ? 'text-copper-300 bg-copper-900/30' : offset % 12 === 0 ? 'text-parchment-100' : 'text-stone-400'}`}
+              style={{ height: ROW_H, lineHeight: `${ROW_H - 1}px` }}
+            >
+              {noteName(stepHz(offset))}
+            </div>
+          ))}
+        </div>
+        <div
+          ref={grid}
+          role="application"
+          aria-label="The steps of the run. Tap a square to set that step to that key; tap the last column to add a step."
+          className="relative shrink-0 select-none cursor-crosshair"
+          style={{
+            width: columns * COL_W,
+            height: rows.length * ROW_H,
+            touchAction: 'pan-x pan-y',
+            backgroundImage: `repeating-linear-gradient(to right, rgba(214,188,150,0.12) 0 1px, transparent 1px ${COL_W}px)`,
+          }}
+          onPointerDown={e => {
+            if (e.button !== 0) return;
+            const { col, offset } = cellAt(e);
+            // A finger may be about to scroll: nothing happens until it lifts.
+            if (e.pointerType === 'touch') { touched.current = offset === undefined ? null : { col, offset }; return; }
+            drawing.current = true;
+            live.current = null;
+            put(col, offset);
+            try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* the pointer is already gone */ }
+          }}
+          onPointerMove={e => {
+            if (!drawing.current) return;
+            const { col, offset } = cellAt(e);
+            put(Math.min(col, (live.current ?? steps).length), offset);
+          }}
+          onPointerUp={() => {
+            drawing.current = false;
+            live.current = null;
+            const tap = touched.current;
+            touched.current = null;
+            if (tap) put(tap.col, tap.offset);
+          }}
+          onPointerCancel={() => { drawing.current = false; live.current = null; touched.current = null; }}
+        >
+          {rows.map((offset, i) => (
+            <div
+              key={offset}
+              aria-hidden="true"
+              className={`absolute left-0 right-0 border-b ${offset === 0 ? 'border-copper-700/60 bg-copper-900/20' : offset % 12 === 0 ? 'border-stone-600' : 'border-stone-800'}`}
+              style={{ top: i * ROW_H, height: ROW_H }}
             />
-          );
-        })}
+          ))}
+          {canAdd && (
+            <div
+              aria-hidden="true"
+              className="absolute top-0 bottom-0 border-l border-dashed border-stone-600 bg-stone-800/50 text-stone-500 text-[11px] text-center"
+              style={{ left: steps.length * COL_W, width: COL_W }}
+            >
+              +
+            </div>
+          )}
+          {steps.map((semitones, i) => {
+            const row = rowOf.get(Math.round(semitones));
+            if (row === undefined) return null;
+            return (
+              <div
+                key={i}
+                aria-label={`Step ${i + 1}: ${offsetLabel(semitones)} keys, ${noteName(stepHz(semitones))}`}
+                className={`absolute rounded-sm pointer-events-none border ${i === at ? 'bg-arcane-400 border-arcane-200' : 'bg-copper-500 border-copper-300'} ${i >= reached ? 'opacity-30' : ''}`}
+                style={{ left: i * COL_W + 1, top: row * ROW_H + 1, width: COL_W - 2, height: ROW_H - 3 }}
+              />
+            );
+          })}
+        </div>
       </div>
       <div className="text-[11px] text-stone-500">
-        {steps.length} step{steps.length === 1 ? '' : 's'}.{' '}
+        {steps.length} step{steps.length === 1 ? '' : 's'}, one to a column: tap a square to put that step on that key, and the + column to add one.{' '}
         {run.loop
           ? `Going round, the layer plays ${heard} in all.`
           : reached < steps.length
@@ -110,32 +223,25 @@ export const RunEditor: React.FC<{
             : 'After the last one, that note is held.'}
       </div>
 
-      {/* The picked step. */}
-      <div className="pt-1.5 mt-1.5 border-t border-stone-700/60 space-y-1">
-        <ForgeSlider
-          label={`Step ${at + 1}`} term="keys from Pitch" value={steps[at]} min={-24} max={36} show={{ decimals: 2 }}
-          note={noteName(stepHz(steps[at]))}
-          // (Whole keys. A run made from a recording may hold in-between
-          // values; they are shown as they are until the step is moved.)
-          onChange={value => setSteps(steps.map((s, i) => (i === at ? Math.round(value) : s)), `run-step-${at}`)}
-        />
-        <div className="flex flex-wrap gap-1.5">
-          <ForgeChip onClick={() => setPicked(Math.max(0, at - 1))} disabled={at === 0} title="Pick the step before">‹ Before</ForgeChip>
-          <ForgeChip onClick={() => setPicked(Math.min(steps.length - 1, at + 1))} disabled={at >= steps.length - 1} title="Pick the step after">After ›</ForgeChip>
-          <ForgeChip
-            disabled={steps.length >= MAX_RUN_STEPS}
-            title="Add a step after this one, on the same note"
-            onClick={() => { setSteps([...steps.slice(0, at + 1), steps[at], ...steps.slice(at + 1)], 'run-add'); setPicked(at + 1); }}
-          >
-            + Add a step
-          </ForgeChip>
-          <ForgeChip
-            tone="danger" disabled={steps.length <= 1}
-            onClick={() => { setSteps(steps.filter((_, i) => i !== at), 'run-remove'); setPicked(Math.max(0, at - 1)); }}
-          >
-            Remove
-          </ForgeChip>
-        </div>
+      {/* The step last touched. */}
+      <div className="flex flex-wrap items-center gap-1.5 pt-1.5 mt-1.5 border-t border-stone-700/60">
+        <span className="text-xs text-parchment-300 tabular-nums">
+          Step {at + 1}: {offsetLabel(steps[at])} ({noteName(stepHz(steps[at]))})
+        </span>
+        <ForgeChip
+          disabled={!canAdd}
+          title="Add a step after this one, on the same note"
+          onClick={() => { setSteps([...steps.slice(0, at + 1), steps[at], ...steps.slice(at + 1)], 'run-add'); setPicked(at + 1); }}
+        >
+          + Add a step after it
+        </ForgeChip>
+        <ForgeChip
+          tone="danger" disabled={steps.length <= 1}
+          title="Take this step out of the run"
+          onClick={() => { setSteps(steps.filter((_, i) => i !== at), 'run-remove'); setPicked(Math.max(0, at - 1)); }}
+        >
+          Remove it
+        </ForgeChip>
       </div>
 
       <div className="flex flex-wrap items-center gap-1.5 pt-1.5">

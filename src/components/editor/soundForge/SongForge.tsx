@@ -15,7 +15,10 @@ import { NOTE_NAMES, cloneSound } from './forgeModel';
 import { MAX_MIDI_BYTES, songFromMidiFile } from './importMidi';
 import { MidiError } from '../../../utils/synth/midi';
 import { PianoRoll } from './PianoRoll';
-import { DRUM_KIT, INSTRUMENTS, SCALES, cloneSong, drumTrack, gridRows, kitRows, newSong, noteCount, sameSong, scaleById, songReducer, trackFrom, withBars } from './songModel';
+import {
+  DRUM_KIT, INSTRUMENTS, MAX_STRENGTH, MIN_STRENGTH, SCALES, cloneSong, drumTrack, gridRows, kitRows, newSong, noteCount, sameSong, scaleById, songReducer,
+  trackFrom, withBars, withStrength,
+} from './songModel';
 import { auditionSound } from './soundPreview';
 
 // ============================================================================
@@ -60,6 +63,9 @@ export const SongForge: React.FC<{ /** False while the Sounds half is on show: i
   const [selectedId, setSelectedId] = React.useState(first.id);
   const [trackIndex, setTrackIndex] = React.useState(0);
   const [noteLength, setNoteLength] = React.useState(4);
+  /** How hard a new note is struck, and whether the pointer sets that on notes instead of writing them. */
+  const [strength, setStrength] = React.useState(1);
+  const [painting, setPainting] = React.useState(false);
   const [loop, setLoop] = React.useState(true);
   const [playing, setPlaying] = React.useState(false);
   const [soundOff, setSoundOff] = React.useState(() => !soundManager.getSettings().enabled);
@@ -130,10 +136,10 @@ export const SongForge: React.FC<{ /** False while the Sounds half is on show: i
   }, []);
 
   /** Sound one key on the track being edited. */
-  const soundKey = (key: number, steps: number) => {
+  const soundKey = (key: number, steps: number, struck = 1) => {
     if (!song || !track) return;
     const seconds = steps * stepSeconds(song);
-    const note: SongNote = { at: 0, length: steps, key };
+    const note: SongNote = withStrength({ at: 0, length: steps, key }, struck);
     auditionSound(noteSound(track, note, seconds, song.level), { pitch: notePitch(track, key) });
   };
 
@@ -489,8 +495,35 @@ export const SongForge: React.FC<{ /** False while the Sounds half is on show: i
             </div>
           </div>}
 
+          <div className="border border-stone-700 rounded px-2 py-1.5 space-y-1">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <div className="flex-1 min-w-[220px]">
+                <ForgeSlider
+                  label="Strength" term="how hard a note is struck" value={strength} min={MIN_STRENGTH} max={MAX_STRENGTH}
+                  show={{ factor: 100, unit: '%', decimals: 0 }}
+                  onChange={value => setStrength(Math.round(value * 20) / 20)}
+                />
+              </div>
+              <ForgeChip onClick={() => setStrength(1)} disabled={strength === 1} title="Back to 100%: the part as it is set">Normal</ForgeChip>
+              <ForgeChip
+                active={painting}
+                onClick={() => setPainting(p => !p)}
+                title="While this is on, tapping a note (or dragging across several) sets it to this strength, and no notes are written, moved or removed"
+              >
+                Set it on notes
+              </ForgeChip>
+            </div>
+            <div className="text-[11px] text-stone-500">
+              {painting
+                ? 'Tap a note, or drag across several, to strike them this hard. Turn this off to write notes again.'
+                : 'New notes are struck this hard; a stronger note is drawn more solid. A tune breathes when its notes differ: a strong first beat, softer ones between.'}
+            </div>
+          </div>
+
           <PianoRoll
             notes={track.notes}
+            strength={strength}
+            paint={painting}
             rows={rows}
             length={song.length}
             noteLength={kit ? 1 : noteLength}

@@ -1,6 +1,6 @@
 import React from 'react';
 import { STEPS_PER_BAR, STEPS_PER_BEAT, type SongNote } from '../../../utils/synth/song';
-import { addNote, fitNote, isBlackKey, keyName, noteAt, removeNote, replaceNote, type Row } from './songModel';
+import { addNote, fitNote, isBlackKey, keyName, noteAt, removeNote, replaceNote, strengthOpacity, strengthenNote, withStrength, type Row } from './songModel';
 
 // THE GRID a tune is written on (user ask 2026-11-17: "going down and
 // manually selecting notes is not the most efficient way to do it"). Time
@@ -16,6 +16,11 @@ import { addNote, fitNote, isBlackKey, keyName, noteAt, removeNote, replaceNote,
 // On a touch screen a drag scrolls the grid, so there it is tap only (and a
 // tap counts when the finger lifts, so that scrolling leaves no notes
 // behind): the length of a new note comes from the "Note length" buttons.
+//
+// STRENGTH (how hard a note is struck): a new note is drawn at the chosen
+// strength, and a stronger note is drawn more solid. With `paint` on, the
+// pointer does not write notes: every note it touches, by a tap or a drag
+// across them, is set to the chosen strength.
 //
 // A DRUM PART uses the same grid: each row is a drum (its name down the
 // side), and a hit is one square wide whatever is dragged (`hits`).
@@ -34,7 +39,8 @@ const EDGE = 7;
 type Drag =
   | { kind: 'draw'; key: number; from: number; note: SongNote; moved: boolean }
   | { kind: 'move'; grabStep: number; original: SongNote; note: SongNote; moved: boolean }
-  | { kind: 'stretch'; original: SongNote; note: SongNote; moved: boolean };
+  | { kind: 'stretch'; original: SongNote; note: SongNote; moved: boolean }
+  | { kind: 'paint' };
 
 export const PianoRoll: React.FC<{
   notes: readonly SongNote[];
@@ -47,8 +53,12 @@ export const PianoRoll: React.FC<{
   playhead: () => number;
   /** `tag` names the gesture, so a whole drag is one undo step. */
   onChange: (notes: SongNote[], tag: string, sticky?: boolean) => void;
-  /** Sound a key, for `steps` long (a new note, a tap on the keys at the side). */
-  onSound: (key: number, steps: number) => void;
+  /** Sound a key, for `steps` long (a new note, a tap on the keys at the side), at a strength. */
+  onSound: (key: number, steps: number, strength?: number) => void;
+  /** How hard a new note is struck (1 = as the part is set). */
+  strength?: number;
+  /** The pointer sets the strength of the notes it touches instead of writing notes. */
+  paint?: boolean;
   /**
    * Which part of which song is on show. When it changes, the grid scrolls
    * up or down to where that part's notes are (a bass line sits three
@@ -57,12 +67,14 @@ export const PianoRoll: React.FC<{
   showing: string;
   /** A drum part: every note is a hit one square long, and cannot be stretched. */
   hits?: boolean;
-}> = ({ notes, rows, length, noteLength, playhead, onChange, onSound, showing, hits = false }) => {
+}> = ({ notes, rows, length, noteLength, playhead, onChange, onSound, showing, hits = false, strength = 1, paint = false }) => {
   const scroller = React.useRef<HTMLDivElement>(null);
   const grid = React.useRef<HTMLDivElement>(null);
   const line = React.useRef<HTMLDivElement>(null);
   const drag = React.useRef<Drag | null>(null);
   const dragId = React.useRef(0);
+  /** The notes as the strength-painting drag in hand has left them: two moves can arrive before the screen has caught up with the first. */
+  const painted = React.useRef<readonly SongNote[] | null>(null);
   /** A finger is down on this square: it becomes a tap only if it lifts without the grid having scrolled. */
   const touched = React.useRef<{ step: number; key: number } | null>(null);
   const rowOf = React.useMemo(() => new Map(rows.map((row, i) => [row.key, i])), [rows]);
@@ -110,6 +122,18 @@ export const PianoRoll: React.FC<{
     return { step: Math.min(length - 1, Math.max(0, Math.floor(x / CELL_W))), key: rows[row]?.key ?? null, x };
   };
 
+  /** Set the note under a square (if any) to the chosen strength, and sound it if that changed it. */
+  const paintAt = (key: number, step: number) => {
+    const now = painted.current ?? notes;
+    const hit = noteAt(now, key, step);
+    if (!hit) return;
+    const next = strengthenNote(now, hit, strength);
+    if (next === now) return;
+    if (drag.current?.kind === 'paint') painted.current = next;
+    onChange([...next], `paint:${dragId.current}`, true);
+    onSound(key, hit.length, strength);
+  };
+
   const down = (e: React.PointerEvent) => {
     if (e.button !== 0) return;
     const { step, key, x } = cellAt(e);
@@ -118,16 +142,20 @@ export const PianoRoll: React.FC<{
     // A finger may be about to scroll: nothing happens until it lifts.
     if (e.pointerType === 'touch') { touched.current = { step, key }; return; }
     const hit = noteAt(notes, key, step);
-    if (hit) {
+    if (paint) {
+      drag.current = { kind: 'paint' };
+      painted.current = null;
+      paintAt(key, step);
+    } else if (hit) {
       const nearEnd = !hits && (hit.at + hit.length) * CELL_W - x <= EDGE && hit.length * CELL_W > EDGE * 2;
       drag.current = nearEnd
         ? { kind: 'stretch', original: hit, note: hit, moved: false }
         : { kind: 'move', grabStep: step - hit.at, original: hit, note: hit, moved: false };
     } else {
-      const note = fitNote({ at: step, length: noteLength, key }, length, notes);
+      const note = fitNote(withStrength({ at: step, length: noteLength, key }, strength), length, notes);
       drag.current = { kind: 'draw', key, from: step, note, moved: false };
       onChange(addNote(notes, note, length), `draw:${dragId.current}`, true);
-      onSound(key, note.length);
+      onSound(key, note.length, strength);
     }
     // (A mouse or pen keeps the pointer for the whole gesture, wherever it goes.)
     try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); } catch { /* the pointer is already gone: the gesture just ends at the grid's edge */ }
@@ -137,6 +165,10 @@ export const PianoRoll: React.FC<{
     const d = drag.current;
     if (!d) return;
     const { step, key } = cellAt(e);
+    if (d.kind === 'paint') {
+      if (key !== null) paintAt(key, step);
+      return;
+    }
     const tag = `${d.kind}:${dragId.current}`;
     const others = notes.filter(n => !(n.at === d.note.at && n.key === d.note.key));
     if (d.kind === 'draw') {
@@ -158,7 +190,7 @@ export const PianoRoll: React.FC<{
       const landed = changed.find(n => n.key === next.key && n.at === Math.min(next.at, length - 1));
       if (!landed) return; // something is in the way: it stays where it was
       onChange(changed, tag, true);
-      if (landed.key !== d.note.key) onSound(landed.key, landed.length);
+      if (landed.key !== d.note.key) onSound(landed.key, landed.length, landed.level);
       drag.current = { ...d, note: landed, moved: true };
     }
   };
@@ -167,20 +199,22 @@ export const PianoRoll: React.FC<{
     const tap = touched.current;
     touched.current = null;
     if (tap) {
-      // A finger's tap: a note there, or the note there taken away.
+      // A finger's tap: a note there, or the note there taken away (or, painting, set to the strength).
       const hit = noteAt(notes, tap.key, tap.step);
-      if (hit) onChange(removeNote(notes, hit), `remove:${dragId.current}`);
+      if (paint) paintAt(tap.key, tap.step);
+      else if (hit) onChange(removeNote(notes, hit), `remove:${dragId.current}`);
       else {
-        const note = fitNote({ at: tap.step, length: noteLength, key: tap.key }, length, notes);
+        const note = fitNote(withStrength({ at: tap.step, length: noteLength, key: tap.key }, strength), length, notes);
         onChange(addNote(notes, note, length), `draw:${dragId.current}`);
-        onSound(tap.key, note.length);
+        onSound(tap.key, note.length, strength);
       }
       return;
     }
     const d = drag.current;
     drag.current = null;
+    painted.current = null;
     // A tap on a note (no drag) takes it away.
-    if (d && d.kind !== 'draw' && !d.moved) onChange(removeNote(notes, d.note), `remove:${dragId.current}`);
+    if (d && (d.kind === 'move' || d.kind === 'stretch') && !d.moved) onChange(removeNote(notes, d.note), `remove:${dragId.current}`);
   };
 
   const width = length * CELL_W;
@@ -229,8 +263,8 @@ export const PianoRoll: React.FC<{
           <div
             ref={grid}
             role="application"
-            aria-label="The notes of the song. Tap a square to place a note; tap a note to remove it."
-            className="relative select-none cursor-crosshair"
+            aria-label={paint ? 'The notes of the song. Tap a note, or drag across notes, to set how hard they are struck.' : 'The notes of the song. Tap a square to place a note; tap a note to remove it.'}
+            className={`relative select-none ${paint ? 'cursor-cell' : 'cursor-crosshair'}`}
             style={{
               width,
               height,
@@ -245,7 +279,7 @@ export const PianoRoll: React.FC<{
             onPointerDown={down}
             onPointerMove={move}
             onPointerUp={up}
-            onPointerCancel={() => { drag.current = null; touched.current = null; }}
+            onPointerCancel={() => { drag.current = null; painted.current = null; touched.current = null; }}
           >
             {rows.map((row, i) => (
               <div
@@ -265,7 +299,7 @@ export const PianoRoll: React.FC<{
                   key={`${note.key}:${note.at}`}
                   aria-label={`${nameOf(note.key)}, bar ${Math.floor(note.at / STEPS_PER_BAR) + 1}`}
                   className="absolute rounded-sm bg-arcane-400 border border-arcane-200 pointer-events-none"
-                  style={{ left: note.at * CELL_W + 1, top: row * ROW_H + 2, width: Math.max(4, note.length * CELL_W - 2), height: ROW_H - 4 }}
+                  style={{ left: note.at * CELL_W + 1, top: row * ROW_H + 2, width: Math.max(4, note.length * CELL_W - 2), height: ROW_H - 4, opacity: strengthOpacity(note.level) }}
                 >
                   {/* The end that stretches. */}
                   {!hits && <div className="absolute right-0 top-0 bottom-0 w-1 bg-arcane-100/70 rounded-r-sm" />}
