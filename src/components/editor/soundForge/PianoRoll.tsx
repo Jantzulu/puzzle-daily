@@ -44,7 +44,14 @@ export const PianoRoll: React.FC<{
   onChange: (notes: SongNote[], tag: string, sticky?: boolean) => void;
   /** Sound a key, for `steps` long (a new note, a tap on the keys at the side). */
   onSound: (key: number, steps: number) => void;
-}> = ({ notes, rows, length, noteLength, playhead, onChange, onSound }) => {
+  /**
+   * Which part of which song is on show. When it changes, the grid scrolls
+   * up or down to where that part's notes are (a bass line sits three
+   * octaves under a tune, and would open out of sight).
+   */
+  showing: string;
+}> = ({ notes, rows, length, noteLength, playhead, onChange, onSound, showing }) => {
+  const scroller = React.useRef<HTMLDivElement>(null);
   const grid = React.useRef<HTMLDivElement>(null);
   const line = React.useRef<HTMLDivElement>(null);
   const drag = React.useRef<Drag | null>(null);
@@ -52,6 +59,25 @@ export const PianoRoll: React.FC<{
   /** A finger is down on this square: it becomes a tap only if it lifts without the grid having scrolled. */
   const touched = React.useRef<{ step: number; key: number } | null>(null);
   const rowOf = React.useMemo(() => new Map(rows.map((row, i) => [row.key, i])), [rows]);
+
+  // To the middle of the part's notes (or of the keys, for an empty part),
+  // whenever another part or song is put on show. Not on every edit: the
+  // grid must not move under the hand that is writing on it.
+  const latest = React.useRef({ notes, rows });
+  React.useEffect(() => { latest.current = { notes, rows }; });
+  React.useEffect(() => {
+    const box = scroller.current;
+    if (!box) return;
+    const now = latest.current;
+    const keys = now.notes.map(n => n.key).sort((a, b) => a - b);
+    const middle = keys.length > 0 ? keys[keys.length >> 1] : null;
+    let row = Math.floor(now.rows.length / 2);
+    if (middle !== null) {
+      const found = now.rows.findIndex(r => r.key <= middle);
+      if (found >= 0) row = found;
+    }
+    box.scrollTop = Math.max(0, row * ROW_H + ROW_H / 2 - box.clientHeight / 2);
+  }, [showing]);
 
   // The playhead: moved straight on the element, every frame, so playing a
   // song does not redraw the grid sixty times a second.
@@ -156,7 +182,7 @@ export const PianoRoll: React.FC<{
   const bars = Math.ceil(length / STEPS_PER_BAR);
 
   return (
-    <div className="border border-stone-700 rounded bg-stone-900 overflow-auto" style={{ maxHeight: 440 }}>
+    <div ref={scroller} className="border border-stone-700 rounded bg-stone-900 overflow-auto" style={{ maxHeight: 440 }}>
       <div className="relative" style={{ width: GUTTER_W + width, minWidth: '100%' }}>
         {/* Bar numbers. */}
         <div className="sticky top-0 z-20 flex bg-stone-800 border-b border-stone-700" style={{ height: 18 }}>

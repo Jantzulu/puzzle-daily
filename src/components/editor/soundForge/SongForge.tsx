@@ -12,6 +12,8 @@ import {
 import { playSong, type SongPlayback } from '../../../utils/synth/songPlayer';
 import { ForgeChip, ForgeSection, ForgeSlider, ForgeToggle } from './ForgeControls';
 import { NOTE_NAMES, cloneSound } from './forgeModel';
+import { MAX_MIDI_BYTES, songFromMidiFile } from './importMidi';
+import { MidiError } from '../../../utils/synth/midi';
 import { PianoRoll } from './PianoRoll';
 import { INSTRUMENTS, SCALES, cloneSong, gridRows, newSong, noteCount, sameSong, scaleById, songReducer, trackFrom, withBars } from './songModel';
 import { auditionSound } from './soundPreview';
@@ -62,6 +64,9 @@ export const SongForge: React.FC<{ /** False while the Sounds half is on show: i
   const [soundOff, setSoundOff] = React.useState(() => !soundManager.getSettings().enabled);
   const [deleteAsk, setDeleteAsk] = React.useState<string | null>(null);
   const [pasteText, setPasteText] = React.useState<string | null>(null);
+  /** True while a MIDI file is being read. */
+  const [importing, setImporting] = React.useState(false);
+  const midiInput = React.useRef<HTMLInputElement>(null);
   const now = React.useRef<Playing | null>(null);
 
   const saved = library.find(a => a.id === selectedId && a.song) ?? null;
@@ -157,6 +162,28 @@ export const SongForge: React.FC<{ /** False while the Sounds half is on show: i
     dispatch({ type: 'open', id, name: label, song: fresh });
     setSelectedId(id);
     setTrackIndex(0);
+  };
+
+  // A MIDI file, made into a new song of its own.
+  const importMidi = (file: File) => {
+    if (file.size > MAX_MIDI_BYTES) {
+      toast.error('That file is too large to be a MIDI file of a song.');
+      return;
+    }
+    setImporting(true);
+    songFromMidiFile(file).then(
+      made => {
+        startNew(file.name.replace(/\.[^.]+$/, '') || 'Imported song', made.song);
+        toast.success(made.summary);
+      },
+      (error: unknown) => {
+        const message = (error as Error)?.message;
+        toast.error(error instanceof MidiError ? message
+          : message === 'only drums' ? 'That file holds only a drum part, and there is no drum kit yet.'
+          : message === 'no notes' ? 'That MIDI file has no notes in it.'
+          : 'Could not read that as a MIDI file (.mid).');
+      },
+    ).finally(() => setImporting(false));
   };
 
   const refresh = () => {
@@ -305,6 +332,25 @@ export const SongForge: React.FC<{ /** False while the Sounds half is on show: i
             <div className="p-2 flex flex-wrap gap-1.5">
               <ForgeChip onClick={() => startNew('New song', newSong())} title="Four empty bars and a harp">Empty</ForgeChip>
               <ForgeChip onClick={() => startNew(`${name} copy`, cloneSong(song))} title="A copy of the song you are looking at">Copy of this</ForgeChip>
+              <ForgeChip
+                onClick={() => midiInput.current?.click()}
+                disabled={importing}
+                title="Pick a MIDI file (.mid): a song written in any music program, or an old tune found as MIDI. Its notes come in on the grid, one part for each instrument, played on the Forge's instruments. The drum part is left out."
+              >
+                {importing ? 'Reading...' : 'A MIDI file...'}
+              </ForgeChip>
+              <input
+                ref={midiInput}
+                type="file"
+                accept=".mid,.midi,audio/midi,audio/x-midi"
+                className="hidden"
+                aria-label="A MIDI file to make a song from"
+                onChange={e => {
+                  const file = e.target.files?.[0];
+                  e.target.value = ''; // the same file can be picked again
+                  if (file) importMidi(file);
+                }}
+              />
             </div>
           </div>
           <div className="text-[11px] text-stone-500 px-1">
@@ -427,6 +473,7 @@ export const SongForge: React.FC<{ /** False while the Sounds half is on show: i
             playhead={playhead}
             onChange={(notes, tag, sticky) => editTrack({ ...track, notes }, tag, sticky)}
             onSound={soundKey}
+            showing={`${selectedId}:${track.id}`}
           />
           <div className="text-[11px] text-stone-500 tabular-nums">
             {bars} bar{bars === 1 ? '' : 's'} of {BEATS_PER_BAR} beats · {songSeconds(song).toFixed(1)} s once through · {noteCount(song)} note{noteCount(song) === 1 ? '' : 's'}
