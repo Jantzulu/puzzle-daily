@@ -28,8 +28,9 @@ import { auditionSound } from './soundPreview';
 //
 // A song is saved as an ordinary sound asset (SoundAsset.song), so it syncs,
 // backs up and publishes like every other sound, and any sound slot in the
-// game can take one (played once through: a jingle). Looping one as a
-// level's music is the next step and is not wired yet.
+// game can take one (played once through: a jingle), and a music slot (a
+// puzzle's Background Music, the game's background, victory and defeat
+// music) plays it as music: looped for as long as the level lasts.
 //
 // This screen follows the Sounds screen's habits: a list on the left, the
 // thing being made on the right, plain names with the trade's word beside
@@ -354,8 +355,9 @@ export const SongForge: React.FC<{ /** False while the Sounds half is on show: i
             </div>
           </div>
           <div className="text-[11px] text-stone-500 px-1">
-            A saved song is one of your sounds: it syncs and backs up with them, and any sound slot can play it once through, as a jingle. Looping one as a
-            level's music is not wired up yet.
+            A saved song is one of your sounds (marked ♪ where sounds are picked). As a level's music it goes round for as long as the level lasts: pick it
+            as a puzzle's Background Music in the map editor, or as the game's background, victory or defeat music under Sounds → Global Sounds. Any other
+            sound slot plays it once through, as a jingle.
           </div>
         </div>
 

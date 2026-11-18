@@ -3,6 +3,18 @@
 
 import type { SoundSettings, SoundTrigger } from '../types/game';
 import { getMusicBlob } from './musicCache';
+import type { SynthSong } from './synth/song';
+import { playSong, type SongPlayback } from './synth/songPlayer';
+
+/**
+ * What the music channel can play: an audio file (anything an <audio>
+ * element takes: a file URL or a data: URL), or a SONG written in the Sound
+ * Forge. `key` says which song it is, and changes when the song is edited,
+ * so that asking again for the music already playing is a no-op.
+ */
+export type MusicSource = string | { song: SynthSong; key: string };
+
+const musicKey = (src: MusicSource): string => (typeof src === 'string' ? src : src.key);
 
 // Default settings
 const DEFAULT_SETTINGS: SoundSettings = {
@@ -38,19 +50,25 @@ class SoundManager {
   private musicLoading: string | null = null;
   private musicRun = 0;
   private musicObjectUrl: string | null = null;
+  // A SONG AS MUSIC (user ask 2026-11-17: "let's wire songs up as level
+  // music"). A song is not a file: it is drawn into the audio context a
+  // little ahead of the clock for as long as it plays (synth/songPlayer.ts),
+  // through musicGain like the element, so the volume sliders and the on/off
+  // switch apply. Nothing is downloaded and nothing is held in memory.
+  private musicSong: SongPlayback | null = null;
 
   // Cache for decoded audio buffers from base64
   private decodingPromises: Map<string, Promise<AudioBuffer>> = new Map();
 
   // Music waiting for a user gesture (browsers refuse to start audio
   // without one). unlock() starts it from inside the next gesture.
-  private pendingMusic: { src: string; loop: boolean } | null = null;
+  private pendingMusic: { src: MusicSource; loop: boolean } | null = null;
 
   // The looping track the game currently wants, whether or not it can be
   // heard. Remembered while sound is OFF so that turning it on starts the
   // music straight away (it used to stay silent until a page refresh: the
   // request made while off had simply been dropped). Cleared by stopMusic().
-  private wantedMusic: { src: string; loop: boolean } | null = null;
+  private wantedMusic: { src: MusicSource; loop: boolean } | null = null;
 
   constructor() {
     this.loadSettings();
@@ -266,7 +284,7 @@ class SoundManager {
     if (!enabled) {
       // Silence it, but remember what was wanted.
       this.haltMusic();
-    } else if (this.wantedMusic && !this.musicElement && !this.musicLoading) {
+    } else if (this.wantedMusic && !this.musicElement && !this.musicSong && !this.musicLoading) {
       void this.playMusic(this.wantedMusic.src, this.wantedMusic.loop);
     }
   }
@@ -379,10 +397,11 @@ class SoundManager {
   }
 
   // Play music (loops by default). `src` is anything an <audio> element
-  // can play: a file URL or a data: URL. Nothing is downloaded while sound
-  // is off: the request is only remembered.
-  public async playMusic(src: string, loop: boolean = true): Promise<void> {
+  // can play (a file URL or a data: URL) or a song from the Sound Forge.
+  // Nothing is downloaded while sound is off: the request is only remembered.
+  public async playMusic(src: MusicSource, loop: boolean = true): Promise<void> {
     if (!src) return;
+    const key = musicKey(src);
     // A looping track is the background music: note it even while sound is
     // off. A one-shot stinger is not something to bring back later.
     if (loop) this.wantedMusic = { src, loop };
@@ -391,8 +410,8 @@ class SoundManager {
     // Already playing this very track, or already fetching it: leave it be
     // (callers re-request the background music whenever assets or the
     // puzzle change).
-    if (loop && this.musicLoading === src) return;
-    if (loop && this.musicElement && this.musicSrc === src && !this.musicElement.paused) return;
+    if (loop && this.musicLoading === key) return;
+    if (loop && this.musicSrc === key && (this.musicSong || (this.musicElement && !this.musicElement.paused))) return;
 
     // No audio context until the first gesture: wait for unlock().
     if (!this.audioContext || !this.musicGain) {
@@ -401,6 +420,23 @@ class SoundManager {
     }
 
     this.haltMusic();
+
+    if (typeof src !== 'string') {
+      // A song: drawn live into the music channel. (On a context that is
+      // still asleep it waits with the clock, and starts when a tap wakes it.)
+      try {
+        const playback = playSong(this.audioContext, this.musicGain, src.song, {
+          loop,
+          // A stinger that has finished is no longer "the music".
+          onEnd: () => { if (this.musicSong === playback) this.haltMusic(); },
+        });
+        this.musicSong = playback;
+        this.musicSrc = key;
+      } catch (error) {
+        console.error('Failed to play song:', error);
+      }
+      return;
+    }
 
     // The looping background track plays from this device's saved copy,
     // downloaded once (musicCache.ts). On the very first visit that means
@@ -470,6 +506,11 @@ class SoundManager {
     const element = this.musicElement;
     this.musicElement = null;
     this.musicSrc = null;
+    const song = this.musicSong;
+    this.musicSong = null;
+    if (song) {
+      try { song.stop(); } catch { /* its context is already gone */ }
+    }
     if (element) {
       element.pause();
       // Drop the source so the browser stops downloading it.

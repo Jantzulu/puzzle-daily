@@ -1,7 +1,7 @@
 // Game Sound Events - Centralized sound trigger system
 // This module provides a simple interface to play sounds for game events
 
-import { soundManager } from './soundManager';
+import { soundManager, type MusicSource } from './soundManager';
 import { loadSoundAsset, getGlobalSoundConfig } from './assetStorage';
 import { LIVE_ASSETS_UPDATED_EVENT } from './livePull';
 import { getCharacter } from '../data/characters';
@@ -10,7 +10,7 @@ import { loadSpellAsset } from './assetStorage';
 import { renderSynthSound } from './synth/render';
 import { playChromeSound, type ChromeSound } from './chromeSounds';
 import type { SynthSound } from './synth/types';
-import type { SynthSong } from './synth/song';
+import { songOfSound, type SynthSong } from './synth/song';
 import { playSong } from './synth/songPlayer';
 import type { SoundAsset, SoundTrigger } from '../types/game';
 
@@ -167,14 +167,33 @@ export async function playSoundAsset(asset: SoundAsset): Promise<void> {
 }
 
 /**
- * Where a sound asset's audio can be STREAMED from: its inline data, else
- * its file URL. Used for music, which plays through an <audio> element and
+ * What a sound asset plays as MUSIC. A song from the Sound Forge is played
+ * as it is (drawn live, looped for as long as the level lasts: see
+ * soundManager.playMusic); a Forge SOUND is played as a song of one note,
+ * so a fanfare can be the victory music. An audio file is STREAMED from its
+ * inline data, else its file URL: it plays through an <audio> element and
  * so needs no download up front (resolveSoundData fetches the whole file).
  */
-function resolveMusicSource(soundId: string | undefined): string | null {
+export function resolveMusicSource(soundId: string | undefined): MusicSource | null {
   if (!soundId) return null;
   const soundAsset = loadSoundAsset(soundId);
-  return soundAsset?.audioData || soundAsset?.audioUrl || null;
+  if (!soundAsset) return null;
+  const song = soundAsset.song ?? (soundAsset.synth ? songOfSound(soundAsset.synth) : null);
+  if (song) return { song, key: songKey(soundId, song) };
+  return soundAsset.audioData || soundAsset.audioUrl || null;
+}
+
+/**
+ * Which song this is, in a few characters: its sound id and a fingerprint of
+ * its notes. An edited song has another fingerprint, so music asked for
+ * again after an edit is restarted with the edit in, while the same song
+ * asked for again (as the game does whenever assets land) plays on.
+ */
+function songKey(soundId: string, song: SynthSong): string {
+  const text = JSON.stringify(song);
+  let hash = 2166136261;
+  for (let i = 0; i < text.length; i++) hash = Math.imul(hash ^ text.charCodeAt(i), 16777619);
+  return `song:${soundId}:${text.length}:${(hash >>> 0).toString(36)}`;
 }
 
 /**

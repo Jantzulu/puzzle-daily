@@ -123,7 +123,7 @@ export const DetailsPanel: React.FC<DetailsPanelProps> = ({
         <option value="">Use Global Config</option>
         {availableSounds.map((sound) => (
           <option key={sound.id} value={sound.id}>
-            {sound.name}
+            {sound.song ? '♪ ' : ''}{sound.name}
           </option>
         ))}
       </select>

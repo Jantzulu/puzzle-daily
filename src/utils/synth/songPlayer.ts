@@ -10,10 +10,17 @@
 //
 // Everything goes through one gain node of its own, so that stopping a song
 // is a quick fade and not a wait for the notes already drawn to ring out.
+//
+// A PAGE IN THE BACKGROUND: browsers slow a hidden page's timers to about
+// one a second, and a quarter of a second ahead would leave holes in the
+// music of a game left playing in another tab. So while the page is hidden
+// the song is drawn much further ahead, and the moment it is hidden the
+// drawing is topped up at once (the slow timers start right after).
 
 import { noteEvents, ringOut, scheduleSong, songSeconds, type SynthSong } from './song';
 
 const AHEAD_SECONDS = 0.25;
+const AHEAD_HIDDEN_SECONDS = 3;
 const TICK_MS = 50;
 const FADE_SECONDS = 0.04;
 
@@ -53,11 +60,15 @@ export function playSong(
   let timer: ReturnType<typeof setInterval> | null = null;
   let ending: ReturnType<typeof setTimeout> | null = null;
 
+  const pageHidden = () => typeof document !== 'undefined' && document.visibilityState === 'hidden';
+  const onVisibility = () => draw();
+
   const finish = () => {
     if (stopped) return;
     stopped = true;
     if (timer !== null) clearInterval(timer);
     if (ending !== null) clearTimeout(ending);
+    if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', onVisibility);
     const now = ctx.currentTime;
     bus.gain.cancelScheduledValues(now);
     bus.gain.setValueAtTime(bus.gain.value, now);
@@ -67,7 +78,7 @@ export function playSong(
 
   const draw = () => {
     if (stopped) return;
-    const until = ctx.currentTime - origin + AHEAD_SECONDS;
+    const until = ctx.currentTime - origin + (pageHidden() ? AHEAD_HIDDEN_SECONDS : AHEAD_SECONDS);
     while (!allDrawn) {
       const passStart = pass * total;
       const to = Math.min(total, until - passStart);
@@ -88,6 +99,7 @@ export function playSong(
 
   draw();
   if (!stopped && ending === null) timer = setInterval(draw, TICK_MS);
+  if (!stopped && typeof document !== 'undefined') document.addEventListener('visibilitychange', onVisibility);
 
   return {
     stop: finish,

@@ -23,7 +23,7 @@
 // imported by types/game.ts.
 
 import { renderSynthSound } from './render';
-import { layersLength, type SynthLayer, type SynthSound } from './types';
+import { layersLength, soundLength, type SynthLayer, type SynthSound } from './types';
 
 /** Steps in a beat (a step is a sixteenth note). */
 export const STEPS_PER_BEAT = 4;
@@ -219,6 +219,25 @@ export function ringOut(song: SynthSong): number {
     longest = Math.max(longest, track.held ? Math.max(0, ...track.instrument.layers.map(l => l.tail)) : layersLength(track.instrument));
   }
   return Math.min(4, longest);
+}
+
+/**
+ * One sound as a song: a single note of it, in a song as long as the sound
+ * (echoes included). This is what lets a Forge SOUND sit in a music slot: a
+ * fanfare as the victory music plays once, a drone as the background goes
+ * round end to end.
+ */
+export function songOfSound(sound: SynthSound): SynthSong {
+  const tempo = 120;
+  const root = soundRoot(sound);
+  const length = Math.max(1, Math.ceil(soundLength(sound) / stepSeconds({ tempo }) - 1e-6));
+  return {
+    version: 1,
+    tempo,
+    length,
+    level: 1,
+    tracks: [{ id: 'sound', name: 'Sound', instrument: sound, root, level: 1, notes: [{ at: 0, length, key: root }] }],
+  };
 }
 
 /** A song as it must be to play: numbers in range, notes inside it, nothing missing. */

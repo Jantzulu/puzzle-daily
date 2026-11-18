@@ -514,7 +514,7 @@ export const SoundEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
                         <option value="">None</option>
                         {sounds.map((sound) => (
                           <option key={sound.id} value={sound.id}>
-                            {sound.name}
+                            {sound.song ? '♪ ' : ''}{sound.name}
                           </option>
                         ))}
                       </select>
