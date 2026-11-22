@@ -256,6 +256,55 @@ export function archInset(y: number, rx: number, rise = ARCH_RISE_ART): number {
   return Math.max(0, Math.round(rx * (1 - Math.sqrt(Math.max(0, 1 - t * t)))));
 }
 
+/** The arcade hangs this far above the strip it is over (CSS px): from the beam. Mirrors index.css .wall-arcade. */
+export const ARCH_LIFT = 4 * Z;
+
+/** A run of the arch's edge: `w` art px on row `y` (0 = the band's row), from `x` (art px from the card's left edge). */
+export interface ArchRun { x: number; y: number; w: number }
+
+/**
+ * THE EDGE OF ONE CARD'S CUTOUT, as runs of art pixels: the stone pixels
+ * that face the opening, sideways or down. Across the band's underside,
+ * round both shoulders, to the springing, where it lands on the column's
+ * own pixel (x = 0 and x = widthArt - 1).
+ *
+ * The arcade draws its rim with these, and the selection draws its outline
+ * with these (SelectionShape.tsx: user, 2026-11-21, "Could the top of the
+ * selection border follow the curvature of the new arch?"), so the outline
+ * sits on the arch pixel for pixel.
+ *
+ * `first` / `last`: the card is at a side wall, where the cutout runs to
+ * the card's very edge (no column there to stop short of).
+ */
+export function archOutline(widthArt: number, first: boolean, last: boolean): ArchRun[] {
+  const left = first ? 0 : 1; // past the half of the column that is on this card
+  const right = widthArt - (last ? 0 : 1);
+  const rx = Math.min(ARCH_MAX_RX_ART, Math.floor((right - left) / 2));
+  /** How far the stone reaches in on each row of the curve; none below it. */
+  const reach = Array.from({ length: ARCH_RISE_ART + 1 }, (_, y) => (y < ARCH_RISE_ART ? archInset(y, rx) : 0));
+  const runs: ArchRun[] = [];
+  // The band's underside: everything over the opening's top row.
+  runs.push({ x: left + reach[0], y: 0, w: right - left - 2 * reach[0] });
+  for (let y = 0; y < ARCH_RISE_ART; y++) {
+    const row = ARCH_BAND_ART + y;
+    // Left shoulder: from over the row below's opening to this row's own last stone pixel.
+    let from = left + reach[y + 1];
+    let to = left + reach[y] - 1;
+    if (to < from) from = to;
+    from = Math.max(0, from);
+    to = Math.max(0, to);
+    runs.push({ x: from, y: row, w: to - from + 1 });
+    // Right shoulder, its mirror.
+    let rFrom = right - reach[y];
+    let rTo = right - reach[y + 1] - 1;
+    if (rTo < rFrom) rTo = rFrom;
+    rFrom = Math.min(widthArt - 1, rFrom);
+    rTo = Math.min(widthArt - 1, rTo);
+    runs.push({ x: rFrom, y: row, w: rTo - rFrom + 1 });
+  }
+  return runs;
+}
+
 /**
  * Draw the arcade into a canvas `w` CSS px wide and ARCH_H tall. `edges` are
  * the strip's slot boundaries (CSS px, from 0 to w): a column stands on each
@@ -272,38 +321,27 @@ export function drawArcade(ctx: CanvasRenderingContext2D, w: number, edges: read
     ctx.fillRect(ax * Z, ay * Z, aw * Z, ah * Z);
   };
   const widthArt = Math.ceil(w / Z);
-  // The stone across the top, with the rim of the cutouts along its foot.
+  const rows = ARCH_BAND_ART + ARCH_RISE_ART;
+  // The stone across the top.
   a(0, 0, widthArt, ARCH_BAND_ART, stone);
   for (let i = 0; i + 1 < edges.length; i++) {
-    // The cutout runs between the two columns' shafts (each 2 art px wide on its boundary).
-    const left = Math.round(edges[i] / Z) + (i === 0 ? 0 : 1);
-    const right = Math.round(edges[i + 1] / Z) - (i + 2 === edges.length ? 0 : 1);
-    const rx = Math.min(ARCH_MAX_RX_ART, Math.floor((right - left) / 2));
-    let above = rx; // the row above's reach: the rim covers the step between two rows
-    for (let y = 0; y < ARCH_RISE_ART; y++) {
-      const inset = archInset(y, rx);
-      const row = ARCH_BAND_ART + y;
-      // The two shoulders' stone.
-      a(left, row, inset, 1, stone);
-      a(right - inset, row, inset, 1, stone);
-      // Their rims: every stone pixel that faces the opening, sideways or down.
-      const step = Math.max(1, above - inset);
-      a(left + inset - 1, row, 1, 1, rim);
-      a(right - inset, row, 1, 1, rim);
-      if (y > 0) {
-        a(left + inset, row - 1, step, 1, rim);
-        a(right - inset - step, row - 1, step, 1, rim);
-      }
-      above = inset;
+    // (Floors, as the selection's own edges are: an odd last pixel is left over, not rounded up.)
+    const x0 = Math.floor(edges[i] / Z);
+    const cardArt = Math.floor(edges[i + 1] / Z) - x0;
+    const runs = archOutline(cardArt, i === 0, i + 2 === edges.length);
+    // The shoulders' stone: on each row, from the card's edge in to the rim, both sides.
+    for (let row = ARCH_BAND_ART; row < rows; row++) {
+      const [l, r] = runs.filter(run => run.y === row);
+      a(x0, row, l.x + l.w, 1, stone);
+      a(x0 + r.x, row, cardArt - r.x, 1, stone);
     }
-    // Across the flat of the arch, the band's own underside.
-    a(left + rx, ARCH_BAND_ART - 1, right - left - 2 * rx, 1, rim);
+    for (const run of runs) a(x0 + run.x, run.y, run.w, 1, rim);
   }
   // The stone over each column, between two cutouts: the full height, down to the capital.
   for (let i = 1; i + 1 < edges.length; i++) {
-    const x = Math.round(edges[i] / Z);
-    a(x - 1, 0, 1, ARCH_BAND_ART + ARCH_RISE_ART, s.edgeLit);
-    a(x, 0, 1, ARCH_BAND_ART + ARCH_RISE_ART, s.dark);
+    const x = Math.floor(edges[i] / Z);
+    a(x - 1, 0, 1, rows, s.edgeLit);
+    a(x, 0, 1, rows, s.dark);
   }
 }
 

@@ -327,7 +327,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
           old
         />
       )}
-      <SelectionStrip ids={stripEnemyIds} selectedIndex={selectedStripIndex} width={stripWidth} tone={isAllySide ? 'copper' : 'blood'} opensDrawer={alwaysOpensDrawer} />
+      <SelectionStrip ids={stripEnemyIds} selectedIndex={selectedStripIndex} width={stripWidth} tone={isAllySide ? 'copper' : 'blood'} opensDrawer={alwaysOpensDrawer} arch={wall} />
       {!wall && <StripDividers slotCount={stripEnemyIds.length} selectedIndex={selectedStripIndex} width={stripWidth} />}
       <div className="flex">
         {stripEnemyIds.map((enemyId, slot) => {

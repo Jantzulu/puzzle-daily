@@ -544,7 +544,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
           openIndex={heroDrawerUp ? renderedStripIndex : -1}
         />
       )}
-      <SelectionStrip ids={stripCharacterIds} selectedIndex={selectedStripIndex} width={stripWidth} tone="copper" opensDrawer={heroOpensDrawer} />
+      <SelectionStrip ids={stripCharacterIds} selectedIndex={selectedStripIndex} width={stripWidth} tone="copper" opensDrawer={heroOpensDrawer} arch={wall} />
       {!wall && <StripDividers slotCount={stripCharacterIds.length} selectedIndex={selectedStripIndex} width={stripWidth} />}
       <div className="flex">
         {stripCharacterIds.map((charId, slot) => {

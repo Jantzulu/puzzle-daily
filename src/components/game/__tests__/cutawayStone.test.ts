@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   ARCH_BAND_ART, ARCH_H, ARCH_MAX_RX_ART, ARCH_RISE_ART, PIER_ART, PIER_TOP, SLAB_ART, SLAB_H, SLAB_RISE, WALL_ON, WALL_TORCH_GAP, WALL_TORCH_HALF,
-  archInset, facingBlocks, slabBlocks,
+  archInset, archOutline, facingBlocks, slabBlocks,
 } from '../cutawayStone';
 
 // The cutaway wall's placeholder stone (the `?wall=1` experiment). What can
@@ -45,6 +45,42 @@ describe('the cutaway wall', () => {
     const narrow = Array.from({ length: ARCH_RISE_ART }, (_, y) => archInset(y, 15));
     expect(narrow[0]).toBeLessThan(15);
     expect(narrow[narrow.length - 1]).toBe(0);
+  });
+
+  it('traces the edge of a cutout as one unbroken line from column to column', () => {
+    const rows = ARCH_BAND_ART + ARCH_RISE_ART;
+    for (const [width, first, last] of [[56, false, false], [56, true, false], [55, false, true], [33, false, false], [167, true, true]] as const) {
+      const runs = archOutline(width, first, last);
+      for (const run of runs) {
+        expect(run.w).toBeGreaterThan(0);
+        expect(run.x).toBeGreaterThanOrEqual(0);
+        expect(run.x + run.w).toBeLessThanOrEqual(width); // never outside the card
+        expect(run.y).toBeGreaterThanOrEqual(0);
+        expect(run.y).toBeLessThan(rows);
+      }
+      // One run across the band, then a left and a right run on every row of the curve.
+      expect(runs.filter(run => run.y === 0)).toHaveLength(1);
+      for (let y = 1; y < rows; y++) expect(runs.filter(run => run.y === y)).toHaveLength(2);
+      // It lands on the columns' own pixels, where the selection's straight sides take over.
+      const [l, r] = runs.filter(run => run.y === rows - 1);
+      expect(l.x).toBe(0);
+      expect(r.x + r.w).toBe(width);
+      // Unbroken: each row's run touches the one above it (side by side or corner to corner).
+      let above = runs.find(run => run.y === 0)!;
+      for (let y = 1; y < rows; y++) {
+        const left = runs.filter(run => run.y === y)[0];
+        expect(left.x + left.w).toBeGreaterThanOrEqual(above.x); // reaches up to the row above's start
+        expect(left.x).toBeLessThanOrEqual(above.x);
+        above = left;
+      }
+    }
+    // A mirror image, for a card with a column on both sides.
+    const mid = archOutline(56, false, false);
+    for (let y = 1; y < rows; y++) {
+      const [l, r] = mid.filter(run => run.y === y);
+      expect(r.x).toBe(56 - (l.x + l.w));
+      expect(r.w).toBe(l.w);
+    }
   });
 
   it('lays a slab of blocks that fill it exactly, one art px of mortar apart', () => {

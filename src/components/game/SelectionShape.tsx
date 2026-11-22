@@ -1,6 +1,7 @@
 import React from 'react';
 import { slotBoundaries } from '../../hooks/useElementWidth';
 import cornerArt from '../../assets/icons/selection-corner.png';
+import { ARCH_BAND_ART, ARCH_H, ARCH_LIFT, ARCH_RISE_ART, archOutline } from './cutawayStone';
 
 /**
  * THE SELECTION AS ONE OUTLINED SHAPE — the selected card and its drawer
@@ -56,6 +57,42 @@ const TONES: Record<SelectionTone, { fill: string; line: string }> = {
 };
 
 type Rect = { left: number; width: number; top?: number; bottom?: number; height?: number };
+
+/*
+ * UNDER AN ARCH (the `?wall=1` experiment, cutawayStone.ts; user 2026-11-21:
+ * "Could the top of the selection border follow the curvature of the new
+ * arch?"). There each card stands in an arched cutout that begins 8px ABOVE
+ * the strip, and the card half's top is not a straight row with two corner
+ * pieces: the line climbs the column, rounds the arch's shoulder, crosses
+ * under the band and comes down the other side, on the very pixels the
+ * arcade paints as the cutout's rim (archOutline: one description for
+ * both). The wash is clipped to the same edge. No corner art up there: an
+ * arch has no corner. The sides, the foot, the elbows and the drawer half
+ * are as ever.
+ */
+const ARCH_ROWS = ARCH_BAND_ART + ARCH_RISE_ART;
+
+/** The arch part of the line, and the wash's clip, for a card `w` CSS px wide. */
+function archShape(w: number, first: boolean, last: boolean, closed: boolean): { rects: Rect[]; clip: string } {
+  const runs = archOutline(Math.floor(w / A), first, last);
+  const rects: Rect[] = runs.map(run => ({ left: run.x * A, width: run.w * A, top: run.y * A - ARCH_LIFT, height: A }));
+  // The wash: inside the line's outer edge, row by row (y from the band's row, in the wash's own box).
+  const leftAt: number[] = [];
+  const rightAt: number[] = [];
+  for (let y = 0; y < ARCH_ROWS; y++) {
+    const onRow = runs.filter(run => run.y === y);
+    leftAt.push(Math.min(...onRow.map(run => run.x)) * A);
+    rightAt.push(Math.max(...onRow.map(run => run.x + run.w)) * A);
+  }
+  const c = `${A}px`;
+  const pts: string[] = [`0 ${ARCH_ROWS * A}px`];
+  for (let y = ARCH_ROWS - 1; y >= 0; y--) pts.push(`${leftAt[y]}px ${(y + 1) * A}px`, `${leftAt[y]}px ${y * A}px`);
+  for (let y = 0; y < ARCH_ROWS; y++) pts.push(`${rightAt[y]}px ${y * A}px`, `${rightAt[y]}px ${(y + 1) * A}px`);
+  pts.push(`100% ${ARCH_ROWS * A}px`);
+  pts.push(...(closed ? [`100% calc(100% - ${c})`, `calc(100% - ${c}) calc(100% - ${c})`, `calc(100% - ${c}) 100%`] : ['100% 100%']));
+  pts.push(...(closed ? [`${c} 100%`, `${c} calc(100% - ${c})`, `0 calc(100% - ${c})`] : ['0 100%']));
+  return { rects, clip: `polygon(${pts.join(', ')})` };
+}
 
 /*
  * CORNER ART (user TEST, 2026-10-03 — may be reverted: delete this block,
@@ -158,6 +195,8 @@ interface StripProps {
    * fading out keeps its own shape whatever the new selection is.
    */
   opensDrawer: (id: string) => boolean;
+  /** The cards stand under arches (the wall): the top of the shape follows its card's arch. */
+  arch?: boolean;
 }
 
 /**
@@ -166,7 +205,7 @@ interface StripProps {
  * only. Open at the bottom, where it continues into the drawer — unless its
  * entity opens none.
  */
-export const SelectionStrip: React.FC<StripProps> = ({ ids, selectedIndex, width, tone, opensDrawer }) => {
+export const SelectionStrip: React.FC<StripProps> = ({ ids, selectedIndex, width, tone, opensDrawer, arch = false }) => {
   const slotCount = ids.length;
   if (slotCount <= 0 || width <= 0) return null;
   const b = shapeEdges(width, slotCount);
@@ -175,12 +214,15 @@ export const SelectionStrip: React.FC<StripProps> = ({ ids, selectedIndex, width
       {ids.map((id, j) => {
         const w = b[j + 1] - b[j];
         const closed = !opensDrawer(id);
+        const arched = arch ? archShape(w, j === 0, j === slotCount - 1, closed) : null;
+        // Where the straight sides begin: under the top row, or where the arch springs.
+        const sideTop = arched ? ARCH_H - ARCH_LIFT : A;
         const rects: Rect[] = [
-          // top row
-          { left: A, width: w - 2 * A, top: 0, height: A },
+          // the top: a row, or the arch
+          ...(arched ? arched.rects : [{ left: A, width: w - 2 * A, top: 0, height: A }]),
           // side columns, down to the seam (or to the closing row)
-          { left: 0, width: A, top: A, bottom: closed ? A : 0 },
-          { left: w - A, width: A, top: A, bottom: closed ? A : 0 },
+          { left: 0, width: A, top: sideTop, bottom: closed ? A : 0 },
+          { left: w - A, width: A, top: sideTop, bottom: closed ? A : 0 },
         ];
         if (closed) rects.push({ left: A, width: w - 2 * A, bottom: 0, height: A });
         return (
@@ -189,13 +231,15 @@ export const SelectionStrip: React.FC<StripProps> = ({ ids, selectedIndex, width
             className="absolute inset-y-0 transition-opacity duration-300 ease-out"
             style={{ left: b[j], width: w, opacity: j === selectedIndex ? 1 : 0 }}
           >
-            <div className="absolute inset-0" style={{ background: TONES[tone].fill, clipPath: clipCorners(true, true, closed, closed) }} />
+            {arched
+              ? <div className="absolute inset-x-0 bottom-0" style={{ top: -ARCH_LIFT, background: TONES[tone].fill, clipPath: arched.clip }} />
+              : <div className="absolute inset-0" style={{ background: TONES[tone].fill, clipPath: clipCorners(true, true, closed, closed) }} />}
             <Line rects={rects} tone={tone} />
             <Corners
               pieces={closed
-                ? [OUTER.tl, OUTER.tr, OUTER.br, OUTER.bl]
+                ? [...(arched ? [] : [OUTER.tl, OUTER.tr]), OUTER.br, OUTER.bl]
                 : [
-                    OUTER.tl, OUTER.tr,
+                    ...(arched ? [] : [OUTER.tl, OUTER.tr]),
                     // the elbows' top halves, where the drawer reaches past the card
                     ...(b[j] > 0 ? [elbowTopLeft] : []),
                     ...(b[j + 1] < b[slotCount] ? [elbowTopRight] : []),
