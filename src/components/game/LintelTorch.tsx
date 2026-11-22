@@ -7,6 +7,20 @@ import { entryIsDark, onEntryDark } from './enterGateState';
 /** The second torch of a pair follows the first by this much (ms). */
 const FOLLOW_MS = 220;
 
+/**
+ * Torches that light when SEEN catch one after another, never together:
+ * each waits until this long after the one before it (ms). On a screen tall
+ * enough to show several at once they run down the wall in turn.
+ */
+const CATCH_GAP_MS = 260;
+let lastCatchAt = 0;
+function nextCatchDelay(): number {
+  const now = performance.now();
+  const at = Math.max(now, lastCatchAt + CATCH_GAP_MS);
+  lastCatchAt = at;
+  return at - now;
+}
+
 /** The chrome's art scale (panelSkins Z): CSS px per art px. */
 const Z = 2;
 
@@ -23,6 +37,15 @@ const Z = 2;
  * A torch with a `phase` follows its partner a beat later when the dark
  * entry lights them (EnterGate.tsx).
  *
+ * `lightOn="seen"` (the cutaway wall's torches, one on each beam; user,
+ * 2026-11-21: torches that catch as you scroll down, "especially if the
+ * panels appear darker and become more visible with the torch lighting"):
+ * such a torch stays OUT until the page has been entered AND it has come
+ * fully onto the screen, then catches, once. This is not the run-reaction
+ * that was removed: it lights because the player has just scrolled to it,
+ * so it is always on screen when it sounds. Its room is dark until it does
+ * (index.css .wall-dark reads this torch's --out class).
+ *
  * COST (the user asked): no script runs per frame. The flame is a Web
  * Animations transform loop and the light a CSS opacity/scale flicker,
  * both the compositor's work, and both pause while the torch is off screen.
@@ -30,9 +53,10 @@ const Z = 2;
  * minimal, in a project full of it). `phase` (ms) offsets this torch's
  * loops so a pair never burns in step.
  */
-export const LintelTorch: React.FC<{ phase?: number }> = ({ phase = 0 }) => {
-  // Out while the page waits in the dark for its first tap (EnterGate.tsx).
-  const [lit, setLit] = React.useState(() => !entryIsDark());
+export const LintelTorch: React.FC<{ phase?: number; lightOn?: 'entry' | 'seen' }> = ({ phase = 0, lightOn = 'entry' }) => {
+  // Out while the page waits in the dark for its first tap (EnterGate.tsx);
+  // a torch that lights when seen starts out whatever the page is doing.
+  const [lit, setLit] = React.useState(() => lightOn === 'entry' && !entryIsDark());
   // Whole-px placement: the lettering's flex centring can land it on a
   // half pixel, which would blur the art.
   const snapRef = useCrispSnap<HTMLButtonElement>(true);
@@ -89,13 +113,45 @@ export const LintelTorch: React.FC<{ phase?: number }> = ({ phase = 0 }) => {
   // THE DARK ENTRY: the tap that enters the page lights the torches, the
   // second a beat after the first, each with its sound.
   React.useEffect(() => {
+    if (lightOn !== 'entry') return;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const off = onEntryDark(dark => {
       clearTimeout(timer);
       if (!dark) timer = setTimeout(() => setLit(true), phase ? FOLLOW_MS : 0);
     });
     return () => { off(); clearTimeout(timer); };
-  }, [phase]);
+  }, [phase, lightOn]);
+
+  // LIT WHEN SEEN: once the page has been entered and the torch has come
+  // wholly onto the screen (and a little clear of its foot), it catches, in
+  // its turn. Once only: after that it is the player's to put out and relight.
+  React.useEffect(() => {
+    if (lightOn !== 'seen') return;
+    const el = snapRef.current;
+    if (!el) return;
+    let seen = typeof IntersectionObserver === 'undefined'; // nothing to watch with: do not leave it dark
+    let entered = !entryIsDark();
+    let done = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const tryLight = () => {
+      if (done || !seen || !entered) return;
+      done = true;
+      timer = setTimeout(() => setLit(true), nextCatchDelay());
+    };
+    const off = onEntryDark(dark => { entered = !dark; tryLight(); });
+    let io: IntersectionObserver | undefined;
+    if (!seen) {
+      io = new IntersectionObserver(([entry]) => {
+        if (!entry.isIntersecting) return;
+        seen = true;
+        io?.disconnect();
+        tryLight();
+      }, { threshold: 1, rootMargin: '0px 0px -10% 0px' });
+      io.observe(el);
+    }
+    tryLight();
+    return () => { off(); io?.disconnect(); clearTimeout(timer); };
+  }, [lightOn, snapRef]);
 
   // Off screen, nothing runs: the strip's loop pauses, and data-offscreen
   // pauses the light's flicker (index.css).

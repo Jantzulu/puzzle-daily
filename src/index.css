@@ -4836,6 +4836,43 @@ button.dir-picker__tab:not(.dir-picker__tab--active) .dir-picker__tab-text {
   50% { transform: translateY(2px); }
 }
 
+/* A ROOM'S DARK (CutawayWall.tsx WallDark; user, 2026-11-21: the torches
+   catch as the player scrolls down, "especially if the panels appear darker
+   and become more visible with the torch lighting"). A veil over each room:
+   from under its beam (the beam and its torch stay clear) to 4px short of
+   the room's foot (where the next beam's top is), and out over the side
+   walls. It is there while the room's torch is OUT, read straight off the
+   torch's own class, so the player putting a torch out darkens its room
+   again; it lifts slowly as the torch catches and falls quickly when it is
+   put out. Opacity only. A browser without :has never shows the veil: the
+   rooms are simply lit. The roots are position: relative with NO z-index:
+   the hero panel must not become a stacking context (its title's z-46). */
+[data-wall-room] {
+  position: relative;
+}
+
+.wall-dark {
+  position: absolute;
+  left: -20px;
+  right: -20px;
+  top: 48px; /* under the beam: a 20px spacer, half the 20px title row, half the 36px beam */
+  bottom: 4px;
+  z-index: 2; /* over the strip of cards (1) */
+  background: rgba(6, 5, 4, 0.68);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.9s ease-out;
+}
+
+[data-wall-room='hero'] > .wall-dark {
+  top: 28px; /* no spacer above the heroes' title */
+}
+
+[data-wall-room]:has(.lintel-torch--out) > .wall-dark {
+  opacity: 1;
+  transition: opacity 0.3s ease-in;
+}
+
 /* THE GROUND. Without the wall, only the panels under the hero hall have
    the colder dark (.dungeon-below::before). With it the whole wall has one
    ground, the heroes' room included (user, 2026-11-21: "Every panel has a

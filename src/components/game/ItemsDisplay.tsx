@@ -7,7 +7,7 @@ import { loadCollectible, loadSpellAsset, type CustomSprite, type CustomCollecti
 import { SpriteThumbnail } from '../editor/SpriteThumbnail';
 import { HelpButton } from './HelpOverlay';
 import { hasDeliverySchedule, deliveryRepeat } from '../../utils/deliverySchedule';
-import { BeamTorch, CutawaySlab } from './CutawayWall';
+import { BeamTorch, CutawaySlab, WallDark } from './CutawayWall';
 import { WALL_ABOVE_BEAM, WALL_HEADER_GAP, WALL_ON, WALL_ROW } from './cutawayStone';
 
 interface ItemsDisplayProps {
@@ -379,7 +379,12 @@ export const ItemsDisplay: React.FC<ItemsDisplayProps> = ({ puzzle, className = 
   );
 
   if (noPanel) {
-    return <div className={className}>{content}</div>;
+    return (
+      <div className={className} data-wall-room={wall ? 'room' : undefined}>
+        {content}
+        {wall && <WallDark />}
+      </div>
+    );
   }
 
   return (

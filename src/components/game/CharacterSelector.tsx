@@ -23,7 +23,7 @@ import { SelectionStrip, SelectionDrawer } from './SelectionShape';
 import placedBannerIcon from '../../assets/icons/placed-banner.png';
 import { useElementWidth, artGridSlotStyle } from '../../hooks/useElementWidth';
 import { subscribeToImageLoads } from '../../utils/imageLoader';
-import { BeamTapHint, BeamTorch, CutawaySlab, WallColumns } from './CutawayWall';
+import { BeamTapHint, BeamTorch, CutawaySlab, WallColumns, WallDark } from './CutawayWall';
 import { WALL_HEADER_GAP, WALL_HERO_Z, WALL_ON, WALL_OVER_SLAB, WALL_ROW, type WallBelow } from './cutawayStone';
 
 const MOVEMENT_TYPES = new Set([
@@ -1019,7 +1019,12 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
   if (noPanel) {
     // (The wall: what is directly above the enemies' beam, so the page can place that beam.)
     const wallBelow: WallBelow | undefined = wall ? (heroDrawerUp ? 'drawer' : 'open') : undefined;
-    return <div className={panelDim} data-wall-below={wallBelow}>{content}</div>;
+    return (
+      <div className={panelDim} data-wall-below={wallBelow} data-wall-room={wall ? 'hero' : undefined}>
+        {content}
+        {wall && <WallDark />}
+      </div>
+    );
   }
 
   return (

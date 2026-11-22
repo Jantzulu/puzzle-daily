@@ -18,7 +18,7 @@ import { SelectionStrip, SelectionDrawer } from './SelectionShape';
 import { useElementWidth, artGridSlotStyle } from '../../hooks/useElementWidth';
 import { subscribeToImageLoads } from '../../utils/imageLoader';
 import { playChromeSound } from '../../utils/chromeSounds';
-import { BeamTapHint, BeamTorch, CutawaySlab, WallColumns } from './CutawayWall';
+import { BeamTapHint, BeamTorch, CutawaySlab, WallColumns, WallDark } from './CutawayWall';
 import { WALL_ABOVE_BEAM, WALL_HEADER_GAP, WALL_ON, WALL_ROW, type WallBelow } from './cutawayStone';
 
 // Every enemy/ally opens a drawer (its info panel always renders).
@@ -583,7 +583,12 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
   if (noPanel) {
     // (The wall: what is directly above the next panel's beam, so the page can place that beam.)
     const wallBelow: WallBelow | undefined = wall ? (enemyDrawerUp ? 'drawer' : 'open') : undefined;
-    return <div className={className} data-wall-below={wallBelow}>{content}</div>;
+    return (
+      <div className={className} data-wall-below={wallBelow} data-wall-room={wall ? 'room' : undefined}>
+        {content}
+        {wall && <WallDark />}
+      </div>
+    );
   }
 
   return (

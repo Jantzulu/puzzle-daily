@@ -3,7 +3,7 @@ import type { Puzzle, TileBehaviorConfig, CadenceConfig } from '../../types/game
 import { loadTileType, loadPuzzleSkin, type CustomTileType, type CustomSprite } from '../../utils/assetStorage';
 import { SpriteThumbnail } from '../editor/SpriteThumbnail';
 import { HelpButton } from './HelpOverlay';
-import { BeamTorch, CutawaySlab } from './CutawayWall';
+import { BeamTorch, CutawaySlab, WallDark } from './CutawayWall';
 import { WALL_ABOVE_BEAM, WALL_HEADER_GAP, WALL_ON, WALL_ROW } from './cutawayStone';
 
 interface SpecialTilesDisplayProps {
@@ -352,7 +352,12 @@ export const SpecialTilesDisplay: React.FC<SpecialTilesDisplayProps> = ({ puzzle
   );
 
   if (noPanel) {
-    return <div className={className}>{content}</div>;
+    return (
+      <div className={className} data-wall-room={wall ? 'room' : undefined}>
+        {content}
+        {wall && <WallDark />}
+      </div>
+    );
   }
 
   return (

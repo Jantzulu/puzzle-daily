@@ -182,6 +182,18 @@ export const WallColumns: React.FC<{
 };
 
 /**
+ * A ROOM'S DARK: until its beam's torch is lit a room is in the dark, and it
+ * comes up as the torch catches (user, 2026-11-21: "especially if the panels
+ * appear darker and become more visible with the torch lighting"). A veil
+ * over the room, under its beam, out to the side walls; index.css .wall-dark
+ * fades it by whether the room's torch is out (the torch's own --out class,
+ * read with :has). So a torch the player puts out darkens its room again.
+ * Opacity only. Mount it last in a panel's root, which must carry
+ * data-wall-room ("hero" for the hero panel, whose beam is at its top).
+ */
+export const WallDark: React.FC = () => <div aria-hidden className="wall-dark" />;
+
+/**
  * THE TAP HINT, IN THE WALL: a small line under the title, on the beam, in
  * place of the "Tap a hero for more info" chip and the row it stood in.
  * User, 2026-11-21: "the space below and the floor being present without a
@@ -209,7 +221,9 @@ export const BeamTapHint: React.FC = () => (
  * distance from the title to the eye either way (WALL_TORCH_GAP), and dead
  * centre on the beam, which is a torch and two art px tall. Placed without
  * a transform, so the art stays on whole pixels. It is the lintel's own
- * torch: a tap puts it out, the dark entry lights it.
+ * torch, and a tap puts it out; but it LIGHTS WHEN SEEN (LintelTorch
+ * lightOn="seen"): the first tap on the page lights the ones on screen, one
+ * after another, and the rest catch as the player scrolls down to them.
  */
 export const BeamTorch: React.FC<{
   side: 'left' | 'right';
@@ -230,7 +244,7 @@ export const BeamTorch: React.FC<{
     className={`absolute flex ${side === 'left' ? 'right-full' : 'left-full'}`}
     style={{ [side === 'left' ? 'marginRight' : 'marginLeft']: WALL_TORCH_GAP[side], top: `calc(50% - ${WALL_TORCH_HALF}px)`, height: WALL_TORCH_HALF * 2 }}
   >
-    <LintelTorch phase={phase} />
+    <LintelTorch phase={phase} lightOn="seen" />
   </span>
 );
 
