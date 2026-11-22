@@ -1,10 +1,10 @@
 import React from 'react';
 import { Z, prepCanvas, useCrispSnap } from './panelSkins';
 import {
-  ARCH_H, ARCH_LIFT, FOUND_H, FOUND_STEP, PIER_STOP, PIER_TOP, PIER_W, SLAB_H, WALL_TORCH_GAP, WALL_TORCH_HALF, drawArcade, drawFoundation, drawNiches, drawPier, drawSetting, drawSlab,
-  settingBox,
+  ARCH_H, ARCH_LIFT, FOUND_H, FOUND_STEP, PIER_STOP, PIER_TOP, PIER_W, PLATE_END_ART, PLATE_H, SLAB_H, WALL_TORCH_GAP, WALL_TORCH_HALF, drawArcade, drawFoundation,
+  drawNiches, drawPier, drawPlate, drawSetting, drawSlab, settingBox,
 } from './cutawayStone';
-import type { SettingKind } from './cutawayStone';
+import type { PlateKind, SettingKind } from './cutawayStone';
 import { slotBoundaries } from '../../hooks/useElementWidth';
 import { LintelTorch } from './LintelTorch';
 
@@ -64,6 +64,51 @@ export const CutawaySlab: React.FC<{
     // clear button), which left the beam 3px high of both.
     <div aria-hidden className="absolute pointer-events-none" style={{ left: -PIER_W, right: -PIER_W, top: `calc(50% - ${SLAB_H / 2}px)`, height: SLAB_H, zIndex: z }}>
       <div ref={snapRef} data-wall-beam className="relative w-full h-full">
+        <canvas ref={canvasRef} style={{ position: 'absolute' }} />
+      </div>
+    </div>
+  );
+};
+
+/**
+ * A TITLE'S PLATE (cutawayStone.ts drawPlate): let into the beam behind the
+ * title, standing a little proud of it top and bottom, in the room's own
+ * colour and with the room's own edge. Mount it straight after the header
+ * row's CutawaySlab, with the same layer (`z`): it finds the row's title
+ * (its h3) and sizes and places itself by it, and again whenever the title
+ * or the row changes size (a font arriving, the window turning).
+ */
+export const CutawayPlate: React.FC<{ kind: PlateKind; z?: number }> = ({ kind, z = -1 }) => {
+  const boxRef = React.useRef<HTMLDivElement>(null);
+  const snapRef = useCrispSnap<HTMLDivElement>(true);
+  const canvasRef = React.useRef<HTMLCanvasElement>(null);
+  React.useLayoutEffect(() => {
+    const box = boxRef.current;
+    const canvas = canvasRef.current;
+    const row = box?.parentElement;
+    const title = row?.querySelector('h3');
+    if (!box || !canvas || !row || !title) return;
+    const draw = () => {
+      const t = title.getBoundingClientRect();
+      if (!t.width) return;
+      const widthArt = Math.ceil(t.width / Z) + 2 * PLATE_END_ART;
+      const w = widthArt * Z;
+      box.style.left = `${Math.round(t.left - row.getBoundingClientRect().left + t.width / 2 - w / 2)}px`;
+      box.style.width = `${w}px`;
+      const ctx = prepCanvas(canvas, w, PLATE_H, 0);
+      if (!ctx) return;
+      ctx.clearRect(0, 0, w, PLATE_H);
+      drawPlate(ctx, widthArt, kind);
+    };
+    draw();
+    const ro = new ResizeObserver(draw);
+    ro.observe(title);
+    ro.observe(row);
+    return () => ro.disconnect();
+  }, [kind]);
+  return (
+    <div ref={boxRef} aria-hidden className="absolute pointer-events-none" style={{ top: `calc(50% - ${PLATE_H / 2}px)`, height: PLATE_H, zIndex: z }}>
+      <div ref={snapRef} className="relative w-full h-full">
         <canvas ref={canvasRef} style={{ position: 'absolute' }} />
       </div>
     </div>

@@ -18,7 +18,7 @@ import { SelectionStrip, SelectionDrawer } from './SelectionShape';
 import { useElementWidth, artGridSlotStyle } from '../../hooks/useElementWidth';
 import { subscribeToImageLoads } from '../../utils/imageLoader';
 import { playChromeSound } from '../../utils/chromeSounds';
-import { BeamTapHint, BeamTorch, CutawaySlab, WallColumns, WallDark } from './CutawayWall';
+import { BeamTapHint, BeamTorch, CutawayPlate, CutawaySlab, WallColumns, WallDark } from './CutawayWall';
 import { WALL_ABOVE_BEAM, WALL_HEADER_GAP, WALL_ON, WALL_ROW, type WallBelow } from './cutawayStone';
 
 // Every enemy/ally opens a drawer (its info panel always renders).
@@ -224,6 +224,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
         {divider}
         <div className={`flex items-center justify-center ${wall ? `relative ${WALL_HEADER_GAP}` : 'mb-2'}`}>
           {wall && <CutawaySlab />}
+          {wall && <CutawayPlate kind="enemies" />}
           <div className="relative flex items-center">
             <div className="absolute right-full mr-1">
               <HelpButton sectionId="enemies" className="!text-[#c9564a]" />
@@ -252,6 +253,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
       {/* Header row */}
       <div className={`relative flex items-center justify-between ${wall ? `${WALL_HEADER_GAP} ${WALL_ROW}` : 'mb-2'}`}>
         {wall && <CutawaySlab old={isAllySide} />}
+        {wall && <CutawayPlate kind={isAllySide ? 'allies' : 'enemies'} />}
         <div className="flex items-center gap-2 min-w-[60px]">
           {showTestButton && onTest && (
             themeAssets.actionButtonTestEnemiesImage ? (

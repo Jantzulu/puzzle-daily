@@ -126,10 +126,12 @@ export const WALL_ABOVE_BEAM = 'h-5 wall-above-beam';
  * edge to the torch's). The user's rule (2026-11-21): torches need not line
  * up down the page, "as long as they are the same distance away from the
  * ends of the title text". The same to the EYE: on the left the title's end
- * is its (?) mark (a 16px glyph ending 8px before the letters), so 30 puts
- * the torch 6px from the mark, as 6 puts it 6px from the last letter.
+ * is its (?) mark (a 16px glyph ending 8px before the letters), so 34 puts
+ * the torch 10px from the mark, as 10 puts it 10px from the last letter
+ * (it was 30 and 6; the title's PLATE now reaches 6px past the letters, and
+ * the torch stands 4px clear of its tip).
  */
-export const WALL_TORCH_GAP = { left: 30, right: 6 };
+export const WALL_TORCH_GAP = { left: 34, right: 10 };
 /** Half a torch's height (CSS px), to centre it on the title's row. */
 export const WALL_TORCH_HALF = 16;
 /**
@@ -239,6 +241,104 @@ export function drawSlab(ctx: CanvasRenderingContext2D, w: number, old = false):
     a(b.x + b.w - 1, top + 1, 1, h - 1, s.dark); // the right edge is in shade
     a(b.x, top + h - 2, b.w, 2, s.dark); // and the bottom lip
   }
+}
+
+// ---- the title plates -------------------------------------------------------------------
+// User, 2026-11-21: "a more fancy crest/plate the titles would sit on top
+// of. they would break up the straight edge of the beams and could be
+// customized to each asset type". So behind every title there is a PLATE
+// let into the beam (the QUEST plate over the board is the model): a dark
+// plate in the room's own colour, as wide as the title and a blunt point
+// past it each side, that stands PROUD of the beam, two art px above its
+// top and two below its foot, and how it stands proud is the room's:
+//   heroes   battlements (allies too: the same side)
+//   enemies  teeth
+//   items    a stepped pediment, as a chest's lid
+//   status   a low arch, as a rune stone's head
+//   tiles    a row of slabs with joints between
+// The title, its torch, its (?) mark and the tap hint are untouched: the
+// plate is drawn under them.
+
+export type PlateKind = 'heroes' | 'enemies' | 'allies' | 'items' | 'status' | 'tiles';
+
+/** How far a plate stands out past the beam, top and bottom (art px), and how long its pointed ends are. */
+export const PLATE_RISE_ART = 2;
+export const PLATE_END_ART = 3;
+/** A plate's height (CSS px): the beam's and the rise, twice. */
+export const PLATE_H = SLAB_H + 2 * PLATE_RISE_ART * Z;
+/** How far each row of a pointed end is cut back from the beam's edge, from the tip inwards (art px). */
+const PLATE_TAPER = [7, 4, 2];
+
+/** Each room's plate: its face (dark: the title is read on it) and the light and dark of its rim. */
+const PLATE_COLORS: Record<PlateKind, { face: string; lit: string; dark: string }> = {
+  heroes: { face: '#1c1626', lit: '#4b3b68', dark: '#0f0b15' },
+  enemies: { face: '#241415', lit: '#683a3b', dark: '#140a0b' },
+  allies: { face: '#221d13', lit: '#675b38', dark: '#13100a' },
+  items: { face: '#221d13', lit: '#675b38', dark: '#13100a' },
+  status: { face: '#122120', lit: '#366761', dark: '#0a1312' },
+  tiles: { face: '#24180f', lit: '#684b37', dark: '#140d08' },
+};
+
+/**
+ * How far the plate stands out past the beam at column `x` of its body
+ * (the part between its two pointed ends, `bodyW` art px wide): 0 to
+ * PLATE_RISE_ART, the same at the top and at the foot, and the same on
+ * both sides of the middle.
+ */
+export function plateRise(kind: PlateKind, x: number, bodyW: number): number {
+  const c = Math.floor(Math.abs(x - (bodyW - 1) / 2)); // columns from the middle
+  const fromEnd = Math.min(x, bodyW - 1 - x);
+  switch (kind) {
+    case 'heroes':
+    case 'allies':
+      return (c + 1) % 6 < 3 ? PLATE_RISE_ART : 0; // a merlon on the middle, three up and three down from there
+    case 'enemies':
+      return [2, 1, 0, 1][c % 4]; // teeth, a point on the middle
+    case 'items':
+      return fromEnd < 4 ? 0 : c < bodyW / 6 ? 2 : 1; // three steps up to the middle
+    case 'status':
+      return Math.round(PLATE_RISE_ART * Math.sin((Math.PI * (x + 0.5)) / bodyW)); // a low arch
+    case 'tiles':
+      return c % 7 === 3 ? 0 : PLATE_RISE_ART; // slabs six wide, a joint between
+  }
+}
+
+/** The first and last art row of the plate at column `x` (0 = its top row, PLATE_RISE_ART above the beam's). */
+export function plateColumn(kind: PlateKind, x: number, widthArt: number): { top: number; bottom: number } {
+  const last = SLAB_ART + 2 * PLATE_RISE_ART - 1;
+  const fromEnd = Math.min(x, widthArt - 1 - x);
+  const back = fromEnd < PLATE_END_ART
+    ? PLATE_RISE_ART + PLATE_TAPER[fromEnd]
+    : PLATE_RISE_ART - plateRise(kind, x - PLATE_END_ART, widthArt - 2 * PLATE_END_ART);
+  return { top: back, bottom: last - back };
+}
+
+/** Draw a title's plate into a canvas `widthArt` art px wide and PLATE_H tall. Lit from the top left. */
+export function drawPlate(ctx: CanvasRenderingContext2D, widthArt: number, kind: PlateKind): void {
+  const s = PLATE_COLORS[kind];
+  const a = (ax: number, ay: number, aw: number, ah: number, color: string) => {
+    if (aw <= 0 || ah <= 0) return;
+    ctx.fillStyle = color;
+    ctx.fillRect(ax * Z, ay * Z, aw * Z, ah * Z);
+  };
+  const none = { top: 1, bottom: 0 }; // (past either end: nothing)
+  for (let x = 0; x < widthArt; x++) {
+    const col = plateColumn(kind, x, widthArt);
+    const before = x > 0 ? plateColumn(kind, x - 1, widthArt) : none;
+    const after = x + 1 < widthArt ? plateColumn(kind, x + 1, widthArt) : none;
+    a(x, col.top, 1, col.bottom - col.top + 1, s.face);
+    // The rim: lit where the plate's edge faces left or up, dark where it faces right or down.
+    for (let y = col.top; y <= col.bottom; y++) {
+      if (y < before.top || y > before.bottom) a(x, y, 1, 1, s.lit);
+      else if (y < after.top || y > after.bottom) a(x, y, 1, 1, s.dark);
+    }
+    a(x, col.top, 1, 1, s.lit);
+    a(x, col.bottom, 1, 1, s.dark);
+  }
+  // A rivet in each pointed end.
+  const mid = PLATE_RISE_ART + SLAB_ART / 2 - 1;
+  a(1, mid, 1, 2, s.lit);
+  a(widthArt - 2, mid, 1, 2, s.lit);
 }
 
 // ---- the arcade ---------------------------------------------------------------------------

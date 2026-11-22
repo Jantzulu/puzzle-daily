@@ -4,7 +4,9 @@ import {
   BEDROCK_ART, FOOTING_LOWER_ART, FOOTING_UPPER_ART, FOUND_H, archInset, archOutline, bedrock, courseBlocks, facingBlocks, slabBlocks,
   PASSAGE_RIBS_ART, archOpening, nicheSpan, passageDepth,
   WALL_ENTRY, settingBox,
+  PLATE_H, PLATE_RISE_ART, plateColumn, plateRise,
 } from '../cutawayStone';
+import type { PlateKind } from '../cutawayStone';
 
 // The cutaway wall's placeholder stone (the `?wall=1` experiment). What can
 // be pinned without a canvas: the blocks are laid out the same every time,
@@ -28,7 +30,7 @@ describe('the cutaway wall', () => {
     const margin = (SLAB_H - torch) / 2; // stone above the torch = stone below it
     expect(margin % 2).toBe(0); // a whole number of art px (Z = 2): torch rows line up with stone rows
     expect(margin).toBe(2); // one art px: the torch covers the block face, row for row
-    // To the eye the two sides stand equally far from the title: 6px from the (?) mark, 6px from the last letter.
+    // To the eye the two sides stand equally far from the title: 10px from the (?) mark, 10px from the last letter.
     const MARK_ENDS = 24; // the (?) glyph's far edge, px before the title's first letter
     expect(WALL_TORCH_GAP.left - MARK_ENDS).toBe(WALL_TORCH_GAP.right);
   });
@@ -183,5 +185,27 @@ describe('the cutaway wall', () => {
     expect(settingBox('frame', 13, 13, null)).toEqual({ x: -2, y: -2, w: 17, h: 17 });
     // Every kind of entry has a row tall enough for its setting.
     for (const kind of ['shelf', 'tablet', 'frame'] as const) expect(WALL_ENTRY[kind].row).toMatch(/^min-h-/);
+  });
+
+  it('lets a plate into the beam behind a title, proud of it top and bottom, each room in its own way', () => {
+    expect(PLATE_H).toBe(SLAB_H + 4 * PLATE_RISE_ART); // the rise, top and bottom, at two CSS px an art px
+    const last = SLAB_ART + 2 * PLATE_RISE_ART - 1;
+    const w = 60;
+    const all: PlateKind[] = ['heroes', 'enemies', 'allies', 'items', 'status', 'tiles'];
+    for (const kind of all) {
+      const cols = Array.from({ length: w }, (_, x) => plateColumn(kind, x, w));
+      cols.forEach((c, x) => {
+        expect(c).toEqual(cols[w - 1 - x]); // the same both sides of the middle
+        expect(c.top + c.bottom).toBe(last); // and the same above and below
+        expect(c.top).toBeGreaterThanOrEqual(0);
+      });
+      expect(cols[0].top).toBeGreaterThan(PLATE_RISE_ART); // a blunt point inside the beam at each end
+      expect(Math.min(...cols.map(c => c.top))).toBe(0); // and somewhere it stands the whole rise proud
+    }
+    // No two rooms have the same edge; the allies share the heroes'.
+    const edge = (kind: PlateKind) => Array.from({ length: 54 }, (_, x) => plateRise(kind, x, 54)).join('');
+    const rooms: PlateKind[] = ['heroes', 'enemies', 'items', 'status', 'tiles'];
+    expect(new Set(rooms.map(edge)).size).toBe(rooms.length);
+    expect(edge('allies')).toBe(edge('heroes'));
   });
 });
