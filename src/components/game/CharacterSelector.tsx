@@ -23,8 +23,8 @@ import { SelectionStrip, SelectionDrawer } from './SelectionShape';
 import placedBannerIcon from '../../assets/icons/placed-banner.png';
 import { useElementWidth, artGridSlotStyle } from '../../hooks/useElementWidth';
 import { subscribeToImageLoads } from '../../utils/imageLoader';
-import { CutawaySlab } from './CutawayWall';
-import { WALL_HERO_Z, WALL_ON, WALL_OVER_SLAB } from './cutawayStone';
+import { BeamTorch, CutawaySlab } from './CutawayWall';
+import { WALL_HEADER_GAP, WALL_HERO_Z, WALL_ON, WALL_OVER_SLAB } from './cutawayStone';
 
 const MOVEMENT_TYPES = new Set([
   'move_forward', 'move_backward', 'move_left', 'move_right',
@@ -415,7 +415,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
       {/* Header row. mb-3 with the quest slot (user ask 2026-10-14: the
           small scroll sat right on the hero cards — slightly more air, not
           much); mb-2 otherwise. */}
-      <div ref={questHeaderRef} className={`relative flex items-center justify-between ${questSlot ? 'mb-3' : 'mb-2'}`}>
+      <div ref={questHeaderRef} className={`relative flex items-center justify-between ${wall ? WALL_HEADER_GAP : questSlot ? 'mb-3' : 'mb-2'}`}>
         {/* The `?wall=1` experiment: the hero hall's stone ceiling, behind the title. */}
         {wall && <CutawaySlab z={WALL_HERO_Z} />}
         {questSlot && <span data-quest-slot aria-hidden="true" className="quest-mini-slot" style={{ width: questGap }} />}
@@ -478,8 +478,17 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
               and the purple hero identity. carved-header already carries
               700 weight + 0.05em tracking; the transform is what changes. */}
           <h3 className="carved-header carved-header-arcane font-medieval text-lg lg:text-xl uppercase whitespace-nowrap">Heroes</h3>
+          {/* The wall's torch, on the RIGHT (user call 2026-11-21): the small
+              quest scroll parks on the left. */}
+          {wall && <BeamTorch side="right" />}
         </div>
-        <div className={`flex items-center gap-2 ${wall ? WALL_OVER_SLAB : ''}`}>
+        {/* (In the wall the count and the clear button sit together (the
+            button keeps its own 4px of padding) and the button is 4px
+            narrower: once a hero is placed that pair reaches to 18px from
+            the title on a 375px phone, and the torch needs 22. Measured
+            with a hero placed: 7.8px clear at 375; at 360 it just touches the count, the
+            narrowest phone it fits. Its tap target is unchanged: hit-44.) */}
+        <div className={`flex items-center ${wall ? `gap-0 ${WALL_OVER_SLAB}` : 'gap-2'}`}>
           {/* Counter in the ramp's registers (user call, 2026-07-31): the
               count is a stat value (hud-num, tabular — no reflow as it
               ticks), the word is furniture (hud-label, uppercase). The
@@ -502,7 +511,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
               // 44px of target, still zero layout pixels. --hit-w caps the
               // horizontal slop so this destructive control (clear all placed
               // heroes) cannot reach sideways into a hero card.
-              className="p-1 -my-1 text-stone-400 hover:text-blood-400 hover:bg-stone-700 rounded-pixel transition-colors min-w-[28px] min-h-[28px] flex items-center justify-center hit-44 [--hit-w:34px]"
+              className={`p-1 -my-1 text-stone-400 hover:text-blood-400 hover:bg-stone-700 rounded-pixel transition-colors ${wall ? 'min-w-[24px]' : 'min-w-[28px]'} min-h-[28px] flex items-center justify-center hit-44 [--hit-w:34px]`}
               title="Remove all placed heroes"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

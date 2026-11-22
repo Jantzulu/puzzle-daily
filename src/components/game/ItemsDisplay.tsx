@@ -8,7 +8,7 @@ import { SpriteThumbnail } from '../editor/SpriteThumbnail';
 import { HelpButton } from './HelpOverlay';
 import { hasDeliverySchedule, deliveryRepeat } from '../../utils/deliverySchedule';
 import { BeamTorch, CutawaySlab } from './CutawayWall';
-import { WALL_HEADER_GAP, WALL_ON } from './cutawayStone';
+import { WALL_ABOVE_BEAM, WALL_HEADER_GAP, WALL_ON } from './cutawayStone';
 
 interface ItemsDisplayProps {
   puzzle: Puzzle;
@@ -232,7 +232,7 @@ export const ItemsDisplay: React.FC<ItemsDisplayProps> = ({ puzzle, className = 
   // Chiseled seam between the dungeon's informational sections
   // (The `?wall=1` experiment: a stone slab under the title takes the groove's place.)
   const wall = WALL_ON && noPanel;
-  const divider = noPanel ? <div className={`dungeon-seam ${wall ? 'invisible' : ''}`} /> : null;
+  const divider = wall ? <div aria-hidden="true" className={WALL_ABOVE_BEAM} /> : noPanel ? <div className="dungeon-seam" /> : null;
 
   const content = (
     <>
@@ -245,7 +245,7 @@ export const ItemsDisplay: React.FC<ItemsDisplayProps> = ({ puzzle, className = 
             <HelpButton sectionId="items" className="!text-[#e8cc8a]" />
           </div>
           <h3 className="carved-header carved-header-parchment font-medieval text-lg lg:text-xl uppercase whitespace-nowrap">Items</h3>
-          {wall && <BeamTorch phase={700} />}
+          {wall && <BeamTorch side="right" phase={350} />}
         </div>
         {/* Counter in the ramp's registers, like the hero/enemy panels. */}
         <span className="flex items-baseline gap-1">

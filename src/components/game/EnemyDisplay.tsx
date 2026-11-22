@@ -19,7 +19,7 @@ import { useElementWidth, artGridSlotStyle } from '../../hooks/useElementWidth';
 import { subscribeToImageLoads } from '../../utils/imageLoader';
 import { playChromeSound } from '../../utils/chromeSounds';
 import { BeamTorch, CutawaySlab } from './CutawayWall';
-import { WALL_HEADER_GAP, WALL_ON } from './cutawayStone';
+import { WALL_ABOVE_BEAM, WALL_HEADER_GAP, WALL_ON } from './cutawayStone';
 
 // Every enemy/ally opens a drawer (its info panel always renders).
 const alwaysOpensDrawer = () => true;
@@ -189,9 +189,8 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
   // every other title's, with one torch beside it (BeamTorch).
   const wall = WALL_ON && noPanel;
   const divider = wall ? (
-    // The room the beam needs above the title (the slab rises 8px over the
-    // header row); the groove is kept, unseen, so the ally box measures as before.
-    isAllySide ? <div className="dungeon-seam invisible" /> : <div aria-hidden="true" className="h-4" />
+    // The room the beam needs above the title.
+    <div aria-hidden="true" className={WALL_ABOVE_BEAM} />
   ) : noPanel && !isAllySide ? (
     <div className="dungeon-lintel mt-2 mb-2">
       <LintelMesh />
@@ -292,7 +291,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
           <h3 className={`carved-header ${isAllySide ? 'carved-header-parchment' : 'carved-header-blood'} font-medieval text-lg lg:text-xl uppercase whitespace-nowrap`}>
             {isAllySide ? 'Allies' : 'Enemies'}
           </h3>
-          {wall && <BeamTorch phase={isAllySide ? 500 : 0} />}
+          {wall && <BeamTorch side="left" phase={isAllySide ? 850 : 700} />}
         </div>
         {/* Counter in the ramp's registers, matching the hero panel's
             "N/M placed": the count is a stat value (hud-num, tabular),

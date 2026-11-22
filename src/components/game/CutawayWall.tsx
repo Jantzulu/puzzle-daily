@@ -1,6 +1,6 @@
 import React from 'react';
 import { prepCanvas, useCrispSnap } from './panelSkins';
-import { PIER_TOP, PIER_W, SLAB_H, SLAB_RISE, WALL_TORCH_GAP, WALL_TORCH_HALF, drawPier, drawSlab } from './cutawayStone';
+import { PIER_TOP, PIER_W, SLAB_H, WALL_TORCH_GAP, WALL_TORCH_HALF, drawPier, drawSlab } from './cutawayStone';
 import { LintelTorch } from './LintelTorch';
 
 // The cutaway wall's two pieces on the page (the `?wall=1` experiment: see
@@ -16,14 +16,14 @@ import { LintelTorch } from './LintelTorch';
 // HERO slab is z 11, over the board's dark bottom margin (the board's
 // canvas reaches down behind the title) and under everything above it,
 // with the header's own words lifted over it (CharacterSelector). The
-// hero slab and the walls take no layout at all; the sections under the
-// lintel give their slab 8px more room under the title than the groove had
-// (WALL_HEADER_GAP), so no row of text ever sits on stone.
+// walls take no layout at all; a beam is given room above and below its
+// title (WALL_ABOVE_BEAM, WALL_HEADER_GAP: a few px more than the groove
+// and the old margins had), so no row of text ever sits on stone.
 
 /**
  * The slab behind a storey's title. Mount it as the first child of the
  * header row (which must be position: relative): it reaches out over both
- * side walls and a little above and below the row.
+ * side walls and above and below the row, centred on it.
  */
 export const CutawaySlab: React.FC<{
   /** The colder stone from under the Dungeon Details lintel. */
@@ -53,7 +53,11 @@ export const CutawaySlab: React.FC<{
     return () => ro.disconnect();
   }, [snapRef, old]);
   return (
-    <div aria-hidden className="absolute pointer-events-none" style={{ left: -PIER_W, right: -PIER_W, top: -SLAB_RISE, height: SLAB_H, zIndex: z }}>
+    // CENTRED ON THE ROW, whatever its height (not hung a fixed distance
+    // above its top): the title and the torch are centred on the row, and
+    // the hero row is 14px tall until a hero is placed and 20px after (the
+    // clear button), which left the beam 3px high of both.
+    <div aria-hidden className="absolute pointer-events-none" style={{ left: -PIER_W, right: -PIER_W, top: `calc(50% - ${SLAB_H / 2}px)`, height: SLAB_H, zIndex: z }}>
       <div ref={snapRef} className="relative w-full h-full">
         <canvas ref={canvasRef} style={{ position: 'absolute' }} />
       </div>
@@ -65,14 +69,21 @@ export const CutawaySlab: React.FC<{
  * A BEAM'S TORCH (user call 2026-11-21: "a torch on each of the horizontal
  * beams, either to the left or right of the title text. Only 1 per beam").
  * Mount it inside a title's centred wrapper, after the title: it hangs off
- * the wrapper's LEFT edge, beyond the (?) button, which is the one place
- * every beam under the hero hall has room on a phone (the right of a title
- * belongs to its count: "2 POSSIBLE" starts where STATUS EFFECTS ends).
- * Placed without a transform, so the art stays on whole pixels. It is the
- * lintel's own torch: a tap puts it out, the dark entry lights it.
+ * the wrapper's left edge (beyond the (?) button) or its right, the same
+ * distance from the title to the eye either way (WALL_TORCH_GAP), and dead
+ * centre on the beam, which is a torch and two art px tall. Placed without
+ * a transform, so the art stays on whole pixels. It is the lintel's own
+ * torch: a tap puts it out, the dark entry lights it.
  */
-export const BeamTorch: React.FC<{ /** Offsets its flicker from the other beams' (ms). */ phase?: number }> = ({ phase = 0 }) => (
-  <span className="absolute right-full" style={{ marginRight: WALL_TORCH_GAP, top: `calc(50% - ${WALL_TORCH_HALF}px)` }}>
+export const BeamTorch: React.FC<{
+  side: 'left' | 'right';
+  /** Offsets its flicker from the other beams' (ms). */
+  phase?: number;
+}> = ({ side, phase = 0 }) => (
+  <span
+    className={`absolute ${side === 'left' ? 'right-full' : 'left-full'}`}
+    style={{ [side === 'left' ? 'marginRight' : 'marginLeft']: WALL_TORCH_GAP[side], top: `calc(50% - ${WALL_TORCH_HALF}px)` }}
+  >
     <LintelTorch phase={phase} />
   </span>
 );

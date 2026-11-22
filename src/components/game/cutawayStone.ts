@@ -31,10 +31,11 @@
 //             stone, where a thin groove (.dungeon-seam) used to part
 //             them. With the switch on, the Dungeon Details lintel and its
 //             words are not drawn.
-//   a TORCH   one on each beam from ENEMIES down, left of the title (user
-//             call 2026-11-21: "Only 1 per beam"). HEROES has none yet:
-//             on a phone the small quest scroll parks on its left and the
-//             count and the clear button fill its right.
+//   a TORCH   one on each beam (user call 2026-11-21: "Only 1 per beam"),
+//             beside the title, the sides taking turns down the page:
+//             HEROES right, ENEMIES left, ITEMS right, STATUS EFFECTS left
+//             (its count starts where its title ends: no room on the
+//             right), DUNGEON TILES right; ALLIES left.
 //   the PIERS the two side walls, cut through, running down both edges of
 //             the page from the slab to the last panel: what makes the
 //             storeys one building. Below the lintel the stone is older:
@@ -59,14 +60,28 @@ export const WALL_ON = readWallSwitch();
 
 /** How thick a side wall is. On a phone this is the page's own margin, so the wall runs off the edge of the screen. */
 export const PIER_ART = 10;
-/** How tall the slab behind a storey's title is. */
-export const SLAB_ART = 15;
-/** How far the slab rises above the top of the header row it sits behind. */
-export const SLAB_RISE_ART = 4;
+/**
+ * How tall the slab behind a storey's title is. 18 = a torch (16 art px)
+ * with one art px of stone above and below it (user report 2026-11-21, on a
+ * phone: "the torches are not vertically centered to the beams that they
+ * are on". The beam was 15: a 16-px torch overhung it by HALF an art pixel
+ * top and bottom, off the beam's own pixel grid, and its handle hung below
+ * the stone's shaded bottom lip). On 18 the torch covers exactly the
+ * block's face, row for row.
+ */
+export const SLAB_ART = 18;
+/** The header row a slab sits behind is this tall (CSS px): the count's line box, on every panel. */
+const HEADER_ROW_H = 14;
 
 export const PIER_W = PIER_ART * Z;
 export const SLAB_H = SLAB_ART * Z;
-export const SLAB_RISE = SLAB_RISE_ART * Z;
+/**
+ * How far the slab rises above the top of an ordinary header row (CSS px).
+ * The slab itself is placed by the row's CENTRE (CutawayWall.tsx), as the
+ * title and the torch are; this is only for what must clear it: where the
+ * side walls begin, and the room left above and below a title.
+ */
+export const SLAB_RISE = (SLAB_H - HEADER_ROW_H) / 2;
 /** Where the piers begin, under the slab (CSS px below the top of the header row). */
 export const PIER_TOP = SLAB_H - SLAB_RISE;
 
@@ -76,13 +91,19 @@ export const PIER_TOP = SLAB_H - SLAB_RISE;
 export const WALL_HERO_Z = 11;
 /** What lifts a header's own in-flow words over the hero slab (Tailwind classes). */
 export const WALL_OVER_SLAB = 'relative z-[12]';
-/** The space under a title that sits on a slab (a Tailwind margin class): the slab reaches 8px below the header row. */
-export const WALL_HEADER_GAP = 'mb-3';
+/** The space under a title that sits on a slab (a Tailwind margin class): the slab reaches 11px below the header row. */
+export const WALL_HEADER_GAP = 'mb-4';
+/** The room a beam under the hero hall needs above its title (a Tailwind height class, for a spacer): the slab rises 11px over the row. */
+export const WALL_ABOVE_BEAM = 'h-5';
 /**
- * How far a beam's torch stands from its title's left edge (CSS px): clear
- * of the (?) button that hangs there (a 24px box, 4px out).
+ * How far a beam's torch stands from its title (CSS px from the title's
+ * edge to the torch's). The user's rule (2026-11-21): torches need not line
+ * up down the page, "as long as they are the same distance away from the
+ * ends of the title text". The same to the EYE: on the left the title's end
+ * is its (?) mark (a 16px glyph ending 8px before the letters), so 30 puts
+ * the torch 6px from the mark, as 6 puts it 6px from the last letter.
  */
-export const WALL_TORCH_GAP = 30;
+export const WALL_TORCH_GAP = { left: 30, right: 6 };
 /** Half a torch's height (CSS px), to centre it on the title's row. */
 export const WALL_TORCH_HALF = 16;
 
@@ -153,7 +174,7 @@ export function drawSlab(ctx: CanvasRenderingContext2D, w: number, old = false):
   const s = old ? OLD : KEPT;
   a(0, 0, widthArt, SLAB_ART, s.mortar);
   for (const b of slabBlocks(widthArt)) {
-    const top = 1;
+    const top = 1; // (the torch's 16 rows are these 16: SLAB_ART)
     const h = SLAB_ART - 2;
     a(b.x, top, b.w, h, s.faces[b.tone]);
     a(b.x, top, b.w, 1, s.lit); // the top catches the light

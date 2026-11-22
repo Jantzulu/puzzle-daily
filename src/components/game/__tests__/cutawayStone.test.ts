@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PIER_ART, PIER_TOP, SLAB_ART, SLAB_H, SLAB_RISE, WALL_ON, facingBlocks, slabBlocks } from '../cutawayStone';
+import { PIER_ART, PIER_TOP, SLAB_ART, SLAB_H, SLAB_RISE, WALL_ON, WALL_TORCH_GAP, WALL_TORCH_HALF, facingBlocks, slabBlocks } from '../cutawayStone';
 
 // The cutaway wall's placeholder stone (the `?wall=1` experiment). What can
 // be pinned without a canvas: the blocks are laid out the same every time,
@@ -14,6 +14,18 @@ describe('the cutaway wall', () => {
     expect(SLAB_H).toBe(SLAB_ART * 2);
     expect(PIER_TOP).toBe(SLAB_H - SLAB_RISE); // the side walls begin where the slab ends
     expect(PIER_ART).toBeGreaterThanOrEqual(8);
+    expect(Number.isInteger(SLAB_RISE)).toBe(true); // whole px: the row it centres on is 14 tall
+  });
+
+  it('seats a torch dead centre on a beam, on the beam own pixel grid', () => {
+    const torch = WALL_TORCH_HALF * 2; // 32 CSS px = 16 art px
+    expect(SLAB_H).toBeGreaterThan(torch); // the beam is the taller: nothing overhangs it
+    const margin = (SLAB_H - torch) / 2; // stone above the torch = stone below it
+    expect(margin % 2).toBe(0); // a whole number of art px (Z = 2): torch rows line up with stone rows
+    expect(margin).toBe(2); // one art px: the torch covers the block face, row for row
+    // To the eye the two sides stand equally far from the title: 6px from the (?) mark, 6px from the last letter.
+    const MARK_ENDS = 24; // the (?) glyph's far edge, px before the title's first letter
+    expect(WALL_TORCH_GAP.left - MARK_ENDS).toBe(WALL_TORCH_GAP.right);
   });
 
   it('lays a slab of blocks that fill it exactly, one art px of mortar apart', () => {

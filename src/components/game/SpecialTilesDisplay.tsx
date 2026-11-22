@@ -4,7 +4,7 @@ import { loadTileType, loadPuzzleSkin, type CustomTileType, type CustomSprite } 
 import { SpriteThumbnail } from '../editor/SpriteThumbnail';
 import { HelpButton } from './HelpOverlay';
 import { BeamTorch, CutawaySlab } from './CutawayWall';
-import { WALL_HEADER_GAP, WALL_ON } from './cutawayStone';
+import { WALL_ABOVE_BEAM, WALL_HEADER_GAP, WALL_ON } from './cutawayStone';
 
 interface SpecialTilesDisplayProps {
   puzzle: Puzzle;
@@ -240,7 +240,7 @@ export const SpecialTilesDisplay: React.FC<SpecialTilesDisplayProps> = ({ puzzle
   // Chiseled seam between the dungeon's informational sections
   // (The `?wall=1` experiment: a stone slab under the title takes the groove's place.)
   const wall = WALL_ON && noPanel;
-  const divider = noPanel ? <div className={`dungeon-seam ${wall ? 'invisible' : ''}`} /> : null;
+  const divider = wall ? <div aria-hidden="true" className={WALL_ABOVE_BEAM} /> : noPanel ? <div className="dungeon-seam" /> : null;
 
   const content = (
     <>
@@ -255,7 +255,7 @@ export const SpecialTilesDisplay: React.FC<SpecialTilesDisplayProps> = ({ puzzle
           {/* nowrap: see StatusEffectsDisplay — the centered-title box caps
               at half the row and this title is nearly as wide. */}
           <h3 className="carved-header carved-header-rust font-medieval text-lg lg:text-xl uppercase whitespace-nowrap">Dungeon Tiles</h3>
-          {wall && <BeamTorch phase={1050} />}
+          {wall && <BeamTorch side="right" phase={500} />}
         </div>
         {/* Counter in the ramp's registers, like the hero/enemy panels. */}
         <span className="flex items-baseline gap-1">

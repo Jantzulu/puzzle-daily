@@ -6,7 +6,7 @@ import { loadSpellAsset, loadStatusEffectAsset, loadCollectible, type CustomSpri
 import { SpriteThumbnail } from '../editor/SpriteThumbnail';
 import { HelpButton } from './HelpOverlay';
 import { BeamTorch, CutawaySlab } from './CutawayWall';
-import { WALL_HEADER_GAP, WALL_ON } from './cutawayStone';
+import { WALL_ABOVE_BEAM, WALL_HEADER_GAP, WALL_ON } from './cutawayStone';
 
 interface StatusEffectsDisplayProps {
   puzzle: Puzzle;
@@ -243,7 +243,7 @@ export const StatusEffectsDisplay: React.FC<StatusEffectsDisplayProps> = ({ puzz
   // Chiseled seam between the dungeon's informational sections
   // (The `?wall=1` experiment: a stone slab under the title takes the groove's place.)
   const wall = WALL_ON && noPanel;
-  const divider = noPanel ? <div className={`dungeon-seam ${wall ? 'invisible' : ''}`} /> : null;
+  const divider = wall ? <div aria-hidden="true" className={WALL_ABOVE_BEAM} /> : noPanel ? <div className="dungeon-seam" /> : null;
 
   const content = (
     <>
@@ -261,7 +261,7 @@ export const StatusEffectsDisplay: React.FC<StatusEffectsDisplayProps> = ({ puzz
               wraps and overflows onto the rows below — the uppercase pass
               pushed this one over the cap on phones. */}
           <h3 className="carved-header carved-header-mystic font-medieval text-lg lg:text-xl uppercase whitespace-nowrap">Status Effects</h3>
-          {wall && <BeamTorch phase={350} />}
+          {wall && <BeamTorch side="left" phase={1050} />}
         </div>
         {/* Counter in the ramp's registers, like the hero/enemy panels. */}
         <span className="flex items-baseline gap-1">
