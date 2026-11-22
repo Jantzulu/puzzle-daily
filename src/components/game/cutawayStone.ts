@@ -145,6 +145,15 @@ export const WALL_TORCH_HALF = 16;
  */
 export const WALL_ROW = 'min-h-[20px]';
 /**
+ * A list's two columns on a wide screen, in the wall (Tailwind classes): a
+ * GRID, not the CSS columns the lists use otherwise. In CSS columns an
+ * entry's setting (an absolutely placed canvas) was drawn where the entry
+ * would have stood in ONE column, at the wall under the first entry, while
+ * the entry itself was in the second (user report with a screenshot,
+ * 2026-11-21: "the wide view (desktop) breaks the list room flavor").
+ */
+export const WALL_LIST = 'md:grid md:grid-cols-2 md:gap-x-5 md:items-start';
+/**
  * A list entry's row and its icon, in the wall (Tailwind classes), by the
  * setting its icon has (WallSetting): room for the setting round the icon,
  * and a row tall enough to hold it when the entry is one line of text.

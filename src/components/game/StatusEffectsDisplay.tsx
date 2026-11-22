@@ -6,7 +6,7 @@ import { loadSpellAsset, loadStatusEffectAsset, loadCollectible, type CustomSpri
 import { SpriteThumbnail } from '../editor/SpriteThumbnail';
 import { HelpButton } from './HelpOverlay';
 import { BeamTorch, CutawayPlate, CutawaySlab, WallDark, WallSetting } from './CutawayWall';
-import { WALL_ABOVE_BEAM, WALL_ENTRY, WALL_HEADER_GAP, WALL_ON, WALL_ROW } from './cutawayStone';
+import { WALL_ABOVE_BEAM, WALL_ENTRY, WALL_HEADER_GAP, WALL_LIST, WALL_ON, WALL_ROW } from './cutawayStone';
 
 interface StatusEffectsDisplayProps {
   puzzle: Puzzle;
@@ -274,7 +274,7 @@ export const StatusEffectsDisplay: React.FC<StatusEffectsDisplayProps> = ({ puzz
       {/* Ledger rows, two columns when the width is there — the entry
           boxes read as wasted air; a tight row per effect keeps every
           field (name, description, grouped sources) in less space */}
-      <div className="md:columns-2 md:gap-x-5">
+      <div className={wall ? WALL_LIST : 'md:columns-2 md:gap-x-5'}>
         {statusEffectsWithSources.map(({ effect, sources }) => (
           <div
             key={effect.id}

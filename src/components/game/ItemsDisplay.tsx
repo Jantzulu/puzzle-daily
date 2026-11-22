@@ -8,7 +8,7 @@ import { SpriteThumbnail } from '../editor/SpriteThumbnail';
 import { HelpButton } from './HelpOverlay';
 import { hasDeliverySchedule, deliveryRepeat } from '../../utils/deliverySchedule';
 import { BeamTorch, CutawayPlate, CutawaySlab, WallDark, WallSetting } from './CutawayWall';
-import { WALL_ABOVE_BEAM, WALL_ENTRY, WALL_HEADER_GAP, WALL_ON, WALL_ROW } from './cutawayStone';
+import { WALL_ABOVE_BEAM, WALL_ENTRY, WALL_HEADER_GAP, WALL_LIST, WALL_ON, WALL_ROW } from './cutawayStone';
 
 interface ItemsDisplayProps {
   puzzle: Puzzle;
@@ -258,7 +258,7 @@ export const ItemsDisplay: React.FC<ItemsDisplayProps> = ({ puzzle, className = 
       </div>
 
       {/* Ledger rows, two columns when the width is there */}
-      <div className="md:columns-2 md:gap-x-5">
+      <div className={wall ? WALL_LIST : 'md:columns-2 md:gap-x-5'}>
         {itemsWithSources.map(({ collectible, onMap, dropSources, spellSources, deliveries }) => (
           <div
             key={collectible.id}

@@ -4,7 +4,7 @@ import { loadTileType, loadPuzzleSkin, type CustomTileType, type CustomSprite } 
 import { SpriteThumbnail } from '../editor/SpriteThumbnail';
 import { HelpButton } from './HelpOverlay';
 import { BeamTorch, CutawayPlate, CutawaySlab, WallDark, WallSetting } from './CutawayWall';
-import { WALL_ABOVE_BEAM, WALL_ENTRY, WALL_HEADER_GAP, WALL_ON, WALL_ROW } from './cutawayStone';
+import { WALL_ABOVE_BEAM, WALL_ENTRY, WALL_HEADER_GAP, WALL_LIST, WALL_ON, WALL_ROW } from './cutawayStone';
 
 interface SpecialTilesDisplayProps {
   puzzle: Puzzle;
@@ -266,7 +266,7 @@ export const SpecialTilesDisplay: React.FC<SpecialTilesDisplayProps> = ({ puzzle
       </div>
 
       {/* Ledger rows, two columns when the width is there */}
-      <div className="md:columns-2 md:gap-x-5">
+      <div className={wall ? WALL_LIST : 'md:columns-2 md:gap-x-5'}>
         {specialTiles.map((info) => (
           <div
             key={info.tileType.id}
