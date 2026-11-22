@@ -7,6 +7,8 @@ import { loadCollectible, loadSpellAsset, type CustomSprite, type CustomCollecti
 import { SpriteThumbnail } from '../editor/SpriteThumbnail';
 import { HelpButton } from './HelpOverlay';
 import { hasDeliverySchedule, deliveryRepeat } from '../../utils/deliverySchedule';
+import { CutawaySlab, WALL_HEADER_GAP } from './CutawayWall';
+import { WALL_ON } from './cutawayStone';
 
 interface ItemsDisplayProps {
   puzzle: Puzzle;
@@ -228,12 +230,15 @@ export const ItemsDisplay: React.FC<ItemsDisplayProps> = ({ puzzle, className = 
   }
 
   // Chiseled seam between the dungeon's informational sections
-  const divider = noPanel ? <div className="dungeon-seam" /> : null;
+  // (The `?wall=1` experiment: a stone slab under the title takes the groove's place.)
+  const wall = WALL_ON && noPanel;
+  const divider = noPanel ? <div className={`dungeon-seam ${wall ? 'invisible' : ''}`} /> : null;
 
   const content = (
     <>
       {divider}
-      <div className="relative flex items-center justify-between mb-1">
+      <div className={`relative flex items-center justify-between ${wall ? WALL_HEADER_GAP : 'mb-1'}`}>
+        {wall && <CutawaySlab old />}
         <div className="min-w-[60px]" />
         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center">
           <div className="absolute right-full mr-1">

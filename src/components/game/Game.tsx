@@ -14,6 +14,8 @@ import { RunAnnouncer } from './RunAnnouncer';
 import { VictoryTally } from './VictoryTally';
 import { PortcullisMesh } from './PortcullisMesh';
 import { CharacterSelector } from './CharacterSelector';
+import { CutawayPiers } from './CutawayWall';
+import { WALL_ON } from './cutawayStone';
 import { EnemyDisplay } from './EnemyDisplay';
 import { StatusEffectsDisplay } from './StatusEffectsDisplay';
 import { SpecialTilesDisplay } from './SpecialTilesDisplay';
@@ -3722,7 +3724,9 @@ export const Game: React.FC<GameProps> = ({
               // mt-2: tuned so HEROES sits the same distance under the quest
               // box as ENEMIES sits under the Dungeon Details lintel
               // (measured h3-top to edge: 3px both, user call 2026-08-01).
-              <div className={`mt-2 transition-opacity ${dimmedPanelClass} ${justExitedReplay ? 'animate-slide-up' : ''}`}>
+              <div className={`mt-2 transition-opacity ${WALL_ON ? 'relative' : ''} ${dimmedPanelClass} ${justExitedReplay ? 'animate-slide-up' : ''}`}>
+                {/* The `?wall=1` experiment (cutawayStone.ts): the side walls of the cutaway. */}
+                {WALL_ON && <CutawayPiers />}
                 {/* Character Selector - always visible. After a win it stays
                     as a record: the heroes used are highlighted (showUsed). */}
                 {(

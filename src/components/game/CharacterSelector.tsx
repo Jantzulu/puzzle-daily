@@ -23,6 +23,8 @@ import { SelectionStrip, SelectionDrawer } from './SelectionShape';
 import placedBannerIcon from '../../assets/icons/placed-banner.png';
 import { useElementWidth, artGridSlotStyle } from '../../hooks/useElementWidth';
 import { subscribeToImageLoads } from '../../utils/imageLoader';
+import { CutawaySlab, WALL_HERO_Z, WALL_OVER_SLAB } from './CutawayWall';
+import { WALL_ON } from './cutawayStone';
 
 const MOVEMENT_TYPES = new Set([
   'move_forward', 'move_backward', 'move_left', 'move_right',
@@ -406,14 +408,18 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
     return () => ro.disconnect();
   }, [questSlot]);
 
+  /** The `?wall=1` experiment (cutawayStone.ts): a stone slab behind the title. */
+  const wall = WALL_ON && noPanel;
   const content = (
     <>
       {/* Header row. mb-3 with the quest slot (user ask 2026-10-14: the
           small scroll sat right on the hero cards — slightly more air, not
           much); mb-2 otherwise. */}
       <div ref={questHeaderRef} className={`relative flex items-center justify-between ${questSlot ? 'mb-3' : 'mb-2'}`}>
+        {/* The `?wall=1` experiment: the hero hall's stone ceiling, behind the title. */}
+        {wall && <CutawaySlab z={WALL_HERO_Z} />}
         {questSlot && <span data-quest-slot aria-hidden="true" className="quest-mini-slot" style={{ width: questGap }} />}
-        <div className="flex items-center gap-2 min-w-[60px]">
+        <div className={`flex items-center gap-2 min-w-[60px] ${wall ? WALL_OVER_SLAB : ''}`}>
           {onTest && !disabled && (
             themeAssets.actionButtonTestHeroesImage ? (
               <button
@@ -473,7 +479,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
               700 weight + 0.05em tracking; the transform is what changes. */}
           <h3 className="carved-header carved-header-arcane font-medieval text-lg lg:text-xl uppercase whitespace-nowrap">Heroes</h3>
         </div>
-        <div className="flex items-center gap-2">
+        <div className={`flex items-center gap-2 ${wall ? WALL_OVER_SLAB : ''}`}>
           {/* Counter in the ramp's registers (user call, 2026-07-31): the
               count is a stat value (hud-num, tabular — no reflow as it
               ticks), the word is furniture (hud-label, uppercase). The
