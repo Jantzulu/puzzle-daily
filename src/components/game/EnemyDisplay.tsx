@@ -18,8 +18,8 @@ import { SelectionStrip, SelectionDrawer } from './SelectionShape';
 import { useElementWidth, artGridSlotStyle } from '../../hooks/useElementWidth';
 import { subscribeToImageLoads } from '../../utils/imageLoader';
 import { playChromeSound } from '../../utils/chromeSounds';
-import { BeamTorch, CutawaySlab } from './CutawayWall';
-import { WALL_ABOVE_BEAM, WALL_HEADER_GAP, WALL_ON } from './cutawayStone';
+import { BeamTorch, CutawaySlab, WallColumns } from './CutawayWall';
+import { WALL_ABOVE_BEAM, WALL_HEADER_GAP, WALL_ON, WALL_ROW } from './cutawayStone';
 
 // Every enemy/ally opens a drawer (its info panel always renders).
 const alwaysOpensDrawer = () => true;
@@ -244,7 +244,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
       {divider}
 
       {/* Header row */}
-      <div className={`relative flex items-center justify-between ${wall ? WALL_HEADER_GAP : 'mb-2'}`}>
+      <div className={`relative flex items-center justify-between ${wall ? `${WALL_HEADER_GAP} ${WALL_ROW}` : 'mb-2'}`}>
         {wall && <CutawaySlab old={isAllySide} />}
         <div className="flex items-center gap-2 min-w-[60px]">
           {showTestButton && onTest && (
@@ -309,8 +309,11 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
           paint over them. Slot math must index the same filtered list the
           cards render from. */}
       <div ref={stripRef} className="relative">
+      {/* The wall's columns go UNDER the selection, whose outline overlaps
+          them (user call 2026-11-21); the posts they replace step aside. */}
+      {wall && <WallColumns slotCount={stripEnemyIds.length} width={stripWidth} old />}
       <SelectionStrip ids={stripEnemyIds} selectedIndex={selectedStripIndex} width={stripWidth} tone={isAllySide ? 'copper' : 'blood'} opensDrawer={alwaysOpensDrawer} />
-      <StripDividers slotCount={stripEnemyIds.length} selectedIndex={selectedStripIndex} width={stripWidth} />
+      {!wall && <StripDividers slotCount={stripEnemyIds.length} selectedIndex={selectedStripIndex} width={stripWidth} />}
       <div className="flex">
         {stripEnemyIds.map((enemyId, slot) => {
           const enemyData = getEnemy(enemyId);

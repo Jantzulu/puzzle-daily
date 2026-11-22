@@ -1,6 +1,6 @@
 import React from 'react';
 import { prepCanvas, useCrispSnap } from './panelSkins';
-import { PIER_TOP, PIER_W, SLAB_H, WALL_COLUMN_RISE, WALL_FLOOR_H, WALL_TORCH_GAP, WALL_TORCH_HALF, drawPier, drawSlab } from './cutawayStone';
+import { PIER_TOP, PIER_W, SLAB_H, WALL_TORCH_GAP, WALL_TORCH_HALF, drawPier, drawSlab } from './cutawayStone';
 import { slotBoundaries } from '../../hooks/useElementWidth';
 import { LintelTorch } from './LintelTorch';
 
@@ -67,41 +67,34 @@ export const CutawaySlab: React.FC<{
 };
 
 /**
- * THE HERO HALL'S ARCADE (user ask 2026-11-21: "you had mentioned a 'floor'
- * for the hero panel and also changes to the vertical segments separating
- * them"). It takes the place of the iron posts between the hero cards
- * (StripDividers) when the wall is on, on the same slot boundaries:
+ * THE COLUMNS BETWEEN CARDS: stone in place of the iron posts
+ * (StripDividers) when the wall is on, for the hero strip and the enemy and
+ * ally strips alike, on the same slot boundaries. Each runs from the beam
+ * (its capital 8px above the strip) to where the post ended, 8px short of
+ * the strip's foot, where its base sits.
  *
- *   the FLOOR    a stone ledge right under the heroes' feet (`floorY`: the
- *                bottom of the sprite band; sprites are bottom-aligned, so
- *                they stand on it). Names and stats sit under it, like the
- *                plaques on the front of a plinth.
- *   COLUMNS      from the beam down to the floor, one on each boundary
- *                between two heroes: a capital under the beam, a shaft, a
- *                base on the ledge. So each hero stands in a bay.
- *   JOINTS       a thin line on down from each column between the plaques,
- *                where the post used to part the names.
+ * Settled by the user on their phone, 2026-11-21, after a first try that
+ * also laid a stone FLOOR under the heroes' feet and stopped the columns on
+ * it: "i do not like the floor, but like the columns. Can we make the
+ * columns extend the full length of the original vertical bars? Can we
+ * change the vertical bars for the enemies to also be columns? When
+ * selected, can the new border overlap OVER the columns instead of
+ * replacing them?" So: no floor; and a column NEVER steps aside for the
+ * selected card (the posts did). Render this BEFORE the selection strip:
+ * the selection's outline and wash paint over the columns, and the cards
+ * over both.
  *
- * The column and joint either side of the SELECTED card step aside (fade),
- * as the posts did: the selection's own outline parts it from its
- * neighbours. Placeholder stone, in CSS (index.css .wall-*), inside a box
- * snapped to whole pixels; rendered BEFORE the card row, so cards, badges
- * and the selection shape paint over it.
- *
- * The capital reaches 8px above the strip to meet the beam, which is why the
- * hero header keeps one height in the wall (WALL_HERO_ROW): unpinned, it is
- * 14px until a hero is placed and 20px after, and the gap under the beam
- * would change with it.
+ * Placeholder stone, in CSS (index.css .wall-column), inside a box snapped
+ * to whole pixels. The capital meets the beam only because the header row
+ * above keeps one height in the wall (WALL_ROW).
  */
-export const HeroArcade: React.FC<{
+export const WallColumns: React.FC<{
   slotCount: number;
-  /** Index of the selected slot, or -1. */
-  selectedIndex: number;
   /** The strip's measured width (CSS px; 0 = not measured: nothing renders). */
   width: number;
-  /** Where the heroes' feet are: CSS px from the strip's top. */
-  floorY: number;
-}> = ({ slotCount, selectedIndex, width, floorY }) => {
+  /** The colder stone from under the hero hall. */
+  old?: boolean;
+}> = ({ slotCount, width, old = false }) => {
   const snapRef = useCrispSnap<HTMLDivElement>(true);
   // (The snapped box is rendered even before the strip is measured: the
   // snap is taken when it mounts and again when it gets its size.)
@@ -109,17 +102,9 @@ export const HeroArcade: React.FC<{
   return (
     <div aria-hidden className="absolute inset-y-0 left-0 pointer-events-none" style={{ width }}>
       <div ref={snapRef} className="relative w-full h-full">
-        {width > 0 && <span className="wall-floor" style={{ top: floorY }} />}
-        {inner.map((x, k) => {
-          const boundary = k + 1;
-          const beside = selectedIndex >= 0 && (boundary === selectedIndex || boundary === selectedIndex + 1);
-          return (
-            <React.Fragment key={boundary}>
-              <span className={`wall-column ${beside ? 'wall-yield' : ''}`} style={{ left: x - 2, height: floorY + WALL_COLUMN_RISE }} />
-              <span className={`wall-joint ${beside ? 'wall-yield' : ''}`} style={{ left: x - 1, top: floorY + WALL_FLOOR_H }} />
-            </React.Fragment>
-          );
-        })}
+        {inner.map((x, k) => (
+          <span key={k} className={`wall-column ${old ? 'wall-column--old' : ''}`} style={{ left: x - 2 }} />
+        ))}
       </div>
     </div>
   );

@@ -4671,28 +4671,33 @@ button.dir-picker__tab:not(.dir-picker__tab--active) .dir-picker__tab-text {
   opacity: 0;
 }
 
-/* ---- THE CUTAWAY WALL's arcade (the `?wall=1` experiment; CutawayWall.tsx
-   HeroArcade): PLACEHOLDER stone in the hero hall, in place of the posts.
-   All of it sits on the Z=2 art grid inside a box snapped to whole pixels,
-   in the beams' own stone (cutawayStone.ts KEPT), lit from the top left.
-   Sizes mirror WALL_FLOOR_H / WALL_COLUMN_RISE there. Opacity is the only
-   thing that ever changes (the pair beside the selected card steps aside). */
-.wall-floor {
-  /* The ledge under the heroes' feet: a lit top row over a shaded lip. */
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 4px;
-  background: linear-gradient(#34302b 0 2px, #19140f 2px 4px);
-}
-
+/* ---- THE CUTAWAY WALL's columns (the `?wall=1` experiment; CutawayWall.tsx
+   WallColumns): PLACEHOLDER stone between the cards of a strip, in place of
+   the iron posts above. On the Z=2 art grid inside a box snapped to whole
+   pixels, in the beams' own stone (cutawayStone.ts KEPT, and OLD for the
+   strips under the hero hall), lit from the top left. From the beam (the
+   capital, 8px above the strip) to where the post ended (8px short of the
+   strip's foot). It never fades: the selection's outline is drawn over it. */
 .wall-column {
+  --col-lit: #312a25;
+  --col-shade: #1c1815;
+  --col-cap: #3b3530;
+  --col-face: #2a2420;
+  --col-foot: #19140f;
   /* The shaft: 2 art px wide, its left column lit and its right in shade. */
   position: absolute;
   top: -4px;
+  bottom: 8px;
   width: 4px;
-  background: linear-gradient(90deg, #312a25 0 2px, #1c1815 2px 4px);
-  transition: opacity 150ms ease-out;
+  background: linear-gradient(90deg, var(--col-lit) 0 2px, var(--col-shade) 2px 4px);
+}
+
+.wall-column--old {
+  --col-lit: #272526;
+  --col-shade: #171516;
+  --col-cap: #2f2d2e;
+  --col-face: #222021;
+  --col-foot: #131112;
 }
 
 .wall-column::before,
@@ -4708,27 +4713,13 @@ button.dir-picker__tab:not(.dir-picker__tab--active) .dir-picker__tab-text {
 .wall-column::before {
   /* The capital, up against the beam. */
   top: -4px;
-  background: linear-gradient(#3b3530 0 2px, #2a2420 2px 4px);
+  background: linear-gradient(var(--col-cap) 0 2px, var(--col-face) 2px 4px);
 }
 
 .wall-column::after {
-  /* The base, on the floor. */
+  /* The base, at the column's foot. */
   bottom: 0;
-  background: linear-gradient(#2a2420 0 2px, #19140f 2px 4px);
-}
-
-.wall-joint {
-  /* On down from the column, between two heroes' plaques. Stops 8px short
-     of the strip's foot, as the posts did. */
-  position: absolute;
-  bottom: 8px;
-  width: 2px;
-  background: #231e1b;
-  transition: opacity 150ms ease-out;
-}
-
-.wall-yield {
-  opacity: 0;
+  background: linear-gradient(var(--col-face) 0 2px, var(--col-foot) 2px 4px);
 }
 
 /* ============================================
