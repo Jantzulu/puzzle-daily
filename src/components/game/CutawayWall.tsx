@@ -1,8 +1,10 @@
 import React from 'react';
-import { prepCanvas, useCrispSnap } from './panelSkins';
+import { Z, prepCanvas, useCrispSnap } from './panelSkins';
 import {
-  ARCH_H, ARCH_LIFT, FOUND_H, FOUND_STEP, PIER_STOP, PIER_TOP, PIER_W, SLAB_H, WALL_TORCH_GAP, WALL_TORCH_HALF, drawArcade, drawFoundation, drawNiches, drawPier, drawSlab,
+  ARCH_H, ARCH_LIFT, FOUND_H, FOUND_STEP, PIER_STOP, PIER_TOP, PIER_W, SLAB_H, WALL_TORCH_GAP, WALL_TORCH_HALF, drawArcade, drawFoundation, drawNiches, drawPier, drawSetting, drawSlab,
+  settingBox,
 } from './cutawayStone';
+import type { SettingKind } from './cutawayStone';
 import { slotBoundaries } from '../../hooks/useElementWidth';
 import { LintelTorch } from './LintelTorch';
 
@@ -203,6 +205,64 @@ export const WallColumns: React.FC<{
           <span key={k} className="wall-column" style={{ left: x - 2 }} />
         ))}
       </div>
+    </div>
+  );
+};
+
+/**
+ * A LIST ENTRY'S SETTING (the rooms of lists: ITEMS, STATUS EFFECTS,
+ * DUNGEON TILES): wrap the entry's icon in this and the icon gets a small
+ * piece of the building to be on: a shelf, a hanging tablet, a socket of
+ * masonry (cutawayStone.ts drawSetting). The piece is drawn out to the side
+ * wall when the icon stands beside it (within 12px of the room's left
+ * edge: every entry on a phone), and alone otherwise. With "on" false the
+ * icon is rendered bare (the wall is off). It takes no layout:
+ * the row and the icon are given room by WALL_ENTRY's classes.
+ */
+export const WallSetting: React.FC<{ on: boolean; kind: SettingKind; seed?: number; children: React.ReactNode }> = ({ on, children, ...rest }) =>
+  (on ? <WallSettingOn {...rest}>{children}</WallSettingOn> : <>{children}</>);
+
+const WallSettingOn: React.FC<{ kind: SettingKind; seed?: number; children: React.ReactNode }> = ({ kind, seed = 0, children }) => {
+  const hostRef = React.useRef<HTMLDivElement>(null);
+  const boxRef = React.useRef<HTMLDivElement>(null);
+  const snapRef = useCrispSnap<HTMLDivElement>(true);
+  const canvasRef = React.useRef<HTMLCanvasElement>(null);
+  React.useLayoutEffect(() => {
+    const host = hostRef.current;
+    const boxEl = boxRef.current;
+    const canvas = canvasRef.current;
+    if (!host || !boxEl || !canvas) return;
+    const room = host.closest('[data-wall-room]');
+    const draw = () => {
+      const iw = Math.round(host.offsetWidth / Z);
+      const ih = Math.round(host.offsetHeight / Z);
+      if (!iw || !ih) return;
+      const away = room ? host.getBoundingClientRect().left - room.getBoundingClientRect().left : -1;
+      const gap = away >= 0 && away <= 12 ? Math.round(away / Z) : null;
+      const box = settingBox(kind, iw, ih, gap);
+      boxEl.style.left = `${box.x * Z}px`;
+      boxEl.style.top = `${box.y * Z}px`;
+      boxEl.style.width = `${box.w * Z}px`;
+      boxEl.style.height = `${box.h * Z}px`;
+      const ctx = prepCanvas(canvas, box.w * Z, box.h * Z, 0);
+      if (!ctx) return;
+      ctx.clearRect(0, 0, box.w * Z, box.h * Z);
+      drawSetting(ctx, kind, iw, ih, gap, seed);
+    };
+    draw();
+    const ro = new ResizeObserver(draw);
+    ro.observe(host);
+    if (room) ro.observe(room);
+    return () => ro.disconnect();
+  }, [kind, seed, snapRef]);
+  return (
+    <div ref={hostRef} className="relative">
+      <div ref={boxRef} aria-hidden className="absolute pointer-events-none">
+        <div ref={snapRef} className="relative w-full h-full">
+          <canvas ref={canvasRef} style={{ position: 'absolute' }} />
+        </div>
+      </div>
+      <div className="relative">{children}</div>
     </div>
   );
 };

@@ -3,8 +3,8 @@ import type { Puzzle, TileBehaviorConfig, CadenceConfig } from '../../types/game
 import { loadTileType, loadPuzzleSkin, type CustomTileType, type CustomSprite } from '../../utils/assetStorage';
 import { SpriteThumbnail } from '../editor/SpriteThumbnail';
 import { HelpButton } from './HelpOverlay';
-import { BeamTorch, CutawaySlab, WallDark } from './CutawayWall';
-import { WALL_ABOVE_BEAM, WALL_HEADER_GAP, WALL_ON, WALL_ROW } from './cutawayStone';
+import { BeamTorch, CutawaySlab, WallDark, WallSetting } from './CutawayWall';
+import { WALL_ABOVE_BEAM, WALL_ENTRY, WALL_HEADER_GAP, WALL_ON, WALL_ROW } from './cutawayStone';
 
 interface SpecialTilesDisplayProps {
   puzzle: Puzzle;
@@ -266,14 +266,15 @@ export const SpecialTilesDisplay: React.FC<SpecialTilesDisplayProps> = ({ puzzle
 
       {/* Ledger rows, two columns when the width is there */}
       <div className="md:columns-2 md:gap-x-5">
-        {specialTiles.map((info) => (
+        {specialTiles.map((info, index) => (
           <div
             key={info.tileType.id}
-            className="py-1.5 break-inside-avoid"
+            className={`py-1.5 break-inside-avoid ${wall ? WALL_ENTRY.socket.row : ''}`}
           >
             <div className="flex items-start gap-2">
-              {/* Tile sprite(s) */}
-              <div className="flex-shrink-0 mt-0.5">
+              {/* Tile sprite(s) (in the wall: a slab set in a patch of masonry) */}
+              <div className={`flex-shrink-0 mt-0.5 ${wall ? WALL_ENTRY.socket.icon : ''}`}>
+                <WallSetting on={wall} kind="socket" seed={index}>
                 {info.hasCadence ? (
                   // Show both on and off sprites for cadenced tiles
                   <div className="flex items-center gap-1">
@@ -291,6 +292,7 @@ export const SpecialTilesDisplay: React.FC<SpecialTilesDisplayProps> = ({ puzzle
                   // Single sprite for non-cadenced tiles
                   <TileSprite info={info} size={26} />
                 )}
+                </WallSetting>
               </div>
 
               {/* Name and description flow inline; detail lines keep their

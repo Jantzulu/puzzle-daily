@@ -5,8 +5,8 @@ import { getEnemy, type EnemyWithSprite } from '../../data/enemies';
 import { loadSpellAsset, loadStatusEffectAsset, loadCollectible, type CustomSprite } from '../../utils/assetStorage';
 import { SpriteThumbnail } from '../editor/SpriteThumbnail';
 import { HelpButton } from './HelpOverlay';
-import { BeamTorch, CutawaySlab, WallDark } from './CutawayWall';
-import { WALL_ABOVE_BEAM, WALL_HEADER_GAP, WALL_ON, WALL_ROW } from './cutawayStone';
+import { BeamTorch, CutawaySlab, WallDark, WallSetting } from './CutawayWall';
+import { WALL_ABOVE_BEAM, WALL_ENTRY, WALL_HEADER_GAP, WALL_ON, WALL_ROW } from './cutawayStone';
 
 interface StatusEffectsDisplayProps {
   puzzle: Puzzle;
@@ -277,12 +277,12 @@ export const StatusEffectsDisplay: React.FC<StatusEffectsDisplayProps> = ({ puzz
         {statusEffectsWithSources.map(({ effect, sources }) => (
           <div
             key={effect.id}
-            className="py-1.5 break-inside-avoid"
+            className={`py-1.5 break-inside-avoid ${wall ? WALL_ENTRY.tablet.row : ''}`}
           >
             <div className="flex items-start gap-2">
-              {/* Icon */}
-              <div className="flex-shrink-0 mt-0.5">
-                <StatusEffectIcon effect={effect} size={20} />
+              {/* Icon (in the wall: on a hanging stone tablet) */}
+              <div className={`flex-shrink-0 mt-0.5 ${wall ? WALL_ENTRY.tablet.icon : ''}`}>
+                <WallSetting on={wall} kind="tablet"><StatusEffectIcon effect={effect} size={20} /></WallSetting>
               </div>
 
               {/* Name and description flow inline */}
@@ -328,7 +328,7 @@ export const StatusEffectsDisplay: React.FC<StatusEffectsDisplayProps> = ({ puzz
               const allPickups = [...pickups, ...deathDrop];
 
               return (
-                <div className="mt-1 pl-7 space-y-0.5">
+                <div className={`mt-1 ${wall ? 'pl-10' : 'pl-7'} space-y-0.5`}>
                   {/* Innate: entity starts with the effect */}
                   {innate.length > 0 && (
                     <div className="flex items-center gap-1 flex-wrap">

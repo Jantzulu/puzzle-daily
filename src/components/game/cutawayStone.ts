@@ -143,6 +143,16 @@ export const WALL_TORCH_HALF = 16;
  */
 export const WALL_ROW = 'min-h-[20px]';
 /**
+ * A list entry's row and its icon, in the wall (Tailwind classes), by the
+ * setting its icon has (WallSetting): room for the setting round the icon,
+ * and a row tall enough to hold it when the entry is one line of text.
+ */
+export const WALL_ENTRY = {
+  shelf: { row: 'min-h-[50px]', icon: 'ml-1.5 mr-0.5' },
+  tablet: { row: 'min-h-[38px]', icon: 'ml-2 mr-1' },
+  socket: { row: 'min-h-[46px]', icon: 'ml-1 mr-2' },
+} as const;
+/**
  * What sits directly above the next panel's beam, for a panel with a strip
  * of cards: nothing ('open') or the info drawer. Written on the panel's
  * root as data-wall-below; index.css places the NEXT panel's beam to suit
@@ -448,6 +458,131 @@ export function drawNiches(ctx: CanvasRenderingContext2D, w: number, h: number, 
         px(x0 + x, y, mix(GROUND, stone, amount));
       }
     }
+  }
+}
+
+// ---- the list rooms: a setting for every entry ---------------------------------------------
+// ITEMS, STATUS EFFECTS and DUNGEON TILES were plain lists on the dark (the
+// user liked: "items on a stone shelf, status effects on a tablet, tiles as
+// slabs set into the wall"). Each entry's ICON gets a small piece of the
+// building to be on, and the piece GROWS OUT OF THE SIDE WALL beside it, so
+// nothing hangs in the air (the lesson of the brick back wall, above):
+//   shelf   a stone ledge under the item, on a corbel, out of the wall;
+//   tablet  a stone tablet behind the rune, hung by two links from an iron
+//           bar that is let into the wall;
+//   socket  the tile is one slab in a patch of masonry that runs back into
+//           the wall.
+// Where an entry is not beside the wall (the second column on a wide
+// screen) the piece stands alone: `gap` is null.
+
+export type SettingKind = 'shelf' | 'tablet' | 'socket';
+
+/** The top of a shelf: the one stone here that light falls straight onto. */
+const SHELF_TOP = '#3a3738';
+/** The setting's own iron (the tablet's bar and links). */
+const IRON = { lit: '#3f3c3e', dark: '#262425' };
+
+/**
+ * The box a setting is drawn in, in art px from the icon's top left corner.
+ * `iw` x `ih`: the icon; `gap`: how far to its left the side wall's face
+ * is (art px), or null when it is not beside the wall.
+ */
+export function settingBox(kind: SettingKind, iw: number, ih: number, gap: number | null): { x: number; y: number; w: number; h: number } {
+  const left = (out: number) => (gap === null ? out : Math.max(out, gap));
+  if (kind === 'shelf') { const l = left(3); return { x: -l, y: ih, w: l + iw + 3, h: 8 }; }
+  if (kind === 'tablet') { const l = left(2); return { x: -l, y: -5, w: l + iw + 2, h: ih + 7 }; }
+  const l = left(4);
+  return { x: -l, y: -4, w: l + iw + 4, h: ih + 8 };
+}
+
+/**
+ * Draw an entry's setting into a canvas the size of its box (settingBox),
+ * for an icon `iw` x `ih` art px. `seed` varies the socket's stones.
+ */
+export function drawSetting(ctx: CanvasRenderingContext2D, kind: SettingKind, iw: number, ih: number, gap: number | null, seed = 0): void {
+  const s = OLD;
+  const box = settingBox(kind, iw, ih, gap);
+  // Art px in the ICON's own coordinates (0,0 = its top left corner).
+  const a = (ax: number, ay: number, aw: number, ah: number, color: string) => {
+    if (aw <= 0 || ah <= 0) return;
+    ctx.fillStyle = color;
+    ctx.fillRect((ax - box.x) * Z, (ay - box.y) * Z, aw * Z, ah * Z);
+  };
+  const atWall = gap !== null;
+  const x0 = box.x;
+  const x1 = box.x + box.w;
+
+  if (kind === 'shelf') {
+    // The ledge, three art px thick: a top that catches the light (it is
+    // the brightest stone in the room: it must read under a small icon),
+    // its face, and a shaded lip; its free end is cut square and lit.
+    a(x0, ih, box.w, 1, SHELF_TOP);
+    a(x0, ih + 1, box.w, 1, s.faces[2]);
+    a(x0, ih + 2, box.w, 1, s.dark);
+    a(x1 - 1, ih, 1, 2, s.lit);
+    // The corbel under it: courses stepping back, against the wall or under the middle.
+    const steps = [7, 7, 5, 3, 2];
+    steps.forEach((w, k) => {
+      const cx = atWall ? x0 : Math.round(iw / 2 - w / 2);
+      const y = ih + 3 + k;
+      a(cx, y, w, 1, k === 0 ? s.faces[1] : s.faces[k % 3]);
+      a(cx + w - 1, y, 1, 1, s.dark);
+      if (!atWall) a(cx, y, 1, 1, s.dark);
+    });
+    return;
+  }
+
+  if (kind === 'tablet') {
+    // The tablet: two art px of stone round the rune, its top corners knocked off.
+    const tx = -2;
+    const ty = -2;
+    const tw = iw + 4;
+    const th = ih + 4;
+    a(tx, ty, tw, th, s.faces[1]);
+    a(tx, ty, tw, 1, s.lit);
+    a(tx, ty + 1, 1, th - 1, s.edgeLit);
+    a(tx + tw - 1, ty + 1, 1, th - 1, s.dark);
+    a(tx, ty + th - 1, tw, 1, s.dark);
+    a(tx + 1, ty + 1, tw - 2, th - 2, s.faces[0]); // the sunk field the rune sits in
+    a(tx + 1, ty + 1, tw - 2, 1, s.dark);
+    a(tx + 1, ty + 2, 1, th - 3, s.dark);
+    // The iron: a bar out of the wall (or a nail, standing alone), and two links down to the tablet.
+    if (atWall) {
+      a(x0, -5, box.w - 1, 1, IRON.lit);
+      a(x0, -4, 1, 1, IRON.dark); // the plate it is let in at
+    } else {
+      a(tx + 1, -5, tw - 2, 1, IRON.lit);
+    }
+    a(tx + 2, -4, 1, 2, IRON.dark);
+    a(tx + tw - 3, -4, 1, 2, IRON.dark);
+    return;
+  }
+
+  // The socket: a ring of stones round the slab, one art px of joint between them and it.
+  a(x0, -4, box.w, ih + 8, s.mortar);
+  const course = (cy: number, salt: number) => {
+    for (const b of courseBlocks(box.w, 9, seed * 31 + salt)) {
+      a(x0 + b.x, cy, b.w, 3, s.faces[b.tone]);
+      a(x0 + b.x, cy, b.w, 1, s.lit);
+      a(x0 + b.x, cy + 2, b.w, 1, s.dark);
+    }
+  };
+  course(-4, 11);
+  course(ih + 1, 23);
+  const jamb = (jx: number, jw: number, salt: number) => {
+    // Two stones, one over the other, the joint somewhere near the middle.
+    const split = Math.floor(ih / 2) + Math.floor(hash(seed * 17 + salt) * 3) - 1;
+    for (const [cy, ch, tone] of [[0, split, 0], [split + 1, ih - split - 1, 2]] as const) {
+      a(jx, cy, jw, ch, s.faces[tone]);
+      a(jx, cy, jw, 1, s.lit);
+      a(jx, cy + ch - 1, jw, 1, s.dark);
+    }
+  };
+  jamb(x0, -1 - x0, 5);
+  jamb(iw + 1, 3, 9);
+  if (!atWall) {
+    // Standing alone: the patch's outer corners are broken off.
+    for (const [cx, cy] of [[x0, -4], [x1 - 1, -4], [x0, ih + 3], [x1 - 1, ih + 3]]) ctx.clearRect((cx - box.x) * Z, (cy - box.y) * Z, Z, Z);
   }
 }
 

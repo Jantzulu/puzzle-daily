@@ -7,8 +7,8 @@ import { loadCollectible, loadSpellAsset, type CustomSprite, type CustomCollecti
 import { SpriteThumbnail } from '../editor/SpriteThumbnail';
 import { HelpButton } from './HelpOverlay';
 import { hasDeliverySchedule, deliveryRepeat } from '../../utils/deliverySchedule';
-import { BeamTorch, CutawaySlab, WallDark } from './CutawayWall';
-import { WALL_ABOVE_BEAM, WALL_HEADER_GAP, WALL_ON, WALL_ROW } from './cutawayStone';
+import { BeamTorch, CutawaySlab, WallDark, WallSetting } from './CutawayWall';
+import { WALL_ABOVE_BEAM, WALL_ENTRY, WALL_HEADER_GAP, WALL_ON, WALL_ROW } from './cutawayStone';
 
 interface ItemsDisplayProps {
   puzzle: Puzzle;
@@ -232,6 +232,8 @@ export const ItemsDisplay: React.FC<ItemsDisplayProps> = ({ puzzle, className = 
   // Chiseled seam between the dungeon's informational sections
   // (The `?wall=1` experiment: a stone slab under the title takes the groove's place.)
   const wall = WALL_ON && noPanel;
+  // The lines under an entry start where its text does: further in when the icon has a shelf round it.
+  const indent = wall ? 'pl-9' : 'pl-7';
   const divider = wall ? <div aria-hidden="true" className={WALL_ABOVE_BEAM} /> : noPanel ? <div className="dungeon-seam" /> : null;
 
   const content = (
@@ -259,12 +261,12 @@ export const ItemsDisplay: React.FC<ItemsDisplayProps> = ({ puzzle, className = 
         {itemsWithSources.map(({ collectible, onMap, dropSources, spellSources, deliveries }) => (
           <div
             key={collectible.id}
-            className="py-1.5 break-inside-avoid"
+            className={`py-1.5 break-inside-avoid ${wall ? WALL_ENTRY.shelf.row : ''}`}
           >
             <div className="flex items-start gap-2">
-              {/* Icon */}
-              <div className="flex-shrink-0 mt-0.5">
-                <ItemIcon collectible={collectible} size={20} />
+              {/* Icon (in the wall: on a stone shelf) */}
+              <div className={`flex-shrink-0 mt-0.5 ${wall ? WALL_ENTRY.shelf.icon : ''}`}>
+                <WallSetting on={wall} kind="shelf"><ItemIcon collectible={collectible} size={20} /></WallSetting>
               </div>
 
               {/* Name and effects */}
@@ -305,7 +307,7 @@ export const ItemsDisplay: React.FC<ItemsDisplayProps> = ({ puzzle, className = 
 
             {/* Drop sources - who drops this item */}
             {dropSources.length > 0 && (
-              <div className="mt-1 pl-7">
+              <div className={`mt-1 ${indent}`}>
                 <div className="flex items-center gap-1 flex-wrap">
                   <span className="hud-label text-stone-500 mr-1">Dropped by:</span>
                   {dropSources.map((source) => (
@@ -330,7 +332,7 @@ export const ItemsDisplay: React.FC<ItemsDisplayProps> = ({ puzzle, className = 
 
             {/* Spell sources - who places/throws this item */}
             {spellSources.length > 0 && (
-              <div className="mt-1 pl-7">
+              <div className={`mt-1 ${indent}`}>
                 <div className="flex items-center gap-1 flex-wrap">
                   {spellSources.map((source, idx) => (
                     <div
@@ -366,7 +368,7 @@ export const ItemsDisplay: React.FC<ItemsDisplayProps> = ({ puzzle, className = 
 
             {/* Duration info for base collectible */}
             {collectible.duration && collectible.duration > 0 && spellSources.length === 0 && (
-              <div className="pl-7">
+              <div className={indent}>
                 <span className="hud-body text-stone-400">
                   Lasts {collectible.duration} turn{collectible.duration !== 1 ? 's' : ''}
                 </span>

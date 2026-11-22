@@ -3,6 +3,7 @@ import {
   ARCH_BAND_ART, ARCH_H, ARCH_MAX_RX_ART, ARCH_RISE_ART, PIER_ART, PIER_TOP, SLAB_ART, SLAB_H, SLAB_RISE, WALL_ON, WALL_TORCH_GAP, WALL_TORCH_HALF,
   BEDROCK_ART, FOOTING_LOWER_ART, FOOTING_UPPER_ART, FOUND_H, archInset, archOutline, bedrock, courseBlocks, facingBlocks, slabBlocks,
   PASSAGE_RIBS_ART, archOpening, nicheSpan, passageDepth,
+  WALL_ENTRY, settingBox,
 } from '../cutawayStone';
 
 // The cutaway wall's placeholder stone (the `?wall=1` experiment). What can
@@ -169,4 +170,17 @@ describe('the cutaway wall', () => {
     expect(passageDepth(open, 29, ARCH_BAND_ART + 2, last + 1).depth).toBe(2);
   });
 
+  it('draws a list entry\'s setting out to the side wall when its icon is beside it, and alone otherwise', () => {
+    // A shelf starts at the wall's face: the gap, the icon, and its overhang.
+    expect(settingBox('shelf', 10, 10, 3)).toEqual({ x: -3, y: 10, w: 16, h: 8 });
+    expect(settingBox('shelf', 10, 10, 6).x).toBe(-6); // a wider gap: still from the wall
+    expect(settingBox('shelf', 10, 10, null).x).toBe(-3); // alone: its own overhang
+    // A tablet hangs from a bar above it; a socket rings the tile on every side.
+    const tablet = settingBox('tablet', 10, 10, 4);
+    expect(tablet.x).toBe(-4);
+    expect(tablet.y).toBeLessThan(-2);
+    expect(settingBox('socket', 13, 13, null)).toEqual({ x: -4, y: -4, w: 21, h: 21 });
+    // Every kind of entry has a row tall enough for its setting.
+    for (const kind of ['shelf', 'tablet', 'socket'] as const) expect(WALL_ENTRY[kind].row).toMatch(/^min-h-/);
+  });
 });
