@@ -6,7 +6,7 @@ import { loadSpellAsset, loadStatusEffectAsset, loadCollectible, type CustomSpri
 import { SpriteThumbnail } from '../editor/SpriteThumbnail';
 import { HelpButton } from './HelpOverlay';
 import { BeamTorch, CutawaySlab } from './CutawayWall';
-import { WALL_ABOVE_BEAM, WALL_HEADER_GAP, WALL_ON } from './cutawayStone';
+import { WALL_ABOVE_BEAM, WALL_HEADER_GAP, WALL_ON, WALL_ROW } from './cutawayStone';
 
 interface StatusEffectsDisplayProps {
   puzzle: Puzzle;
@@ -248,7 +248,7 @@ export const StatusEffectsDisplay: React.FC<StatusEffectsDisplayProps> = ({ puzz
   const content = (
     <>
       {divider}
-      <div className={`relative flex items-center justify-between ${wall ? WALL_HEADER_GAP : 'mb-1'}`}>
+      <div className={`relative flex items-center justify-between ${wall ? `${WALL_HEADER_GAP} ${WALL_ROW}` : 'mb-1'}`}>
         {wall && <CutawaySlab old />}
         <div className="min-w-[60px]" />
         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center">

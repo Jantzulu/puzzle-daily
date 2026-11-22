@@ -1,6 +1,6 @@
 import React from 'react';
 import { prepCanvas, useCrispSnap } from './panelSkins';
-import { PIER_TOP, PIER_W, SLAB_H, WALL_MAX_REACH, WALL_TORCH_GAP, WALL_TORCH_HALF, drawPier, drawSlab } from './cutawayStone';
+import { PIER_TOP, PIER_W, SLAB_H, WALL_TORCH_GAP, WALL_TORCH_HALF, drawPier, drawSlab } from './cutawayStone';
 import { slotBoundaries } from '../../hooks/useElementWidth';
 import { LintelTorch } from './LintelTorch';
 
@@ -80,12 +80,16 @@ export const CutawaySlab: React.FC<{
  *            open drawer's own card (`openIndex`) the floor is left out
  *            ("the segment for the currently selected hero should not be
  *            present"): that is where the card opens into its drawer.
- *   'open'   nothing is under the cards: no floor, and the columns run on
- *            down to the top of the next beam ("the column should touch the
- *            top of the lower horizontal beam"). How far that is, is
- *            measured (the beams mark themselves data-wall-beam). With no
- *            beam close below (the last panel on the page) the room is
- *            closed with the floor instead.
+ *   'open'   nothing is under the cards: no floor from here. The columns
+ *            stay as they are and the NEXT PANEL'S BEAM COMES UP to their
+ *            feet, where the floor would be (user, from their phone: "I
+ *            don't want the columns to EXTEND, I'd like the lower ... beam
+ *            to come up to them, essentially replacing the 'floor'"; a
+ *            first version ran the columns down to the beam instead). The
+ *            beam is moved by the page (index.css, [data-wall-below]); this
+ *            only looks whether one is there (the beams mark themselves
+ *            data-wall-beam). With none (the last panel on the page) the
+ *            room is closed with the floor after all.
  *
  * History, so it is not tried again: a first floor ran under the heroes'
  * FEET, half way up the cards, with the columns stopping on it; the user did
@@ -112,21 +116,20 @@ export const WallColumns: React.FC<{
 }> = ({ slotCount, width, below, openIndex = -1, old = false }) => {
   const snapRef = useCrispSnap<HTMLDivElement>(true);
 
-  // How far below the strip the next beam begins, kept in a CSS variable on
-  // the box (no render needed when it changes). Measured again whenever the
-  // strip or the page under it changes size: a drawer, a hint going.
+  // With nothing under the cards: has a beam come up to the columns' feet?
+  // Kept as an attribute on the box (no render needed when it changes), and
+  // looked for again whenever the strip or the page under it changes size.
   React.useLayoutEffect(() => {
     const host = snapRef.current;
     if (!host || below !== 'open') return;
     const measure = () => {
       const bottom = host.getBoundingClientRect().bottom;
-      let reach: number | null = null;
+      let found = false;
       for (const beam of document.querySelectorAll('[data-wall-beam]')) {
-        const gap = Math.round(beam.getBoundingClientRect().top - bottom);
-        if (gap >= 0 && gap <= WALL_MAX_REACH && (reach === null || gap < reach)) reach = gap;
+        // (Its top sits where the floor's would: 4px above the strip's foot.)
+        if (Math.abs(beam.getBoundingClientRect().top - (bottom - 4)) <= 6) { found = true; break; }
       }
-      host.style.setProperty('--wall-reach', `${reach ?? 0}px`);
-      host.toggleAttribute('data-no-beam', reach === null);
+      host.toggleAttribute('data-no-beam', !found);
     };
     measure();
     const ro = new ResizeObserver(measure);
@@ -203,6 +206,12 @@ export const CutawayPiers: React.FC = () => {
   const snapRef = useCrispSnap<HTMLDivElement>(true);
   const leftRef = React.useRef<HTMLCanvasElement>(null);
   const rightRef = React.useRef<HTMLCanvasElement>(null);
+  // The page knows the wall is up (index.css .wall-on): the colder ground
+  // under the hero hall must start below the enemies' beam, not above it.
+  React.useLayoutEffect(() => {
+    document.documentElement.classList.add('wall-on');
+    return () => document.documentElement.classList.remove('wall-on');
+  }, []);
   React.useLayoutEffect(() => {
     const host = snapRef.current;
     if (!host) return;

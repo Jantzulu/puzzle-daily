@@ -19,7 +19,7 @@ import { useElementWidth, artGridSlotStyle } from '../../hooks/useElementWidth';
 import { subscribeToImageLoads } from '../../utils/imageLoader';
 import { playChromeSound } from '../../utils/chromeSounds';
 import { BeamTorch, CutawaySlab, WallColumns } from './CutawayWall';
-import { WALL_ABOVE_BEAM, WALL_HEADER_GAP, WALL_ON, WALL_ROW } from './cutawayStone';
+import { WALL_ABOVE_BEAM, WALL_HEADER_GAP, WALL_ON, WALL_ROW, type WallBelow } from './cutawayStone';
 
 // Every enemy/ally opens a drawer (its info panel always renders).
 const alwaysOpensDrawer = () => true;
@@ -314,7 +314,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
           its measured width and rendered BEFORE the card row so the cards
           paint over them. Slot math must index the same filtered list the
           cards render from. */}
-      <div ref={stripRef} className="relative">
+      <div ref={stripRef} className={wall ? 'relative z-[1]' : 'relative'}>
       {/* The wall's columns go UNDER the selection, whose outline overlaps
           them (user call 2026-11-21); the posts they replace step aside. */}
       {wall && (
@@ -572,7 +572,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
           double-announce. UNMOUNTS when hidden (second user call, mobile
           test): the min-h reservation left a dead gap once a card opened. */}
       {showEnemyHint && (
-        <div className="mt-1.5 text-center">
+        <div className={wall ? 'wall-hint' : 'mt-1.5 text-center'}>
           <TapHintChip>Tap an enemy for more info</TapHintChip>
         </div>
       )}
@@ -580,7 +580,9 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
   );
 
   if (noPanel) {
-    return <div className={className}>{content}</div>;
+    // (The wall: what is directly above the next panel's beam, so the page can place that beam.)
+    const wallBelow: WallBelow | undefined = wall ? (showEnemyHint ? 'hint' : enemyDrawerUp ? 'drawer' : 'open') : undefined;
+    return <div className={className} data-wall-below={wallBelow}>{content}</div>;
   }
 
   return (

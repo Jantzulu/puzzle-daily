@@ -35,9 +35,11 @@
 //             in place of the iron posts (CutawayWall WallColumns). With a
 //             hint or an open drawer under the cards they stand on a FLOOR
 //             along the strip's foot (left open under the drawer's own
-//             card); with nothing under the cards there is no floor and
-//             they run down to the next beam. The selection's outline is
-//             drawn over them.
+//             card); with nothing under the cards the next panel's BEAM
+//             comes up to their feet in the floor's place. The selection's
+//             outline is drawn over them. The hint sits half way between
+//             the floor and the beam below; an open drawer's outline rests
+//             on the beam below.
 //   a TORCH   one on each beam (user call 2026-11-21: "Only 1 per beam"),
 //             beside the title, the sides taking turns down the page:
 //             HEROES right, ENEMIES left, ITEMS right, STATUS EFFECTS left
@@ -100,8 +102,14 @@ export const WALL_HERO_Z = 11;
 export const WALL_OVER_SLAB = 'relative z-[12]';
 /** The space under a title that sits on a slab (a Tailwind margin class): the slab reaches 11px below the header row. */
 export const WALL_HEADER_GAP = 'mb-4';
-/** The room a beam under the hero hall needs above its title (a Tailwind height class, for a spacer): the slab rises 11px over the row. */
-export const WALL_ABOVE_BEAM = 'h-5';
+/**
+ * The room a beam under the hero hall needs above its title (classes for a
+ * spacer, which must be the panel's first child). With the pinned 20px row
+ * (WALL_ROW) the beam's top is 12px under the spacer's top. index.css pulls
+ * this spacer up (.wall-above-beam) by what the panel above has under its
+ * cards.
+ */
+export const WALL_ABOVE_BEAM = 'h-5 wall-above-beam';
 /**
  * How far a beam's torch stands from its title (CSS px from the title's
  * edge to the torch's). The user's rule (2026-11-21): torches need not line
@@ -124,11 +132,13 @@ export const WALL_TORCH_HALF = 16;
  */
 export const WALL_ROW = 'min-h-[20px]';
 /**
- * The furthest below a strip a beam may begin for the strip's columns to
- * run down to it (CSS px). The next panel's beam begins 12px under a strip
- * with nothing beneath it; anything much further is not "the next beam".
+ * What sits directly above the next panel's beam, for a panel with a strip
+ * of cards: nothing ('open'), the tap hint, or the info drawer. Written on
+ * the panel's root as data-wall-below; index.css moves the NEXT panel's beam
+ * to suit (up to the columns' feet; a hint's gap below it; under the
+ * drawer's outline).
  */
-export const WALL_MAX_REACH = 40;
+export type WallBelow = 'open' | 'hint' | 'drawer';
 
 // ---- stone ----------------------------------------------------------------------------
 

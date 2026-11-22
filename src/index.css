@@ -4680,17 +4680,16 @@ button.dir-picker__tab:not(.dir-picker__tab--active) .dir-picker__tab-text {
      --floor  something is under the cards (a hint, an open drawer): the
               columns stand on a floor along the strip's foot (.wall-floor,
               laid in one or two pieces by the component).
-     --open   nothing is under the cards: no floor, and the columns run down
-              to the next beam, --wall-reach below the strip (measured by
-              the component). With no beam below ([data-no-beam], the last
-              panel) the floor closes the room instead. */
+     --open   nothing is under the cards: no floor; the next panel's beam
+              comes up to the columns' feet in its place (the rules under
+              WHERE THE NEXT BEAM SITS, below). With no beam there
+              ([data-no-beam], the last panel) the floor closes the room. */
 .wall-columns {
   --col-lit: #312a25;
   --col-shade: #1c1815;
   --col-cap: #3b3530;
   --col-face: #2a2420;
   --col-foot: #19140f;
-  --wall-reach: 0px;
   position: relative;
   width: 100%;
   height: 100%;
@@ -4712,10 +4711,6 @@ button.dir-picker__tab:not(.dir-picker__tab--active) .dir-picker__tab-text {
   bottom: 4px; /* on the floor */
   width: 4px;
   background: linear-gradient(90deg, var(--col-lit) 0 2px, var(--col-shade) 2px 4px);
-}
-
-.wall-columns--open:not([data-no-beam]) .wall-column {
-  bottom: calc(-1 * var(--wall-reach)); /* down to the next beam */
 }
 
 .wall-column::before,
@@ -4753,6 +4748,57 @@ button.dir-picker__tab:not(.dir-picker__tab--active) .dir-picker__tab-text {
   content: '';
   left: 0;
   right: 0;
+}
+
+/* WHERE THE NEXT BEAM SITS (user, from their phone, 2026-11-21). A panel
+   with a strip of cards says what is directly above the next panel's beam
+   (data-wall-below on its root), and the next panel's spacer, its first
+   child, is pulled up to suit. A beam's top is 12px under its spacer's top
+   (cutawayStone.ts WALL_ABOVE_BEAM), so with no pull it would sit 12px
+   under whatever ends the panel above.
+     open    nothing under the cards: the beam comes up 16px, its top 4px
+             above the strip's foot, where the floor's top would be: "I'd
+             like the lower ... beam to come up to them, essentially
+             replacing the 'floor'".
+     hint    the hint stands 8px under the floor (.wall-hint) and the beam
+             8px under the hint: there was "a larger gap below the tap hint
+             and the beam below it" than above it.
+     drawer  the beam's top meets the drawer's foot, where its outline's
+             bottom line runs (the outline's corner rims, 2px further out,
+             tuck under the beam): there was "a gap below the selection box
+             and the ... beam of the below section".
+   The first panel under the hero hall is inside .dungeon-below, hence the
+   second selector of each pair. With no panel below, nothing is pulled. */
+[data-wall-below='open'] + * > .wall-above-beam:first-child,
+[data-wall-below='open'] + .dungeon-below > :first-child > .wall-above-beam:first-child {
+  margin-top: -16px;
+}
+
+[data-wall-below='hint'] + * > .wall-above-beam:first-child,
+[data-wall-below='hint'] + .dungeon-below > :first-child > .wall-above-beam:first-child {
+  margin-top: -4px;
+}
+
+[data-wall-below='drawer'] + * > .wall-above-beam:first-child,
+[data-wall-below='drawer'] + .dungeon-below > :first-child > .wall-above-beam:first-child {
+  margin-top: -12px;
+}
+
+.wall-hint {
+  /* A flex row, not a line of text: a line box left 9px of slack around the
+     24px chip, all of it on one side. */
+  display: flex;
+  justify-content: center;
+  margin-top: 8px;
+}
+
+/* The colder ground under the hero hall (.dungeon-below::before) begins at
+   the box's top, and with the wall that box is pulled up over the foot of
+   the hero strip: it hid the columns' feet (user: "something is hiding the
+   bottom of the columns"). It starts half way down the enemies' beam here,
+   out of sight behind the stone. */
+.wall-on .dungeon-below::before {
+  top: 30px;
 }
 
 /* ============================================

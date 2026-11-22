@@ -24,7 +24,7 @@ import placedBannerIcon from '../../assets/icons/placed-banner.png';
 import { useElementWidth, artGridSlotStyle } from '../../hooks/useElementWidth';
 import { subscribeToImageLoads } from '../../utils/imageLoader';
 import { BeamTorch, CutawaySlab, WallColumns } from './CutawayWall';
-import { WALL_HEADER_GAP, WALL_HERO_Z, WALL_ON, WALL_OVER_SLAB, WALL_ROW } from './cutawayStone';
+import { WALL_HEADER_GAP, WALL_HERO_Z, WALL_ON, WALL_OVER_SLAB, WALL_ROW, type WallBelow } from './cutawayStone';
 
 const MOVEMENT_TYPES = new Set([
   'move_forward', 'move_backward', 'move_left', 'move_right',
@@ -532,7 +532,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
           (StripDividers) are overlays in this relative wrapper, placed from
           its measured width and rendered BEFORE the card row so the cards
           paint over them. */}
-      <div ref={stripRef} className="relative">
+      <div ref={stripRef} className={wall ? 'relative z-[1]' : 'relative'}>
       {/* The wall's columns go UNDER the selection: its outline overlaps
           them (user call 2026-11-21); the posts they replace step aside. */}
       {wall && (
@@ -1005,7 +1005,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
           the dungeon" prompt; the PLACEMENT half lives on the board itself
           (see Game.tsx). */}
       {showHeroHint && (
-        <div className="mt-1.5 text-center">
+        <div className={wall ? 'wall-hint' : 'mt-1.5 text-center'}>
           <TapHintChip>Tap a hero for more info</TapHintChip>
         </div>
       )}
@@ -1016,7 +1016,9 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
   // would mute the heroes it is there to highlight.
   const panelDim = disabled && !showUsed ? 'opacity-60' : '';
   if (noPanel) {
-    return <div className={panelDim}>{content}</div>;
+    // (The wall: what is directly above the enemies' beam, so the page can place that beam.)
+    const wallBelow: WallBelow | undefined = wall ? (showHeroHint ? 'hint' : heroDrawerUp ? 'drawer' : 'open') : undefined;
+    return <div className={panelDim} data-wall-below={wallBelow}>{content}</div>;
   }
 
   return (
