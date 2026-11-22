@@ -1,7 +1,7 @@
 import React from 'react';
 import { prepCanvas, useCrispSnap } from './panelSkins';
 import {
-  ARCH_H, FOUND_H, FOUND_STEP, PIER_STOP, PIER_TOP, PIER_W, SLAB_H, WALL_TORCH_GAP, WALL_TORCH_HALF, drawArcade, drawFoundation, drawPier, drawSlab,
+  ARCH_H, ARCH_LIFT, FOUND_H, FOUND_STEP, PIER_STOP, PIER_TOP, PIER_W, SLAB_H, WALL_TORCH_GAP, WALL_TORCH_HALF, drawArcade, drawFoundation, drawNiches, drawPier, drawSlab,
 } from './cutawayStone';
 import { slotBoundaries } from '../../hooks/useElementWidth';
 import { LintelTorch } from './LintelTorch';
@@ -159,6 +159,29 @@ export const WallColumns: React.FC<{
     drawArcade(ctx, width, slotBoundaries(width, slotCount), old);
   }, [width, slotCount, old]);
 
+  // DEPTH: the back wall of the walk behind the arcade, seen through every
+  // arch, with the arch's shadow across its top and left (cutawayStone.ts
+  // drawNiches). From the arcade's top to the floor's (4px above the
+  // strip's foot, where the next beam's top is when there is no floor).
+  const nichesRef = React.useRef<HTMLCanvasElement>(null);
+  React.useLayoutEffect(() => {
+    const host = snapRef.current;
+    const canvas = nichesRef.current;
+    if (!host || !canvas || width <= 0) return;
+    const draw = () => {
+      const h = host.clientHeight + ARCH_LIFT - 4;
+      if (h <= 0) return;
+      const ctx = prepCanvas(canvas, width, h, 0);
+      if (!ctx) return;
+      ctx.clearRect(0, 0, width, h);
+      drawNiches(ctx, width, h, slotBoundaries(width, slotCount), old);
+    };
+    draw();
+    const ro = new ResizeObserver(draw);
+    ro.observe(host);
+    return () => ro.disconnect();
+  }, [snapRef, width, slotCount, old]);
+
   // (The snapped box is rendered even before the strip is measured: the
   // snap is taken when it mounts and again when it gets its size.)
   const b = width > 0 ? slotBoundaries(width, slotCount) : [];
@@ -166,6 +189,7 @@ export const WallColumns: React.FC<{
   return (
     <div aria-hidden className="absolute inset-y-0 left-0 pointer-events-none" style={{ width }}>
       <div ref={snapRef} className={`wall-columns wall-columns--${below} ${old ? 'wall-columns--old' : ''}`}>
+        <div className="wall-arcade"><canvas ref={nichesRef} style={{ position: 'absolute' }} /></div>
         <div className="wall-arcade"><canvas ref={arcadeRef} style={{ position: 'absolute' }} /></div>
         {below === 'floor' && width > 0 && (open < 0
           ? <span className="wall-floor" style={{ left: 0, width }} />

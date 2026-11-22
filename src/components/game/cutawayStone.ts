@@ -270,6 +270,19 @@ export const ARCH_LIFT = 4 * Z;
 export interface ArchRun { x: number; y: number; w: number }
 
 /**
+ * One card's cutout: it runs from `left` to `right` (art px from the
+ * card's left edge), and on row `y` of the curve the stone reaches
+ * `reach[y]` in from each side (nothing from the springing down).
+ */
+export function archOpening(widthArt: number, first: boolean, last: boolean): { left: number; right: number; reach: number[] } {
+  const left = first ? 0 : 1; // past the half of the column that is on this card
+  const right = widthArt - (last ? 0 : 1);
+  const rx = Math.min(ARCH_MAX_RX_ART, Math.floor((right - left) / 2));
+  const reach = Array.from({ length: ARCH_RISE_ART + 1 }, (_, y) => (y < ARCH_RISE_ART ? archInset(y, rx) : 0));
+  return { left, right, reach };
+}
+
+/**
  * THE EDGE OF ONE CARD'S CUTOUT, as runs of art pixels: the stone pixels
  * that face the opening, sideways or down. Across the band's underside,
  * round both shoulders, to the springing, where it lands on the column's
@@ -284,11 +297,7 @@ export interface ArchRun { x: number; y: number; w: number }
  * the card's very edge (no column there to stop short of).
  */
 export function archOutline(widthArt: number, first: boolean, last: boolean): ArchRun[] {
-  const left = first ? 0 : 1; // past the half of the column that is on this card
-  const right = widthArt - (last ? 0 : 1);
-  const rx = Math.min(ARCH_MAX_RX_ART, Math.floor((right - left) / 2));
-  /** How far the stone reaches in on each row of the curve; none below it. */
-  const reach = Array.from({ length: ARCH_RISE_ART + 1 }, (_, y) => (y < ARCH_RISE_ART ? archInset(y, rx) : 0));
+  const { left, right, reach } = archOpening(widthArt, first, last);
   const runs: ArchRun[] = [];
   // The band's underside: everything over the opening's top row.
   runs.push({ x: left + reach[0], y: 0, w: right - left - 2 * reach[0] });
@@ -349,6 +358,96 @@ export function drawArcade(ctx: CanvasRenderingContext2D, w: number, edges: read
     const x = Math.floor(edges[i] / Z);
     a(x - 1, 0, 1, rows, s.edgeLit);
     a(x, 0, 1, rows, s.dark);
+  }
+}
+
+// ---- depth: a vaulted passage behind every arch ------------------------------------------
+// User, 2026-11-21: "maybe there is a way to make the darkness in each of
+// the cloisters more interesting. Maybe depth? I'm unsure". FIRST TRY, NOT
+// TO BE REPEATED: a back wall of courses seen through the arches. The user,
+// on seeing it: "the bricks make it look like the entities are floating" (a
+// surface right behind them, and nothing under their feet).
+//
+// So the depth is at the EDGES and the middle stays the room's plain dark:
+// each arch is the mouth of a vaulted passage running back from it. Just
+// inside the mouth the passage's wall and vault still catch a little light;
+// then a RIB (an arch across the passage, a line of stone), dimmer wall, a
+// second rib smaller and fainter, and past that nothing. The light is from
+// the top left as everywhere, so the passage's right-hand wall is a little
+// brighter than its left and its vault.
+
+/** Where the ribs stand: how far in from the mouth's edge (art px). Closer together going back, as things far off are. */
+export const PASSAGE_RIBS_ART = [3, 5] as const;
+/** How much of the stone's colour shows over the room's dark: the wall before each rib, and each rib. */
+const PASSAGE_WALL = [0.26, 0.11];
+const PASSAGE_RIB = [0.6, 0.3];
+/** The room's dark (index.css .wall-ground). */
+const GROUND = '#0d0a09';
+
+/**
+ * The opening on art row `y` of a cutout (0 = the arcade's top row, the
+ * band of stone): from the first open pixel to one past the last, or null
+ * above the opening.
+ */
+export function nicheSpan(open: { left: number; right: number; reach: number[] }, y: number): [number, number] | null {
+  if (y < ARCH_BAND_ART) return null;
+  const k = y - ARCH_BAND_ART;
+  const r = k < ARCH_RISE_ART ? open.reach[k] : 0;
+  return open.right - r > open.left + r ? [open.left + r, open.right - r] : null;
+}
+
+/**
+ * How far inside the mouth a pixel is (art px, 0 = on its edge, up to
+ * `cap`), counted from the stone to its left, to its right and above it;
+ * and whether the nearest stone is the one to its RIGHT (the lit wall).
+ * -1 = not in the opening.
+ */
+export function passageDepth(open: { left: number; right: number; reach: number[] }, x: number, y: number, cap: number): { depth: number; lit: boolean } {
+  const inside = (px: number, py: number) => { const s = nicheSpan(open, py); return !!s && px >= s[0] && px < s[1]; };
+  if (!inside(x, y)) return { depth: -1, lit: false };
+  const run = (dx: number, dy: number) => { let n = 0; while (n < cap && inside(x + dx * (n + 1), y + dy * (n + 1))) n++; return n; };
+  const l = run(-1, 0);
+  const r = run(1, 0);
+  const u = run(0, -1);
+  return { depth: Math.min(l, r, u), lit: r < l && r < u };
+}
+
+/** A colour part of the way from `a` to `b` (#rrggbb). */
+function mix(a: string, b: string, t: number): string {
+  const ch = (hex: string, i: number) => parseInt(hex.slice(1 + i * 2, 3 + i * 2), 16);
+  return '#' + [0, 1, 2].map(i => Math.round(ch(a, i) + (ch(b, i) - ch(a, i)) * Math.min(1, t)).toString(16).padStart(2, '0')).join('');
+}
+
+/**
+ * Draw the passages behind an arcade into a canvas `w` CSS px wide and
+ * `h` tall, whose top is the arcade's top. `edges` as for drawArcade.
+ * Only the pixels near a mouth's edge are painted: the middle is left clear.
+ */
+export function drawNiches(ctx: CanvasRenderingContext2D, w: number, h: number, edges: readonly number[], old = false): void {
+  const stone = (old ? OLD : KEPT).faces[2];
+  const rows = Math.floor(h / Z);
+  const last = PASSAGE_RIBS_ART[PASSAGE_RIBS_ART.length - 1];
+  const px = (ax: number, ay: number, color: string) => {
+    ctx.fillStyle = color;
+    ctx.fillRect(ax * Z, ay * Z, Z, Z);
+  };
+  for (let i = 0; i + 1 < edges.length; i++) {
+    const x0 = Math.floor(edges[i] / Z);
+    const cardArt = Math.floor(edges[i + 1] / Z) - x0;
+    const open = archOpening(cardArt, i === 0, i + 2 === edges.length);
+    for (let y = ARCH_BAND_ART; y < rows; y++) {
+      const span = nicheSpan(open, y);
+      if (!span) continue;
+      for (let x = span[0]; x < span[1]; x++) {
+        // (Below the curve only the pixels near the two sides can be near the edge: skip the middle.)
+        if (y > ARCH_BAND_ART + ARCH_RISE_ART + last && x > span[0] + last && x < span[1] - last - 1) { x = span[1] - last - 2; continue; }
+        const { depth, lit } = passageDepth(open, x, y, last + 1);
+        if (depth < 0 || depth > last) continue;
+        const k = PASSAGE_RIBS_ART.findIndex(rib => depth <= rib);
+        const amount = (depth === PASSAGE_RIBS_ART[k] ? PASSAGE_RIB[k] : PASSAGE_WALL[k]) * (lit ? 1.3 : 0.85);
+        px(x0 + x, y, mix(GROUND, stone, amount));
+      }
+    }
   }
 }
 

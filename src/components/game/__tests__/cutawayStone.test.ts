@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   ARCH_BAND_ART, ARCH_H, ARCH_MAX_RX_ART, ARCH_RISE_ART, PIER_ART, PIER_TOP, SLAB_ART, SLAB_H, SLAB_RISE, WALL_ON, WALL_TORCH_GAP, WALL_TORCH_HALF,
   BEDROCK_ART, FOOTING_LOWER_ART, FOOTING_UPPER_ART, FOUND_H, archInset, archOutline, bedrock, courseBlocks, facingBlocks, slabBlocks,
+  PASSAGE_RIBS_ART, archOpening, nicheSpan, passageDepth,
 } from '../cutawayStone';
 
 // The cutaway wall's placeholder stone (the `?wall=1` experiment). What can
@@ -150,4 +151,22 @@ describe('the cutaway wall', () => {
     expect(fallen).toBeGreaterThan(0);
     expect(fallen).toBeLessThan(old.length / 2); // some, not most
   });
+
+  it('steps the dark back from the mouth of an arch, and leaves the middle alone', () => {
+    const open = archOpening(58, false, false);
+    const last = PASSAGE_RIBS_ART[PASSAGE_RIBS_ART.length - 1];
+    // Above the opening, and in the stone of a shoulder: not in the passage.
+    expect(nicheSpan(open, 0)).toBeNull();
+    expect(passageDepth(open, open.left, ARCH_BAND_ART, last + 1).depth).toBe(-1);
+    // Below the curve the depth counts in from each side; the right-hand wall is the lit one.
+    const y = ARCH_BAND_ART + ARCH_RISE_ART + 20;
+    expect(passageDepth(open, open.left, y, last + 1)).toEqual({ depth: 0, lit: false });
+    expect(passageDepth(open, open.left + 3, y, last + 1).depth).toBe(3);
+    expect(passageDepth(open, open.right - 1, y, last + 1)).toEqual({ depth: 0, lit: true });
+    // The middle is past the last rib: nothing is drawn behind the card's own things.
+    expect(passageDepth(open, 29, y, last + 1).depth).toBeGreaterThan(last);
+    // Under the crown it counts down from the band of stone.
+    expect(passageDepth(open, 29, ARCH_BAND_ART + 2, last + 1).depth).toBe(2);
+  });
+
 });
