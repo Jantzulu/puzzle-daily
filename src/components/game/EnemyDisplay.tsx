@@ -239,6 +239,12 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
       : <div className={`dungeon-panel p-2 lg:p-3 ${className}`}>{emptyContent}</div>;
   }
 
+  // What is under the cards (the wall's columns stand on a floor over
+  // either, and run down to the next beam over neither): the info drawer,
+  // mounted for as long as it shows (through its closing), or the hint.
+  const enemyDrawerUp = !!renderedEnemyId && !!renderedEnemyData;
+  const showEnemyHint = !isAllySide && !enemyHintSeen && uniqueEnemyIds.length > 0 && selectedEnemyId === null;
+
   const content = (
     <>
       {divider}
@@ -311,7 +317,15 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
       <div ref={stripRef} className="relative">
       {/* The wall's columns go UNDER the selection, whose outline overlaps
           them (user call 2026-11-21); the posts they replace step aside. */}
-      {wall && <WallColumns slotCount={stripEnemyIds.length} width={stripWidth} old />}
+      {wall && (
+        <WallColumns
+          slotCount={stripEnemyIds.length}
+          width={stripWidth}
+          below={enemyDrawerUp || showEnemyHint ? 'floor' : 'open'}
+          openIndex={enemyDrawerUp ? renderedStripIndex : -1}
+          old
+        />
+      )}
       <SelectionStrip ids={stripEnemyIds} selectedIndex={selectedStripIndex} width={stripWidth} tone={isAllySide ? 'copper' : 'blood'} opensDrawer={alwaysOpensDrawer} />
       {!wall && <StripDividers slotCount={stripEnemyIds.length} selectedIndex={selectedStripIndex} width={stripWidth} />}
       <div className="flex">
@@ -452,7 +466,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
       </div>
 
       {/* Info panel — grid height animation so easing applies to real content height */}
-      {renderedEnemyId && renderedEnemyData && (
+      {enemyDrawerUp && (
         <div style={{
           display: 'grid',
           gridTemplateRows: isOpen ? '1fr' : '0fr',
@@ -557,7 +571,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
           it. Enemies side only — a twin under Allies on the same page would
           double-announce. UNMOUNTS when hidden (second user call, mobile
           test): the min-h reservation left a dead gap once a card opened. */}
-      {!isAllySide && !enemyHintSeen && uniqueEnemyIds.length > 0 && selectedEnemyId === null && (
+      {showEnemyHint && (
         <div className="mt-1.5 text-center">
           <TapHintChip>Tap an enemy for more info</TapHintChip>
         </div>

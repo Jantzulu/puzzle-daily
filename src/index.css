@@ -4675,29 +4675,47 @@ button.dir-picker__tab:not(.dir-picker__tab--active) .dir-picker__tab-text {
    WallColumns): PLACEHOLDER stone between the cards of a strip, in place of
    the iron posts above. On the Z=2 art grid inside a box snapped to whole
    pixels, in the beams' own stone (cutawayStone.ts KEPT, and OLD for the
-   strips under the hero hall), lit from the top left. From the beam (the
-   capital, 8px above the strip) to where the post ended (8px short of the
-   strip's foot). It never fades: the selection's outline is drawn over it. */
-.wall-column {
+   strips under the hero hall), lit from the top left. A column never fades:
+   the selection's outline is drawn over it.
+     --floor  something is under the cards (a hint, an open drawer): the
+              columns stand on a floor along the strip's foot (.wall-floor,
+              laid in one or two pieces by the component).
+     --open   nothing is under the cards: no floor, and the columns run down
+              to the next beam, --wall-reach below the strip (measured by
+              the component). With no beam below ([data-no-beam], the last
+              panel) the floor closes the room instead. */
+.wall-columns {
   --col-lit: #312a25;
   --col-shade: #1c1815;
   --col-cap: #3b3530;
   --col-face: #2a2420;
   --col-foot: #19140f;
-  /* The shaft: 2 art px wide, its left column lit and its right in shade. */
-  position: absolute;
-  top: -4px;
-  bottom: 8px;
-  width: 4px;
-  background: linear-gradient(90deg, var(--col-lit) 0 2px, var(--col-shade) 2px 4px);
+  --wall-reach: 0px;
+  position: relative;
+  width: 100%;
+  height: 100%;
 }
 
-.wall-column--old {
+.wall-columns--old {
   --col-lit: #272526;
   --col-shade: #171516;
   --col-cap: #2f2d2e;
   --col-face: #222021;
   --col-foot: #131112;
+}
+
+.wall-column {
+  /* The shaft: 2 art px wide, its left column lit and its right in shade.
+     Its top is 4px above the strip; the capital another 4, at the beam. */
+  position: absolute;
+  top: -4px;
+  bottom: 4px; /* on the floor */
+  width: 4px;
+  background: linear-gradient(90deg, var(--col-lit) 0 2px, var(--col-shade) 2px 4px);
+}
+
+.wall-columns--open:not([data-no-beam]) .wall-column {
+  bottom: calc(-1 * var(--wall-reach)); /* down to the next beam */
 }
 
 .wall-column::before,
@@ -4720,6 +4738,21 @@ button.dir-picker__tab:not(.dir-picker__tab--active) .dir-picker__tab-text {
   /* The base, at the column's foot. */
   bottom: 0;
   background: linear-gradient(var(--col-face) 0 2px, var(--col-foot) 2px 4px);
+}
+
+.wall-floor,
+.wall-columns--open[data-no-beam]::after {
+  /* The floor along the strip's foot: a lit top row over a shaded lip. */
+  position: absolute;
+  bottom: 0;
+  height: 4px;
+  background: linear-gradient(var(--col-cap) 0 2px, var(--col-foot) 2px 4px);
+}
+
+.wall-columns--open[data-no-beam]::after {
+  content: '';
+  left: 0;
+  right: 0;
 }
 
 /* ============================================

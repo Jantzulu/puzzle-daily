@@ -1,6 +1,6 @@
 import React from 'react';
 import { prepCanvas, useCrispSnap } from './panelSkins';
-import { PIER_TOP, PIER_W, SLAB_H, WALL_TORCH_GAP, WALL_TORCH_HALF, drawPier, drawSlab } from './cutawayStone';
+import { PIER_TOP, PIER_W, SLAB_H, WALL_MAX_REACH, WALL_TORCH_GAP, WALL_TORCH_HALF, drawPier, drawSlab } from './cutawayStone';
 import { slotBoundaries } from '../../hooks/useElementWidth';
 import { LintelTorch } from './LintelTorch';
 
@@ -59,7 +59,7 @@ export const CutawaySlab: React.FC<{
     // the hero row is 14px tall until a hero is placed and 20px after (the
     // clear button), which left the beam 3px high of both.
     <div aria-hidden className="absolute pointer-events-none" style={{ left: -PIER_W, right: -PIER_W, top: `calc(50% - ${SLAB_H / 2}px)`, height: SLAB_H, zIndex: z }}>
-      <div ref={snapRef} className="relative w-full h-full">
+      <div ref={snapRef} data-wall-beam className="relative w-full h-full">
         <canvas ref={canvasRef} style={{ position: 'absolute' }} />
       </div>
     </div>
@@ -69,22 +69,33 @@ export const CutawaySlab: React.FC<{
 /**
  * THE COLUMNS BETWEEN CARDS: stone in place of the iron posts
  * (StripDividers) when the wall is on, for the hero strip and the enemy and
- * ally strips alike, on the same slot boundaries. Each runs from the beam
- * (its capital 8px above the strip) to where the post ended, 8px short of
- * the strip's foot, where its base sits.
+ * ally strips alike, on the same slot boundaries. A column's capital meets
+ * the beam above (8px over the strip); where it ENDS depends on what is
+ * under the cards (`below`), the user's rule of 2026-11-21:
  *
- * Settled by the user on their phone, 2026-11-21, after a first try that
- * also laid a stone FLOOR under the heroes' feet and stopped the columns on
- * it: "i do not like the floor, but like the columns. Can we make the
- * columns extend the full length of the original vertical bars? Can we
- * change the vertical bars for the enemies to also be columns? When
- * selected, can the new border overlap OVER the columns instead of
- * replacing them?" So: no floor; and a column NEVER steps aside for the
- * selected card (the posts did). Render this BEFORE the selection strip:
- * the selection's outline and wash paint over the columns, and the cards
- * over both.
+ *   'floor'  something sits under the cards: the "Tap a hero for more info"
+ *            hint, or an open drawer. The columns stand on a stone FLOOR
+ *            along the strip's foot ("there should be a 'floor' under the
+ *            columns when 'tap a hero for more info' is present"). Under an
+ *            open drawer's own card (`openIndex`) the floor is left out
+ *            ("the segment for the currently selected hero should not be
+ *            present"): that is where the card opens into its drawer.
+ *   'open'   nothing is under the cards: no floor, and the columns run on
+ *            down to the top of the next beam ("the column should touch the
+ *            top of the lower horizontal beam"). How far that is, is
+ *            measured (the beams mark themselves data-wall-beam). With no
+ *            beam close below (the last panel on the page) the room is
+ *            closed with the floor instead.
  *
- * Placeholder stone, in CSS (index.css .wall-column), inside a box snapped
+ * History, so it is not tried again: a first floor ran under the heroes'
+ * FEET, half way up the cards, with the columns stopping on it; the user did
+ * not like it ("i do not like the floor, but like the columns"). This floor
+ * is at the foot of the cards. And a column NEVER steps aside for the
+ * selected card, as the posts did: "can the new border overlap OVER the
+ * columns instead of replacing them?" So render this BEFORE the selection
+ * strip: the selection's outline and wash paint over it, the cards over both.
+ *
+ * Placeholder stone, in CSS (index.css .wall-columns), inside a box snapped
  * to whole pixels. The capital meets the beam only because the header row
  * above keeps one height in the wall (WALL_ROW).
  */
@@ -92,18 +103,56 @@ export const WallColumns: React.FC<{
   slotCount: number;
   /** The strip's measured width (CSS px; 0 = not measured: nothing renders). */
   width: number;
+  /** What is under the cards: see above. */
+  below: 'floor' | 'open';
+  /** With a drawer open, the slot of the card it belongs to (-1 = none): no floor under it. */
+  openIndex?: number;
   /** The colder stone from under the hero hall. */
   old?: boolean;
-}> = ({ slotCount, width, old = false }) => {
+}> = ({ slotCount, width, below, openIndex = -1, old = false }) => {
   const snapRef = useCrispSnap<HTMLDivElement>(true);
+
+  // How far below the strip the next beam begins, kept in a CSS variable on
+  // the box (no render needed when it changes). Measured again whenever the
+  // strip or the page under it changes size: a drawer, a hint going.
+  React.useLayoutEffect(() => {
+    const host = snapRef.current;
+    if (!host || below !== 'open') return;
+    const measure = () => {
+      const bottom = host.getBoundingClientRect().bottom;
+      let reach: number | null = null;
+      for (const beam of document.querySelectorAll('[data-wall-beam]')) {
+        const gap = Math.round(beam.getBoundingClientRect().top - bottom);
+        if (gap >= 0 && gap <= WALL_MAX_REACH && (reach === null || gap < reach)) reach = gap;
+      }
+      host.style.setProperty('--wall-reach', `${reach ?? 0}px`);
+      host.toggleAttribute('data-no-beam', reach === null);
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(host);
+    const page = document.querySelector('[data-wall-piers]');
+    if (page) ro.observe(page);
+    return () => ro.disconnect();
+  }, [snapRef, below]);
+
   // (The snapped box is rendered even before the strip is measured: the
   // snap is taken when it mounts and again when it gets its size.)
-  const inner = width > 0 ? slotBoundaries(width, slotCount).slice(1, -1) : [];
+  const b = width > 0 ? slotBoundaries(width, slotCount) : [];
+  const open = below === 'floor' && openIndex >= 0 && openIndex < slotCount ? openIndex : -1;
   return (
     <div aria-hidden className="absolute inset-y-0 left-0 pointer-events-none" style={{ width }}>
-      <div ref={snapRef} className="relative w-full h-full">
-        {inner.map((x, k) => (
-          <span key={k} className={`wall-column ${old ? 'wall-column--old' : ''}`} style={{ left: x - 2 }} />
+      <div ref={snapRef} className={`wall-columns wall-columns--${below} ${old ? 'wall-columns--old' : ''}`}>
+        {below === 'floor' && width > 0 && (open < 0
+          ? <span className="wall-floor" style={{ left: 0, width }} />
+          : (
+            <>
+              {b[open] > 0 && <span className="wall-floor" style={{ left: 0, width: b[open] }} />}
+              {b[open + 1] < width && <span className="wall-floor" style={{ left: b[open + 1], width: width - b[open + 1] }} />}
+            </>
+          ))}
+        {b.slice(1, -1).map((x, k) => (
+          <span key={k} className="wall-column" style={{ left: x - 2 }} />
         ))}
       </div>
     </div>
@@ -179,7 +228,7 @@ export const CutawayPiers: React.FC = () => {
   }, [snapRef]);
   return (
     <div aria-hidden className="absolute pointer-events-none" style={{ left: -PIER_W, right: -PIER_W, top: PIER_TOP, bottom: 0 }}>
-      <div ref={snapRef} className="relative w-full h-full">
+      <div ref={snapRef} data-wall-piers className="relative w-full h-full">
         <div className="absolute top-0 left-0 h-full" style={{ width: PIER_W }}>
           <canvas ref={leftRef} style={{ position: 'absolute' }} />
         </div>

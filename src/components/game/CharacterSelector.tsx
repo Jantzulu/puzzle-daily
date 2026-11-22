@@ -410,6 +410,11 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
 
   /** The `?wall=1` experiment (cutawayStone.ts): a stone slab behind the title. */
   const wall = WALL_ON && noPanel;
+  // What is under the cards (the wall's columns stand on a floor over
+  // either, and run down to the next beam over neither): the info drawer,
+  // mounted for as long as it shows (through its closing), or the hint.
+  const heroDrawerUp = !!renderedCharId && !!renderedCharacter && hasDrawerContent(renderedCharacter);
+  const showHeroHint = !disabled && !heroHintSeen && !(isAtMaxPlaced || (!!selectedCharacterId && !placedCharacterIds.includes(selectedCharacterId)));
   const content = (
     <>
       {/* Header row. mb-3 with the quest slot (user ask 2026-10-14: the
@@ -530,7 +535,14 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
       <div ref={stripRef} className="relative">
       {/* The wall's columns go UNDER the selection: its outline overlaps
           them (user call 2026-11-21); the posts they replace step aside. */}
-      {wall && <WallColumns slotCount={stripCharacterIds.length} width={stripWidth} />}
+      {wall && (
+        <WallColumns
+          slotCount={stripCharacterIds.length}
+          width={stripWidth}
+          below={heroDrawerUp || showHeroHint ? 'floor' : 'open'}
+          openIndex={heroDrawerUp ? renderedStripIndex : -1}
+        />
+      )}
       <SelectionStrip ids={stripCharacterIds} selectedIndex={selectedStripIndex} width={stripWidth} tone="copper" opensDrawer={heroOpensDrawer} />
       {!wall && <StripDividers slotCount={stripCharacterIds.length} selectedIndex={selectedStripIndex} width={stripWidth} />}
       <div className="flex">
@@ -813,7 +825,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
           hero used to open an empty tinted box holding just the placement
           hint, expanding the panel at selection (read as the trash button
           displacing the layout). The hint now lives in a static row below. */}
-      {renderedCharId && renderedCharacter && hasDrawerContent(renderedCharacter) && (
+      {heroDrawerUp && renderedCharId && renderedCharacter && (
         <div style={{
           display: 'grid',
           gridTemplateRows: isOpen ? '1fr' : '0fr',
@@ -992,7 +1004,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
           layout shift it prevented. Same chip grammar as the board's "Tap
           the dungeon" prompt; the PLACEMENT half lives on the board itself
           (see Game.tsx). */}
-      {!disabled && !heroHintSeen && !(isAtMaxPlaced || (selectedCharacterId && !placedCharacterIds.includes(selectedCharacterId))) && (
+      {showHeroHint && (
         <div className="mt-1.5 text-center">
           <TapHintChip>Tap a hero for more info</TapHintChip>
         </div>

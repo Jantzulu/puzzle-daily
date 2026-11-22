@@ -32,10 +32,12 @@
 //             them. With the switch on, the Dungeon Details lintel and its
 //             words are not drawn.
 //   COLUMNS   between the cards of every strip (heroes, enemies, allies),
-//             in place of the iron posts and as long as they were, from the
-//             beam down (CutawayWall WallColumns). The selection's outline
-//             is drawn over them. (A stone floor under the heroes' feet was
-//             tried with them and the user did not like it.)
+//             in place of the iron posts (CutawayWall WallColumns). With a
+//             hint or an open drawer under the cards they stand on a FLOOR
+//             along the strip's foot (left open under the drawer's own
+//             card); with nothing under the cards there is no floor and
+//             they run down to the next beam. The selection's outline is
+//             drawn over them.
 //   a TORCH   one on each beam (user call 2026-11-21: "Only 1 per beam"),
 //             beside the title, the sides taking turns down the page:
 //             HEROES right, ENEMIES left, ITEMS right, STATUS EFFECTS left
@@ -121,6 +123,12 @@ export const WALL_TORCH_HALF = 16;
  * taller state, so placing the first hero no longer shifts the page either.
  */
 export const WALL_ROW = 'min-h-[20px]';
+/**
+ * The furthest below a strip a beam may begin for the strip's columns to
+ * run down to it (CSS px). The next panel's beam begins 12px under a strip
+ * with nothing beneath it; anything much further is not "the next beam".
+ */
+export const WALL_MAX_REACH = 40;
 
 // ---- stone ----------------------------------------------------------------------------
 
