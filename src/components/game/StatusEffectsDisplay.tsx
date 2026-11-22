@@ -281,7 +281,7 @@ export const StatusEffectsDisplay: React.FC<StatusEffectsDisplayProps> = ({ puzz
           >
             <div className="flex items-start gap-2">
               {/* Icon (in the wall: on a hanging stone tablet) */}
-              <div className={`flex-shrink-0 mt-0.5 ${wall ? WALL_ENTRY.tablet.icon : ''}`}>
+              <div className={`flex-shrink-0 ${wall ? WALL_ENTRY.tablet.icon : 'mt-0.5'}`}>
                 <WallSetting on={wall} kind="tablet"><StatusEffectIcon effect={effect} size={20} /></WallSetting>
               </div>
 

@@ -265,7 +265,7 @@ export const ItemsDisplay: React.FC<ItemsDisplayProps> = ({ puzzle, className = 
           >
             <div className="flex items-start gap-2">
               {/* Icon (in the wall: on a stone shelf) */}
-              <div className={`flex-shrink-0 mt-0.5 ${wall ? WALL_ENTRY.shelf.icon : ''}`}>
+              <div className={`flex-shrink-0 ${wall ? WALL_ENTRY.shelf.icon : 'mt-0.5'}`}>
                 <WallSetting on={wall} kind="shelf"><ItemIcon collectible={collectible} size={20} /></WallSetting>
               </div>
 

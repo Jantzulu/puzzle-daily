@@ -269,12 +269,12 @@ export const SpecialTilesDisplay: React.FC<SpecialTilesDisplayProps> = ({ puzzle
         {specialTiles.map((info) => (
           <div
             key={info.tileType.id}
-            className={`py-1.5 break-inside-avoid ${wall ? WALL_ENTRY.floor.row : ''}`}
+            className={`py-1.5 break-inside-avoid ${wall ? WALL_ENTRY.frame.row : ''}`}
           >
             <div className="flex items-start gap-2">
-              {/* Tile sprite(s) (in the wall: laid in a ledge of floor) */}
-              <div className={`flex-shrink-0 mt-0.5 ${wall ? WALL_ENTRY.floor.icon : ''}`}>
-                <WallSetting on={wall} kind="floor">
+              {/* Tile sprite(s) (in the wall: in a frame) */}
+              <div className={`flex-shrink-0 ${wall ? WALL_ENTRY.frame.icon : 'mt-0.5'}`}>
+                <WallSetting on={wall} kind="frame">
                 {info.hasCadence ? (
                   // Show both on and off sprites for cadenced tiles
                   <div className="flex items-center gap-1">

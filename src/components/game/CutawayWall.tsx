@@ -212,8 +212,8 @@ export const WallColumns: React.FC<{
 /**
  * A LIST ENTRY'S SETTING (the rooms of lists: ITEMS, STATUS EFFECTS,
  * DUNGEON TILES): wrap the entry's icon in this and the icon gets a small
- * piece of the building to be on: a shelf, a hanging tablet, a ledge of
- * floor (cutawayStone.ts drawSetting). The piece is drawn out to the side
+ * piece of the building to be on or in: a shelf, a hanging tablet, a
+ * frame (cutawayStone.ts drawSetting). The piece is drawn out to the side
  * wall when the icon stands beside it (within 12px of the room's left
  * edge: every entry on a phone), and alone otherwise. With "on" false the
  * icon is rendered bare (the wall is off). It takes no layout:

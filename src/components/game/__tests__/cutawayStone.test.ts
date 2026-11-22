@@ -175,12 +175,13 @@ describe('the cutaway wall', () => {
     expect(settingBox('shelf', 10, 10, 3)).toEqual({ x: -3, y: 10, w: 16, h: 8 });
     expect(settingBox('shelf', 10, 10, 6).x).toBe(-6); // a wider gap: still from the wall
     expect(settingBox('shelf', 10, 10, null).x).toBe(-3); // alone: its own overhang
-    // A tablet hangs from a bar above it; a tile has floor on both sides and a front edge under it.
+    // A tablet hangs from a bar above it; a frame goes round its tile, and reaches the wall when beside it.
     const tablet = settingBox('tablet', 10, 10, 4);
     expect(tablet.x).toBe(-4);
     expect(tablet.y).toBeLessThan(-2);
-    expect(settingBox('floor', 13, 13, null)).toEqual({ x: -6, y: -1, w: 25, h: 20 });
+    expect(settingBox('frame', 13, 13, 4)).toEqual({ x: -4, y: -2, w: 19, h: 17 });
+    expect(settingBox('frame', 13, 13, null)).toEqual({ x: -2, y: -2, w: 17, h: 17 });
     // Every kind of entry has a row tall enough for its setting.
-    for (const kind of ['shelf', 'tablet', 'floor'] as const) expect(WALL_ENTRY[kind].row).toMatch(/^min-h-/);
+    for (const kind of ['shelf', 'tablet', 'frame'] as const) expect(WALL_ENTRY[kind].row).toMatch(/^min-h-/);
   });
 });
