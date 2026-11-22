@@ -1,6 +1,6 @@
 import React from 'react';
 import { prepCanvas, useCrispSnap } from './panelSkins';
-import { PIER_TOP, PIER_W, SLAB_H, WALL_TORCH_GAP, WALL_TORCH_HALF, drawPier, drawSlab } from './cutawayStone';
+import { ARCH_H, PIER_TOP, PIER_W, SLAB_H, WALL_TORCH_GAP, WALL_TORCH_HALF, drawArcade, drawPier, drawSlab } from './cutawayStone';
 import { slotBoundaries } from '../../hooks/useElementWidth';
 import { LintelTorch } from './LintelTorch';
 
@@ -67,11 +67,14 @@ export const CutawaySlab: React.FC<{
 };
 
 /**
- * THE COLUMNS BETWEEN CARDS: stone in place of the iron posts
+ * THE ARCADE BETWEEN CARDS: stone in place of the iron posts
  * (StripDividers) when the wall is on, for the hero strip and the enemy and
- * ally strips alike, on the same slot boundaries. A column's capital meets
- * the beam above (8px over the strip); where it ENDS depends on what is
- * under the cards (`below`), the user's rule of 2026-11-21:
+ * ally strips alike, on the same slot boundaries. Under the beam hangs a
+ * band of stone with an ARCH cut out for each card ("inside arched cutouts
+ * (like a cloister)": user, 2026-11-21; cutawayStone.ts drawArcade), and a
+ * column stands under the stone between two cutouts, its capital where the
+ * arches spring (18px under the beam). Where a column ENDS depends on what
+ * is under the cards (`below`), the user's rule of the same day:
  *
  *   'floor'  an info drawer is open under the cards. The columns stand on
  *            a narrow stone FLOOR along the strip's foot, left out under
@@ -100,9 +103,10 @@ export const CutawaySlab: React.FC<{
  * columns instead of replacing them?" So render this BEFORE the selection
  * strip: the selection's outline and wash paint over it, the cards over both.
  *
- * Placeholder stone, in CSS (index.css .wall-columns), inside a box snapped
- * to whole pixels. The capital meets the beam only because the header row
- * above keeps one height in the wall (WALL_ROW).
+ * Placeholder stone (the columns and floor in CSS, index.css .wall-columns;
+ * the arcade a canvas), inside a box snapped to whole pixels. The arcade
+ * meets the beam only because the header row above keeps one height in the
+ * wall (WALL_ROW).
  */
 export const WallColumns: React.FC<{
   slotCount: number;
@@ -140,6 +144,19 @@ export const WallColumns: React.FC<{
     return () => ro.disconnect();
   }, [snapRef, below]);
 
+  // The arcade over the cards: a band of stone with an arch cut out for
+  // each card (cutawayStone.ts drawArcade), hung from the beam. Drawn at
+  // once, never in a frame callback (the skins' shared rule).
+  const arcadeRef = React.useRef<HTMLCanvasElement>(null);
+  React.useLayoutEffect(() => {
+    const canvas = arcadeRef.current;
+    if (!canvas || width <= 0) return;
+    const ctx = prepCanvas(canvas, width, ARCH_H, 0);
+    if (!ctx) return;
+    ctx.clearRect(0, 0, width, ARCH_H);
+    drawArcade(ctx, width, slotBoundaries(width, slotCount), old);
+  }, [width, slotCount, old]);
+
   // (The snapped box is rendered even before the strip is measured: the
   // snap is taken when it mounts and again when it gets its size.)
   const b = width > 0 ? slotBoundaries(width, slotCount) : [];
@@ -147,6 +164,7 @@ export const WallColumns: React.FC<{
   return (
     <div aria-hidden className="absolute inset-y-0 left-0 pointer-events-none" style={{ width }}>
       <div ref={snapRef} className={`wall-columns wall-columns--${below} ${old ? 'wall-columns--old' : ''}`}>
+        <div className="wall-arcade"><canvas ref={arcadeRef} style={{ position: 'absolute' }} /></div>
         {below === 'floor' && width > 0 && (open < 0
           ? <span className="wall-floor" style={{ left: 0, width }} />
           : (
@@ -227,8 +245,8 @@ export const CutawayPiers: React.FC = () => {
   const snapRef = useCrispSnap<HTMLDivElement>(true);
   const leftRef = React.useRef<HTMLCanvasElement>(null);
   const rightRef = React.useRef<HTMLCanvasElement>(null);
-  // The page knows the wall is up (index.css .wall-on): the colder ground
-  // under the hero hall must start below the enemies' beam, not above it.
+  // The page knows the wall is up (index.css .wall-on): the wall brings its
+  // own ground (.wall-ground), so .dungeon-below's is switched off.
   React.useLayoutEffect(() => {
     document.documentElement.classList.add('wall-on');
     return () => document.documentElement.classList.remove('wall-on');
@@ -259,6 +277,11 @@ export const CutawayPiers: React.FC = () => {
   return (
     <div aria-hidden className="absolute pointer-events-none" style={{ left: -PIER_W, right: -PIER_W, top: PIER_TOP, bottom: 0 }}>
       <div ref={snapRef} data-wall-piers className="relative w-full h-full">
+        {/* The ground: the colder dark of the panels under the hero hall, as
+            one layer from behind the heroes' beam to the wall's foot (it
+            takes the place of .dungeon-below's own, which began under the
+            enemies' beam). First here, so everything else paints over it. */}
+        <div className="wall-ground" style={{ left: PIER_W, right: PIER_W }} />
         <div className="absolute top-0 left-0 h-full" style={{ width: PIER_W }}>
           <canvas ref={leftRef} style={{ position: 'absolute' }} />
         </div>

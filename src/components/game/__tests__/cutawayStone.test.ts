@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { PIER_ART, PIER_TOP, SLAB_ART, SLAB_H, SLAB_RISE, WALL_ON, WALL_TORCH_GAP, WALL_TORCH_HALF, facingBlocks, slabBlocks } from '../cutawayStone';
+import {
+  ARCH_BAND_ART, ARCH_H, ARCH_MAX_RX_ART, ARCH_RISE_ART, PIER_ART, PIER_TOP, SLAB_ART, SLAB_H, SLAB_RISE, WALL_ON, WALL_TORCH_GAP, WALL_TORCH_HALF,
+  archInset, facingBlocks, slabBlocks,
+} from '../cutawayStone';
 
 // The cutaway wall's placeholder stone (the `?wall=1` experiment). What can
 // be pinned without a canvas: the blocks are laid out the same every time,
@@ -26,6 +29,22 @@ describe('the cutaway wall', () => {
     // To the eye the two sides stand equally far from the title: 6px from the (?) mark, 6px from the last letter.
     const MARK_ENDS = 24; // the (?) glyph's far edge, px before the title's first letter
     expect(WALL_TORCH_GAP.left - MARK_ENDS).toBe(WALL_TORCH_GAP.right);
+  });
+
+  it('cuts a low arch over each card: stone widest at the top of a shoulder, none where it springs', () => {
+    expect(ARCH_H).toBe((ARCH_RISE_ART + ARCH_BAND_ART) * 2);
+    const rows = Array.from({ length: ARCH_RISE_ART }, (_, y) => archInset(y, ARCH_MAX_RX_ART));
+    // Narrowing all the way down, never widening.
+    for (let y = 1; y < rows.length; y++) expect(rows[y]).toBeLessThanOrEqual(rows[y - 1]);
+    expect(rows[0]).toBeGreaterThan(ARCH_MAX_RX_ART / 2); // a real shoulder at the top...
+    expect(rows[0]).toBeLessThan(ARCH_MAX_RX_ART); // ...that still leaves the middle open
+    expect(rows[rows.length - 1]).toBe(0); // clear of the column where the arch springs
+    // Below the fourth row of the curve (where a tall hero's art begins) the stone is a sliver by the column.
+    expect(rows[4]).toBeLessThanOrEqual(3);
+    // A narrow card (five heroes on a phone: a shoulder of 15) gets the same curve, scaled.
+    const narrow = Array.from({ length: ARCH_RISE_ART }, (_, y) => archInset(y, 15));
+    expect(narrow[0]).toBeLessThan(15);
+    expect(narrow[narrow.length - 1]).toBe(0);
   });
 
   it('lays a slab of blocks that fill it exactly, one art px of mortar apart', () => {

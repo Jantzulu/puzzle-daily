@@ -4703,11 +4703,21 @@ button.dir-picker__tab:not(.dir-picker__tab--active) .dir-picker__tab-text {
   --col-foot: #131112;
 }
 
+.wall-arcade {
+  /* The band of stone with an arch cut out for each card (a canvas:
+     cutawayStone.ts drawArcade), hung from the beam, 8px above the strip.
+     18px tall: it ends 10px into the strip, where the capitals are. */
+  position: absolute;
+  left: 0;
+  top: -8px;
+}
+
 .wall-column {
   /* The shaft: 2 art px wide, its left column lit and its right in shade.
-     Its top is 4px above the strip; the capital another 4, at the beam. */
+     Its top is 14px into the strip; the capital is the 4px above that,
+     where the arches spring. */
   position: absolute;
-  top: -4px;
+  top: 14px;
   bottom: 4px; /* on the floor */
   width: 4px;
   background: linear-gradient(90deg, var(--col-lit) 0 2px, var(--col-shade) 2px 4px);
@@ -4724,7 +4734,7 @@ button.dir-picker__tab:not(.dir-picker__tab--active) .dir-picker__tab-text {
 }
 
 .wall-column::before {
-  /* The capital, up against the beam. */
+  /* The capital, under the stone between two arches. */
   top: -4px;
   background: linear-gradient(var(--col-cap) 0 2px, var(--col-face) 2px 4px);
 }
@@ -4826,13 +4836,35 @@ button.dir-picker__tab:not(.dir-picker__tab--active) .dir-picker__tab-text {
   50% { transform: translateY(2px); }
 }
 
-/* The colder ground under the hero hall (.dungeon-below::before) begins at
-   the box's top, and with the wall that box is pulled up over the foot of
-   the hero strip: it hid the columns' feet (user: "something is hiding the
-   bottom of the columns"). It starts half way down the enemies' beam here,
-   out of sight behind the stone. */
+/* THE GROUND. Without the wall, only the panels under the hero hall have
+   the colder dark (.dungeon-below::before). With it the whole wall has one
+   ground, the heroes' room included (user, 2026-11-21: "Every panel has a
+   background color except the heroes, can we expand that color up for
+   them?"): .wall-ground, a layer in the side walls' box (CutawayWall
+   CutawayPiers) from behind the heroes' beam to the wall's foot, the same
+   colour and the same feathered sides and foot as the one it replaces.
+   (That one also began at the top of a box the wall pulls up over the foot
+   of the hero strip, where it hid the columns' feet: "something is hiding
+   the bottom of the columns".) It is positioned with no z-index and comes
+   first in the wrapper, so every positioned thing after it paints over it;
+   everything in the hero panel is positioned. */
 .wall-on .dungeon-below::before {
-  top: 30px;
+  display: none;
+}
+
+.wall-ground {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: #0d0a09;
+  -webkit-mask-image:
+    linear-gradient(to right, transparent, #000 24px, #000 calc(100% - 24px), transparent),
+    linear-gradient(to bottom, #000 calc(100% - 24px), transparent);
+  -webkit-mask-composite: source-in;
+  mask-image:
+    linear-gradient(to right, transparent, #000 24px, #000 calc(100% - 24px), transparent),
+    linear-gradient(to bottom, #000 calc(100% - 24px), transparent);
+  mask-composite: intersect;
 }
 
 /* ============================================

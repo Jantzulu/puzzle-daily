@@ -21,6 +21,11 @@
 // family. When the shape is right it becomes a Panel Forge kit and these
 // routines are replaced by the user's pieces.
 //
+// And the GROUND: the colder dark the panels under the hero hall have
+// always had (.dungeon-below) runs up behind the heroes too, as one layer
+// for the whole wall (user: "Every panel has a background color except the
+// heroes, can we expand that color up for them?").
+//
 // What is drawn so far:
 //   the SLAB  a course of hewn blocks behind a storey's title: the floor
 //             between two rooms, cut through, with the title of the room
@@ -31,8 +36,10 @@
 //             stone, where a thin groove (.dungeon-seam) used to part
 //             them. With the switch on, the Dungeon Details lintel and its
 //             words are not drawn.
-//   COLUMNS   between the cards of every strip (heroes, enemies, allies),
-//             in place of the iron posts (CutawayWall WallColumns). With an
+//   an ARCADE over every strip of cards (heroes, enemies, allies): a band
+//             of stone under the beam with an arch cut out for each card,
+//             as in a cloister, on COLUMNS that take the place of the iron
+//             posts (CutawayWall WallColumns; drawArcade below). With an
 //             open drawer under the cards they stand on a FLOOR
 //             along the strip's foot (left open under the drawer's own
 //             card); with nothing under the cards the next panel's BEAM
@@ -214,6 +221,89 @@ export function drawSlab(ctx: CanvasRenderingContext2D, w: number, old = false):
     a(b.x, top + 1, 1, h - 1, s.edgeLit); // so does the left edge, less
     a(b.x + b.w - 1, top + 1, 1, h - 1, s.dark); // the right edge is in shade
     a(b.x, top + h - 2, b.w, 2, s.dark); // and the bottom lip
+  }
+}
+
+// ---- the arcade ---------------------------------------------------------------------------
+// User, 2026-11-21: "can we change the columns to architecture that make
+// each hero/enemy/ally look like they are inside arched cutouts (like a
+// cloister)". So over every strip of cards there is a band of stone under
+// the beam with an ARCH cut out of it for each card, and the columns carry
+// the arches: each stands under the stone left between two cutouts.
+//
+// The arch is LOW, because the room it has is low: a card's art begins 2px
+// under the strip's top, so the curve gets 8 art px of height, 4 of them in
+// the gap under the beam. A true half-round on a card 56 art px wide would
+// need 28. So the cutout is flat across the middle with a quarter of an
+// ellipse at each shoulder (a "basket-handle" arch), the shoulders no wider
+// than ARCH_MAX_RX_ART so that one card and five get the same curve.
+
+/** The rows of the curve, and the stone left across the top above the cutouts (art px). */
+export const ARCH_RISE_ART = 8;
+export const ARCH_BAND_ART = 1;
+/** The arcade's height (CSS px): it hangs from the beam, 8px above the strip. */
+export const ARCH_H = (ARCH_RISE_ART + ARCH_BAND_ART) * Z;
+/** The widest a shoulder's curve runs in from its column (art px). */
+export const ARCH_MAX_RX_ART = 24;
+
+/**
+ * How far the stone reaches in from the side of a cutout on row `y` of the
+ * curve (0 = its top row), for a shoulder `rx` wide: widest at the top,
+ * nothing at the springing. A quarter of an ellipse, read at the row's middle.
+ */
+export function archInset(y: number, rx: number, rise = ARCH_RISE_ART): number {
+  const t = (rise - y - 0.5) / rise;
+  return Math.max(0, Math.round(rx * (1 - Math.sqrt(Math.max(0, 1 - t * t)))));
+}
+
+/**
+ * Draw the arcade into a canvas `w` CSS px wide and ARCH_H tall. `edges` are
+ * the strip's slot boundaries (CSS px, from 0 to w): a column stands on each
+ * inner one. Lit from the top left: the rim of each cutout is picked out.
+ */
+export function drawArcade(ctx: CanvasRenderingContext2D, w: number, edges: readonly number[], old = false): void {
+  const s = old ? OLD : KEPT;
+  // The lightest face and the cut's own line: the arches must read on a phone, against a room that is nearly black.
+  const stone = s.faces[2];
+  const rim = s.cut;
+  const a = (ax: number, ay: number, aw: number, ah: number, color: string) => {
+    if (aw <= 0 || ah <= 0) return;
+    ctx.fillStyle = color;
+    ctx.fillRect(ax * Z, ay * Z, aw * Z, ah * Z);
+  };
+  const widthArt = Math.ceil(w / Z);
+  // The stone across the top, with the rim of the cutouts along its foot.
+  a(0, 0, widthArt, ARCH_BAND_ART, stone);
+  for (let i = 0; i + 1 < edges.length; i++) {
+    // The cutout runs between the two columns' shafts (each 2 art px wide on its boundary).
+    const left = Math.round(edges[i] / Z) + (i === 0 ? 0 : 1);
+    const right = Math.round(edges[i + 1] / Z) - (i + 2 === edges.length ? 0 : 1);
+    const rx = Math.min(ARCH_MAX_RX_ART, Math.floor((right - left) / 2));
+    let above = rx; // the row above's reach: the rim covers the step between two rows
+    for (let y = 0; y < ARCH_RISE_ART; y++) {
+      const inset = archInset(y, rx);
+      const row = ARCH_BAND_ART + y;
+      // The two shoulders' stone.
+      a(left, row, inset, 1, stone);
+      a(right - inset, row, inset, 1, stone);
+      // Their rims: every stone pixel that faces the opening, sideways or down.
+      const step = Math.max(1, above - inset);
+      a(left + inset - 1, row, 1, 1, rim);
+      a(right - inset, row, 1, 1, rim);
+      if (y > 0) {
+        a(left + inset, row - 1, step, 1, rim);
+        a(right - inset - step, row - 1, step, 1, rim);
+      }
+      above = inset;
+    }
+    // Across the flat of the arch, the band's own underside.
+    a(left + rx, ARCH_BAND_ART - 1, right - left - 2 * rx, 1, rim);
+  }
+  // The stone over each column, between two cutouts: the full height, down to the capital.
+  for (let i = 1; i + 1 < edges.length; i++) {
+    const x = Math.round(edges[i] / Z);
+    a(x - 1, 0, 1, ARCH_BAND_ART + ARCH_RISE_ART, s.edgeLit);
+    a(x, 0, 1, ARCH_BAND_ART + ARCH_RISE_ART, s.dark);
   }
 }
 
