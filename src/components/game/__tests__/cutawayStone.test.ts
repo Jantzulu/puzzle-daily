@@ -200,6 +200,8 @@ describe('the cutaway wall', () => {
         expect(c.top).toBeGreaterThanOrEqual(0);
       });
       expect(cols[0].top).toBeGreaterThan(PLATE_RISE_ART); // a blunt point inside the beam at each end
+      // No flat edges: every plate's top has more than one level.
+      expect(new Set(cols.slice(3, w - 3).map(c => c.top)).size).toBeGreaterThan(1);
       expect(Math.min(...cols.map(c => c.top))).toBe(0); // and somewhere it stands the whole rise proud
     }
     // No two rooms have the same edge; the allies share the heroes'.

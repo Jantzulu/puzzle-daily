@@ -270,7 +270,12 @@ export function drawSlab(ctx: CanvasRenderingContext2D, w: number, old = false):
 // past it each side, that stands PROUD of the beam, an art px above its
 // top and one below its foot at most, and how it does is the room's. Each
 // edge is ONE calm shape the length of the title:
-//   heroes   a raised tab, flat across, its corners taken off (allies too)
+//   heroes   a CROWN: three broad, shallow lobes (allies too). It was a
+//            plain raised tab ("I think the heroes one could be slightly
+//            more interesting"), then a flat banner with forked ends,
+//            shown and not pushed ("I'm not a big fan of this shape, as
+//            the flat top and bottom read as boring against the beams").
+//            NO FLAT EDGES: a plate's top and foot must have a shape.
 //   enemies  horns: high at the two ends, low across the middle
 //   items    a stepped pediment, as a chest's lid
 //   status   a low arch, as a rune stone's head
@@ -331,7 +336,11 @@ export function plateRise(kind: PlateKind, x: number, bodyW: number): number {
   switch (kind) {
     case 'heroes':
     case 'allies':
-      return Math.min(PLATE_LEVELS, fromEnd); // a raised tab: flat, its corners taken off
+    {
+      // A crown: three broad arcs that meet at two points (the arcs twice as wide as the dips between them).
+      const arc = Math.abs(Math.sin((3 * Math.PI * (x + 0.5)) / bodyW));
+      return arc < 0.2 ? 0 : arc < 0.5 ? 1 : PLATE_LEVELS;
+    }
     case 'enemies':
       return c < bodyW / 6 ? 0 : c < bodyW / 3 ? 1 : 2; // horns: low across the middle third, stepping up to the ends
     case 'items':
@@ -361,19 +370,19 @@ export function drawPlate(ctx: CanvasRenderingContext2D, widthArt: number, kind:
     ctx.fillStyle = color;
     ctx.fillRect(ax * Z, ay * Z, aw * Z, ah * Z);
   };
-  const none = { top: 1, bottom: 0 }; // (past either end: nothing)
+  const cols = Array.from({ length: widthArt }, (_, x) => plateColumn(kind, x, widthArt));
+  /** Is this art pixel part of the plate? */
+  const has = (x: number, y: number): boolean => {
+    const c = cols[x];
+    return !!c && y >= c.top && y <= c.bottom;
+  };
   for (let x = 0; x < widthArt; x++) {
-    const col = plateColumn(kind, x, widthArt);
-    const before = x > 0 ? plateColumn(kind, x - 1, widthArt) : none;
-    const after = x + 1 < widthArt ? plateColumn(kind, x + 1, widthArt) : none;
-    a(x, col.top, 1, col.bottom - col.top + 1, s.face);
-    // The rim: lit where the plate's edge faces left or up, dark where it faces right or down.
-    for (let y = col.top; y <= col.bottom; y++) {
-      if (y < before.top || y > before.bottom) a(x, y, 1, 1, s.lit);
-      else if (y < after.top || y > after.bottom) a(x, y, 1, 1, s.dark);
+    for (let y = cols[x].top; y <= cols[x].bottom; y++) {
+      if (!has(x, y)) continue;
+      // The rim: lit where the plate's edge faces left or up, dark where it faces right or down.
+      const color = !has(x - 1, y) || !has(x, y - 1) ? s.lit : !has(x + 1, y) || !has(x, y + 1) ? s.dark : s.face;
+      a(x, y, 1, 1, color);
     }
-    a(x, col.top, 1, 1, s.lit);
-    a(x, col.bottom, 1, 1, s.dark);
   }
   // A rivet in each pointed end.
   const mid = PLATE_RISE_ART + SLAB_ART / 2 - 1;
