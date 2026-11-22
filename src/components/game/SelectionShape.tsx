@@ -86,7 +86,9 @@ const ARCH_ROWS = ARCH_BAND_ART + ARCH_RISE_ART;
  * user: "those top corner pieces are facing outward instead of inward").
  * That spot does not move with the card's width.
  */
-const SPRING_TOP = ARCH_H - ARCH_LIFT - A; // the piece's jewel row on the side's first row
+// The jewel's row is two art px ABOVE the side's first row (user, 2026-11-21: "raise the corner pieces 2 art
+// pixels"): still on the line, which climbs straight up for its first two rows before the curve leans in.
+const SPRING_TOP = ARCH_H - ARCH_LIFT - 3 * A;
 const springLeft: Piece = { key: 'spring-l', style: { left: -A, top: SPRING_TOP, transform: 'scale(-1, -1)' } }; // as OUTER.tl, lower
 const springRight: Piece = { key: 'spring-r', style: { right: -A, top: SPRING_TOP, transform: 'scaleY(-1)' } }; // as OUTER.tr, lower
 
