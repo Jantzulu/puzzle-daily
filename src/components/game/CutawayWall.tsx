@@ -1,6 +1,8 @@
 import React from 'react';
 import { prepCanvas, useCrispSnap } from './panelSkins';
-import { ARCH_H, PIER_TOP, PIER_W, SLAB_H, WALL_TORCH_GAP, WALL_TORCH_HALF, drawArcade, drawPier, drawSlab } from './cutawayStone';
+import {
+  ARCH_H, FOUND_H, FOUND_STEP, PIER_STOP, PIER_TOP, PIER_W, SLAB_H, WALL_TORCH_GAP, WALL_TORCH_HALF, drawArcade, drawFoundation, drawPier, drawSlab,
+} from './cutawayStone';
 import { slotBoundaries } from '../../hooks/useElementWidth';
 import { LintelTorch } from './LintelTorch';
 
@@ -222,14 +224,21 @@ export const BeamTapHint: React.FC = () => (
  * centre on the beam, which is a torch and two art px tall. Placed without
  * a transform, so the art stays on whole pixels. It is the lintel's own
  * torch, and a tap puts it out; but it LIGHTS WHEN SEEN (LintelTorch
- * lightOn="seen"): the first tap on the page lights the ones on screen, one
- * after another, and the rest catch as the player scrolls down to them.
+ * lightOn="seen"): each catches when the player has scrolled it two thirds
+ * of the way up the screen. The heroes' is lit by the page's first tap.
  */
 export const BeamTorch: React.FC<{
   side: 'left' | 'right';
   /** Offsets its flicker from the other beams' (ms). */
   phase?: number;
-}> = ({ side, phase = 0 }) => (
+  /**
+   * When it lights: when it has been brought up the screen (the default), or
+   * with the page's first tap wherever it stands. The heroes' torch takes
+   * the second: theirs is the first room, and on a short phone its beam is
+   * low on the screen when the page opens.
+   */
+  lightOn?: 'seen' | 'entry';
+}> = ({ side, phase = 0, lightOn = 'seen' }) => (
   // `flex`: the torch is a <button>, an inline-block, and in a plain box it
   // sits on a line of TEXT (measured: the box came out 41px tall around a
   // 32px torch). Where an empty button's baseline is differs by browser:
@@ -244,12 +253,13 @@ export const BeamTorch: React.FC<{
     className={`absolute flex ${side === 'left' ? 'right-full' : 'left-full'}`}
     style={{ [side === 'left' ? 'marginRight' : 'marginLeft']: WALL_TORCH_GAP[side], top: `calc(50% - ${WALL_TORCH_HALF}px)`, height: WALL_TORCH_HALF * 2 }}
   >
-    <LintelTorch phase={phase} lightOn="seen" />
+    <LintelTorch phase={phase} lightOn={lightOn} />
   </span>
 );
 
 /**
- * The two side walls. Mount it as the first child of the wrapper that holds
+ * The two side walls, the ground behind the rooms, and the foundation the
+ * wall stands on. Mount it as the first child of the wrapper that holds
  * the hero panel and everything under the Dungeon Details lintel (which must
  * be position: relative, and NOT a stacking context): the walls stand in the page's margins
  * from under the hero slab to the wrapper's end, and are redrawn whenever
@@ -259,6 +269,7 @@ export const CutawayPiers: React.FC = () => {
   const snapRef = useCrispSnap<HTMLDivElement>(true);
   const leftRef = React.useRef<HTMLCanvasElement>(null);
   const rightRef = React.useRef<HTMLCanvasElement>(null);
+  const footRef = React.useRef<HTMLCanvasElement>(null);
   // The page knows the wall is up (index.css .wall-on): the wall brings its
   // own ground (.wall-ground), so .dungeon-below's is switched off.
   React.useLayoutEffect(() => {
@@ -277,10 +288,20 @@ export const CutawayPiers: React.FC = () => {
       const oldFrom = below ? below.getBoundingClientRect().top - host.getBoundingClientRect().top : h;
       for (const [canvas, side] of [[leftRef.current, 'left'], [rightRef.current, 'right']] as const) {
         if (!canvas) continue;
-        const ctx = prepCanvas(canvas, PIER_W, h, 0);
+        // (They stop inside the footing: PIER_STOP.)
+        const pierH = Math.max(1, h - PIER_STOP);
+        const ctx = prepCanvas(canvas, PIER_W, pierH, 0);
         if (!ctx) continue;
-        ctx.clearRect(0, 0, PIER_W, h);
-        drawPier(ctx, side, h, oldFrom);
+        ctx.clearRect(0, 0, PIER_W, pierH);
+        drawPier(ctx, side, pierH, oldFrom);
+      }
+      // The foundation, across the wall's foot and a step past it each side.
+      const foot = footRef.current;
+      const footW = host.clientWidth + 2 * FOUND_STEP;
+      const fctx = foot ? prepCanvas(foot, footW, FOUND_H, 0) : null;
+      if (fctx) {
+        fctx.clearRect(0, 0, footW, FOUND_H);
+        drawFoundation(fctx, footW);
       }
     };
     draw();
@@ -301,6 +322,11 @@ export const CutawayPiers: React.FC = () => {
         </div>
         <div className="absolute top-0 right-0 h-full" style={{ width: PIER_W }}>
           <canvas ref={rightRef} style={{ position: 'absolute' }} />
+        </div>
+        {/* The foundation: over the foot of both side walls (it comes after
+            them here), in the room index.css leaves under the last panel. */}
+        <div className="absolute bottom-0" style={{ left: -FOUND_STEP, right: -FOUND_STEP, height: FOUND_H }}>
+          <canvas ref={footRef} style={{ position: 'absolute' }} />
         </div>
       </div>
     </div>

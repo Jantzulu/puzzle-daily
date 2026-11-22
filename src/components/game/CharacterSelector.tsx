@@ -485,7 +485,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
           <h3 className="carved-header carved-header-arcane font-medieval text-lg lg:text-xl uppercase whitespace-nowrap">Heroes</h3>
           {/* The wall's torch, on the RIGHT (user call 2026-11-21): the small
               quest scroll parks on the left. */}
-          {wall && <BeamTorch side="right" />}
+          {wall && <BeamTorch side="right" lightOn="entry" />}
           {wall && showHeroHint && <BeamTapHint />}
         </div>
         {/* (In the wall the count and the clear button sit together (the

@@ -4889,10 +4889,18 @@ button.dir-picker__tab:not(.dir-picker__tab--active) .dir-picker__tab-text {
   display: none;
 }
 
+/* THE FOUNDATION (CutawayWall CutawayPiers; cutawayStone.ts drawFoundation)
+   is 64px tall at the wall's foot. Room for it, and 12px of the last room
+   above it, under the last panel; and the ground stops inside the footing's
+   upper course, so its feathered foot is hidden behind stone. */
+.wall-on .dungeon-below {
+  padding-bottom: 76px;
+}
+
 .wall-ground {
   position: absolute;
   top: 0;
-  bottom: 0;
+  bottom: 40px;
   background: #0d0a09;
   -webkit-mask-image:
     linear-gradient(to right, transparent, #000 24px, #000 calc(100% - 24px), transparent),

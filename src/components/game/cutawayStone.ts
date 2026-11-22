@@ -21,6 +21,9 @@
 // family. When the shape is right it becomes a Panel Forge kit and these
 // routines are replaced by the user's pieces.
 //
+// And the FOUNDATION at the wall's foot (drawFoundation below): a stepped
+// footing of rough stone on bedrock that thins into the page.
+//
 // And the GROUND: the colder dark the panels under the hero hall have
 // always had (.dungeon-below) runs up behind the heroes too, as one layer
 // for the whole wall (user: "Every panel has a background color except the
@@ -183,14 +186,15 @@ const pick = <T,>(list: readonly T[], seed: number): T => list[Math.floor(hash(s
 export interface SlabBlock { x: number; w: number; tone: number }
 
 /**
- * The blocks of a slab `widthArt` wide, left to right, one art px of mortar
- * between them: about 34 art px each, no two quite the same, and together
- * exactly as wide as the slab.
+ * The blocks of one course of stone `widthArt` wide, left to right, one art
+ * px of mortar between them: about `about` art px each, no two quite the
+ * same, and together exactly as wide as the course. `salt` makes another
+ * course lay its joints elsewhere.
  */
-export function slabBlocks(widthArt: number): SlabBlock[] {
+export function courseBlocks(widthArt: number, about: number, salt = 0): SlabBlock[] {
   const width = Math.max(1, Math.floor(widthArt));
-  const n = Math.max(1, Math.round(width / 34));
-  const raw = Array.from({ length: n }, (_, i) => 1 + (hash(i * 3) - 0.5) * 0.5);
+  const n = Math.max(1, Math.round(width / about));
+  const raw = Array.from({ length: n }, (_, i) => 1 + (hash(salt + i * 3) - 0.5) * 0.5);
   const total = raw.reduce((a, b) => a + b, 0);
   const stone = width - (n - 1); // what is left after the seams
   const blocks: SlabBlock[] = [];
@@ -198,11 +202,14 @@ export function slabBlocks(widthArt: number): SlabBlock[] {
   for (let i = 0; i < n; i++) {
     // The last block takes whatever is left, so the course ends flush.
     const w = i === n - 1 ? width - x : Math.max(4, Math.round((raw[i] / total) * stone));
-    blocks.push({ x, w, tone: Math.floor(hash(i * 11 + 3) * 3) % 3 });
+    blocks.push({ x, w, tone: Math.floor(hash(salt + i * 11 + 3) * 3) % 3 });
     x += w + 1;
   }
   return blocks;
 }
+
+/** The blocks of a slab (a beam): about 34 art px each. */
+export const slabBlocks = (widthArt: number): SlabBlock[] => courseBlocks(widthArt, 34);
 
 /** Draw the slab into a canvas `w` CSS px wide (its height is SLAB_H). `old`: the colder stone from under the lintel. */
 export function drawSlab(ctx: CanvasRenderingContext2D, w: number, old = false): void {
@@ -420,13 +427,101 @@ export function drawPier(ctx: CanvasRenderingContext2D, side: 'left' | 'right', 
     a(PIER_ART - 1, b.y, 1, b.h, side === 'right' ? s.cut : s.edgeLit);
   }
 
-  // The wall goes on down into the dark: the last stretch dims in steps.
-  const FADE = [0.3, 0.55, 0.8];
-  const step = 5;
-  FADE.forEach((alpha, i) => {
-    const y = heightArt - (FADE.length - i) * step;
-    if (y < 0) return;
-    ctx.fillStyle = `rgba(21, 16, 10, ${alpha})`; // the page's own ground
-    ctx.fillRect(0, y * Z, PIER_W, step * Z + Z);
-  });
+  // (No fade at the foot: the wall stands on the foundation, drawn over its last stretch.)
+}
+
+// ---- the foundation ---------------------------------------------------------------------
+// User, 2026-11-21: "Im also interested in the foundation", then "Lets do
+// the foundation first". The page used to just stop; now the building does
+// what a cutaway building does at the bottom: it stands on a FOOTING, two
+// courses of big rough stone, the lower one wider than the wall above it
+// (that step is what says "footing"; on a phone it runs off the screen),
+// set in BEDROCK, loose stones that thin out and darken into the page.
+
+/** The footing steps out this far past the side walls, each side (art px). */
+export const FOUND_STEP_ART = 8;
+/** Its two courses, and the bedrock under them (art px tall). */
+export const FOOTING_UPPER_ART = 10;
+export const FOOTING_LOWER_ART = 8;
+export const BEDROCK_ART = 14;
+export const FOUND_STEP = FOUND_STEP_ART * Z;
+/** The foundation's height (CSS px). */
+export const FOUND_H = (FOOTING_UPPER_ART + FOOTING_LOWER_ART + BEDROCK_ART) * Z;
+/**
+ * How far above the wall's foot the side walls stop (CSS px): at the foot of
+ * the footing's upper course, behind its stone. Below that the bedrock is
+ * loose stones with the page showing between them, and a side wall running
+ * on behind them showed through (seen in the first film).
+ */
+export const PIER_STOP = (FOOTING_LOWER_ART + BEDROCK_ART) * Z;
+
+export interface Rock { x: number; y: number; w: number; h: number; tone: number; band: number }
+
+/**
+ * The loose stones under the footing, for a bed `widthArt` wide: four bands
+ * going down, each with fewer and smaller stones than the one above (band 0
+ * is the highest). The same bed every time.
+ */
+export function bedrock(widthArt: number): Rock[] {
+  const rocks: Rock[] = [];
+  const bands = 4;
+  for (let band = 0; band < bands; band++) {
+    const y = Math.floor((band * BEDROCK_ART) / bands);
+    let x = Math.floor(hash(900 + band * 41) * 5);
+    for (let i = 0; x < widthArt; i++) {
+      const seed = 1000 + band * 97 + i * 13;
+      const w = 3 + Math.floor(hash(seed) * (6 - band));
+      const h = band < 2 ? 2 + Math.floor(hash(seed + 1) * 2) : 2;
+      if (x + w <= widthArt) rocks.push({ x, y: y + Math.floor(hash(seed + 2) * 2), w, h, tone: Math.floor(hash(seed + 3) * 3) % 3, band });
+      // Further apart the deeper they lie.
+      x += w + 2 + Math.floor(hash(seed + 4) * (4 + band * 5));
+    }
+  }
+  return rocks;
+}
+
+/**
+ * Draw the foundation into a canvas `w` CSS px wide and FOUND_H tall. The
+ * upper course stands under the wall (FOUND_STEP in from each end); the
+ * lower one and the bedrock take the whole width.
+ */
+export function drawFoundation(ctx: CanvasRenderingContext2D, w: number): void {
+  const s = OLD;
+  const a = (ax: number, ay: number, aw: number, ah: number, color: string) => {
+    if (aw <= 0 || ah <= 0) return;
+    ctx.fillStyle = color;
+    ctx.fillRect(ax * Z, ay * Z, aw * Z, ah * Z);
+  };
+  const widthArt = Math.ceil(w / Z);
+  const course = (x0: number, y0: number, width: number, height: number, about: number, salt: number) => {
+    a(x0, y0, width, height, s.mortar);
+    for (const b of courseBlocks(width, about, salt)) {
+      const x = x0 + b.x;
+      const top = y0 + 1;
+      const h = height - 2;
+      a(x, top, b.w, h, s.faces[b.tone]);
+      a(x, top, b.w, 1, s.lit);
+      a(x, top + 1, 1, h - 1, s.edgeLit);
+      a(x + b.w - 1, top + 1, 1, h - 1, s.dark);
+      a(x, top + h - 2, b.w, 2, s.dark);
+      // Rough stone: a corner knocked off about every other block.
+      const chip = hash(salt + b.x * 7 + 5);
+      if (chip > 0.5 && b.w > 8) {
+        const right = chip > 0.75;
+        a(right ? x + b.w - 2 : x, top, 2, 1, s.mortar);
+        a(right ? x + b.w - 1 : x, top + 1, 1, 1, s.mortar);
+      }
+    }
+  };
+  course(FOUND_STEP_ART, 0, widthArt - 2 * FOUND_STEP_ART, FOOTING_UPPER_ART, 44, 300);
+  course(0, FOOTING_UPPER_ART, widthArt, FOOTING_LOWER_ART, 30, 600);
+  // The bedrock: loose stones, fainter band by band.
+  const y0 = FOOTING_UPPER_ART + FOOTING_LOWER_ART;
+  const ALPHA = [0.85, 0.6, 0.38, 0.2];
+  for (const r of bedrock(widthArt)) {
+    ctx.globalAlpha = ALPHA[r.band];
+    a(r.x, y0 + r.y, r.w, r.h, s.core[r.tone]);
+    a(r.x, y0 + r.y, r.w, 1, s.faces[r.tone]);
+  }
+  ctx.globalAlpha = 1;
 }

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   ARCH_BAND_ART, ARCH_H, ARCH_MAX_RX_ART, ARCH_RISE_ART, PIER_ART, PIER_TOP, SLAB_ART, SLAB_H, SLAB_RISE, WALL_ON, WALL_TORCH_GAP, WALL_TORCH_HALF,
-  archInset, archOutline, facingBlocks, slabBlocks,
+  BEDROCK_ART, FOOTING_LOWER_ART, FOOTING_UPPER_ART, FOUND_H, archInset, archOutline, bedrock, courseBlocks, facingBlocks, slabBlocks,
 } from '../cutawayStone';
 
 // The cutaway wall's placeholder stone (the `?wall=1` experiment). What can
@@ -98,6 +98,35 @@ describe('the cutaway wall', () => {
     expect(new Set(phone.map(b => b.w)).size).toBeGreaterThan(1);
   });
 
+  it('stands on a footing of two courses, laid with different joints, on bedrock that thins out', () => {
+    expect(FOUND_H).toBe((FOOTING_UPPER_ART + FOOTING_LOWER_ART + BEDROCK_ART) * 2);
+    // Each course fills its width exactly, like a beam's.
+    for (const [width, about, salt] of [[171, 44, 300], [203, 30, 600], [40, 44, 300]] as const) {
+      const blocks = courseBlocks(width, about, salt);
+      expect(blocks[0].x).toBe(0);
+      for (let i = 1; i < blocks.length; i++) expect(blocks[i].x).toBe(blocks[i - 1].x + blocks[i - 1].w + 1);
+      const last = blocks[blocks.length - 1];
+      expect(last.x + last.w).toBe(width);
+    }
+    // The two courses do not line their joints up.
+    expect(courseBlocks(200, 30, 600).map(b => b.x)).not.toEqual(courseBlocks(200, 30, 300).map(b => b.x));
+    // A beam is still the course it always was.
+    expect(slabBlocks(187)).toEqual(courseBlocks(187, 34, 0));
+
+    const rocks = bedrock(203);
+    expect(bedrock(203)).toEqual(rocks); // the same bed every time
+    for (const r of rocks) {
+      expect(r.x).toBeGreaterThanOrEqual(0);
+      expect(r.x + r.w).toBeLessThanOrEqual(203);
+      expect(r.y).toBeGreaterThanOrEqual(0);
+      expect(r.y + r.h).toBeLessThanOrEqual(BEDROCK_ART);
+    }
+    // Fewer stones the deeper the band.
+    const perBand = [0, 1, 2, 3].map(band => rocks.filter(r => r.band === band).length);
+    expect(perBand[0]).toBeGreaterThan(perBand[3]);
+    expect(perBand[3]).toBeGreaterThan(0);
+  });
+
   it('is the same wall every time', () => {
     expect(slabBlocks(187)).toEqual(slabBlocks(187));
     expect(facingBlocks(400, 120, 'left')).toEqual(facingBlocks(400, 120, 'left'));
@@ -110,7 +139,7 @@ describe('the cutaway wall', () => {
     expect(blocks[0].y).toBe(0);
     for (let i = 1; i < blocks.length; i++) expect(blocks[i].y).toBe(blocks[i - 1].y + blocks[i - 1].h + 1);
     const last = blocks[blocks.length - 1];
-    expect(last.y + last.h).toBeGreaterThanOrEqual(599); // reaches the bottom
+    expect(last.y + last.h).toBeGreaterThanOrEqual(599); // reaches the bottom (where the foundation takes over)
     for (const b of blocks) {
       expect(b.h).toBeGreaterThanOrEqual(5);
       expect(b.h).toBeLessThanOrEqual(8);

@@ -14,6 +14,43 @@ const FOLLOW_MS = 220;
  */
 const CATCH_GAP_MS = 260;
 let lastCatchAt = 0;
+
+/**
+ * HOW FAR UP THE SCREEN a torch must be brought before it catches: its foot
+ * above this share of the screen's height, from the top (user, 2026-11-21:
+ * "we should maybe require the user to bring the panel more up the screen
+ * (than simply have it on the screen even by a pixel)"). Two thirds: the
+ * panel is well into view, with its first cards showing under the beam.
+ */
+const SEEN_LINE = 0.67;
+
+/**
+ * Has this torch been brought far enough up the screen? If the page cannot
+ * scroll far enough to bring it to the line at all (the last panels of a
+ * short page; a tall desktop window that shows the whole wall), being wholly
+ * on screen is enough: no room may be left dark for good.
+ */
+function broughtIntoView(el: Element): boolean {
+  const rect = el.getBoundingClientRect();
+  const screen = window.innerHeight;
+  if (rect.top < 0 || rect.bottom > screen) return false;
+  const line = screen * SEEN_LINE;
+  if (rect.bottom <= line) return true;
+  const furthest = document.documentElement.scrollHeight - screen; // as far as the page scrolls
+  const needed = rect.bottom + window.scrollY - line; // the scroll that would bring its foot to the line
+  return needed > furthest + 1;
+}
+
+/**
+ * TOP DOWN: the torches still waiting to be seen. One never catches while
+ * another ABOVE it on the page is still out and waiting: the last panels of
+ * a short page cannot be brought to the line, so they light as soon as they
+ * are on screen, and without this a low room came up before the one over it
+ * (seen in the first film: DUNGEON TILES before STATUS EFFECTS). When one
+ * catches, the rest look again.
+ */
+const waiting = new Set<{ el: Element; look: () => void }>();
+
 function nextCatchDelay(): number {
   const now = performance.now();
   const at = Math.max(now, lastCatchAt + CATCH_GAP_MS);
@@ -40,8 +77,10 @@ const Z = 2;
  * `lightOn="seen"` (the cutaway wall's torches, one on each beam; user,
  * 2026-11-21: torches that catch as you scroll down, "especially if the
  * panels appear darker and become more visible with the torch lighting"):
- * such a torch stays OUT until the page has been entered AND it has come
- * fully onto the screen, then catches, once. This is not the run-reaction
+ * such a torch stays OUT until the page has been entered AND it has been
+ * brought two thirds of the way up the screen (SEEN_LINE; or simply onto
+ * the screen, where the page cannot scroll that far), then catches, once.
+ * This is not the run-reaction
  * that was removed: it lights because the player has just scrolled to it,
  * so it is always on screen when it sounds. Its room is dark until it does
  * (index.css .wall-dark reads this torch's --out class).
@@ -117,40 +156,52 @@ export const LintelTorch: React.FC<{ phase?: number; lightOn?: 'entry' | 'seen' 
     let timer: ReturnType<typeof setTimeout> | undefined;
     const off = onEntryDark(dark => {
       clearTimeout(timer);
-      if (!dark) timer = setTimeout(() => setLit(true), phase ? FOLLOW_MS : 0);
+      // (It takes its turn among the torches that light when seen: they follow it.)
+      if (!dark) timer = setTimeout(() => { lastCatchAt = Math.max(lastCatchAt, performance.now()); setLit(true); }, phase ? FOLLOW_MS : 0);
     });
     return () => { off(); clearTimeout(timer); };
   }, [phase, lightOn]);
 
-  // LIT WHEN SEEN: once the page has been entered and the torch has come
-  // wholly onto the screen (and a little clear of its foot), it catches, in
-  // its turn. Once only: after that it is the player's to put out and relight.
+  // LIT WHEN SEEN: once the page has been entered and the torch has been
+  // brought far enough up the screen (broughtIntoView), it catches, in its
+  // turn. Once only: after that it is the player's to put out and relight.
+  // Looked at on every scroll and resize, and whenever the page changes
+  // height, until it has caught; then nothing is listening.
   React.useEffect(() => {
     if (lightOn !== 'seen') return;
     const el = snapRef.current;
     if (!el) return;
-    let seen = typeof IntersectionObserver === 'undefined'; // nothing to watch with: do not leave it dark
     let entered = !entryIsDark();
     let done = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
-    const tryLight = () => {
-      if (done || !seen || !entered) return;
-      done = true;
-      timer = setTimeout(() => setLit(true), nextCatchDelay());
+    let ro: ResizeObserver | undefined;
+    const me = { el, look };
+    const stop = () => {
+      window.removeEventListener('scroll', look);
+      window.removeEventListener('resize', look);
+      ro?.disconnect();
+      waiting.delete(me);
     };
-    const off = onEntryDark(dark => { entered = !dark; tryLight(); });
-    let io: IntersectionObserver | undefined;
-    if (!seen) {
-      io = new IntersectionObserver(([entry]) => {
-        if (!entry.isIntersecting) return;
-        seen = true;
-        io?.disconnect();
-        tryLight();
-      }, { threshold: 1, rootMargin: '0px 0px -10% 0px' });
-      io.observe(el);
+    function look() {
+      if (done || !entered || !el || !broughtIntoView(el)) return;
+      // Not before a torch above it that is still waiting.
+      const top = el.getBoundingClientRect().top;
+      for (const other of waiting) if (other !== me && other.el.getBoundingClientRect().top < top - 1) return;
+      done = true;
+      stop();
+      timer = setTimeout(() => setLit(true), nextCatchDelay());
+      for (const other of [...waiting]) other.look(); // the next one down may go now
     }
-    tryLight();
-    return () => { off(); io?.disconnect(); clearTimeout(timer); };
+    waiting.add(me);
+    const off = onEntryDark(dark => { entered = !dark; look(); });
+    window.addEventListener('scroll', look, { passive: true });
+    window.addEventListener('resize', look);
+    if (typeof ResizeObserver !== 'undefined') {
+      ro = new ResizeObserver(look);
+      ro.observe(document.documentElement);
+    }
+    look();
+    return () => { off(); stop(); clearTimeout(timer); };
   }, [lightOn, snapRef]);
 
   // Off screen, nothing runs: the strip's loop pauses, and data-offscreen
