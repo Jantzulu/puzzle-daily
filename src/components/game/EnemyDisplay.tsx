@@ -18,7 +18,7 @@ import { SelectionStrip, SelectionDrawer } from './SelectionShape';
 import { useElementWidth, artGridSlotStyle } from '../../hooks/useElementWidth';
 import { subscribeToImageLoads } from '../../utils/imageLoader';
 import { playChromeSound } from '../../utils/chromeSounds';
-import { BeamTorch, CutawaySlab, WallColumns } from './CutawayWall';
+import { BeamTapHint, BeamTorch, CutawaySlab, WallColumns } from './CutawayWall';
 import { WALL_ABOVE_BEAM, WALL_HEADER_GAP, WALL_ON, WALL_ROW, type WallBelow } from './cutawayStone';
 
 // Every enemy/ally opens a drawer (its info panel always renders).
@@ -239,9 +239,9 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
       : <div className={`dungeon-panel p-2 lg:p-3 ${className}`}>{emptyContent}</div>;
   }
 
-  // What is under the cards (the wall's columns stand on a floor over
-  // either, and run down to the next beam over neither): the info drawer,
-  // mounted for as long as it shows (through its closing), or the hint.
+  // The info drawer, mounted for as long as it shows (through its closing):
+  // the wall's columns stand on a floor over it. And the tap hint, which in
+  // the wall is a line under the title, not a row under the cards.
   const enemyDrawerUp = !!renderedEnemyId && !!renderedEnemyData;
   const showEnemyHint = !isAllySide && !enemyHintSeen && uniqueEnemyIds.length > 0 && selectedEnemyId === null;
 
@@ -298,6 +298,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
             {isAllySide ? 'Allies' : 'Enemies'}
           </h3>
           {wall && <BeamTorch side="left" phase={isAllySide ? 850 : 700} />}
+          {wall && showEnemyHint && <BeamTapHint />}
         </div>
         {/* Counter in the ramp's registers, matching the hero panel's
             "N/M placed": the count is a stat value (hud-num, tabular),
@@ -321,7 +322,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
         <WallColumns
           slotCount={stripEnemyIds.length}
           width={stripWidth}
-          below={enemyDrawerUp || showEnemyHint ? 'floor' : 'open'}
+          below={enemyDrawerUp ? 'floor' : 'open'}
           openIndex={enemyDrawerUp ? renderedStripIndex : -1}
           old
         />
@@ -571,8 +572,8 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
           it. Enemies side only — a twin under Allies on the same page would
           double-announce. UNMOUNTS when hidden (second user call, mobile
           test): the min-h reservation left a dead gap once a card opened. */}
-      {showEnemyHint && (
-        <div className={wall ? 'wall-hint' : 'mt-1.5 text-center'}>
+      {showEnemyHint && !wall && (
+        <div className="mt-1.5 text-center">
           <TapHintChip>Tap an enemy for more info</TapHintChip>
         </div>
       )}
@@ -581,7 +582,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
 
   if (noPanel) {
     // (The wall: what is directly above the next panel's beam, so the page can place that beam.)
-    const wallBelow: WallBelow | undefined = wall ? (showEnemyHint ? 'hint' : enemyDrawerUp ? 'drawer' : 'open') : undefined;
+    const wallBelow: WallBelow | undefined = wall ? (enemyDrawerUp ? 'drawer' : 'open') : undefined;
     return <div className={className} data-wall-below={wallBelow}>{content}</div>;
   }
 

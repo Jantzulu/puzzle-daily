@@ -4760,9 +4760,6 @@ button.dir-picker__tab:not(.dir-picker__tab--active) .dir-picker__tab-text {
              above the strip's foot, where the floor's top would be: "I'd
              like the lower ... beam to come up to them, essentially
              replacing the 'floor'".
-     hint    the hint stands 8px under the floor (.wall-hint) and the beam
-             8px under the hint: there was "a larger gap below the tap hint
-             and the beam below it" than above it.
      drawer  the beam's top meets the drawer's foot, where its outline's
              bottom line runs (the outline's corner rims, 2px further out,
              tuck under the beam): there was "a gap below the selection box
@@ -4784,22 +4781,49 @@ button.dir-picker__tab:not(.dir-picker__tab--active) .dir-picker__tab-text {
   margin-top: -16px;
 }
 
-[data-wall-below='hint'] + * > .wall-above-beam:first-child,
-[data-wall-below='hint'] + .dungeon-below > :first-child > .wall-above-beam:first-child {
-  margin-top: -4px;
-}
-
 /* (Inside the drawer's own height animation: see "drawer" above.) */
 .wall-on .hero-drawer {
   margin-bottom: 4px;
 }
 
-.wall-hint {
-  /* A flex row, not a line of text: a line box left 9px of slack around the
-     24px chip, all of it on one side. */
-  display: flex;
-  justify-content: center;
-  margin-top: 8px;
+/* THE TAP HINT IN THE WALL (CutawayWall.tsx BeamTapHint): "Tap for more
+   info", a small gold line under a title, on the beam's lower stone. The
+   quest scroll's "Tap to minimize" in the same hand (8px caps, a 1px carve,
+   never a blur), with no backing: the stone is dark enough. It takes no
+   room. It waits two seconds, fades in, and bobs two pixels; the outer span
+   places and fades it, the inner one bobs, so the two transforms never meet.
+   Opacity and transform only. */
+.wall-tap-hint {
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  margin-top: -6px; /* up into the title's own line box: its letters end about 5px above the box's foot */
+  transform: translateX(-50%);
+  white-space: nowrap;
+  pointer-events: none;
+  animation: wall-tap-hint-in 0.6s ease-out 2s both;
+}
+
+.wall-tap-hint > span {
+  display: block;
+  font-size: 8px;
+  line-height: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(232, 204, 138, 0.95);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.9);
+  animation: wall-tap-hint-bob 2.4s ease-in-out 2s infinite;
+}
+
+@keyframes wall-tap-hint-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes wall-tap-hint-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(2px); }
 }
 
 /* The colder ground under the hero hall (.dungeon-below::before) begins at

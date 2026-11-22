@@ -32,14 +32,15 @@
 //             them. With the switch on, the Dungeon Details lintel and its
 //             words are not drawn.
 //   COLUMNS   between the cards of every strip (heroes, enemies, allies),
-//             in place of the iron posts (CutawayWall WallColumns). With a
-//             hint or an open drawer under the cards they stand on a FLOOR
+//             in place of the iron posts (CutawayWall WallColumns). With an
+//             open drawer under the cards they stand on a FLOOR
 //             along the strip's foot (left open under the drawer's own
 //             card); with nothing under the cards the next panel's BEAM
 //             comes up to their feet in the floor's place. The selection's
-//             outline is drawn over them. The hint sits half way between
-//             the floor and the beam below; an open drawer's outline rests
-//             on the beam below.
+//             outline is drawn over them; an open drawer's outline rests on
+//             the beam below.
+//   the HINT  "Tap for more info", a small line under the title on the
+//             beam, in place of the chip and its row (BeamTapHint).
 //   a TORCH   one on each beam (user call 2026-11-21: "Only 1 per beam"),
 //             beside the title, the sides taking turns down the page:
 //             HEROES right, ENEMIES left, ITEMS right, STATUS EFFECTS left
@@ -133,12 +134,11 @@ export const WALL_TORCH_HALF = 16;
 export const WALL_ROW = 'min-h-[20px]';
 /**
  * What sits directly above the next panel's beam, for a panel with a strip
- * of cards: nothing ('open'), the tap hint, or the info drawer. Written on
- * the panel's root as data-wall-below; index.css moves the NEXT panel's beam
- * to suit (up to the columns' feet; a hint's gap below it; under the
- * drawer's outline).
+ * of cards: nothing ('open') or the info drawer. Written on the panel's
+ * root as data-wall-below; index.css places the NEXT panel's beam to suit
+ * (at the columns' feet; under the drawer's outline).
  */
-export type WallBelow = 'open' | 'hint' | 'drawer';
+export type WallBelow = 'open' | 'drawer';
 
 // ---- stone ----------------------------------------------------------------------------
 

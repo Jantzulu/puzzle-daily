@@ -23,7 +23,7 @@ import { SelectionStrip, SelectionDrawer } from './SelectionShape';
 import placedBannerIcon from '../../assets/icons/placed-banner.png';
 import { useElementWidth, artGridSlotStyle } from '../../hooks/useElementWidth';
 import { subscribeToImageLoads } from '../../utils/imageLoader';
-import { BeamTorch, CutawaySlab, WallColumns } from './CutawayWall';
+import { BeamTapHint, BeamTorch, CutawaySlab, WallColumns } from './CutawayWall';
 import { WALL_HEADER_GAP, WALL_HERO_Z, WALL_ON, WALL_OVER_SLAB, WALL_ROW, type WallBelow } from './cutawayStone';
 
 const MOVEMENT_TYPES = new Set([
@@ -410,9 +410,9 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
 
   /** The `?wall=1` experiment (cutawayStone.ts): a stone slab behind the title. */
   const wall = WALL_ON && noPanel;
-  // What is under the cards (the wall's columns stand on a floor over
-  // either, and run down to the next beam over neither): the info drawer,
-  // mounted for as long as it shows (through its closing), or the hint.
+  // The info drawer, mounted for as long as it shows (through its closing):
+  // the wall's columns stand on a floor over it. And the tap hint, which in
+  // the wall is a line under the title, not a row under the cards.
   const heroDrawerUp = !!renderedCharId && !!renderedCharacter && hasDrawerContent(renderedCharacter);
   const showHeroHint = !disabled && !heroHintSeen && !(isAtMaxPlaced || (!!selectedCharacterId && !placedCharacterIds.includes(selectedCharacterId)));
   const content = (
@@ -486,6 +486,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
           {/* The wall's torch, on the RIGHT (user call 2026-11-21): the small
               quest scroll parks on the left. */}
           {wall && <BeamTorch side="right" />}
+          {wall && showHeroHint && <BeamTapHint />}
         </div>
         {/* (In the wall the count and the clear button sit together (the
             button keeps its own 4px of padding) and the button is 4px
@@ -539,7 +540,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
         <WallColumns
           slotCount={stripCharacterIds.length}
           width={stripWidth}
-          below={heroDrawerUp || showHeroHint ? 'floor' : 'open'}
+          below={heroDrawerUp ? 'floor' : 'open'}
           openIndex={heroDrawerUp ? renderedStripIndex : -1}
         />
       )}
@@ -1004,8 +1005,8 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
           layout shift it prevented. Same chip grammar as the board's "Tap
           the dungeon" prompt; the PLACEMENT half lives on the board itself
           (see Game.tsx). */}
-      {showHeroHint && (
-        <div className={wall ? 'wall-hint' : 'mt-1.5 text-center'}>
+      {showHeroHint && !wall && (
+        <div className="mt-1.5 text-center">
           <TapHintChip>Tap a hero for more info</TapHintChip>
         </div>
       )}
@@ -1017,7 +1018,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
   const panelDim = disabled && !showUsed ? 'opacity-60' : '';
   if (noPanel) {
     // (The wall: what is directly above the enemies' beam, so the page can place that beam.)
-    const wallBelow: WallBelow | undefined = wall ? (showHeroHint ? 'hint' : heroDrawerUp ? 'drawer' : 'open') : undefined;
+    const wallBelow: WallBelow | undefined = wall ? (heroDrawerUp ? 'drawer' : 'open') : undefined;
     return <div className={panelDim} data-wall-below={wallBelow}>{content}</div>;
   }
 

@@ -73,13 +73,14 @@ export const CutawaySlab: React.FC<{
  * the beam above (8px over the strip); where it ENDS depends on what is
  * under the cards (`below`), the user's rule of 2026-11-21:
  *
- *   'floor'  something sits under the cards: the "Tap a hero for more info"
- *            hint, or an open drawer. The columns stand on a stone FLOOR
- *            along the strip's foot ("there should be a 'floor' under the
- *            columns when 'tap a hero for more info' is present"). Under an
- *            open drawer's own card (`openIndex`) the floor is left out
- *            ("the segment for the currently selected hero should not be
- *            present"): that is where the card opens into its drawer.
+ *   'floor'  an info drawer is open under the cards. The columns stand on
+ *            a narrow stone FLOOR along the strip's foot, left out under
+ *            the drawer's own card (`openIndex`: "the segment for the
+ *            currently selected hero should not be present"), where the
+ *            card opens into its drawer. (The floor first stood under the
+ *            tap hint too; the user: "ideally, the narrow floor would only
+ *            be present when somebody is selected". The hint is now a line
+ *            under the title: BeamTapHint.)
  *   'open'   nothing is under the cards: no floor from here. The columns
  *            stay as they are and the NEXT PANEL'S BEAM COMES UP to their
  *            feet, where the floor would be (user, from their phone: "I
@@ -161,6 +162,26 @@ export const WallColumns: React.FC<{
     </div>
   );
 };
+
+/**
+ * THE TAP HINT, IN THE WALL: a small line under the title, on the beam, in
+ * place of the "Tap a hero for more info" chip and the row it stood in.
+ * User, 2026-11-21: "the space below and the floor being present without a
+ * selection only exist to house this hint ... Maybe just replace it with
+ * 'TAP FOR MORE INFO' in small text below the title if the user does not
+ * click on something? Like it would fade in and bob, disappearing when a
+ * selection is made?" So it costs no room: with nothing selected the next
+ * beam sits at the columns' feet whether the hint shows or not.
+ *
+ * Mount it inside a title's centred wrapper while the old hint's own
+ * condition holds (it has not been tapped away). It waits two seconds,
+ * fades in, and bobs (index.css .wall-tap-hint: opacity and transform
+ * only); it is gone the moment a card is tapped. The quest scroll's "Tap to
+ * minimize" is the same small gold line.
+ */
+export const BeamTapHint: React.FC = () => (
+  <span className="wall-tap-hint"><span>Tap for more info</span></span>
+);
 
 /**
  * A BEAM'S TORCH (user call 2026-11-21: "a torch on each of the horizontal
