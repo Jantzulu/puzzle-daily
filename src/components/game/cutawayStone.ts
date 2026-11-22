@@ -267,8 +267,8 @@ export function drawSlab(ctx: CanvasRenderingContext2D, w: number, old = false):
 // customized to each asset type". So behind every title there is a PLATE
 // let into the beam (the QUEST plate over the board is the model): a dark
 // plate in the room's own colour, as wide as the title and a blunt point
-// past it each side, that stands PROUD of the beam, two art px above its
-// top and two below its foot, and how it stands proud is the room's. Each
+// past it each side, that stands PROUD of the beam, an art px above its
+// top and one below its foot at most, and how it does is the room's. Each
 // edge is ONE calm shape the length of the title:
 //   heroes   a raised tab, flat across, its corners taken off (allies too)
 //   enemies  horns: high at the two ends, low across the middle
@@ -293,8 +293,16 @@ export function drawSlab(ctx: CanvasRenderingContext2D, w: number, old = false):
 
 export type PlateKind = 'heroes' | 'enemies' | 'allies' | 'items' | 'status' | 'tiles';
 
-/** How far a plate stands out past the beam, top and bottom (art px), and how long its pointed ends are. */
-export const PLATE_RISE_ART = 2;
+/** How far a plate stands out past the beam at most, top and bottom (art px), and how long its pointed ends are. */
+export const PLATE_RISE_ART = 1;
+/**
+ * The levels a plate's edge has besides its lowest: at level 0 it is one
+ * art px INSIDE the beam's edge, at 1 flush with it, at 2 one proud of it.
+ * (It first stood 0 to 2 proud, 44px in all; the user: "they are a bit too
+ * tall". Now 40px at its tallest, and the low parts of an edge are cut into
+ * the beam instead of all of it standing out.)
+ */
+export const PLATE_LEVELS = 2;
 export const PLATE_END_ART = 3;
 /** A plate's height (CSS px): the beam's and the rise, twice. */
 export const PLATE_H = SLAB_H + 2 * PLATE_RISE_ART * Z;
@@ -312,10 +320,10 @@ const PLATE_COLORS: Record<PlateKind, { face: string; lit: string; dark: string 
 };
 
 /**
- * How far the plate stands out past the beam at column `x` of its body
- * (the part between its two pointed ends, `bodyW` art px wide): 0 to
- * PLATE_RISE_ART, the same at the top and at the foot, and the same on
- * both sides of the middle.
+ * The level of the plate's edge at column `x` of its body (the part
+ * between its two pointed ends, `bodyW` art px wide): 0 to PLATE_LEVELS,
+ * the same at the top and at the foot, and the same on both sides of the
+ * middle.
  */
 export function plateRise(kind: PlateKind, x: number, bodyW: number): number {
   const c = Math.floor(Math.abs(x - (bodyW - 1) / 2)); // columns from the middle
@@ -323,15 +331,15 @@ export function plateRise(kind: PlateKind, x: number, bodyW: number): number {
   switch (kind) {
     case 'heroes':
     case 'allies':
-      return Math.min(PLATE_RISE_ART, fromEnd); // a raised tab: flat, its corners taken off
+      return Math.min(PLATE_LEVELS, fromEnd); // a raised tab: flat, its corners taken off
     case 'enemies':
       return c < bodyW / 6 ? 0 : c < bodyW / 3 ? 1 : 2; // horns: low across the middle third, stepping up to the ends
     case 'items':
       return fromEnd < 4 ? 0 : c < bodyW / 6 ? 2 : 1; // three steps up to the middle
     case 'status':
-      return Math.round(PLATE_RISE_ART * Math.sin((Math.PI * (x + 0.5)) / bodyW)); // a low arch
+      return Math.round(PLATE_LEVELS * Math.sin((Math.PI * (x + 0.5)) / bodyW)); // a low arch
     case 'tiles':
-      return c === 0 ? 0 : Math.min(PLATE_RISE_ART, fromEnd + 1); // two slabs: one joint, on the middle
+      return c === 0 ? 0 : Math.min(PLATE_LEVELS, fromEnd + 1); // two slabs: one joint, on the middle
   }
 }
 
@@ -341,7 +349,7 @@ export function plateColumn(kind: PlateKind, x: number, widthArt: number): { top
   const fromEnd = Math.min(x, widthArt - 1 - x);
   const back = fromEnd < PLATE_END_ART
     ? PLATE_RISE_ART + PLATE_TAPER[fromEnd]
-    : PLATE_RISE_ART - plateRise(kind, x - PLATE_END_ART, widthArt - 2 * PLATE_END_ART);
+    : PLATE_LEVELS - plateRise(kind, x - PLATE_END_ART, widthArt - 2 * PLATE_END_ART);
   return { top: back, bottom: last - back };
 }
 

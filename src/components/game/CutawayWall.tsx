@@ -71,6 +71,31 @@ export const CutawaySlab: React.FC<{
 };
 
 /**
+ * Where a title's LETTERS begin and end on the screen (CSS px), not its
+ * text box: the box runs on past the last letter by the letter-spacing, and
+ * the first and last letters stand in from its edges by their own side
+ * bearings, more on one side than the other. A plate centred on the box
+ * looked off centre (user, 2026-11-21: "the plates are not really centered
+ * to the text (extra space on the right of the text)").
+ */
+function titleInk(title: Element): { left: number; right: number } {
+  const box = title.getBoundingClientRect();
+  const cs = getComputedStyle(title);
+  let text = (title.textContent ?? '').trim();
+  if (cs.textTransform === 'uppercase') text = text.toUpperCase();
+  const ctx = document.createElement('canvas').getContext('2d');
+  if (!ctx || !text) return { left: box.left, right: box.right };
+  ctx.font = `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+  const first = ctx.measureText(text[0]);
+  const last = ctx.measureText(text[text.length - 1]);
+  const spacing = parseFloat(cs.letterSpacing) || 0;
+  return {
+    left: box.left - first.actualBoundingBoxLeft,
+    right: box.right - spacing - (last.width - last.actualBoundingBoxRight),
+  };
+}
+
+/**
  * A TITLE'S PLATE (cutawayStone.ts drawPlate): let into the beam behind the
  * title, standing a little proud of it top and bottom, in the room's own
  * colour and with the room's own edge. Mount it straight after the header
@@ -98,11 +123,12 @@ export const CutawayPlate: React.FC<{ kind: PlateKind; z?: number }> = ({ kind, 
     const title = row?.querySelector('h3');
     if (!box || !canvas || !dark || !row || !title) return;
     const draw = () => {
-      const t = title.getBoundingClientRect();
-      if (!t.width) return;
-      const widthArt = Math.ceil(t.width / Z) + 2 * PLATE_END_ART;
+      if (!title.getBoundingClientRect().width) return;
+      // By the letters themselves, so the plate is as far past the first as past the last.
+      const ink = titleInk(title);
+      const widthArt = Math.ceil((ink.right - ink.left) / Z) + 2 * PLATE_END_ART;
       const w = widthArt * Z;
-      box.style.left = `${Math.round(t.left - row.getBoundingClientRect().left + t.width / 2 - w / 2)}px`;
+      box.style.left = `${Math.round((ink.left + ink.right) / 2 - row.getBoundingClientRect().left - w / 2)}px`;
       box.style.width = `${w}px`;
       const ctx = prepCanvas(canvas, w, PLATE_H, 0);
       if (!ctx) return;
