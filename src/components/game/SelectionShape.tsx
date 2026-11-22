@@ -84,18 +84,33 @@ const ARCH_ROWS = ARCH_BAND_ART + ARCH_RISE_ART;
  * opening, exactly as the piece sits on a square top corner, only lower
  * (my first try turned the second arm out over the column's capital; the
  * user: "those top corner pieces are facing outward instead of inward").
- * That spot does not move with the card's width.
+ * That spot does not move with the card's width. (It has since been raised
+ * a little way up the curve: SPRING_RAISE_ART.)
  */
-// The jewel's row is two art px ABOVE the side's first row (user, 2026-11-21: "raise the corner pieces 2 art
-// pixels"): still on the line, which climbs straight up for its first two rows before the curve leans in.
-const SPRING_TOP = ARCH_H - ARCH_LIFT - 3 * A;
-const springLeft: Piece = { key: 'spring-l', style: { left: -A, top: SPRING_TOP, transform: 'scale(-1, -1)' } }; // as OUTER.tl, lower
-const springRight: Piece = { key: 'spring-r', style: { right: -A, top: SPRING_TOP, transform: 'scaleY(-1)' } }; // as OUTER.tr, lower
+/**
+ * How many art rows above the side's first row the jewel sits. The user
+ * placed it by eye, from the filmed picture: at the springing first, then
+ * "raise the corner pieces 2 art pixels", then "maybe 2 more!". STRAIGHT UP
+ * ONLY: four rows up the arch has begun to lean in by one or two art px,
+ * and I started to move the piece sideways with it to keep the jewel on the
+ * line; the user: "just move it vertically for now, not to the side". So
+ * the piece keeps the column it has on a square corner, and the line passes
+ * just inside it up there.
+ */
+const SPRING_RAISE_ART = 4;
 
-/** The arch part of the line, and the wash's clip, for a card `w` CSS px wide. */
-function archShape(w: number, first: boolean, last: boolean, closed: boolean): { rects: Rect[]; clip: string } {
+/** The arch part of the line, the wash's clip and the two corner pieces, for a card `w` CSS px wide. */
+function archShape(w: number, first: boolean, last: boolean, closed: boolean): { rects: Rect[]; clip: string; pieces: Piece[] } {
   const runs = archOutline(Math.floor(w / A), first, last);
   const rects: Rect[] = runs.map(run => ({ left: run.x * A, width: run.w * A, top: run.y * A - ARCH_LIFT, height: A }));
+  // The corner pieces: turned as for a square top-left and top-right corner
+  // (OUTER.tl / OUTER.tr) and in their columns, with the jewel's row
+  // SPRING_RAISE_ART above the side's first row.
+  const top = (ARCH_ROWS - SPRING_RAISE_ART) * A - ARCH_LIFT - A;
+  const pieces: Piece[] = [
+    { key: 'spring-l', style: { left: -A, top, transform: 'scale(-1, -1)' } },
+    { key: 'spring-r', style: { right: -A, top, transform: 'scaleY(-1)' } },
+  ];
   // The wash: inside the line's outer edge, row by row (y from the band's row, in the wash's own box).
   const leftAt: number[] = [];
   const rightAt: number[] = [];
@@ -111,7 +126,7 @@ function archShape(w: number, first: boolean, last: boolean, closed: boolean): {
   pts.push(`100% ${ARCH_ROWS * A}px`);
   pts.push(...(closed ? [`100% calc(100% - ${c})`, `calc(100% - ${c}) calc(100% - ${c})`, `calc(100% - ${c}) 100%`] : ['100% 100%']));
   pts.push(...(closed ? [`${c} 100%`, `${c} calc(100% - ${c})`, `0 calc(100% - ${c})`] : ['0 100%']));
-  return { rects, clip: `polygon(${pts.join(', ')})` };
+  return { rects, clip: `polygon(${pts.join(', ')})`, pieces };
 }
 
 /*
@@ -257,9 +272,9 @@ export const SelectionStrip: React.FC<StripProps> = ({ ids, selectedIndex, width
             <Line rects={rects} tone={tone} />
             <Corners
               pieces={closed
-                ? [...(arched ? [springLeft, springRight] : [OUTER.tl, OUTER.tr]), OUTER.br, OUTER.bl]
+                ? [...(arched ? arched.pieces : [OUTER.tl, OUTER.tr]), OUTER.br, OUTER.bl]
                 : [
-                    ...(arched ? [springLeft, springRight] : [OUTER.tl, OUTER.tr]),
+                    ...(arched ? arched.pieces : [OUTER.tl, OUTER.tr]),
                     // the elbows' top halves, where the drawer reaches past the card
                     ...(b[j] > 0 ? [elbowTopLeft] : []),
                     ...(b[j + 1] < b[slotCount] ? [elbowTopRight] : []),
