@@ -80,9 +80,19 @@ export const BeamTorch: React.FC<{
   /** Offsets its flicker from the other beams' (ms). */
   phase?: number;
 }> = ({ side, phase = 0 }) => (
+  // `flex`: the torch is a <button>, an inline-block, and in a plain box it
+  // sits on a line of TEXT (measured: the box came out 41px tall around a
+  // 32px torch). Where an empty button's baseline is differs by browser:
+  // Chrome puts it at the button's foot, so the torch sat at the top of the
+  // box, centred on the beam; Safari on the iPhone puts it higher, so the
+  // torch hung low, its flame at the beam's centre (user report 2026-11-21:
+  // the light "is centered to the center of the beams, as opposed to the
+  // center of the whole torch sprite"). A flex box has no text line: the
+  // torch is the box, in every browser. (On the old lintel the torches were
+  // flex items already, which is why this never showed there.)
   <span
-    className={`absolute ${side === 'left' ? 'right-full' : 'left-full'}`}
-    style={{ [side === 'left' ? 'marginRight' : 'marginLeft']: WALL_TORCH_GAP[side], top: `calc(50% - ${WALL_TORCH_HALF}px)` }}
+    className={`absolute flex ${side === 'left' ? 'right-full' : 'left-full'}`}
+    style={{ [side === 'left' ? 'marginRight' : 'marginLeft']: WALL_TORCH_GAP[side], top: `calc(50% - ${WALL_TORCH_HALF}px)`, height: WALL_TORCH_HALF * 2 }}
   >
     <LintelTorch phase={phase} />
   </span>
