@@ -4838,15 +4838,18 @@ button.dir-picker__tab:not(.dir-picker__tab--active) .dir-picker__tab-text {
 
 /* A ROOM'S DARK (CutawayWall.tsx WallDark; user, 2026-11-21: the torches
    catch as the player scrolls down, "especially if the panels appear darker
-   and become more visible with the torch lighting"). A veil over each room:
-   from under its beam (the beam and its torch stay clear) to 4px short of
-   the room's foot (where the next beam's top is), and out over the side
-   walls. It is there while the room's torch is OUT, read straight off the
-   torch's own class, so the player putting a torch out darkens its room
-   again; it lifts slowly as the torch catches and falls quickly when it is
-   put out. Opacity only. A browser without :has never shows the veil: the
-   rooms are simply lit. The roots are position: relative with NO z-index:
-   the hero panel must not become a stacking context (its title's z-46). */
+   and become more visible with the torch lighting"). A veil over each room,
+   ALL of it (user, same day: "the darkness of the unlit panels should apply
+   to the heading beam and walls too, not just the contents"): from the top
+   of its own beam to the top of the next one, and out over the side walls.
+   Its title and its torch are under it too; a dark torch can still be made
+   out, and tapped (the veil takes no taps). It is there while the room's
+   torch is OUT, read straight off the torch's own class, so the player
+   putting a torch out darkens its room again; it lifts slowly as the torch
+   catches and falls quickly when it is put out. Opacity only. A browser
+   without :has never shows the veil: the rooms are simply lit. The roots
+   are position: relative with NO z-index: the hero panel must not become a
+   stacking context (its title's z-46). */
 [data-wall-room] {
   position: relative;
 }
@@ -4855,8 +4858,8 @@ button.dir-picker__tab:not(.dir-picker__tab--active) .dir-picker__tab-text {
   position: absolute;
   left: -20px;
   right: -20px;
-  top: 48px; /* under the beam: a 20px spacer, half the 20px title row, half the 36px beam */
-  bottom: 4px;
+  top: 12px; /* its beam's top: a 20px spacer, half the 20px title row, less half the 36px beam */
+  bottom: -12px; /* the next beam's top, by the same sum (the last room: the foundation's top) */
   z-index: 2; /* over the strip of cards (1) */
   background: rgba(6, 5, 4, 0.68);
   opacity: 0;
@@ -4864,13 +4867,39 @@ button.dir-picker__tab:not(.dir-picker__tab--active) .dir-picker__tab-text {
   transition: opacity 0.9s ease-out;
 }
 
+/* A room of cards pulls the next beam 16px up to its columns' feet. */
+[data-wall-below] > .wall-dark {
+  bottom: 4px;
+}
+
+/* The heroes' room has no spacer over its title, and its beam is z-11 over
+   the board with the header's words at 12: the veil goes over both. */
 [data-wall-room='hero'] > .wall-dark {
-  top: 28px; /* no spacer above the heroes' title */
+  top: -8px;
+  z-index: 13;
 }
 
 [data-wall-room]:has(.lintel-torch--out) > .wall-dark {
   opacity: 1;
   transition: opacity 0.3s ease-in;
+}
+
+/* The heroes' title, torch and tap hint ride above everything (z-46), so
+   the veil cannot reach them: they dim by their own opacity, to what the
+   veil leaves of the rest (1 - 0.68). The menu-gate and victory rules
+   above still decide the z-index; they do not touch opacity, except the
+   instant dismissal, which rightly snaps. */
+.wall-on .heroes-title-layer {
+  transition: z-index 0s 1.25s, opacity 0.9s ease-out;
+}
+
+.wall-on body.menu-gate-lowered .heroes-title-layer,
+.wall-on body.victory-overlay-up .heroes-title-layer {
+  transition: z-index 0s 0s, opacity 0.9s ease-out;
+}
+
+.wall-on [data-wall-room='hero']:has(.lintel-torch--out) .heroes-title-layer {
+  opacity: 0.32;
 }
 
 /* THE GROUND. Without the wall, only the panels under the hero hall have

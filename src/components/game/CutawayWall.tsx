@@ -187,7 +187,9 @@ export const WallColumns: React.FC<{
  * A ROOM'S DARK: until its beam's torch is lit a room is in the dark, and it
  * comes up as the torch catches (user, 2026-11-21: "especially if the panels
  * appear darker and become more visible with the torch lighting"). A veil
- * over the room, under its beam, out to the side walls; index.css .wall-dark
+ * over the whole room, beam and side walls included ("the darkness of the
+ * unlit panels should apply to the heading beam and walls too, not just the
+ * contents"), from its beam's top to the next beam's; index.css .wall-dark
  * fades it by whether the room's torch is out (the torch's own --out class,
  * read with :has). So a torch the player puts out darkens its room again.
  * Opacity only. Mount it last in a panel's root, which must carry
