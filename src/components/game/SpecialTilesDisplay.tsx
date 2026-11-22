@@ -266,15 +266,15 @@ export const SpecialTilesDisplay: React.FC<SpecialTilesDisplayProps> = ({ puzzle
 
       {/* Ledger rows, two columns when the width is there */}
       <div className="md:columns-2 md:gap-x-5">
-        {specialTiles.map((info, index) => (
+        {specialTiles.map((info) => (
           <div
             key={info.tileType.id}
-            className={`py-1.5 break-inside-avoid ${wall ? WALL_ENTRY.socket.row : ''}`}
+            className={`py-1.5 break-inside-avoid ${wall ? WALL_ENTRY.floor.row : ''}`}
           >
             <div className="flex items-start gap-2">
-              {/* Tile sprite(s) (in the wall: a slab set in a patch of masonry) */}
-              <div className={`flex-shrink-0 mt-0.5 ${wall ? WALL_ENTRY.socket.icon : ''}`}>
-                <WallSetting on={wall} kind="socket" seed={index}>
+              {/* Tile sprite(s) (in the wall: laid in a ledge of floor) */}
+              <div className={`flex-shrink-0 mt-0.5 ${wall ? WALL_ENTRY.floor.icon : ''}`}>
+                <WallSetting on={wall} kind="floor">
                 {info.hasCadence ? (
                   // Show both on and off sprites for cadenced tiles
                   <div className="flex items-center gap-1">

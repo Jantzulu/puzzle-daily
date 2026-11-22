@@ -150,7 +150,7 @@ export const WALL_ROW = 'min-h-[20px]';
 export const WALL_ENTRY = {
   shelf: { row: 'min-h-[50px]', icon: 'ml-1.5 mr-0.5' },
   tablet: { row: 'min-h-[38px]', icon: 'ml-2 mr-1' },
-  socket: { row: 'min-h-[46px]', icon: 'ml-1 mr-2' },
+  floor: { row: 'min-h-[50px]', icon: 'mx-3' },
 } as const;
 /**
  * What sits directly above the next panel's beam, for a panel with a strip
@@ -470,12 +470,21 @@ export function drawNiches(ctx: CanvasRenderingContext2D, w: number, h: number, 
 //   shelf   a stone ledge under the item, on a corbel, out of the wall;
 //   tablet  a stone tablet behind the rune, hung by two links from an iron
 //           bar that is let into the wall;
-//   socket  the tile is one slab in a patch of masonry that runs back into
-//           the wall.
+//   floor   the tile lies in a ledge of dungeon floor out of the wall,
+//           drawn as the board draws floor: from above, with a front edge.
+//           (First it was a ring of bricks round the tile; the user: "the
+//           brick around the tile doesnt really make sense". A tile is a
+//           piece of FLOOR: do not wall it in.)
 // Where an entry is not beside the wall (the second column on a wide
 // screen) the piece stands alone: `gap` is null.
 
-export type SettingKind = 'shelf' | 'tablet' | 'socket';
+export type SettingKind = 'shelf' | 'tablet' | 'floor';
+
+/** The plain floor each side of a tile: a slab's stub and its joint (art px). */
+export const FLOOR_SIDE_ART = 6;
+/** The floor's front edge (art px tall), top to bottom. */
+const FLOOR_FRONT = ['#222021', '#1c1a1b', '#131112'];
+export const FLOOR_FRONT_ART = FLOOR_FRONT.length;
 
 /** The top of a shelf: the one stone here that light falls straight onto. */
 const SHELF_TOP = '#3a3738';
@@ -491,15 +500,15 @@ export function settingBox(kind: SettingKind, iw: number, ih: number, gap: numbe
   const left = (out: number) => (gap === null ? out : Math.max(out, gap));
   if (kind === 'shelf') { const l = left(3); return { x: -l, y: ih, w: l + iw + 3, h: 8 }; }
   if (kind === 'tablet') { const l = left(2); return { x: -l, y: -5, w: l + iw + 2, h: ih + 7 }; }
-  const l = left(4);
-  return { x: -l, y: -4, w: l + iw + 4, h: ih + 8 };
+  const l = left(FLOOR_SIDE_ART);
+  return { x: -l, y: -1, w: l + iw + FLOOR_SIDE_ART, h: 1 + ih + FLOOR_FRONT_ART + 3 };
 }
 
 /**
  * Draw an entry's setting into a canvas the size of its box (settingBox),
- * for an icon `iw` x `ih` art px. `seed` varies the socket's stones.
+ * for an icon `iw` x `ih` art px.
  */
-export function drawSetting(ctx: CanvasRenderingContext2D, kind: SettingKind, iw: number, ih: number, gap: number | null, seed = 0): void {
+export function drawSetting(ctx: CanvasRenderingContext2D, kind: SettingKind, iw: number, ih: number, gap: number | null): void {
   const s = OLD;
   const box = settingBox(kind, iw, ih, gap);
   // Art px in the ICON's own coordinates (0,0 = its top left corner).
@@ -558,32 +567,43 @@ export function drawSetting(ctx: CanvasRenderingContext2D, kind: SettingKind, iw
     return;
   }
 
-  // The socket: a ring of stones round the slab, one art px of joint between them and it.
-  a(x0, -4, box.w, ih + 8, s.mortar);
-  const course = (cy: number, salt: number) => {
-    for (const b of courseBlocks(box.w, 9, seed * 31 + salt)) {
-      a(x0 + b.x, cy, b.w, 3, s.faces[b.tone]);
-      a(x0 + b.x, cy, b.w, 1, s.lit);
-      a(x0 + b.x, cy + 2, b.w, 1, s.dark);
-    }
+  // The floor: a ledge of dungeon floor out of the wall, seen as the board
+  // shows floor: its top from above, its front edge under that. The tile
+  // lies in it between two plain slabs (one art px of joint each side);
+  // the slab at the wall runs on into the wall, the other is broken off.
+  // (A floor's top is turned to the light, as a shelf's is: brighter than
+  // any wall here, and its front edge darker, which is what makes it a top.)
+  const top = (sx: number, sw: number) => {
+    a(sx, 0, sw, ih, s.lit);
+    a(sx, 0, sw, 1, SHELF_TOP);
+    a(sx, 1, 1, ih - 1, SHELF_TOP);
+    a(sx + sw - 1, 1, 1, ih - 1, s.faces[0]);
+    a(sx, ih - 1, sw, 1, s.faces[2]);
   };
-  course(-4, 11);
-  course(ih + 1, 23);
-  const jamb = (jx: number, jw: number, salt: number) => {
-    // Two stones, one over the other, the joint somewhere near the middle.
-    const split = Math.floor(ih / 2) + Math.floor(hash(seed * 17 + salt) * 3) - 1;
-    for (const [cy, ch, tone] of [[0, split, 0], [split + 1, ih - split - 1, 2]] as const) {
-      a(jx, cy, jw, ch, s.faces[tone]);
-      a(jx, cy, jw, 1, s.lit);
-      a(jx, cy + ch - 1, jw, 1, s.dark);
-    }
-  };
-  jamb(x0, -1 - x0, 5);
-  jamb(iw + 1, 3, 9);
+  a(x0, -1, box.w, ih + 1 + FLOOR_FRONT_ART, s.mortar); // the bed everything is laid in (and behind the tile)
+  top(x0, -1 - x0);
+  top(iw + 1, FLOOR_SIDE_ART - 1);
+  // The front edge: darker than the top, the joints carried down it.
+  FLOOR_FRONT.forEach((color, k) => a(x0, ih + k, box.w, 1, color));
+  a(-1, ih, 1, FLOOR_FRONT_ART, s.mortar);
+  a(iw, ih, 1, FLOOR_FRONT_ART, s.mortar);
+  // The broken end: its corners gone, top and bottom.
+  const gone = (gx: number, gy: number, gw: number, gh: number) => ctx.clearRect((gx - box.x) * Z, (gy - box.y) * Z, gw * Z, gh * Z);
+  gone(x1 - 1, -1, 1, 1 + Math.floor(ih / 3));
+  gone(x1 - 2, ih + 1, 2, FLOOR_FRONT_ART - 1);
+  gone(x1 - 1, ih - 2, 1, 3);
   if (!atWall) {
-    // Standing alone: the patch's outer corners are broken off.
-    for (const [cx, cy] of [[x0, -4], [x1 - 1, -4], [x0, ih + 3], [x1 - 1, ih + 3]]) ctx.clearRect((cx - box.x) * Z, (cy - box.y) * Z, Z, Z);
+    gone(x0, -1, 1, 1 + Math.floor(ih / 4));
+    gone(x0, ih, 2, FLOOR_FRONT_ART);
   }
+  // The corbel that carries it: against the wall, or under the middle.
+  [6, 4, 2].forEach((w, k) => {
+    const cx = atWall ? x0 : Math.round(iw / 2 - w / 2);
+    const y = ih + FLOOR_FRONT_ART + k;
+    a(cx, y, w, 1, s.faces[k % 3]);
+    a(cx + w - 1, y, 1, 1, s.dark);
+    if (!atWall) a(cx, y, 1, 1, s.dark);
+  });
 }
 
 // ---- the piers --------------------------------------------------------------------------

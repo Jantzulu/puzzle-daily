@@ -212,17 +212,17 @@ export const WallColumns: React.FC<{
 /**
  * A LIST ENTRY'S SETTING (the rooms of lists: ITEMS, STATUS EFFECTS,
  * DUNGEON TILES): wrap the entry's icon in this and the icon gets a small
- * piece of the building to be on: a shelf, a hanging tablet, a socket of
- * masonry (cutawayStone.ts drawSetting). The piece is drawn out to the side
+ * piece of the building to be on: a shelf, a hanging tablet, a ledge of
+ * floor (cutawayStone.ts drawSetting). The piece is drawn out to the side
  * wall when the icon stands beside it (within 12px of the room's left
  * edge: every entry on a phone), and alone otherwise. With "on" false the
  * icon is rendered bare (the wall is off). It takes no layout:
  * the row and the icon are given room by WALL_ENTRY's classes.
  */
-export const WallSetting: React.FC<{ on: boolean; kind: SettingKind; seed?: number; children: React.ReactNode }> = ({ on, children, ...rest }) =>
+export const WallSetting: React.FC<{ on: boolean; kind: SettingKind; children: React.ReactNode }> = ({ on, children, ...rest }) =>
   (on ? <WallSettingOn {...rest}>{children}</WallSettingOn> : <>{children}</>);
 
-const WallSettingOn: React.FC<{ kind: SettingKind; seed?: number; children: React.ReactNode }> = ({ kind, seed = 0, children }) => {
+const WallSettingOn: React.FC<{ kind: SettingKind; children: React.ReactNode }> = ({ kind, children }) => {
   const hostRef = React.useRef<HTMLDivElement>(null);
   const boxRef = React.useRef<HTMLDivElement>(null);
   const snapRef = useCrispSnap<HTMLDivElement>(true);
@@ -247,14 +247,14 @@ const WallSettingOn: React.FC<{ kind: SettingKind; seed?: number; children: Reac
       const ctx = prepCanvas(canvas, box.w * Z, box.h * Z, 0);
       if (!ctx) return;
       ctx.clearRect(0, 0, box.w * Z, box.h * Z);
-      drawSetting(ctx, kind, iw, ih, gap, seed);
+      drawSetting(ctx, kind, iw, ih, gap);
     };
     draw();
     const ro = new ResizeObserver(draw);
     ro.observe(host);
     if (room) ro.observe(room);
     return () => ro.disconnect();
-  }, [kind, seed, snapRef]);
+  }, [kind, snapRef]);
   return (
     <div ref={hostRef} className="relative">
       <div ref={boxRef} aria-hidden className="absolute pointer-events-none">
