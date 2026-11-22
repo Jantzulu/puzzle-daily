@@ -2,7 +2,7 @@ import React from 'react';
 import { Z, prepCanvas, useCrispSnap } from './panelSkins';
 import {
   ARCH_H, ARCH_LIFT, FOUND_H, FOUND_STEP, PIER_STOP, PIER_TOP, PIER_W, PLATE_END_ART, PLATE_H, SLAB_H, WALL_TORCH_GAP, WALL_TORCH_HALF, drawArcade, drawFoundation,
-  drawNiches, drawPier, drawPlate, drawSetting, drawSlab, settingBox,
+  WALL_PLATE_Z, drawNiches, drawPier, drawPlate, drawPlateDark, drawSetting, drawSlab, settingBox,
 } from './cutawayStone';
 import type { PlateKind, SettingKind } from './cutawayStone';
 import { slotBoundaries } from '../../hooks/useElementWidth';
@@ -74,20 +74,29 @@ export const CutawaySlab: React.FC<{
  * A TITLE'S PLATE (cutawayStone.ts drawPlate): let into the beam behind the
  * title, standing a little proud of it top and bottom, in the room's own
  * colour and with the room's own edge. Mount it straight after the header
- * row's CutawaySlab, with the same layer (`z`): it finds the row's title
- * (its h3) and sizes and places itself by it, and again whenever the title
- * or the row changes size (a font arriving, the window turning).
+ * row's CutawaySlab: it finds the row's title (its h3) and sizes and places
+ * itself by it, and again whenever the title or the row changes size (a
+ * font arriving, the window turning). The title's own box must come later
+ * in the row and carry WALL_OVER_PLATE.
+ *
+ * ITS LAYER (`z`: WALL_PLATE_Z, or the hero slab's): over the room above,
+ * whose columns and whose dark would otherwise fall on the part of it that
+ * stands above the beam, and under its own room's dark. That part is out
+ * of its own room's dark's reach, so it has its own (the second canvas,
+ * .wall-plate-dark: index.css fades it with the room's torch).
  */
-export const CutawayPlate: React.FC<{ kind: PlateKind; z?: number }> = ({ kind, z = -1 }) => {
+export const CutawayPlate: React.FC<{ kind: PlateKind; z?: number }> = ({ kind, z = WALL_PLATE_Z }) => {
   const boxRef = React.useRef<HTMLDivElement>(null);
   const snapRef = useCrispSnap<HTMLDivElement>(true);
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
+  const darkRef = React.useRef<HTMLCanvasElement>(null);
   React.useLayoutEffect(() => {
     const box = boxRef.current;
     const canvas = canvasRef.current;
+    const dark = darkRef.current;
     const row = box?.parentElement;
     const title = row?.querySelector('h3');
-    if (!box || !canvas || !row || !title) return;
+    if (!box || !canvas || !dark || !row || !title) return;
     const draw = () => {
       const t = title.getBoundingClientRect();
       if (!t.width) return;
@@ -99,6 +108,10 @@ export const CutawayPlate: React.FC<{ kind: PlateKind; z?: number }> = ({ kind, 
       if (!ctx) return;
       ctx.clearRect(0, 0, w, PLATE_H);
       drawPlate(ctx, widthArt, kind);
+      const dctx = prepCanvas(dark, w, PLATE_H, 0);
+      if (!dctx) return;
+      dctx.clearRect(0, 0, w, PLATE_H);
+      drawPlateDark(dctx, widthArt, kind);
     };
     draw();
     const ro = new ResizeObserver(draw);
@@ -110,6 +123,7 @@ export const CutawayPlate: React.FC<{ kind: PlateKind; z?: number }> = ({ kind, 
     <div ref={boxRef} aria-hidden className="absolute pointer-events-none" style={{ top: `calc(50% - ${PLATE_H / 2}px)`, height: PLATE_H, zIndex: z }}>
       <div ref={snapRef} className="relative w-full h-full">
         <canvas ref={canvasRef} style={{ position: 'absolute' }} />
+        <canvas ref={darkRef} className="wall-plate-dark" style={{ position: 'absolute' }} />
       </div>
     </div>
   );

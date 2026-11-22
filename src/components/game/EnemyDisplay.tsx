@@ -19,7 +19,7 @@ import { useElementWidth, artGridSlotStyle } from '../../hooks/useElementWidth';
 import { subscribeToImageLoads } from '../../utils/imageLoader';
 import { playChromeSound } from '../../utils/chromeSounds';
 import { BeamTapHint, BeamTorch, CutawayPlate, CutawaySlab, WallColumns, WallDark } from './CutawayWall';
-import { WALL_ABOVE_BEAM, WALL_HEADER_GAP, WALL_ON, WALL_ROW, type WallBelow } from './cutawayStone';
+import { WALL_ABOVE_BEAM, WALL_HEADER_GAP, WALL_ON, WALL_OVER_PLATE, WALL_ROW, type WallBelow } from './cutawayStone';
 
 // Every enemy/ally opens a drawer (its info panel always renders).
 const alwaysOpensDrawer = () => true;
@@ -225,7 +225,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
         <div className={`flex items-center justify-center ${wall ? `relative ${WALL_HEADER_GAP}` : 'mb-2'}`}>
           {wall && <CutawaySlab />}
           {wall && <CutawayPlate kind="enemies" />}
-          <div className="relative flex items-center">
+          <div className={'relative flex items-center ' + (wall ? WALL_OVER_PLATE : '')}>
             <div className="absolute right-full mr-1">
               <HelpButton sectionId="enemies" className="!text-[#c9564a]" />
             </div>
@@ -289,7 +289,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
             )
           )}
         </div>
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center">
+        <div className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center ${wall ? WALL_OVER_PLATE : ''}`}>
           <div className="absolute right-full mr-1">
             <HelpButton sectionId={isAllySide ? 'allies' : 'enemies'} className={isAllySide ? '!text-[#e8cc8a]' : '!text-[#c9564a]'} />
           </div>

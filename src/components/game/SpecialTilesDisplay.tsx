@@ -4,7 +4,7 @@ import { loadTileType, loadPuzzleSkin, type CustomTileType, type CustomSprite } 
 import { SpriteThumbnail } from '../editor/SpriteThumbnail';
 import { HelpButton } from './HelpOverlay';
 import { BeamTorch, CutawayPlate, CutawaySlab, WallDark, WallSetting } from './CutawayWall';
-import { WALL_ABOVE_BEAM, WALL_ENTRY, WALL_HEADER_GAP, WALL_LIST, WALL_ON, WALL_ROW } from './cutawayStone';
+import { WALL_ABOVE_BEAM, WALL_ENTRY, WALL_HEADER_GAP, WALL_LIST, WALL_ON, WALL_OVER_PLATE, WALL_ROW } from './cutawayStone';
 
 interface SpecialTilesDisplayProps {
   puzzle: Puzzle;
@@ -249,7 +249,7 @@ export const SpecialTilesDisplay: React.FC<SpecialTilesDisplayProps> = ({ puzzle
         {wall && <CutawaySlab old />}
         {wall && <CutawayPlate kind="tiles" />}
         <div className="min-w-[60px]" />
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center">
+        <div className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center ${wall ? WALL_OVER_PLATE : ''}`}>
           <div className="absolute right-full mr-1">
             <HelpButton sectionId="special_tiles" className="!text-[#e68f6d]" />
           </div>

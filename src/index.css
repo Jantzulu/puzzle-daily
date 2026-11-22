@@ -4924,6 +4924,24 @@ button.dir-picker__tab:not(.dir-picker__tab--active) .dir-picker__tab-text {
    upper course, so its feathered foot is hidden behind stone. */
 .wall-on .dungeon-below {
   padding-bottom: 76px;
+  /* Over the hero hall's dark (13) and everything else of the hero hall's:
+     the enemies' title plate stands 4px up into the hero hall's foot, and
+     belongs to the enemies' room (cutawayStone.ts, the title plates).
+     Nothing else in here reaches up there. Under the rail (40). */
+  z-index: 14;
+}
+
+/* A title plate's own dark, over the part of it that stands above its beam
+   (CutawayWall CutawayPlate): faded with the room's torch exactly as the
+   room's own dark is. */
+.wall-plate-dark {
+  opacity: 0;
+  transition: opacity 0.9s ease-out;
+}
+
+[data-wall-room]:has(.lintel-torch--out) .wall-plate-dark {
+  opacity: 1;
+  transition: opacity 0.3s ease-in;
 }
 
 .wall-ground {

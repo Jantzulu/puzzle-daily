@@ -111,6 +111,15 @@ export const PIER_TOP = SLAB_H - SLAB_RISE;
 export const WALL_HERO_Z = 11;
 /** What lifts a header's own in-flow words over the hero slab (Tailwind classes). */
 export const WALL_OVER_SLAB = 'relative z-[12]';
+/**
+ * A title's plate, in the rooms under the hero hall: over the strip of the
+ * room above (1) and that room's dark (2, earlier on the page), under its
+ * own room's dark (2, later). And what keeps a title over its plate (a
+ * Tailwind class for the title's own box, which comes after the plate).
+ * The heroes' plate is with its slab (WALL_HERO_Z), its title at 46.
+ */
+export const WALL_PLATE_Z = 2;
+export const WALL_OVER_PLATE = 'z-[2]';
 /** The space under a title that sits on a slab (a Tailwind margin class): the slab reaches 11px below the header row. */
 export const WALL_HEADER_GAP = 'mb-4';
 /**
@@ -259,14 +268,28 @@ export function drawSlab(ctx: CanvasRenderingContext2D, w: number, old = false):
 // let into the beam (the QUEST plate over the board is the model): a dark
 // plate in the room's own colour, as wide as the title and a blunt point
 // past it each side, that stands PROUD of the beam, two art px above its
-// top and two below its foot, and how it stands proud is the room's:
-//   heroes   battlements (allies too: the same side)
-//   enemies  teeth
+// top and two below its foot, and how it stands proud is the room's. Each
+// edge is ONE calm shape the length of the title:
+//   heroes   a raised tab, flat across, its corners taken off (allies too)
+//   enemies  horns: high at the two ends, low across the middle
 //   items    a stepped pediment, as a chest's lid
 //   status   a low arch, as a rune stone's head
-//   tiles    a row of slabs with joints between
+//   tiles    two slabs, one joint between them on the middle
+// (The first set had battlements for the heroes, teeth for the enemies and
+// a row of six-px slabs for the tiles. The user: "I am lukewarm on the
+// plates, but prefer the style of 'items' and 'status effects'": the two
+// that were one shape, not a row of small notches. No perforated edges.)
 // The title, its torch, its (?) mark and the tap hint are untouched: the
 // plate is drawn under them.
+//
+// A PLATE BELONGS TO ITS OWN ROOM, though its top two art px stand in the
+// room above (the user, of the first build: "the plates can be overlapped
+// by the above columns and the parts of a plate that dip into a different
+// panel get lit differently"). So it is laid OVER the room above (its
+// columns, its selection outline, its dark: index.css raises .dungeon-below
+// and the plate's layer), and the part above the beam, which its own
+// room's dark does not reach, has a dark of its own (drawPlateDark; the
+// component fades it with the room's torch exactly as the room's is).
 
 export type PlateKind = 'heroes' | 'enemies' | 'allies' | 'items' | 'status' | 'tiles';
 
@@ -300,15 +323,15 @@ export function plateRise(kind: PlateKind, x: number, bodyW: number): number {
   switch (kind) {
     case 'heroes':
     case 'allies':
-      return (c + 1) % 6 < 3 ? PLATE_RISE_ART : 0; // a merlon on the middle, three up and three down from there
+      return Math.min(PLATE_RISE_ART, fromEnd); // a raised tab: flat, its corners taken off
     case 'enemies':
-      return [2, 1, 0, 1][c % 4]; // teeth, a point on the middle
+      return c < bodyW / 6 ? 0 : c < bodyW / 3 ? 1 : 2; // horns: low across the middle third, stepping up to the ends
     case 'items':
       return fromEnd < 4 ? 0 : c < bodyW / 6 ? 2 : 1; // three steps up to the middle
     case 'status':
       return Math.round(PLATE_RISE_ART * Math.sin((Math.PI * (x + 0.5)) / bodyW)); // a low arch
     case 'tiles':
-      return c % 7 === 3 ? 0 : PLATE_RISE_ART; // slabs six wide, a joint between
+      return c === 0 ? 0 : Math.min(PLATE_RISE_ART, fromEnd + 1); // two slabs: one joint, on the middle
   }
 }
 
@@ -348,6 +371,20 @@ export function drawPlate(ctx: CanvasRenderingContext2D, widthArt: number, kind:
   const mid = PLATE_RISE_ART + SLAB_ART / 2 - 1;
   a(1, mid, 1, 2, s.lit);
   a(widthArt - 2, mid, 1, 2, s.lit);
+}
+
+/**
+ * The dark over the part of a plate that stands above its beam (the top
+ * PLATE_RISE_ART rows), in the room's own dark (index.css .wall-dark's
+ * colour), into a canvas the plate's size. The rest of the plate is inside
+ * its own room and is darkened with it.
+ */
+export function drawPlateDark(ctx: CanvasRenderingContext2D, widthArt: number, kind: PlateKind): void {
+  ctx.fillStyle = 'rgba(6, 5, 4, 0.68)';
+  for (let x = 0; x < widthArt; x++) {
+    const { top } = plateColumn(kind, x, widthArt);
+    if (top < PLATE_RISE_ART) ctx.fillRect(x * Z, top * Z, Z, (PLATE_RISE_ART - top) * Z);
+  }
 }
 
 // ---- the arcade ---------------------------------------------------------------------------
