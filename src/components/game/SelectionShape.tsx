@@ -72,6 +72,24 @@ type Rect = { left: number; width: number; top?: number; bottom?: number; height
  */
 const ARCH_ROWS = ARCH_BAND_ART + ARCH_RISE_ART;
 
+/*
+ * THE CORNER PIECE UNDER AN ARCH (user, 2026-11-21: "im wondering if the
+ * corner piece I made could still work in those top corner, or if it could
+ * be altered slightly to fit?"). It is a square corner: two arms at a right
+ * angle with the jewel where they meet. The arch's shoulder is a slow curve
+ * (up to 24 art px wide for 8 of rise) with no right angle on it, so on the
+ * curve an arm would stand clear of the line. The one place it sits as
+ * painted is where the arch SPRINGS from the column: the jewel on the
+ * line's pixel there, one arm down the card's side, the other INTO the
+ * opening, exactly as the piece sits on a square top corner, only lower
+ * (my first try turned the second arm out over the column's capital; the
+ * user: "those top corner pieces are facing outward instead of inward").
+ * That spot does not move with the card's width.
+ */
+const SPRING_TOP = ARCH_H - ARCH_LIFT - A; // the piece's jewel row on the side's first row
+const springLeft: Piece = { key: 'spring-l', style: { left: -A, top: SPRING_TOP, transform: 'scale(-1, -1)' } }; // as OUTER.tl, lower
+const springRight: Piece = { key: 'spring-r', style: { right: -A, top: SPRING_TOP, transform: 'scaleY(-1)' } }; // as OUTER.tr, lower
+
 /** The arch part of the line, and the wash's clip, for a card `w` CSS px wide. */
 function archShape(w: number, first: boolean, last: boolean, closed: boolean): { rects: Rect[]; clip: string } {
   const runs = archOutline(Math.floor(w / A), first, last);
@@ -237,9 +255,9 @@ export const SelectionStrip: React.FC<StripProps> = ({ ids, selectedIndex, width
             <Line rects={rects} tone={tone} />
             <Corners
               pieces={closed
-                ? [...(arched ? [] : [OUTER.tl, OUTER.tr]), OUTER.br, OUTER.bl]
+                ? [...(arched ? [springLeft, springRight] : [OUTER.tl, OUTER.tr]), OUTER.br, OUTER.bl]
                 : [
-                    ...(arched ? [] : [OUTER.tl, OUTER.tr]),
+                    ...(arched ? [springLeft, springRight] : [OUTER.tl, OUTER.tr]),
                     // the elbows' top halves, where the drawer reaches past the card
                     ...(b[j] > 0 ? [elbowTopLeft] : []),
                     ...(b[j + 1] < b[slotCount] ? [elbowTopRight] : []),
