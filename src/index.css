@@ -4766,11 +4766,21 @@ button.dir-picker__tab:not(.dir-picker__tab--active) .dir-picker__tab-text {
      drawer  the beam's top meets the drawer's foot, where its outline's
              bottom line runs (the outline's corner rims, 2px further out,
              tuck under the beam): there was "a gap below the selection box
-             and the ... beam of the below section".
+             and the ... beam of the below section". THE SAME PULL AS OPEN,
+             with 4px added under the drawer INSIDE its animated box
+             (.wall-on .hero-drawer, below), so the beam's place is one
+             unbroken function of the drawer's height: 4px above the strip's
+             foot when it is shut, at its foot when it is open, riding its
+             own open and close in between. (At first the two pulls differed
+             by 4px, and the page under the drawer hopped by that much the
+             instant a drawer mounted or unmounted; user: "smooth out the
+             jump when opening and closing info".)
    The first panel under the hero hall is inside .dungeon-below, hence the
    second selector of each pair. With no panel below, nothing is pulled. */
 [data-wall-below='open'] + * > .wall-above-beam:first-child,
-[data-wall-below='open'] + .dungeon-below > :first-child > .wall-above-beam:first-child {
+[data-wall-below='open'] + .dungeon-below > :first-child > .wall-above-beam:first-child,
+[data-wall-below='drawer'] + * > .wall-above-beam:first-child,
+[data-wall-below='drawer'] + .dungeon-below > :first-child > .wall-above-beam:first-child {
   margin-top: -16px;
 }
 
@@ -4779,9 +4789,9 @@ button.dir-picker__tab:not(.dir-picker__tab--active) .dir-picker__tab-text {
   margin-top: -4px;
 }
 
-[data-wall-below='drawer'] + * > .wall-above-beam:first-child,
-[data-wall-below='drawer'] + .dungeon-below > :first-child > .wall-above-beam:first-child {
-  margin-top: -12px;
+/* (Inside the drawer's own height animation: see "drawer" above.) */
+.wall-on .hero-drawer {
+  margin-bottom: 4px;
 }
 
 .wall-hint {
