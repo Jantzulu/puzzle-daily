@@ -4671,6 +4671,66 @@ button.dir-picker__tab:not(.dir-picker__tab--active) .dir-picker__tab-text {
   opacity: 0;
 }
 
+/* ---- THE CUTAWAY WALL's arcade (the `?wall=1` experiment; CutawayWall.tsx
+   HeroArcade): PLACEHOLDER stone in the hero hall, in place of the posts.
+   All of it sits on the Z=2 art grid inside a box snapped to whole pixels,
+   in the beams' own stone (cutawayStone.ts KEPT), lit from the top left.
+   Sizes mirror WALL_FLOOR_H / WALL_COLUMN_RISE there. Opacity is the only
+   thing that ever changes (the pair beside the selected card steps aside). */
+.wall-floor {
+  /* The ledge under the heroes' feet: a lit top row over a shaded lip. */
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(#34302b 0 2px, #19140f 2px 4px);
+}
+
+.wall-column {
+  /* The shaft: 2 art px wide, its left column lit and its right in shade. */
+  position: absolute;
+  top: -4px;
+  width: 4px;
+  background: linear-gradient(90deg, #312a25 0 2px, #1c1815 2px 4px);
+  transition: opacity 150ms ease-out;
+}
+
+.wall-column::before,
+.wall-column::after {
+  /* Capital and base: 4 art px wide, 2 tall. */
+  content: '';
+  position: absolute;
+  left: -2px;
+  right: -2px;
+  height: 4px;
+}
+
+.wall-column::before {
+  /* The capital, up against the beam. */
+  top: -4px;
+  background: linear-gradient(#3b3530 0 2px, #2a2420 2px 4px);
+}
+
+.wall-column::after {
+  /* The base, on the floor. */
+  bottom: 0;
+  background: linear-gradient(#2a2420 0 2px, #19140f 2px 4px);
+}
+
+.wall-joint {
+  /* On down from the column, between two heroes' plaques. Stops 8px short
+     of the strip's foot, as the posts did. */
+  position: absolute;
+  bottom: 8px;
+  width: 2px;
+  background: #231e1b;
+  transition: opacity 150ms ease-out;
+}
+
+.wall-yield {
+  opacity: 0;
+}
+
 /* ============================================
    .hit-44 — TAP-TARGET SLOP (WCAG 2.5.8 / iOS 44pt / Android 48dp)
    An invisible, absolutely-positioned ::after centred on the control, grown

@@ -1,6 +1,7 @@
 import React from 'react';
 import { prepCanvas, useCrispSnap } from './panelSkins';
-import { PIER_TOP, PIER_W, SLAB_H, WALL_TORCH_GAP, WALL_TORCH_HALF, drawPier, drawSlab } from './cutawayStone';
+import { PIER_TOP, PIER_W, SLAB_H, WALL_COLUMN_RISE, WALL_FLOOR_H, WALL_TORCH_GAP, WALL_TORCH_HALF, drawPier, drawSlab } from './cutawayStone';
+import { slotBoundaries } from '../../hooks/useElementWidth';
 import { LintelTorch } from './LintelTorch';
 
 // The cutaway wall's two pieces on the page (the `?wall=1` experiment: see
@@ -60,6 +61,65 @@ export const CutawaySlab: React.FC<{
     <div aria-hidden className="absolute pointer-events-none" style={{ left: -PIER_W, right: -PIER_W, top: `calc(50% - ${SLAB_H / 2}px)`, height: SLAB_H, zIndex: z }}>
       <div ref={snapRef} className="relative w-full h-full">
         <canvas ref={canvasRef} style={{ position: 'absolute' }} />
+      </div>
+    </div>
+  );
+};
+
+/**
+ * THE HERO HALL'S ARCADE (user ask 2026-11-21: "you had mentioned a 'floor'
+ * for the hero panel and also changes to the vertical segments separating
+ * them"). It takes the place of the iron posts between the hero cards
+ * (StripDividers) when the wall is on, on the same slot boundaries:
+ *
+ *   the FLOOR    a stone ledge right under the heroes' feet (`floorY`: the
+ *                bottom of the sprite band; sprites are bottom-aligned, so
+ *                they stand on it). Names and stats sit under it, like the
+ *                plaques on the front of a plinth.
+ *   COLUMNS      from the beam down to the floor, one on each boundary
+ *                between two heroes: a capital under the beam, a shaft, a
+ *                base on the ledge. So each hero stands in a bay.
+ *   JOINTS       a thin line on down from each column between the plaques,
+ *                where the post used to part the names.
+ *
+ * The column and joint either side of the SELECTED card step aside (fade),
+ * as the posts did: the selection's own outline parts it from its
+ * neighbours. Placeholder stone, in CSS (index.css .wall-*), inside a box
+ * snapped to whole pixels; rendered BEFORE the card row, so cards, badges
+ * and the selection shape paint over it.
+ *
+ * The capital reaches 8px above the strip to meet the beam, which is why the
+ * hero header keeps one height in the wall (WALL_HERO_ROW): unpinned, it is
+ * 14px until a hero is placed and 20px after, and the gap under the beam
+ * would change with it.
+ */
+export const HeroArcade: React.FC<{
+  slotCount: number;
+  /** Index of the selected slot, or -1. */
+  selectedIndex: number;
+  /** The strip's measured width (CSS px; 0 = not measured: nothing renders). */
+  width: number;
+  /** Where the heroes' feet are: CSS px from the strip's top. */
+  floorY: number;
+}> = ({ slotCount, selectedIndex, width, floorY }) => {
+  const snapRef = useCrispSnap<HTMLDivElement>(true);
+  // (The snapped box is rendered even before the strip is measured: the
+  // snap is taken when it mounts and again when it gets its size.)
+  const inner = width > 0 ? slotBoundaries(width, slotCount).slice(1, -1) : [];
+  return (
+    <div aria-hidden className="absolute inset-y-0 left-0 pointer-events-none" style={{ width }}>
+      <div ref={snapRef} className="relative w-full h-full">
+        {width > 0 && <span className="wall-floor" style={{ top: floorY }} />}
+        {inner.map((x, k) => {
+          const boundary = k + 1;
+          const beside = selectedIndex >= 0 && (boundary === selectedIndex || boundary === selectedIndex + 1);
+          return (
+            <React.Fragment key={boundary}>
+              <span className={`wall-column ${beside ? 'wall-yield' : ''}`} style={{ left: x - 2, height: floorY + WALL_COLUMN_RISE }} />
+              <span className={`wall-joint ${beside ? 'wall-yield' : ''}`} style={{ left: x - 1, top: floorY + WALL_FLOOR_H }} />
+            </React.Fragment>
+          );
+        })}
       </div>
     </div>
   );

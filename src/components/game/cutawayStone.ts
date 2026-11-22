@@ -31,6 +31,11 @@
 //             stone, where a thin groove (.dungeon-seam) used to part
 //             them. With the switch on, the Dungeon Details lintel and its
 //             words are not drawn.
+//   an ARCADE in the hero hall (CutawayWall HeroArcade): stone columns in
+//             place of the iron posts between the hero cards, from the beam
+//             down to a stone FLOOR under the heroes' feet; names and stats
+//             sit under the floor like plaques. Enemies keep their posts
+//             for now.
 //   a TORCH   one on each beam (user call 2026-11-21: "Only 1 per beam"),
 //             beside the title, the sides taking turns down the page:
 //             HEROES right, ENEMIES left, ITEMS right, STATUS EFFECTS left
@@ -106,6 +111,17 @@ export const WALL_ABOVE_BEAM = 'h-5';
 export const WALL_TORCH_GAP = { left: 30, right: 6 };
 /** Half a torch's height (CSS px), to centre it on the title's row. */
 export const WALL_TORCH_HALF = 16;
+/** The hero hall's floor under the heroes' feet is this thick (CSS px = 2 art px: a lit top and a shaded lip). Mirrors index.css .wall-floor. */
+export const WALL_FLOOR_H = 4;
+/** A column's shaft starts this far above the strip's top (CSS px); its capital is another 4 above, meeting the beam 8px over the strip. Mirrors index.css .wall-column. */
+export const WALL_COLUMN_RISE = 4;
+/**
+ * The hero header's height in the wall (a Tailwind class). Unpinned it is
+ * 14px until a hero is placed and 20px after (the clear button), a 6px jump
+ * that would move the beam and open a gap over the columns. 20 = its taller
+ * state, so placing the first hero no longer shifts the page either.
+ */
+export const WALL_HERO_ROW = 'min-h-[20px]';
 
 // ---- stone ----------------------------------------------------------------------------
 

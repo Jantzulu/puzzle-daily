@@ -23,8 +23,8 @@ import { SelectionStrip, SelectionDrawer } from './SelectionShape';
 import placedBannerIcon from '../../assets/icons/placed-banner.png';
 import { useElementWidth, artGridSlotStyle } from '../../hooks/useElementWidth';
 import { subscribeToImageLoads } from '../../utils/imageLoader';
-import { BeamTorch, CutawaySlab } from './CutawayWall';
-import { WALL_HEADER_GAP, WALL_HERO_Z, WALL_ON, WALL_OVER_SLAB } from './cutawayStone';
+import { BeamTorch, CutawaySlab, HeroArcade } from './CutawayWall';
+import { WALL_HEADER_GAP, WALL_HERO_ROW, WALL_HERO_Z, WALL_ON, WALL_OVER_SLAB } from './cutawayStone';
 
 const MOVEMENT_TYPES = new Set([
   'move_forward', 'move_backward', 'move_left', 'move_right',
@@ -415,7 +415,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
       {/* Header row. mb-3 with the quest slot (user ask 2026-10-14: the
           small scroll sat right on the hero cards — slightly more air, not
           much); mb-2 otherwise. */}
-      <div ref={questHeaderRef} className={`relative flex items-center justify-between ${wall ? WALL_HEADER_GAP : questSlot ? 'mb-3' : 'mb-2'}`}>
+      <div ref={questHeaderRef} className={`relative flex items-center justify-between ${wall ? `${WALL_HEADER_GAP} ${WALL_HERO_ROW}` : questSlot ? 'mb-3' : 'mb-2'}`}>
         {/* The `?wall=1` experiment: the hero hall's stone ceiling, behind the title. */}
         {wall && <CutawaySlab z={WALL_HERO_Z} />}
         {questSlot && <span data-quest-slot aria-hidden="true" className="quest-mini-slot" style={{ width: questGap }} />}
@@ -529,7 +529,11 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
           paint over them. */}
       <div ref={stripRef} className="relative">
       <SelectionStrip ids={stripCharacterIds} selectedIndex={selectedStripIndex} width={stripWidth} tone="copper" opensDrawer={heroOpensDrawer} />
-      <StripDividers slotCount={stripCharacterIds.length} selectedIndex={selectedStripIndex} width={stripWidth} />
+      {wall
+        // The wall's arcade: columns and a floor under the heroes' feet
+        // (2 = the card's pt-0.5 above the sprite band).
+        ? <HeroArcade slotCount={stripCharacterIds.length} selectedIndex={selectedStripIndex} width={stripWidth} floorY={2 + cardSpriteHeight} />
+        : <StripDividers slotCount={stripCharacterIds.length} selectedIndex={selectedStripIndex} width={stripWidth} />}
       <div className="flex">
         {stripCharacterIds.map((charId, slot) => {
           const character = getCharacter(charId);
