@@ -24,12 +24,17 @@
 // What is drawn so far:
 //   the SLAB  a course of hewn blocks behind a storey's title: the floor
 //             between two rooms, cut through, with the title of the room
-//             below carved in it (as DUNGEON DETAILS already is in its
-//             lintel, which is the floor between the hero hall and the
-//             enemies). HEROES has one; so have ITEMS, STATUS EFFECTS,
-//             DUNGEON TILES and ALLIES, in the older stone, where a thin
-//             groove (.dungeon-seam) used to part them. ENEMIES needs none:
-//             the lintel is its ceiling.
+//             below carved in it. EVERY title has the same one (user
+//             thought 2026-11-21: drop the words DUNGEON DETAILS and
+//             standardize the beams): HEROES and ENEMIES in the kept stone,
+//             ITEMS, STATUS EFFECTS, DUNGEON TILES and ALLIES in the older
+//             stone, where a thin groove (.dungeon-seam) used to part
+//             them. With the switch on, the Dungeon Details lintel and its
+//             words are not drawn.
+//   a TORCH   one on each beam from ENEMIES down, left of the title (user
+//             call 2026-11-21: "Only 1 per beam"). HEROES has none yet:
+//             on a phone the small quest scroll parks on its left and the
+//             count and the clear button fill its right.
 //   the PIERS the two side walls, cut through, running down both edges of
 //             the page from the slab to the last panel: what makes the
 //             storeys one building. Below the lintel the stone is older:
@@ -64,6 +69,22 @@ export const SLAB_H = SLAB_ART * Z;
 export const SLAB_RISE = SLAB_RISE_ART * Z;
 /** Where the piers begin, under the slab (CSS px below the top of the header row). */
 export const PIER_TOP = SLAB_H - SLAB_RISE;
+
+// ---- how the pieces sit among the page's own (used by the components) ---------------
+
+/** The hero slab's layer: just over the board (z-10), under the rail (40), the quest (45) and the title (46). */
+export const WALL_HERO_Z = 11;
+/** What lifts a header's own in-flow words over the hero slab (Tailwind classes). */
+export const WALL_OVER_SLAB = 'relative z-[12]';
+/** The space under a title that sits on a slab (a Tailwind margin class): the slab reaches 8px below the header row. */
+export const WALL_HEADER_GAP = 'mb-3';
+/**
+ * How far a beam's torch stands from its title's left edge (CSS px): clear
+ * of the (?) button that hangs there (a 24px box, 4px out).
+ */
+export const WALL_TORCH_GAP = 30;
+/** Half a torch's height (CSS px), to centre it on the title's row. */
+export const WALL_TORCH_HALF = 16;
 
 // ---- stone ----------------------------------------------------------------------------
 
@@ -149,7 +170,7 @@ export interface FacingBlock { y: number; h: number; tone: number; fallen: boole
 /**
  * The dressed blocks that face a pier towards the room, top to bottom, one
  * art px of mortar between them: 5 to 8 art px tall. From `oldFrom` down
- * (art px; the Dungeon Details lintel) about one in six has fallen out.
+ * (art px; the mouth of the dungeon) about one in six has fallen out.
  */
 export function facingBlocks(heightArt: number, oldFrom: number, side: 'left' | 'right'): FacingBlock[] {
   const salt = side === 'left' ? 0 : 1000;

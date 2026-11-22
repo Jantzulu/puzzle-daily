@@ -1,6 +1,7 @@
 import React from 'react';
 import { prepCanvas, useCrispSnap } from './panelSkins';
-import { PIER_TOP, PIER_W, SLAB_H, SLAB_RISE, drawPier, drawSlab } from './cutawayStone';
+import { PIER_TOP, PIER_W, SLAB_H, SLAB_RISE, WALL_TORCH_GAP, WALL_TORCH_HALF, drawPier, drawSlab } from './cutawayStone';
+import { LintelTorch } from './LintelTorch';
 
 // The cutaway wall's two pieces on the page (the `?wall=1` experiment: see
 // cutawayStone.ts for the idea and the drawing). Both are canvases on the art
@@ -27,7 +28,7 @@ import { PIER_TOP, PIER_W, SLAB_H, SLAB_RISE, drawPier, drawSlab } from './cutaw
 export const CutawaySlab: React.FC<{
   /** The colder stone from under the Dungeon Details lintel. */
   old?: boolean;
-  /** Its layer: -1 (the default) inside an isolated box; the hero slab passes WALL_HERO_Z. */
+  /** Its layer: -1 (the default) inside an isolated box; the hero slab passes WALL_HERO_Z (cutawayStone.ts). */
   z?: number;
 }> = ({ old = false, z = -1 }) => {
   const snapRef = useCrispSnap<HTMLDivElement>(true);
@@ -60,13 +61,21 @@ export const CutawaySlab: React.FC<{
   );
 };
 
-/** The hero slab's layer: just over the board (z-10), under the rail (40), the quest (45) and the title (46). */
-export const WALL_HERO_Z = 11;
-/** What lifts a header's own in-flow words over the hero slab (Tailwind classes). */
-export const WALL_OVER_SLAB = 'relative z-[12]';
-
-/** The space under a title that sits on a slab (a Tailwind margin class): the slab reaches 8px below the header row. */
-export const WALL_HEADER_GAP = 'mb-3';
+/**
+ * A BEAM'S TORCH (user call 2026-11-21: "a torch on each of the horizontal
+ * beams, either to the left or right of the title text. Only 1 per beam").
+ * Mount it inside a title's centred wrapper, after the title: it hangs off
+ * the wrapper's LEFT edge, beyond the (?) button, which is the one place
+ * every beam under the hero hall has room on a phone (the right of a title
+ * belongs to its count: "2 POSSIBLE" starts where STATUS EFFECTS ends).
+ * Placed without a transform, so the art stays on whole pixels. It is the
+ * lintel's own torch: a tap puts it out, the dark entry lights it.
+ */
+export const BeamTorch: React.FC<{ /** Offsets its flicker from the other beams' (ms). */ phase?: number }> = ({ phase = 0 }) => (
+  <span className="absolute right-full" style={{ marginRight: WALL_TORCH_GAP, top: `calc(50% - ${WALL_TORCH_HALF}px)` }}>
+    <LintelTorch phase={phase} />
+  </span>
+);
 
 /**
  * The two side walls. Mount it as the first child of the wrapper that holds
@@ -85,9 +94,10 @@ export const CutawayPiers: React.FC = () => {
     const draw = () => {
       const h = host.clientHeight;
       if (!h) return;
-      // The stone is older from the Dungeon Details lintel down.
-      const lintel = host.parentElement?.parentElement?.querySelector('.dungeon-lintel');
-      const oldFrom = lintel ? lintel.getBoundingClientRect().top - host.getBoundingClientRect().top : h;
+      // The stone is older from the mouth of the dungeon down (the box that
+      // holds everything from ENEMIES on).
+      const below = host.parentElement?.parentElement?.querySelector('.dungeon-below');
+      const oldFrom = below ? below.getBoundingClientRect().top - host.getBoundingClientRect().top : h;
       for (const [canvas, side] of [[leftRef.current, 'left'], [rightRef.current, 'right']] as const) {
         if (!canvas) continue;
         const ctx = prepCanvas(canvas, PIER_W, h, 0);

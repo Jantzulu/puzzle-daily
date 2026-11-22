@@ -18,6 +18,8 @@ import { SelectionStrip, SelectionDrawer } from './SelectionShape';
 import { useElementWidth, artGridSlotStyle } from '../../hooks/useElementWidth';
 import { subscribeToImageLoads } from '../../utils/imageLoader';
 import { playChromeSound } from '../../utils/chromeSounds';
+import { BeamTorch, CutawaySlab } from './CutawayWall';
+import { WALL_HEADER_GAP, WALL_ON } from './cutawayStone';
 
 // Every enemy/ally opens a drawer (its info panel always renders).
 const alwaysOpensDrawer = () => true;
@@ -180,7 +182,17 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
   // panel and the dungeon, with the label engraved on the stone.
   // Only the ENEMY instance draws it — it opens the whole section; the
   // ally instance renders below it as a sibling box.
-  const divider = noPanel && !isAllySide ? (
+  // THE `?wall=1` EXPERIMENT (cutawayStone.ts; user thought 2026-11-21:
+  // "I am almost wondering if 'Dungeon Details' should be removed as text
+  // and all the horizontal beams made of brick be standardized"): there the
+  // lintel and its words are gone, and ENEMIES is carved on a beam like
+  // every other title's, with one torch beside it (BeamTorch).
+  const wall = WALL_ON && noPanel;
+  const divider = wall ? (
+    // The room the beam needs above the title (the slab rises 8px over the
+    // header row); the groove is kept, unseen, so the ally box measures as before.
+    isAllySide ? <div className="dungeon-seam invisible" /> : <div aria-hidden="true" className="h-4" />
+  ) : noPanel && !isAllySide ? (
     <div className="dungeon-lintel mt-2 mb-2">
       <LintelMesh />
       {/* uppercase: the register pass (2026-08-01) — same treatment as the
@@ -211,7 +223,8 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
     const emptyContent = (
       <>
         {divider}
-        <div className="flex items-center justify-center mb-2">
+        <div className={`flex items-center justify-center ${wall ? `relative ${WALL_HEADER_GAP}` : 'mb-2'}`}>
+          {wall && <CutawaySlab />}
           <div className="relative flex items-center">
             <div className="absolute right-full mr-1">
               <HelpButton sectionId="enemies" className="!text-[#c9564a]" />
@@ -232,7 +245,8 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
       {divider}
 
       {/* Header row */}
-      <div className="relative flex items-center justify-between mb-2">
+      <div className={`relative flex items-center justify-between ${wall ? WALL_HEADER_GAP : 'mb-2'}`}>
+        {wall && <CutawaySlab old={isAllySide} />}
         <div className="flex items-center gap-2 min-w-[60px]">
           {showTestButton && onTest && (
             themeAssets.actionButtonTestEnemiesImage ? (
@@ -278,6 +292,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
           <h3 className={`carved-header ${isAllySide ? 'carved-header-parchment' : 'carved-header-blood'} font-medieval text-lg lg:text-xl uppercase whitespace-nowrap`}>
             {isAllySide ? 'Allies' : 'Enemies'}
           </h3>
+          {wall && <BeamTorch phase={isAllySide ? 500 : 0} />}
         </div>
         {/* Counter in the ramp's registers, matching the hero panel's
             "N/M placed": the count is a stat value (hud-num, tabular),

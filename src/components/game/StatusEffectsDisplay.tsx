@@ -5,8 +5,8 @@ import { getEnemy, type EnemyWithSprite } from '../../data/enemies';
 import { loadSpellAsset, loadStatusEffectAsset, loadCollectible, type CustomSprite } from '../../utils/assetStorage';
 import { SpriteThumbnail } from '../editor/SpriteThumbnail';
 import { HelpButton } from './HelpOverlay';
-import { CutawaySlab, WALL_HEADER_GAP } from './CutawayWall';
-import { WALL_ON } from './cutawayStone';
+import { BeamTorch, CutawaySlab } from './CutawayWall';
+import { WALL_HEADER_GAP, WALL_ON } from './cutawayStone';
 
 interface StatusEffectsDisplayProps {
   puzzle: Puzzle;
@@ -261,6 +261,7 @@ export const StatusEffectsDisplay: React.FC<StatusEffectsDisplayProps> = ({ puzz
               wraps and overflows onto the rows below — the uppercase pass
               pushed this one over the cap on phones. */}
           <h3 className="carved-header carved-header-mystic font-medieval text-lg lg:text-xl uppercase whitespace-nowrap">Status Effects</h3>
+          {wall && <BeamTorch phase={350} />}
         </div>
         {/* Counter in the ramp's registers, like the hero/enemy panels. */}
         <span className="flex items-baseline gap-1">

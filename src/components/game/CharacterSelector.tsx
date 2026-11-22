@@ -23,8 +23,8 @@ import { SelectionStrip, SelectionDrawer } from './SelectionShape';
 import placedBannerIcon from '../../assets/icons/placed-banner.png';
 import { useElementWidth, artGridSlotStyle } from '../../hooks/useElementWidth';
 import { subscribeToImageLoads } from '../../utils/imageLoader';
-import { CutawaySlab, WALL_HERO_Z, WALL_OVER_SLAB } from './CutawayWall';
-import { WALL_ON } from './cutawayStone';
+import { CutawaySlab } from './CutawayWall';
+import { WALL_HERO_Z, WALL_ON, WALL_OVER_SLAB } from './cutawayStone';
 
 const MOVEMENT_TYPES = new Set([
   'move_forward', 'move_backward', 'move_left', 'move_right',

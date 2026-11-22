@@ -3,8 +3,8 @@ import type { Puzzle, TileBehaviorConfig, CadenceConfig } from '../../types/game
 import { loadTileType, loadPuzzleSkin, type CustomTileType, type CustomSprite } from '../../utils/assetStorage';
 import { SpriteThumbnail } from '../editor/SpriteThumbnail';
 import { HelpButton } from './HelpOverlay';
-import { CutawaySlab, WALL_HEADER_GAP } from './CutawayWall';
-import { WALL_ON } from './cutawayStone';
+import { BeamTorch, CutawaySlab } from './CutawayWall';
+import { WALL_HEADER_GAP, WALL_ON } from './cutawayStone';
 
 interface SpecialTilesDisplayProps {
   puzzle: Puzzle;
@@ -255,6 +255,7 @@ export const SpecialTilesDisplay: React.FC<SpecialTilesDisplayProps> = ({ puzzle
           {/* nowrap: see StatusEffectsDisplay — the centered-title box caps
               at half the row and this title is nearly as wide. */}
           <h3 className="carved-header carved-header-rust font-medieval text-lg lg:text-xl uppercase whitespace-nowrap">Dungeon Tiles</h3>
+          {wall && <BeamTorch phase={1050} />}
         </div>
         {/* Counter in the ramp's registers, like the hero/enemy panels. */}
         <span className="flex items-baseline gap-1">

@@ -7,8 +7,8 @@ import { loadCollectible, loadSpellAsset, type CustomSprite, type CustomCollecti
 import { SpriteThumbnail } from '../editor/SpriteThumbnail';
 import { HelpButton } from './HelpOverlay';
 import { hasDeliverySchedule, deliveryRepeat } from '../../utils/deliverySchedule';
-import { CutawaySlab, WALL_HEADER_GAP } from './CutawayWall';
-import { WALL_ON } from './cutawayStone';
+import { BeamTorch, CutawaySlab } from './CutawayWall';
+import { WALL_HEADER_GAP, WALL_ON } from './cutawayStone';
 
 interface ItemsDisplayProps {
   puzzle: Puzzle;
@@ -245,6 +245,7 @@ export const ItemsDisplay: React.FC<ItemsDisplayProps> = ({ puzzle, className = 
             <HelpButton sectionId="items" className="!text-[#e8cc8a]" />
           </div>
           <h3 className="carved-header carved-header-parchment font-medieval text-lg lg:text-xl uppercase whitespace-nowrap">Items</h3>
+          {wall && <BeamTorch phase={700} />}
         </div>
         {/* Counter in the ramp's registers, like the hero/enemy panels. */}
         <span className="flex items-baseline gap-1">
