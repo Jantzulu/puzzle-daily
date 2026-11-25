@@ -2,7 +2,7 @@ import React from 'react';
 import { Z, prepCanvas, useCrispSnap } from './panelSkins';
 import {
   ARCH_H, ARCH_LIFT, FOUND_H, FOUND_STEP, PIER_STOP, PIER_TOP, PIER_W, PLATE_END_ART, PLATE_H, SLAB_H, WALL_TORCH_GAP, WALL_TORCH_HALF, drawArcade, drawFoundation,
-  WALL_PLATE_Z, drawNiches, drawPier, drawPlate, drawPlateDark, drawSetting, drawSlab, settingBox,
+  RAMPART_H, RAMPART_RISE_ART, WALL_HERO_Z, WALL_PLATE_Z, drawNiches, drawPier, drawPlate, drawPlateDark, drawRampart, drawRampartDark, drawSetting, drawSlab, settingBox,
 } from './cutawayStone';
 import type { PlateKind, SettingKind } from './cutawayStone';
 import { slotBoundaries } from '../../hooks/useElementWidth';
@@ -65,6 +65,50 @@ export const CutawaySlab: React.FC<{
     <div aria-hidden className="absolute pointer-events-none" style={{ left: -PIER_W, right: -PIER_W, top: `calc(50% - ${SLAB_H / 2}px)`, height: SLAB_H, zIndex: z }}>
       <div ref={snapRef} data-wall-beam className="relative w-full h-full">
         <canvas ref={canvasRef} style={{ position: 'absolute' }} />
+      </div>
+    </div>
+  );
+};
+
+/**
+ * THE RAMPART over the hero hall (cutawayStone.ts drawRampart): the hero
+ * hall is the part of the castle above ground, so its beam is the top of a
+ * castle wall: merlons along it, and at each end a tower standing higher,
+ * run on down the page's sides by the side walls. Mount it straight after
+ * the hero header's CutawaySlab. It stands over the board's dark foot, as
+ * the hero slab does, and has its own dark for what is above the beam (as
+ * a title plate has: the hero hall's dark begins at the beam).
+ */
+export const CutawayRampart: React.FC = () => {
+  const snapRef = useCrispSnap<HTMLDivElement>(true);
+  const canvasRef = React.useRef<HTMLCanvasElement>(null);
+  const darkRef = React.useRef<HTMLCanvasElement>(null);
+  React.useLayoutEffect(() => {
+    const host = snapRef.current;
+    const canvas = canvasRef.current;
+    const dark = darkRef.current;
+    if (!host || !canvas || !dark) return;
+    const draw = () => {
+      const w = host.clientWidth;
+      if (!w) return;
+      const ctx = prepCanvas(canvas, w, RAMPART_H, 0);
+      const dctx = prepCanvas(dark, w, RAMPART_H, 0);
+      if (!ctx || !dctx) return;
+      ctx.clearRect(0, 0, w, RAMPART_H);
+      drawRampart(ctx, w);
+      dctx.clearRect(0, 0, w, RAMPART_H);
+      drawRampartDark(dctx, w);
+    };
+    draw();
+    const ro = new ResizeObserver(draw);
+    ro.observe(host);
+    return () => ro.disconnect();
+  }, [snapRef]);
+  return (
+    <div aria-hidden className="absolute pointer-events-none" style={{ left: -PIER_W, right: -PIER_W, top: `calc(50% - ${SLAB_H / 2 + RAMPART_RISE_ART * Z}px)`, height: RAMPART_H, zIndex: WALL_HERO_Z }}>
+      <div ref={snapRef} className="relative w-full h-full">
+        <canvas ref={canvasRef} style={{ position: 'absolute' }} />
+        <canvas ref={darkRef} className="wall-plate-dark" style={{ position: 'absolute' }} />
       </div>
     </div>
   );

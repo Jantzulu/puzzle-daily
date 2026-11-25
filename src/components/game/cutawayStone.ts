@@ -270,13 +270,15 @@ export function drawSlab(ctx: CanvasRenderingContext2D, w: number, old = false):
 // past it each side, that stands PROUD of the beam, an art px above its
 // top and one below its foot at most, and how it does is the room's. Each
 // edge is ONE calm shape the length of the title:
-//   heroes   a CROWN: three broad, shallow lobes (allies too). It was a
-//            plain raised tab ("I think the heroes one could be slightly
-//            more interesting"), then a flat banner with forked ends,
-//            shown and not pushed ("I'm not a big fan of this shape, as
-//            the flat top and bottom read as boring against the beams").
-//            NO FLAT EDGES: a plate's top and foot must have a shape.
-//   enemies  horns: high at the two ends, low across the middle
+//   heroes, enemies, allies   HORNS: high at the two ends, low across
+//            the middle. The three ENTITY rooms share the one edge and
+//            differ by colour (user, 2026-11-24: "I very much prefer the
+//            'Enemies' plate VS the Heroes plate ... I dont think it would
+//            be a problem if the entities (heroes/enemies/allies) share
+//            plate shapes (the colors will still be different)"). The
+//            heroes' had been a raised tab, a flat banner with forked ends
+//            ("the flat top and bottom read as boring against the beams")
+//            and a crown of three arcs. NO FLAT EDGES on any plate.
 //   items    a stepped pediment, as a chest's lid
 //   status   a low arch, as a rune stone's head
 //   tiles    two slabs, one joint between them on the middle
@@ -336,11 +338,6 @@ export function plateRise(kind: PlateKind, x: number, bodyW: number): number {
   switch (kind) {
     case 'heroes':
     case 'allies':
-    {
-      // A crown: three broad arcs that meet at two points (the arcs twice as wide as the dips between them).
-      const arc = Math.abs(Math.sin((3 * Math.PI * (x + 0.5)) / bodyW));
-      return arc < 0.2 ? 0 : arc < 0.5 ? 1 : PLATE_LEVELS;
-    }
     case 'enemies':
       return c < bodyW / 6 ? 0 : c < bodyW / 3 ? 1 : 2; // horns: low across the middle third, stepping up to the ends
     case 'items':
@@ -796,25 +793,27 @@ export function drawPier(ctx: CanvasRenderingContext2D, side: 'left' | 'right', 
   };
   const stoneAt = (y: number) => (y >= oldFrom ? OLD : KEPT);
   const salt = side === 'left' ? 0 : 500;
-  const CORE_W = PIER_ART - 5; // outer line, rubble, then 1 mortar + 3 facing + 1 cut line
+  const CORE_W = PIER_ART - 5; // earth, then 1 mortar + 3 facing + 1 cut line
+  const ground = Math.max(0, Math.min(heightArt, oldFrom)); // the row the ground is at
 
-  // The rubble fill: rows three art px tall of small stones.
-  for (let row = 0, y = 0; y < heightArt; row++, y += 3) {
-    const s = stoneAt(y);
-    a(0, y, CORE_W + 1, 3, s.mortar);
+  // BELOW GROUND the rooms are dug into the earth: soil with a stone here
+  // and there, behind the lining of dressed blocks that faces the room.
+  for (let row = Math.floor(ground / 3), y = row * 3; y < heightArt; row++, y += 3) {
+    a(0, y, CORE_W + 1, 3, EARTH.soil[row % EARTH.soil.length]);
     let x = 1 - Math.floor(hash(salt + row * 3) * 3);
     for (let i = 0; x < CORE_W; i++) {
       const w = 2 + Math.floor(hash(salt + row * 31 + i * 7) * 3);
       const from = Math.max(1, x);
       const to = Math.min(CORE_W, x + w);
-      if (to > from) a(from, y, to - from, 2, pick(s.core, salt + row * 17 + i));
+      // (About two stones in five of the wall's old rubble: the rest is soil.)
+      if (to > from && hash(salt + row * 13 + i * 5) < 0.4) a(from, y, to - from, 2, pick(EARTH.stone, salt + row * 17 + i));
       x += w + 1;
     }
-    a(0, y, 1, 3, s.dark); // the outer edge of the cut (off-screen on a phone)
   }
 
-  // The facing blocks, and the line of the cut beside the room.
+  // The lining, and the line of the cut beside the room.
   for (const b of facingBlocks(heightArt, oldFrom, side)) {
+    if (b.y + b.h <= ground) continue; // above ground: the tower, below
     const s = stoneAt(b.y);
     const x = CORE_W + 1;
     a(CORE_W, b.y, 4, b.h + 1, s.mortar);
@@ -830,7 +829,141 @@ export function drawPier(ctx: CanvasRenderingContext2D, side: 'left' | 'right', 
     a(PIER_ART - 1, b.y, 1, b.h, side === 'right' ? s.cut : s.edgeLit);
   }
 
+  // ABOVE GROUND the side wall is a TOWER seen from outside (the hero hall
+  // is the part of the castle that stands above ground: cutawayStone's
+  // rampart, below), and the turf it stands in.
+  const raw = (ax: number, ay: number, aw: number, ah: number, color: string) => {
+    ctx.fillStyle = color;
+    ctx.fillRect(ax * Z, ay * Z, aw * Z, ah * Z);
+  };
+  if (ground > 0) {
+    towerShaft(raw, 0, 0, PIER_ART, ground, salt + 40);
+    // An arrow slit, where there is the height for one.
+    if (ground >= 24) {
+      const y = Math.floor(ground * 0.4);
+      raw(PIER_ART / 2 - 1, y, 2, 8, EARTH.slit);
+      raw(PIER_ART / 2 - 2, y + 3, 4, 1, EARTH.slit);
+    }
+    if (ground < heightArt) {
+      a(0, ground, CORE_W + 1, 1, EARTH.turf[0]);
+      a(0, ground + 1, CORE_W + 1, 1, EARTH.turf[1]);
+    }
+  }
+
   // (No fade at the foot: the wall stands on the foundation, drawn over its last stretch.)
+}
+
+// ---- above ground: the towers and the rampart ---------------------------------------------
+// User, 2026-11-24: "an edit to the heroes panel, to make it appear as
+// though it is the portion of a castle that is above ground, while where
+// the dungeon details start (enemies and below) are clearly underground.
+// This would play into the castle crossection idea ... making the sides
+// look like castle towers, and the top look like the top of a castle wall".
+// (In the cross-sections looked at for this, the part above ground has
+// round towers drawn from OUTSIDE at each side, flared and crenellated at
+// the top, with a battlemented wall between them; what is below ground is
+// rooms hollowed out of a solid mass.) So, from the heroes' beam up: a
+// TOWER at each end of it, standing higher than the wall, its head flared
+// out on corbels and crenellated; MERLONS along the top of the beam between
+// them. The towers run on down the page's sides to the ground (drawPier),
+// which is at the enemies' beam; from there down the sides are earth.
+
+/** Earth, turf, and the dark of an arrow slit. */
+const EARTH = {
+  soil: ['#1b140d', '#1f1710', '#17110b'],
+  stone: ['#2a2622', '#24201c', '#2e2a25'],
+  turf: ['#2f3d1d', '#1f2a14'],
+  slit: '#070605',
+};
+
+/** How far the towers stand above the top of the heroes' beam (art px), and the rampart's height (CSS px). */
+export const RAMPART_RISE_ART = 7;
+export const RAMPART_H = RAMPART_RISE_ART * Z + SLAB_H;
+/** A tower's head is this much wider than its shaft, towards the wall (art px): it stands out on corbels. */
+const TOWER_FLARE_ART = 2;
+/** The wall's merlons: this tall, this wide, this far apart (art px). */
+const MERLON_ART = { h: 3, w: 4, gap: 3 };
+
+type Fill = (ax: number, ay: number, aw: number, ah: number, color: string) => void;
+
+/** A tower's shaft seen from outside: courses of dressed stone, lit down its left side and in shade down its right (it is round). */
+function towerShaft(fill: Fill, x0: number, y0: number, w: number, rows: number, salt: number): void {
+  const s = KEPT;
+  fill(x0, y0, w, rows, s.mortar);
+  for (let c = 0, y = 0; y < rows; c++, y += 6) {
+    const h = Math.min(5, rows - y);
+    const shift = c % 2 ? 3 : 0; // running bond
+    for (const b of courseBlocks(w + 6, 6, salt + c * 29)) {
+      const from = Math.max(0, b.x - shift);
+      const to = Math.min(w, b.x + b.w - shift);
+      if (to <= from) continue;
+      fill(x0 + from, y0 + y, to - from, h, s.faces[b.tone]);
+      fill(x0 + from, y0 + y, to - from, 1, s.lit);
+    }
+  }
+  fill(x0, y0, 2, rows, 'rgba(255, 236, 205, 0.07)');
+  fill(x0 + w - 3, y0, 3, rows, 'rgba(0, 0, 0, 0.3)');
+  fill(x0 + w - 1, y0, 1, rows, 'rgba(0, 0, 0, 0.25)');
+}
+
+/**
+ * The first row of stone in each column of the rampart, ABOVE the beam
+ * (row 0 = the towers' tops; RAMPART_RISE_ART = the beam's own top row,
+ * meaning no stone above the beam in that column). `widthArt`: the beam's
+ * width, side walls included.
+ */
+export function rampartTops(widthArt: number): number[] {
+  const head = PIER_ART + TOWER_FLARE_ART;
+  return Array.from({ length: widthArt }, (_, x) => {
+    const fromEnd = Math.min(x, widthArt - 1 - x);
+    if (fromEnd < head) {
+      // A tower's head: three merlons over a parapet.
+      const merlon = fromEnd < 3 || (fromEnd >= 5 && fromEnd < 7) || fromEnd >= head - 3;
+      return merlon ? 0 : 2;
+    }
+    const c = Math.floor(Math.abs(x - (widthArt - 1) / 2)); // columns from the middle: a merlon on the middle
+    return (c + 2) % (MERLON_ART.w + MERLON_ART.gap) < MERLON_ART.w ? RAMPART_RISE_ART - MERLON_ART.h : RAMPART_RISE_ART;
+  });
+}
+
+/** Draw the rampart into a canvas `w` CSS px wide (the beam's width) and RAMPART_H tall; its foot is the beam's foot. */
+export function drawRampart(ctx: CanvasRenderingContext2D, w: number): void {
+  const s = KEPT;
+  const fill: Fill = (ax, ay, aw, ah, color) => {
+    if (aw <= 0 || ah <= 0) return;
+    ctx.fillStyle = color;
+    ctx.fillRect(ax * Z, ay * Z, aw * Z, ah * Z);
+  };
+  const widthArt = Math.ceil(w / Z);
+  const tops = rampartTops(widthArt);
+  const head = PIER_ART + TOWER_FLARE_ART;
+  const rows = RAMPART_RISE_ART + SLAB_ART;
+  // The towers' shafts, down through the beam's ends.
+  towerShaft(fill, 0, 5, PIER_ART, rows - 5, 77);
+  towerShaft(fill, widthArt - PIER_ART, 5, PIER_ART, rows - 5, 191);
+  for (let x = 0; x < widthArt; x++) {
+    const fromEnd = Math.min(x, widthArt - 1 - x);
+    if (fromEnd < head) {
+      // A tower's head: merlons (rows 0-1), the parapet (2-3), and the corbels it stands out on (4).
+      if (tops[x] === 0) { fill(x, 0, 1, 2, s.faces[1]); fill(x, 0, 1, 1, s.lit); }
+      fill(x, 2, 1, 2, s.faces[2]);
+      fill(x, 2, 1, 1, s.lit);
+      fill(x, 4, 1, 1, fromEnd % 2 ? s.mortar : s.faces[0]);
+    } else if (tops[x] < RAMPART_RISE_ART) {
+      // A merlon of the wall: lit on top, in shade down its right side.
+      fill(x, tops[x], 1, MERLON_ART.h, s.faces[0]);
+      fill(x, tops[x], 1, 1, s.lit);
+      if (tops[x + 1] === RAMPART_RISE_ART) fill(x, tops[x] + 1, 1, MERLON_ART.h - 1, s.dark);
+    }
+  }
+}
+
+/** The room's dark over what of the rampart stands above the beam (as drawPlateDark, for the same reason). */
+export function drawRampartDark(ctx: CanvasRenderingContext2D, w: number): void {
+  ctx.fillStyle = 'rgba(6, 5, 4, 0.68)';
+  rampartTops(Math.ceil(w / Z)).forEach((top, x) => {
+    if (top < RAMPART_RISE_ART) ctx.fillRect(x * Z, top * Z, Z, (RAMPART_RISE_ART - top) * Z);
+  });
 }
 
 // ---- the foundation ---------------------------------------------------------------------

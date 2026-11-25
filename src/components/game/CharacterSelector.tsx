@@ -23,7 +23,7 @@ import { SelectionStrip, SelectionDrawer } from './SelectionShape';
 import placedBannerIcon from '../../assets/icons/placed-banner.png';
 import { useElementWidth, artGridSlotStyle } from '../../hooks/useElementWidth';
 import { subscribeToImageLoads } from '../../utils/imageLoader';
-import { BeamTapHint, BeamTorch, CutawayPlate, CutawaySlab, WallColumns, WallDark } from './CutawayWall';
+import { BeamTapHint, BeamTorch, CutawayPlate, CutawayRampart, CutawaySlab, WallColumns, WallDark } from './CutawayWall';
 import { WALL_HEADER_GAP, WALL_HERO_Z, WALL_ON, WALL_OVER_SLAB, WALL_ROW, type WallBelow } from './cutawayStone';
 
 const MOVEMENT_TYPES = new Set([
@@ -423,6 +423,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
       <div ref={questHeaderRef} className={`relative flex items-center justify-between ${wall ? `${WALL_HEADER_GAP} ${WALL_ROW}` : questSlot ? 'mb-3' : 'mb-2'}`}>
         {/* The `?wall=1` experiment: the hero hall's stone ceiling, behind the title. */}
         {wall && <CutawaySlab z={WALL_HERO_Z} />}
+        {wall && <CutawayRampart />}
         {wall && <CutawayPlate kind="heroes" z={WALL_HERO_Z} />}
         {questSlot && <span data-quest-slot aria-hidden="true" className="quest-mini-slot" style={{ width: questGap }} />}
         <div className={`flex items-center gap-2 min-w-[60px] ${wall ? WALL_OVER_SLAB : ''}`}>

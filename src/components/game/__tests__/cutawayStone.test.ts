@@ -5,6 +5,7 @@ import {
   PASSAGE_RIBS_ART, archOpening, nicheSpan, passageDepth,
   WALL_ENTRY, settingBox,
   PLATE_H, PLATE_RISE_ART, plateColumn, plateRise,
+  RAMPART_H, RAMPART_RISE_ART, rampartTops,
 } from '../cutawayStone';
 import type { PlateKind } from '../cutawayStone';
 
@@ -204,10 +205,22 @@ describe('the cutaway wall', () => {
       expect(new Set(cols.slice(3, w - 3).map(c => c.top)).size).toBeGreaterThan(1);
       expect(Math.min(...cols.map(c => c.top))).toBe(0); // and somewhere it stands the whole rise proud
     }
-    // No two rooms have the same edge; the allies share the heroes'.
+    // The three entity rooms share one edge; the others each have their own.
     const edge = (kind: PlateKind) => Array.from({ length: 54 }, (_, x) => plateRise(kind, x, 54)).join('');
-    const rooms: PlateKind[] = ['heroes', 'enemies', 'items', 'status', 'tiles'];
+    const rooms: PlateKind[] = ['enemies', 'items', 'status', 'tiles'];
     expect(new Set(rooms.map(edge)).size).toBe(rooms.length);
-    expect(edge('allies')).toBe(edge('heroes'));
+    expect(edge('heroes')).toBe(edge('enemies'));
+    expect(edge('allies')).toBe(edge('enemies'));
+  });
+
+  it('tops the hero hall with a rampart: a tower at each end standing higher than the merlons between', () => {
+    expect(RAMPART_H).toBe(RAMPART_RISE_ART * 2 + SLAB_H);
+    const tops = rampartTops(195);
+    tops.forEach((top, x) => expect(top).toBe(tops[tops.length - 1 - x])); // the same both sides
+    expect(tops[0]).toBe(0); // a tower's merlon reaches the very top
+    const wall = tops.slice(PIER_ART + 2, tops.length - PIER_ART - 2);
+    expect(Math.min(...wall)).toBeGreaterThan(0); // the wall's merlons stand lower than the towers
+    expect(Math.min(...wall)).toBeLessThan(RAMPART_RISE_ART); // but there are merlons
+    expect(wall).toContain(RAMPART_RISE_ART); // and gaps between them
   });
 });
