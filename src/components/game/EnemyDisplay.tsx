@@ -385,7 +385,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
               } ${allDead ? 'opacity-50' : scheduledOnly ? 'opacity-60' : ''}`}
             >
               {/* Sprite — takes full card width, uniform height across the row */}
-              <div className={`relative w-full ${wall ? WALL_CARD.sprite : ''}`}>
+              <div className={`w-full ${wall ? WALL_CARD.sprite : 'relative'}`}>
                 <SpriteThumbnail
                   sprite={enemyData.customSprite}
                   size={cardSpriteHeight}
@@ -400,8 +400,10 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
                 {totalCount > 1 && (
                   // top-0.5 right-0: 4px in from the card's top and right
                   // edges, inside the selection outline's 2px line — the
-                  // hero card's compass sits on the same spot.
-                  <span className="absolute top-0.5 right-0 text-xs bg-blood-900 text-blood-300 px-1 py-0.5 rounded-pixel min-w-[18px] text-center border border-blood-700 leading-none">
+                  // hero card's compass sits on the same spot. (In the wall
+                  // the sprite is at the card's foot and the count stays at
+                  // its top, on the arch's shoulder: WALL_CARD.count.)
+                  <span className={`absolute ${wall ? WALL_CARD.count : 'top-0.5 right-0'} text-xs bg-blood-900 text-blood-300 px-1 py-0.5 rounded-pixel min-w-[18px] text-center border border-blood-700 leading-none`}>
                     {totalCount}
                   </span>
                 )}

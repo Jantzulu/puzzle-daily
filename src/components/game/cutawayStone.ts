@@ -178,7 +178,14 @@ export const WALL_ROW = 'min-h-[20px]';
 // here (a name and an epithet take 30), so a row of cards is 2px taller
 // than before the card was turned over.
 // (mt-auto: a card stretched by a taller neighbour still has its sprite at its foot.)
-export const WALL_CARD = { card: 'pb-1.5', sprite: 'order-last mt-auto pt-1', name: 'h-[34px]' } as const;
+// THE ENEMIES' COUNT stays at the TOP of its card (user: "the enemy counter
+// looks best when above, would it always cut off?"): in the card's top
+// right corner, but 8px ABOVE the card's top, on the shoulder of its arch,
+// so it is over the line the names are written on and no name, however
+// long, runs under it (at the card's own top it lay over the end of any
+// name of seven letters or more on a four-card strip). `count` places it
+// against the CARD, so the enemies' sprite block must not be `relative`.
+export const WALL_CARD = { card: 'pb-1.5', sprite: 'order-last mt-auto pt-1', name: 'h-[34px]', count: '-top-2 right-0.5 z-[1]' } as const;
 /**
  * A list's two columns on a wide screen, in the wall (Tailwind classes): a
  * GRID, not the CSS columns the lists use otherwise. In CSS columns an
@@ -375,13 +382,26 @@ export function plateRise(kind: PlateKind, x: number, bodyW: number): number {
   }
 }
 
+/**
+ * THE ENTITY ROOMS' PLATES STAY INSIDE THEIR BEAM (heroes, enemies, allies):
+ * a strip of cards hangs right under such a beam and another stands right
+ * on it, so a plate standing proud lay over what is at the cards' edges:
+ * the enemies' counts at the top of their cards, the feet of the heroes
+ * above (user, 2026-11-24: "can we reduce the height of entity plates so
+ * they dont overlap these elements?"). Their edge is the same shape, one
+ * art px further in: its highest level is flush with the beam's edge. The
+ * list rooms' plates, with nothing against their beams, still stand one
+ * proud.
+ */
+export const plateProud = (kind: PlateKind): number => (kind === 'items' || kind === 'status' || kind === 'tiles' ? PLATE_RISE_ART : 0);
+
 /** The first and last art row of the plate at column `x` (0 = its top row, PLATE_RISE_ART above the beam's). */
 export function plateColumn(kind: PlateKind, x: number, widthArt: number): { top: number; bottom: number } {
   const last = SLAB_ART + 2 * PLATE_RISE_ART - 1;
   const fromEnd = Math.min(x, widthArt - 1 - x);
   const back = fromEnd < PLATE_END_ART
     ? PLATE_RISE_ART + PLATE_TAPER[fromEnd]
-    : PLATE_LEVELS - plateRise(kind, x - PLATE_END_ART, widthArt - 2 * PLATE_END_ART);
+    : PLATE_RISE_ART - plateProud(kind) + PLATE_LEVELS - plateRise(kind, x - PLATE_END_ART, widthArt - 2 * PLATE_END_ART);
   return { top: back, bottom: last - back };
 }
 

@@ -4,7 +4,7 @@ import {
   BEDROCK_ART, FOOTING_LOWER_ART, FOOTING_UPPER_ART, FOUND_H, archInset, archOutline, bedrock, courseBlocks, facingBlocks, slabBlocks,
   PASSAGE_RIBS_ART, archOpening, nicheSpan, passageDepth,
   WALL_ENTRY, settingBox,
-  PLATE_H, PLATE_RISE_ART, plateColumn, plateRise,
+  PLATE_H, PLATE_RISE_ART, plateColumn, plateProud, plateRise,
   RAMPART_H, RAMPART_RISE_ART, rampartTops,
 } from '../cutawayStone';
 import type { PlateKind } from '../cutawayStone';
@@ -203,7 +203,9 @@ describe('the cutaway wall', () => {
       expect(cols[0].top).toBeGreaterThan(PLATE_RISE_ART); // a blunt point inside the beam at each end
       // No flat edges: every plate's top has more than one level.
       expect(new Set(cols.slice(3, w - 3).map(c => c.top)).size).toBeGreaterThan(1);
-      expect(Math.min(...cols.map(c => c.top))).toBe(0); // and somewhere it stands the whole rise proud
+      // Somewhere a list room's plate stands the whole rise proud; an entity room's is never proud of its beam.
+      expect(Math.min(...cols.map(c => c.top))).toBe(PLATE_RISE_ART - plateProud(kind));
+      expect(plateProud(kind)).toBe(kind === 'items' || kind === 'status' || kind === 'tiles' ? PLATE_RISE_ART : 0);
     }
     // The three entity rooms share one edge; the others each have their own.
     const edge = (kind: PlateKind) => Array.from({ length: 54 }, (_, x) => plateRise(kind, x, 54)).join('');
