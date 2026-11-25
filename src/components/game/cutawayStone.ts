@@ -154,6 +154,19 @@ export const WALL_TORCH_HALF = 16;
  */
 export const WALL_ROW = 'min-h-[20px]';
 /**
+ * A TRIAL (user, 2026-11-24: "lets try inverting the position of the names
+ * and sprites like you said, just to see"): in the wall a hero's or enemy's
+ * card is turned over, the name and the stat line on top and the SPRITE
+ * LAST, standing on the room's floor (the beam below, or the narrow floor
+ * over an open drawer: both are 4px above the strip's foot, hence pb-1).
+ * In every cross-section looked at, a figure stands on a floor; with the
+ * sprite at the top of its card it hung in the air. Tailwind classes for
+ * the card and for its sprite block. index.css moves the compass's tap
+ * target down with the sprite (.wall-on .hero-aim).
+ */
+// (mt-auto: a card stretched by a taller neighbour still has its sprite at its foot.)
+export const WALL_CARD = { card: 'pb-1', sprite: 'order-last mt-auto' } as const;
+/**
  * A list's two columns on a wide screen, in the wall (Tailwind classes): a
  * GRID, not the CSS columns the lists use otherwise. In CSS columns an
  * entry's setting (an absolutely placed canvas) was drawn where the entry

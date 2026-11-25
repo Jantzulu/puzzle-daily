@@ -19,7 +19,7 @@ import { useElementWidth, artGridSlotStyle } from '../../hooks/useElementWidth';
 import { subscribeToImageLoads } from '../../utils/imageLoader';
 import { playChromeSound } from '../../utils/chromeSounds';
 import { BeamTapHint, BeamTorch, CutawayPlate, CutawaySlab, WallColumns, WallDark } from './CutawayWall';
-import { WALL_ABOVE_BEAM, WALL_HEADER_GAP, WALL_ON, WALL_OVER_PLATE, WALL_ROW, type WallBelow } from './cutawayStone';
+import { WALL_ABOVE_BEAM, WALL_CARD, WALL_HEADER_GAP, WALL_ON, WALL_OVER_PLATE, WALL_ROW, type WallBelow } from './cutawayStone';
 
 // Every enemy/ally opens a drawer (its info panel always renders).
 const alwaysOpensDrawer = () => true;
@@ -374,7 +374,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
               // min-w-0: a card can never be widened by its own content (a
               // long name, a visit line), so the slots stay equal and on the
               // boundaries the selection shape and the posts use.
-              className={`flex-1 min-w-0 flex flex-col items-center px-1 pt-0.5 pb-2 relative transition-colors cursor-pointer ${
+              className={`flex-1 min-w-0 flex flex-col items-center px-1 pt-0.5 ${wall ? WALL_CARD.card : 'pb-2'} relative transition-colors cursor-pointer ${
                 isSelected
                   // No background of its own: the selected look is the
                   // selection shape laid under the row (SelectionShape) —
@@ -385,7 +385,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
               } ${allDead ? 'opacity-50' : scheduledOnly ? 'opacity-60' : ''}`}
             >
               {/* Sprite — takes full card width, uniform height across the row */}
-              <div className="relative w-full">
+              <div className={`relative w-full ${wall ? WALL_CARD.sprite : ''}`}>
                 <SpriteThumbnail
                   sprite={enemyData.customSprite}
                   size={cardSpriteHeight}

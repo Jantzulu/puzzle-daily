@@ -24,7 +24,7 @@ import placedBannerIcon from '../../assets/icons/placed-banner.png';
 import { useElementWidth, artGridSlotStyle } from '../../hooks/useElementWidth';
 import { subscribeToImageLoads } from '../../utils/imageLoader';
 import { BeamTapHint, BeamTorch, CutawayPlate, CutawayRampart, CutawaySlab, WallColumns, WallDark } from './CutawayWall';
-import { WALL_HEADER_GAP, WALL_HERO_Z, WALL_ON, WALL_OVER_SLAB, WALL_ROW, type WallBelow } from './cutawayStone';
+import { WALL_CARD, WALL_HEADER_GAP, WALL_HERO_Z, WALL_ON, WALL_OVER_SLAB, WALL_ROW, type WallBelow } from './cutawayStone';
 
 const MOVEMENT_TYPES = new Set([
   'move_forward', 'move_backward', 'move_left', 'move_right',
@@ -610,7 +610,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
               // widened by its own content (a long name, a stat line with
               // the compass), so the slots stay equal and on the boundaries
               // the selection shape and the posts use.
-              className={`flex-1 min-w-0 flex flex-col items-center px-1 pt-0.5 pb-2 relative transition-colors ${
+              className={`flex-1 min-w-0 flex flex-col items-center px-1 pt-0.5 ${wall ? WALL_CARD.card : 'pb-2'} relative transition-colors ${
                 showUsed
                   // After a win: the heroes who fought at full strength,
                   // the ones left on the bench dimmed.
@@ -634,8 +634,10 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                   : 'unit-card-glow cursor-pointer'
               }`}
             >
-              {/* Sprite — takes full card width, uniform height across the row */}
-              <div className="relative w-full">
+              {/* Sprite — takes full card width, uniform height across the row.
+                  (In the wall it comes LAST: the hero stands on the room's
+                  floor, the name over its head. WALL_CARD.) */}
+              <div className={`relative w-full ${wall ? WALL_CARD.sprite : ''}`}>
                 {/* THE PLACED DIM IS OPACITY ON A WRAPPER, NEVER A FILTER ON
                     THE CANVAS. SpriteThumbnail drives a requestAnimationFrame
                     loop whose phases key off `cardPlaced`, so a CSS filter

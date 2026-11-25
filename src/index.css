@@ -4934,6 +4934,14 @@ button.dir-picker__tab:not(.dir-picker__tab--active) .dir-picker__tab-text {
 /* A title plate's own dark, over the part of it that stands above its beam
    (CutawayWall CutawayPlate): faded with the room's torch exactly as the
    room's own dark is. */
+/* THE CARD TURNED OVER (the trial: cutawayStone.ts WALL_CARD): the sprite
+   block is last in a hero's card, under the name box (38px) and the stat
+   line (14px) and the card's 2px of top padding, and the compass is painted
+   in that block's corner: its tap target goes down with it. */
+.wall-on .hero-aim {
+  top: 54px;
+}
+
 .wall-plate-dark {
   opacity: 0;
   transition: opacity 0.9s ease-out;
