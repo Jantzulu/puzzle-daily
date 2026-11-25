@@ -604,6 +604,8 @@ const PASSAGE_WALL = [0.26, 0.11];
 const PASSAGE_RIB = [0.6, 0.3];
 /** The room's dark (index.css .wall-ground). */
 const GROUND = '#0d0a09';
+/** How wide a niche's reveal is in the hero hall (art px): the arcade's own thickness. */
+const NICHE_REVEAL_ART = 2;
 
 /**
  * The opening on art row `y` of a cutout (0 = the arcade's top row, the
@@ -643,14 +645,13 @@ function mix(a: string, b: string, t: number): string {
  * Draw what is behind an arcade into a canvas `w` CSS px wide and `h`
  * tall, whose top is the arcade's top. `edges` as for drawArcade. Under
  * ground: the passages (only the pixels near a mouth's edge are painted,
- * the middle is left clear). With `sky` (the hero hall): windows onto the
- * dusk, each with its reveal.
+ * the middle is left clear). With `hall` (the hero hall, above ground): the
+ * room's back wall, with a loop cut in it behind each hero.
  */
-export function drawNiches(ctx: CanvasRenderingContext2D, w: number, h: number, edges: readonly number[], old = false, sky = false): void {
+export function drawNiches(ctx: CanvasRenderingContext2D, w: number, h: number, edges: readonly number[], old = false, hall = false): void {
   const s = old ? OLD : KEPT;
   const stone = s.faces[2];
   const rows = Math.floor(h / Z);
-  const widthArt = Math.ceil(w / Z);
   const last = PASSAGE_RIBS_ART[PASSAGE_RIBS_ART.length - 1];
   const px = (ax: number, ay: number, color: string) => {
     ctx.fillStyle = color;
@@ -663,15 +664,16 @@ export function drawNiches(ctx: CanvasRenderingContext2D, w: number, h: number, 
     for (let y = ARCH_BAND_ART; y < rows; y++) {
       const span = nicheSpan(open, y);
       if (!span) continue;
-      if (sky) {
-        const win = heroWindow(open, rows);
+      if (hall) {
         for (let x = span[0]; x < span[1]; x++) {
-          const { depth, lit } = passageDepth(open, x, y, WINDOW_REVEAL_ART);
+          const { depth, lit } = passageDepth(open, x, y, NICHE_REVEAL_ART);
           // The niche's reveal (the arcade's own thickness, its right-hand face lit); then
-          // the room's back wall, and the window in it.
-          px(x0 + x, y, depth < WINDOW_REVEAL_ART
+          // the room's back wall, and the loop cut in it.
+          px(x0 + x, y, depth < NICHE_REVEAL_ART
             ? (lit ? s.edgeLit : depth === 0 ? s.dark : s.core[0])
-            : windowColor(win, x, y, x0, widthArt) ?? backWallColor(x0 + x, y));
+            : inLoop(HERO_LOOP, open, x, y) ? LOOP_DARK
+              : inLoop(HERO_LOOP, open, x - 1, y) || inLoop(HERO_LOOP, open, x, y - 1) ? LOOP_EDGE
+                : backWallColor(x0 + x, y));
         }
         continue;
       }
@@ -688,48 +690,33 @@ export function drawNiches(ctx: CanvasRenderingContext2D, w: number, h: number, 
   }
 }
 
-// ---- the hero hall: a back wall, and a window onto the dusk in it ------------------------
-// The hero hall is above ground (the rampart, below). User, 2026-11-24, of
-// my niche ideas: "id like to see the windows, maybe lets do dusk!" FIRST
-// BUILD, NOT TO BE REPEATED: the whole of each arch opened onto the sky.
-// The user: "as beautiful as that is, it doesnt really make that much
-// sense. Maybe if there were windows behind them with the sky seen through
-// the windows? They can once again appear to be in a building, maybe even
-// with brick now that they wont be floating". So behind each hero there is
-// the room's BACK WALL of stone courses (the brick wall of (96) made the
-// sprites float when they hung at the top of their cards; they stand on
-// the floor now), and in it one WINDOW: round-headed, with a stone
-// surround and sill and a cross of glazing bars, as wide as the card
-// allows, behind the name and reaching down to about the hero's head.
-// Through every window is the SAME sky (x is counted along the strip):
-// deep blue at the top through purple to a warm line at the horizon, a
-// few stars, and two lines of far hills along the window's foot. Kept
-// dark: names and numbers are read on it.
+// ---- the hero hall: a back wall, and a loop cut in it ----------------------------------
+// The hero hall is above ground (the rampart, below), and a ROOM: behind
+// each hero is its back wall of stone courses (the brick wall of (96) made
+// the sprites float when they hung at the top of their cards; they stand
+// on the floor now, and the user: "They can once again appear to be in a
+// building, maybe even with brick now that they wont be floating").
+// What is cut in that wall has been tried three ways, the first two NOT TO
+// BE REPEATED: the whole arch open to a dusk sky ("as beautiful as that
+// is, it doesnt really make that much sense"); a round-headed, cross-barred
+// window with the sky seen through it ("the window is a bit distracting.
+// Maybe having just the black window cutouts (like the cross shape on the
+// castle tower) is better"). So: BLACK CUTOUTS, arrow loops as the towers
+// have. A PAIR per hero, one each side, beside the name and the stat line:
+// a single loop in the middle (the first try) was simply hidden behind the
+// name, and the middle of a card is taken from top to foot (name, stat
+// line, sprite). The wall is nearly as dark as the cutout, so each loop
+// has a thin lit edge down its right side and along its foot, where the
+// light from the top left catches the stone it is cut through. The shapes
+// to choose from are LOOPS; HERO_LOOP is the one in use.
 
-/** The sky's bands, top to bottom: how far down the window each ends (a share of its height) and its colour. */
-const SKY_BANDS: ReadonlyArray<readonly [number, string]> = [
-  [0.3, '#11132b'],
-  [0.5, '#1a1736'],
-  [0.66, '#27193c'],
-  [0.8, '#3a1f3f'],
-  [0.9, '#55283c'],
-  [0.96, '#73363a'],
-  [1, '#8f4a38'],
-];
-const SKY_STAR = ['#77749a', '#b9b5d6'];
-/** The far hills and the nearer, darker ones. */
-const SKY_HILLS = ['#2a1a33', '#150f1d'];
-/** How wide a niche's reveal is (art px). */
-const WINDOW_REVEAL_ART = 2;
-/** The hero hall's back wall: far back, so dim, but a wall (the passages under ground have none). */
-// (A step darker than first built: the user, "the back wall could maybe be darkened more".)
-const BACK_WALL = { mortar: '#0a0807', faces: ['#15110e', '#17130f', '#130f0d'], lit: '#1b1612' };
+/** The hero hall's back wall: far back, so dim. (Darkened twice at the user's word: "the bricks could be a little darker".) */
+const BACK_WALL = { mortar: '#080605', faces: ['#110e0b', '#130f0c', '#0f0c0a'], lit: '#161210' };
 const BACK_COURSE_ART = 7;
 const BACK_BLOCK_ART = 15;
-/** A window's widest, the stone left each side of it at least, and how far its head is rounded in on its top rows (art px). */
-const WINDOW_MAX_W_ART = 22;
-const WINDOW_SIDE_ART = 7;
-const WINDOW_HEAD = [5, 3, 2, 1];
+/** The black of a cutout, and the edge of the stone it is cut through where the light catches it. */
+const LOOP_DARK = '#020202';
+const LOOP_EDGE = '#2a231d';
 
 /** The back wall's colour at an art pixel (x along the whole strip: one wall behind the arcade). */
 export function backWallColor(x: number, y: number): string {
@@ -742,61 +729,40 @@ export function backWallColor(x: number, y: number): string {
   return BACK_WALL.faces[Math.floor(hash(Math.floor(along / BACK_BLOCK_ART) * 13 + course * 7) * 3) % 3];
 }
 
-/** A hero's window: its left and right columns (art px from the card's left edge) and its top and foot rows. */
-export interface HeroWindow { left: number; right: number; top: number; foot: number }
-
-/** Where the window is in a card's back wall, for a niche `rows` art px tall: centred, under the arch's crown. */
-export function heroWindow(open: { left: number; right: number }, rows: number): HeroWindow {
-  const width = Math.max(8, Math.min(WINDOW_MAX_W_ART, open.right - open.left - 2 * WINDOW_SIDE_ART));
-  const left = Math.round((open.left + open.right) / 2 - width / 2);
-  return { left, right: left + width, top: ARCH_BAND_ART + 4, foot: Math.floor(rows * 0.56) };
-}
-
-/** Is this art pixel glass (or a glazing bar): inside the window's round-headed opening? */
-function inWindow(win: HeroWindow, x: number, y: number): boolean {
-  if (y < win.top || y >= win.foot) return false;
-  const round = Math.min(WINDOW_HEAD[y - win.top] ?? 0, Math.floor((win.right - win.left) / 2) - 2);
-  return x >= win.left + round && x < win.right - round;
-}
-
 /**
- * The colour of a hero's window at an art pixel of its card (x, y), or
- * null where the wall is plain. `x0`: the card's left edge along the strip.
+ * MEDIEVAL CUTOUTS, as rows of art pixels (X = cut through): the openings a
+ * castle wall really has, small enough for a card.
+ *   slit      the plain arrow loop
+ *   cross     the cross loop (crosslet): the towers' own
+ *   oillets   a cross loop whose arms end in round holes
+ *   keyhole   a slit with a round hole at its foot (for a gun)
+ *   lancet    a narrow window with a pointed head
+ *   twin      two lancets under a small diamond light
+ *   quatrefoil  a four-lobed light
  */
-function windowColor(win: HeroWindow, x: number, y: number, x0: number, widthArt: number): string | null {
-  // The sill: two rows under the opening, a pixel wider each side, its top lit.
-  if ((y === win.foot || y === win.foot + 1) && x >= win.left - 1 && x < win.right + 1) return y === win.foot ? KEPT.lit : KEPT.faces[0];
-  if (!inWindow(win, x, y)) {
-    // The surround: one art px of dressed stone round the opening.
-    const beside = inWindow(win, x - 1, y) || inWindow(win, x + 1, y) || inWindow(win, x, y + 1) || inWindow(win, x - 1, y + 1) || inWindow(win, x + 1, y + 1);
-    return beside ? KEPT.faces[2] : null;
-  }
-  // The glazing bars: an upright up the middle and a bar across, a little above half way.
-  const mid = Math.floor((win.left + win.right) / 2);
-  const bar = win.top + Math.round((win.foot - win.top) * 0.42);
-  if (x === mid || y === bar) return KEPT.dark;
-  // The wall's own shadow on the glass, along its head and its left side.
-  if (!inWindow(win, x - 1, y) || !inWindow(win, x, y - 1)) return '#0a0b1a';
-  return skyColor(x0 + x, y - win.top, win.foot - win.top, widthArt);
-}
+export const LOOPS = {
+  slit: ['XX', 'XX', 'XX', 'XX', 'XX', 'XX', 'XX', 'XX', 'XX', 'XX', 'XX', 'XX'],
+  cross: ['..XX..', '..XX..', '..XX..', '..XX..', 'XXXXXX', '..XX..', '..XX..', '..XX..', '..XX..', '..XX..', '..XX..', '..XX..'],
+  oillets: ['..XXXX..', '..XXXX..', '...XX...', '...XX...', 'XX.XX.XX', 'XXXXXXXX', 'XX.XX.XX', '...XX...', '...XX...', '...XX...', '..XXXX..', '..XXXX..'],
+  keyhole: ['.XX.', '.XX.', '.XX.', '.XX.', '.XX.', '.XX.', '.XX.', '.XX.', 'XXXX', 'XXXX', 'XXXX', '.XX.'],
+  lancet: ['.XX.', 'XXXX', 'XXXX', 'XXXX', 'XXXX', 'XXXX', 'XXXX', 'XXXX', 'XXXX', 'XXXX', 'XXXX', 'XXXX'],
+  twin: ['....X....', '...XXX...', '....X....', '.........', '.X.....X.', 'XXX...XXX', 'XXX...XXX', 'XXX...XXX', 'XXX...XXX', 'XXX...XXX', 'XXX...XXX', 'XXX...XXX'],
+  quatrefoil: ['.XX.XX.', 'XXXXXXX', 'XXXXXXX', '.XXXXX.', 'XXXXXXX', 'XXXXXXX', '.XX.XX.'],
+} as const;
+export type LoopKind = keyof typeof LOOPS;
+/** The cutout behind each hero. */
+export const HERO_LOOP: LoopKind = 'cross';
+/** How far under the arcade's top a cutout begins (art px): under where the arch springs, beside the hero's name. */
+const LOOP_TOP_ART = ARCH_BAND_ART + ARCH_RISE_ART + 2;
+/** How far in from each side of the niche a cutout stands (art px). */
+const LOOP_SIDE_ART = 4;
 
-/** The sky's colour at an art pixel of a window `rows` tall (x counted along the whole strip: one sky). */
-export function skyColor(x: number, y: number, rows: number, widthArt: number): string {
-  const up = rows - 1 - y; // art px above the window's foot
-  // Hills: two soft ridges, the nearer one lower and darker.
-  const far = 5 + Math.round(2.4 * Math.sin(x * 0.085 + 0.7) + 1.4 * Math.sin(x * 0.21 + 2));
-  const near = 2 + Math.round(1.6 * Math.sin(x * 0.13 + 4) + 1.1 * Math.sin(x * 0.31));
-  if (up < near) return SKY_HILLS[1];
-  if (up < far) return SKY_HILLS[0];
-  // Stars, high in the sky only, and few (about one pixel in two hundred):
-  // at one in ninety they sat among the letters of the names like stray dots.
-  if (y < rows * 0.42 && hash(x * 31 + y * 577 + widthArt) < 0.005) return SKY_STAR[hash(x + y * 7) < 0.3 ? 1 : 0];
-  const f = (y + 0.5) / rows;
-  const k = SKY_BANDS.findIndex(([end]) => f <= end);
-  // One dithered row where a band gives way to the next.
-  const nextRow = (y + 1.5) / rows;
-  const into = k + 1 < SKY_BANDS.length && nextRow > SKY_BANDS[k][0] && (x + y) % 2 === 0;
-  return SKY_BANDS[into ? k + 1 : Math.max(0, k)][1];
+/** Is this art pixel of a card (x from its left edge, y from the arcade's top) cut through? One loop each side of the niche. */
+export function inLoop(kind: LoopKind, open: { left: number; right: number }, x: number, y: number): boolean {
+  const shape = LOOPS[kind];
+  const row = shape[y - LOOP_TOP_ART];
+  if (!row) return false;
+  return row[x - (open.left + LOOP_SIDE_ART)] === 'X' || row[x - (open.right - LOOP_SIDE_ART - row.length)] === 'X';
 }
 
 // ---- the list rooms: a setting for every entry ---------------------------------------------

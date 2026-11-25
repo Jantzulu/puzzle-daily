@@ -251,9 +251,9 @@ export const WallColumns: React.FC<{
   openIndex?: number;
   /** The colder stone from under the hero hall. */
   old?: boolean;
-  /** The hero hall: the arches are windows onto the dusk (cutawayStone.ts skyColor), not passages. */
-  sky?: boolean;
-}> = ({ slotCount, width, below, openIndex = -1, old = false, sky = false }) => {
+  /** The hero hall: behind the arches is the room's back wall with a loop cut in it (cutawayStone.ts), not passages. */
+  hall?: boolean;
+}> = ({ slotCount, width, below, openIndex = -1, old = false, hall = false }) => {
   const snapRef = useCrispSnap<HTMLDivElement>(true);
 
   // With nothing under the cards: has a beam come up to the columns' feet?
@@ -307,13 +307,13 @@ export const WallColumns: React.FC<{
       const ctx = prepCanvas(canvas, width, h, 0);
       if (!ctx) return;
       ctx.clearRect(0, 0, width, h);
-      drawNiches(ctx, width, h, slotBoundaries(width, slotCount), old, sky);
+      drawNiches(ctx, width, h, slotBoundaries(width, slotCount), old, hall);
     };
     draw();
     const ro = new ResizeObserver(draw);
     ro.observe(host);
     return () => ro.disconnect();
-  }, [snapRef, width, slotCount, old, sky]);
+  }, [snapRef, width, slotCount, old, hall]);
 
   // (The snapped box is rendered even before the strip is measured: the
   // snap is taken when it mounts and again when it gets its size.)
