@@ -544,6 +544,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
           width={stripWidth}
           below={heroDrawerUp ? 'floor' : 'open'}
           openIndex={heroDrawerUp ? renderedStripIndex : -1}
+          sky
         />
       )}
       <SelectionStrip ids={stripCharacterIds} selectedIndex={selectedStripIndex} width={stripWidth} tone="copper" opensDrawer={heroOpensDrawer} arch={wall} />

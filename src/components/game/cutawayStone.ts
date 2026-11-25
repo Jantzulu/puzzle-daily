@@ -640,13 +640,17 @@ function mix(a: string, b: string, t: number): string {
 }
 
 /**
- * Draw the passages behind an arcade into a canvas `w` CSS px wide and
- * `h` tall, whose top is the arcade's top. `edges` as for drawArcade.
- * Only the pixels near a mouth's edge are painted: the middle is left clear.
+ * Draw what is behind an arcade into a canvas `w` CSS px wide and `h`
+ * tall, whose top is the arcade's top. `edges` as for drawArcade. Under
+ * ground: the passages (only the pixels near a mouth's edge are painted,
+ * the middle is left clear). With `sky` (the hero hall): windows onto the
+ * dusk, each with its reveal.
  */
-export function drawNiches(ctx: CanvasRenderingContext2D, w: number, h: number, edges: readonly number[], old = false): void {
-  const stone = (old ? OLD : KEPT).faces[2];
+export function drawNiches(ctx: CanvasRenderingContext2D, w: number, h: number, edges: readonly number[], old = false, sky = false): void {
+  const s = old ? OLD : KEPT;
+  const stone = s.faces[2];
   const rows = Math.floor(h / Z);
+  const widthArt = Math.ceil(w / Z);
   const last = PASSAGE_RIBS_ART[PASSAGE_RIBS_ART.length - 1];
   const px = (ax: number, ay: number, color: string) => {
     ctx.fillStyle = color;
@@ -659,6 +663,14 @@ export function drawNiches(ctx: CanvasRenderingContext2D, w: number, h: number, 
     for (let y = ARCH_BAND_ART; y < rows; y++) {
       const span = nicheSpan(open, y);
       if (!span) continue;
+      if (sky) {
+        for (let x = span[0]; x < span[1]; x++) {
+          const { depth, lit } = passageDepth(open, x, y, WINDOW_REVEAL_ART);
+          // The reveal: the wall's thickness, its right-hand face lit; the sky past it.
+          px(x0 + x, y, depth < WINDOW_REVEAL_ART ? (lit ? s.edgeLit : depth === 0 ? s.dark : s.core[0]) : skyColor(x0 + x, y, rows, widthArt));
+        }
+        continue;
+      }
       for (let x = span[0]; x < span[1]; x++) {
         // (Below the curve only the pixels near the two sides can be near the edge: skip the middle.)
         if (y > ARCH_BAND_ART + ARCH_RISE_ART + last && x > span[0] + last && x < span[1] - last - 1) { x = span[1] - last - 2; continue; }
@@ -670,6 +682,55 @@ export function drawNiches(ctx: CanvasRenderingContext2D, w: number, h: number, 
       }
     }
   }
+}
+
+// ---- the hero hall's windows: a dusk sky -------------------------------------------------
+// The hero hall is above ground (the rampart, below), so its arches are
+// WINDOWS (user, 2026-11-24, of my niche ideas: "id like to see the
+// windows, maybe lets do dusk!"). Through all of them there is ONE sky, as
+// one sky is seen through an arcade: deep blue at the top, where the names
+// are written, through purple to a warm line at the horizon, behind the
+// heroes' feet; a few stars; and two lines of far hills along the foot,
+// which is what says "outside" and keeps the bright horizon to the
+// valleys between them. Kept DARK: it is a page of dark rooms, and names
+// and numbers are read on it. (The heroes stand on the floor now, so a
+// sky behind them does not leave them hanging in it, as the brick wall
+// behind them did.) Each window has a narrow REVEAL: the thickness of the
+// wall it is cut through, lit on the right jamb.
+
+/** The sky's bands, top to bottom: how far down the window each ends (a share of its height) and its colour. */
+const SKY_BANDS: ReadonlyArray<readonly [number, string]> = [
+  [0.3, '#11132b'],
+  [0.5, '#1a1736'],
+  [0.66, '#27193c'],
+  [0.8, '#3a1f3f'],
+  [0.9, '#55283c'],
+  [0.96, '#73363a'],
+  [1, '#8f4a38'],
+];
+const SKY_STAR = ['#77749a', '#b9b5d6'];
+/** The far hills and the nearer, darker ones. */
+const SKY_HILLS = ['#2a1a33', '#150f1d'];
+/** How wide a window's reveal is (art px). */
+const WINDOW_REVEAL_ART = 2;
+
+/** The sky's colour at an art pixel of a window `rows` tall (x counted along the whole strip: one sky). */
+export function skyColor(x: number, y: number, rows: number, widthArt: number): string {
+  const up = rows - 1 - y; // art px above the window's foot
+  // Hills: two soft ridges, the nearer one lower and darker.
+  const far = 5 + Math.round(2.4 * Math.sin(x * 0.085 + 0.7) + 1.4 * Math.sin(x * 0.21 + 2));
+  const near = 2 + Math.round(1.6 * Math.sin(x * 0.13 + 4) + 1.1 * Math.sin(x * 0.31));
+  if (up < near) return SKY_HILLS[1];
+  if (up < far) return SKY_HILLS[0];
+  // Stars, high in the sky only, and few (about one pixel in two hundred):
+  // at one in ninety they sat among the letters of the names like stray dots.
+  if (y < rows * 0.42 && hash(x * 31 + y * 577 + widthArt) < 0.005) return SKY_STAR[hash(x + y * 7) < 0.3 ? 1 : 0];
+  const f = (y + 0.5) / rows;
+  const k = SKY_BANDS.findIndex(([end]) => f <= end);
+  // One dithered row where a band gives way to the next.
+  const nextRow = (y + 1.5) / rows;
+  const into = k + 1 < SKY_BANDS.length && nextRow > SKY_BANDS[k][0] && (x + y) % 2 === 0;
+  return SKY_BANDS[into ? k + 1 : Math.max(0, k)][1];
 }
 
 // ---- the list rooms: a setting for every entry ---------------------------------------------
