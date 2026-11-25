@@ -422,7 +422,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
           much); mb-2 otherwise. */}
       <div ref={questHeaderRef} className={`relative flex items-center justify-between ${wall ? `${WALL_HEADER_GAP} ${WALL_ROW}` : questSlot ? 'mb-3' : 'mb-2'}`}>
         {/* The `?wall=1` experiment: the hero hall's stone ceiling, behind the title. */}
-        {wall && <CutawaySlab z={WALL_HERO_Z} />}
+        {wall && <CutawaySlab z={WALL_HERO_Z} above />}
         {wall && <CutawayRampart />}
         {wall && <CutawayPlate kind="heroes" z={WALL_HERO_Z} />}
         {questSlot && <span data-quest-slot aria-hidden="true" className="quest-mini-slot" style={{ width: questGap }} />}
@@ -543,7 +543,6 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
           slotCount={stripCharacterIds.length}
           width={stripWidth}
           below={heroDrawerUp ? 'floor' : 'open'}
-          openIndex={heroDrawerUp ? renderedStripIndex : -1}
           hall
         />
       )}
@@ -870,7 +869,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
               : 'opacity 0.2s ease-in, transform 0.3s ease-in',
           }}
         >
-          <SelectionDrawer ids={stripCharacterIds} index={renderedStripIndex} width={stripWidth} tone="copper" />
+          <SelectionDrawer ids={stripCharacterIds} index={renderedStripIndex} width={stripWidth} tone="copper" cellar={wall} />
           {/* DIRECTIONS NOTE — one read-only line. While a choice is owed
               it tells the player where to make it (the inline glyph IS the
               compass on the card above); either way it lists every choice

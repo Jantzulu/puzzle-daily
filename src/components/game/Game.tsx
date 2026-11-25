@@ -3724,7 +3724,9 @@ export const Game: React.FC<GameProps> = ({
               // mt-2: tuned so HEROES sits the same distance under the quest
               // box as ENEMIES sits under the Dungeon Details lintel
               // (measured h3-top to edge: 3px both, user call 2026-08-01).
-              <div className={`mt-2 transition-opacity ${WALL_ON ? 'relative' : ''} ${dimmedPanelClass} ${justExitedReplay ? 'animate-slide-up' : ''}`}>
+              // (The wall: 6px more, so the rampart's merlons, which stand
+              // 14px above the heroes' beam, do not brush the board's foot.)
+              <div className={`transition-opacity ${WALL_ON ? 'relative mt-3.5' : 'mt-2'} ${dimmedPanelClass} ${justExitedReplay ? 'animate-slide-up' : ''}`}>
                 {/* The `?wall=1` experiment (cutawayStone.ts): the side walls of the cutaway. */}
                 {WALL_ON && <CutawayPiers />}
                 {/* Character Selector - always visible. After a win it stays

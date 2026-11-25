@@ -4796,6 +4796,19 @@ button.dir-picker__tab:not(.dir-picker__tab--active) .dir-picker__tab-text {
   margin-bottom: 4px;
 }
 
+/* THE CELLAR'S EARTH (user, 2026-11-24: an open info box "is like looking
+   into a cellar ... a subtle dirt texture to the back of the selection for
+   both heroes and enemies"). A layer at the back of an open drawer, under
+   the selection's wash and line (SelectionShape SelectionDrawer): one small
+   tile of earth on the art grid, drawn by cutawayStone.ts drawDirt and set
+   on the page as --wall-dirt (CutawayWall CutawayPiers), repeated. Quiet on
+   purpose: the drawer's text is written on it. */
+.wall-cellar {
+  background-image: var(--wall-dirt);
+  background-size: 256px 144px; /* the tile's 128 x 72 art px, doubled */
+  image-rendering: pixelated;
+}
+
 /* THE TAP HINT IN THE WALL (CutawayWall.tsx BeamTapHint): "Tap for more
    info", a small gold line under a title, on the beam's lower stone. The
    quest scroll's "Tap to minimize" in the same hand (8px caps, a 1px carve,

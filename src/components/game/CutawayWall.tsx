@@ -1,7 +1,7 @@
 import React from 'react';
 import { Z, prepCanvas, useCrispSnap } from './panelSkins';
 import {
-  ARCH_H, ARCH_LIFT, FOUND_H, FOUND_STEP, PIER_STOP, PIER_TOP, PIER_W, PLATE_END_ART, PLATE_H, SLAB_H, WALL_TORCH_GAP, WALL_TORCH_HALF, drawArcade, drawFoundation,
+  ARCH_H, ARCH_LIFT, DIRT_TILE_ART, drawDirt, FOUND_H, FOUND_STEP, PIER_STOP, PIER_TOP, PIER_W, PLATE_END_ART, PLATE_H, SLAB_H, WALL_TORCH_GAP, WALL_TORCH_HALF, drawArcade, drawFoundation,
   RAMPART_H, RAMPART_RISE_ART, WALL_HERO_Z, WALL_PLATE_Z, drawNiches, drawPier, drawPlate, drawPlateDark, drawRampart, drawRampartDark, drawSetting, drawSlab, settingBox,
 } from './cutawayStone';
 import type { PlateKind, SettingKind } from './cutawayStone';
@@ -35,7 +35,9 @@ export const CutawaySlab: React.FC<{
   old?: boolean;
   /** Its layer: -1 (the default) inside an isolated box; the hero slab passes WALL_HERO_Z (cutawayStone.ts). */
   z?: number;
-}> = ({ old = false, z = -1 }) => {
+  /** The heroes' beam: the top of the wall above ground, not a floor cut through (cutawayStone.ts drawSlab). */
+  above?: boolean;
+}> = ({ old = false, z = -1, above = false }) => {
   const snapRef = useCrispSnap<HTMLDivElement>(true);
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
   React.useLayoutEffect(() => {
@@ -50,13 +52,13 @@ export const CutawaySlab: React.FC<{
       const ctx = prepCanvas(canvas, w, SLAB_H, 0);
       if (!ctx) return;
       ctx.clearRect(0, 0, w, SLAB_H);
-      drawSlab(ctx, w, old);
+      drawSlab(ctx, w, old, above);
     };
     draw();
     const ro = new ResizeObserver(draw);
     ro.observe(host);
     return () => ro.disconnect();
-  }, [snapRef, old]);
+  }, [snapRef, old, above]);
   return (
     // CENTRED ON THE ROW, whatever its height (not hung a fixed distance
     // above its top): the title and the torch are centred on the row, and
@@ -210,13 +212,17 @@ export const CutawayPlate: React.FC<{ kind: PlateKind; z?: number }> = ({ kind, 
  * is under the cards (`below`), the user's rule of the same day:
  *
  *   'floor'  an info drawer is open under the cards. The columns stand on
- *            a narrow stone FLOOR along the strip's foot, left out under
- *            the drawer's own card (`openIndex`: "the segment for the
- *            currently selected hero should not be present"), where the
- *            card opens into its drawer. (The floor first stood under the
- *            tap hint too; the user: "ideally, the narrow floor would only
- *            be present when somebody is selected". The hint is now a line
- *            under the title: BeamTapHint.)
+ *            a narrow stone FLOOR along the strip's foot, UNDER THE
+ *            DRAWER'S OWN CARD TOO (user, 2026-11-24: "we should maintain
+ *            the false 'floor' even for selected entities": the open info
+ *            is a cellar looked into, and the one whose cellar it is still
+ *            stands on the floor over it. It was left out under that card
+ *            at first, on their word of 2026-11-21: "the segment for the
+ *            currently selected hero should not be present"). (The floor
+ *            first stood under the tap hint too; the user: "ideally, the
+ *            narrow floor would only be present when somebody is
+ *            selected". The hint is now a line under the title:
+ *            BeamTapHint.)
  *   'open'   nothing is under the cards: no floor from here. The columns
  *            stay as they are and the NEXT PANEL'S BEAM COMES UP to their
  *            feet, where the floor would be (user, from their phone: "I
@@ -247,13 +253,11 @@ export const WallColumns: React.FC<{
   width: number;
   /** What is under the cards: see above. */
   below: 'floor' | 'open';
-  /** With a drawer open, the slot of the card it belongs to (-1 = none): no floor under it. */
-  openIndex?: number;
   /** The colder stone from under the hero hall. */
   old?: boolean;
   /** The hero hall: behind the arches is the room's back wall with a loop cut in it (cutawayStone.ts), not passages. */
   hall?: boolean;
-}> = ({ slotCount, width, below, openIndex = -1, old = false, hall = false }) => {
+}> = ({ slotCount, width, below, old = false, hall = false }) => {
   const snapRef = useCrispSnap<HTMLDivElement>(true);
 
   // With nothing under the cards: has a beam come up to the columns' feet?
@@ -318,20 +322,12 @@ export const WallColumns: React.FC<{
   // (The snapped box is rendered even before the strip is measured: the
   // snap is taken when it mounts and again when it gets its size.)
   const b = width > 0 ? slotBoundaries(width, slotCount) : [];
-  const open = below === 'floor' && openIndex >= 0 && openIndex < slotCount ? openIndex : -1;
   return (
     <div aria-hidden className="absolute inset-y-0 left-0 pointer-events-none" style={{ width }}>
       <div ref={snapRef} className={`wall-columns wall-columns--${below} ${old ? 'wall-columns--old' : ''}`}>
         <div className="wall-arcade"><canvas ref={nichesRef} style={{ position: 'absolute' }} /></div>
         <div className="wall-arcade"><canvas ref={arcadeRef} style={{ position: 'absolute' }} /></div>
-        {below === 'floor' && width > 0 && (open < 0
-          ? <span className="wall-floor" style={{ left: 0, width }} />
-          : (
-            <>
-              {b[open] > 0 && <span className="wall-floor" style={{ left: 0, width: b[open] }} />}
-              {b[open + 1] < width && <span className="wall-floor" style={{ left: b[open + 1], width: width - b[open + 1] }} />}
-            </>
-          ))}
+        {below === 'floor' && width > 0 && <span className="wall-floor" style={{ left: 0, width }} />}
         {b.slice(1, -1).map((x, k) => (
           <span key={k} className="wall-column" style={{ left: x - 2 }} />
         ))}
@@ -490,8 +486,23 @@ export const CutawayPiers: React.FC = () => {
   // The page knows the wall is up (index.css .wall-on): the wall brings its
   // own ground (.wall-ground), so .dungeon-below's is switched off.
   React.useLayoutEffect(() => {
-    document.documentElement.classList.add('wall-on');
-    return () => document.documentElement.classList.remove('wall-on');
+    const root = document.documentElement;
+    root.classList.add('wall-on');
+    // The cellar's earth, behind an open info box (cutawayStone.ts drawDirt;
+    // index.css .wall-cellar): one small tile, drawn once, handed to the
+    // page as an image.
+    const tile = document.createElement('canvas');
+    tile.width = DIRT_TILE_ART.w;
+    tile.height = DIRT_TILE_ART.h;
+    const tctx = tile.getContext('2d');
+    if (tctx) {
+      drawDirt(tctx);
+      root.style.setProperty('--wall-dirt', `url(${tile.toDataURL()})`);
+    }
+    return () => {
+      root.classList.remove('wall-on');
+      root.style.removeProperty('--wall-dirt');
+    };
   }, []);
   React.useLayoutEffect(() => {
     const host = snapRef.current;
@@ -499,10 +510,17 @@ export const CutawayPiers: React.FC = () => {
     const draw = () => {
       const h = host.clientHeight;
       if (!h) return;
-      // The stone is older from the mouth of the dungeon down (the box that
-      // holds everything from ENEMIES on).
-      const below = host.parentElement?.parentElement?.querySelector('.dungeon-below');
-      const oldFrom = below ? below.getBoundingClientRect().top - host.getBoundingClientRect().top : h;
+      // THE GROUND is the hero hall's floor: 4px above the foot of its strip
+      // of cards, where the enemies' beam's top is with nothing selected and
+      // the narrow floor's is over an open info box (drawPier has why).
+      // Above it the sides are towers; from it down, earth and older stone.
+      // (With no hero strip on the page: the top of the box that holds
+      // everything from ENEMIES on.)
+      const wrapper = host.parentElement?.parentElement;
+      const hall = wrapper?.querySelector("[data-wall-room='hero'] .wall-columns");
+      const below = wrapper?.querySelector('.dungeon-below');
+      const top = host.getBoundingClientRect().top;
+      const oldFrom = hall ? hall.getBoundingClientRect().bottom - 4 - top : below ? below.getBoundingClientRect().top - top : h;
       for (const [canvas, side] of [[leftRef.current, 'left'], [rightRef.current, 'right']] as const) {
         if (!canvas) continue;
         // (They stop inside the footing: PIER_STOP.)

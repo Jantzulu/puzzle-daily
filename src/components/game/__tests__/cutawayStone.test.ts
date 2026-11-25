@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   ARCH_BAND_ART, ARCH_H, ARCH_MAX_RX_ART, ARCH_RISE_ART, PIER_ART, PIER_TOP, SLAB_ART, SLAB_H, SLAB_RISE, WALL_ON, WALL_TORCH_GAP, WALL_TORCH_HALF,
-  BEDROCK_ART, FOOTING_LOWER_ART, FOOTING_UPPER_ART, FOUND_H, archInset, archOutline, bedrock, courseBlocks, facingBlocks, slabBlocks,
+  BEDROCK_ART, DIRT_TILE_ART, FOOTING_LOWER_ART, FOOTING_UPPER_ART, FOUND_H, archInset, archOutline, bedrock, courseBlocks, dirtClods, facingBlocks, slabBlocks,
   PASSAGE_RIBS_ART, archOpening, nicheSpan, passageDepth,
   WALL_ENTRY, settingBox,
   PLATE_H, PLATE_RISE_ART, plateColumn, plateProud, plateRise,
@@ -224,5 +224,28 @@ describe('the cutaway wall', () => {
     expect(Math.min(...wall)).toBeGreaterThan(0); // the wall's merlons stand lower than the towers
     expect(Math.min(...wall)).toBeLessThan(RAMPART_RISE_ART); // but there are merlons
     expect(wall).toContain(RAMPART_RISE_ART); // and gaps between them
+  });
+
+  it('the cellar earth tile is filled from edge to edge in every row, so it repeats without a seam', () => {
+    const clods = dirtClods();
+    const rows = new Map<number, typeof clods>();
+    for (const c of clods) rows.set(c.y, [...(rows.get(c.y) ?? []), c]);
+    expect(rows.size).toBe(DIRT_TILE_ART.h / 3);
+    for (const row of rows.values()) {
+      let x = 0;
+      for (const c of row) {
+        expect(c.x).toBe(x);
+        expect(c.tone).toBeGreaterThanOrEqual(0);
+        expect(c.tone).toBeLessThanOrEqual(3);
+        // A stone lies wholly inside its clod.
+        if (c.stoneAt !== null) {
+          expect(c.stoneAt).toBeGreaterThan(c.x);
+          expect(c.stoneAt + 3).toBeLessThanOrEqual(c.x + c.w);
+        }
+        x += c.w;
+      }
+      expect(x).toBe(DIRT_TILE_ART.w);
+    }
+    expect(dirtClods()).toEqual(clods); // the same earth every time
   });
 });

@@ -295,6 +295,13 @@ interface DrawerProps {
   index: number;
   width: number;
   tone: SelectionTone;
+  /**
+   * The wall (`?wall=1`, cutawayStone.ts): the open drawer is a CELLAR looked
+   * into, and its back is earth (index.css .wall-cellar), under the wash.
+   * One layer for the whole drawer, not one per slot: it must not dip while
+   * two slots' washes crossfade.
+   */
+  cellar?: boolean;
 }
 
 /** The drawer half's line for the slot [x0, x1) of a shape W wide. */
@@ -322,13 +329,14 @@ function drawerRects(W: number, x0: number, x1: number): Rect[] {
  * at z-index -1, so it paints over the drawer's own box but under its text.
  * One layer per slot on the card half's opacity clock (see ONE CLOCK above).
  */
-export const SelectionDrawer: React.FC<DrawerProps> = ({ ids, index, width, tone }) => {
+export const SelectionDrawer: React.FC<DrawerProps> = ({ ids, index, width, tone, cellar = false }) => {
   const slotCount = ids.length;
   if (slotCount <= 0 || width <= 0 || index < 0 || index >= slotCount) return null;
   const b = shapeEdges(width, slotCount);
   const W = b[slotCount];
   return (
     <div aria-hidden className="absolute top-0 bottom-0 left-0 pointer-events-none" style={{ width: W, zIndex: -1 }}>
+      {cellar && <div className="absolute inset-0 wall-cellar" style={{ clipPath: clipCorners(false, false, true, true) }} />}
       {ids.map((id, j) => (
         <div
           key={id}

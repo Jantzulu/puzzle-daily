@@ -30,9 +30,11 @@
 // heroes, can we expand that color up for them?").
 //
 // What is drawn so far:
-//   the SLAB  a course of hewn blocks behind a storey's title: the floor
-//             between two rooms, cut through, with the title of the room
-//             below carved in it. EVERY title has the same one (user
+//   the SLAB  the stone behind a storey's title: the floor between two
+//             rooms, cut through (paving, the blocks that carry it, a
+//             course the arcade hangs from), with the title of the room
+//             below on it; the heroes' is the top of the wall above
+//             ground, dressed blocks under a string course (drawSlab). EVERY title has the same one (user
 //             thought 2026-11-21: drop the words DUNGEON DETAILS and
 //             standardize the beams): HEROES and ENEMIES in the kept stone,
 //             ITEMS, STATUS EFFECTS, DUNGEON TILES and ALLIES in the older
@@ -279,8 +281,32 @@ export function courseBlocks(widthArt: number, about: number, salt = 0): SlabBlo
 /** The blocks of a slab (a beam): about 34 art px each. */
 export const slabBlocks = (widthArt: number): SlabBlock[] => courseBlocks(widthArt, 34);
 
-/** Draw the slab into a canvas `w` CSS px wide (its height is SLAB_H). `old`: the colder stone from under the lintel. */
-export function drawSlab(ctx: CanvasRenderingContext2D, w: number, old = false): void {
+/**
+ * A beam's courses, top to bottom, in art rows (each list adds up to
+ * SLAB_ART with a row of mortar under every course). A beam was ONE course
+ * of big bevelled blocks, which read as a row of buttons more than as
+ * masonry (user, 2026-11-24: "we can maybe improve the look of the
+ * horizontal beams for Heroes, and also the ones that are enemies +
+ * below"). Now it is what it would be in the building:
+ *   UNDER GROUND (enemies and below) a FLOOR cut through: thin paving the
+ *     room above stands on, the big blocks that carry it, and a thin course
+ *     the arcade hangs from. In the older stone a flag here and there has
+ *     sunk.
+ *   ABOVE GROUND (the heroes') the top of a castle WALL seen from outside,
+ *     as its towers are: a string course under the merlons, then two
+ *     courses of small dressed blocks in running bond.
+ */
+const FLOOR_BEAM_ART = { paving: 2, main: 10, soffit: 3 };
+const WALL_BEAM_ART = { string: 2, upper: 6, lower: 7 };
+/** About how long the stones of each course are (art px). */
+const BEAM_STONE_ART = { paving: 12, soffit: 21, string: 26, ashlar: 15 };
+
+/**
+ * Draw the slab into a canvas `w` CSS px wide (its height is SLAB_H).
+ * `old`: the colder stone from under the lintel. `above`: the heroes'
+ * beam, the top of the wall above ground.
+ */
+export function drawSlab(ctx: CanvasRenderingContext2D, w: number, old = false, above = false): void {
   const a = (ax: number, ay: number, aw: number, ah: number, color: string) => {
     ctx.fillStyle = color;
     ctx.fillRect(ax * Z, ay * Z, aw * Z, ah * Z);
@@ -288,14 +314,110 @@ export function drawSlab(ctx: CanvasRenderingContext2D, w: number, old = false):
   const widthArt = Math.ceil(w / Z);
   const s = old ? OLD : KEPT;
   a(0, 0, widthArt, SLAB_ART, s.mortar);
+
+  if (above) {
+    // The string course: long stones, their top the brightest line on the wall.
+    for (const b of courseBlocks(widthArt, BEAM_STONE_ART.string, 300)) {
+      a(b.x, 0, b.w, WALL_BEAM_ART.string, s.faces[2]);
+      a(b.x, 0, b.w, 1, s.cut);
+    }
+    // Two courses in running bond: the same joints, the lower course half a block along.
+    const half = Math.floor(BEAM_STONE_ART.ashlar / 2);
+    const courses = [
+      { y: WALL_BEAM_ART.string + 1, h: WALL_BEAM_ART.upper, shift: 0 },
+      { y: WALL_BEAM_ART.string + 1 + WALL_BEAM_ART.upper + 1, h: WALL_BEAM_ART.lower, shift: half },
+    ];
+    for (const c of courses) {
+      for (const b of courseBlocks(widthArt + 2 * half, BEAM_STONE_ART.ashlar, 340)) {
+        const from = Math.max(0, b.x - c.shift);
+        const to = Math.min(widthArt, b.x + b.w - c.shift);
+        if (to <= from) continue;
+        a(from, c.y, to - from, c.h, pick(s.faces, 340 + b.x * 3 + c.y));
+        a(from, c.y, to - from, 1, s.lit);
+        a(from, c.y + c.h - 1, to - from, 1, s.dark);
+      }
+    }
+    return;
+  }
+
+  // The paving the room above stands on.
+  for (const b of courseBlocks(widthArt, BEAM_STONE_ART.paving, 400)) {
+    const sunk = old && hash(b.x * 7 + 5) < 0.15 ? 1 : 0;
+    a(b.x, sunk, b.w, FLOOR_BEAM_ART.paving - sunk, s.faces[b.tone]);
+    a(b.x, sunk, b.w, 1, sunk ? s.edgeLit : s.lit);
+  }
+  // The blocks that carry it (the torch and the title are on these).
+  const mainY = FLOOR_BEAM_ART.paving + 1;
   for (const b of slabBlocks(widthArt)) {
-    const top = 1; // (the torch's 16 rows are these 16: SLAB_ART)
-    const h = SLAB_ART - 2;
-    a(b.x, top, b.w, h, s.faces[b.tone]);
-    a(b.x, top, b.w, 1, s.lit); // the top catches the light
-    a(b.x, top + 1, 1, h - 1, s.edgeLit); // so does the left edge, less
-    a(b.x + b.w - 1, top + 1, 1, h - 1, s.dark); // the right edge is in shade
-    a(b.x, top + h - 2, b.w, 2, s.dark); // and the bottom lip
+    a(b.x, mainY, b.w, FLOOR_BEAM_ART.main, s.faces[b.tone]);
+    a(b.x, mainY, b.w, 1, s.edgeLit);
+    a(b.x + b.w - 1, mainY + 1, 1, FLOOR_BEAM_ART.main - 1, s.dark);
+    a(b.x, mainY + FLOOR_BEAM_ART.main - 1, b.w, 1, s.dark);
+  }
+  // The course the arcade hangs from.
+  const soffitY = mainY + FLOOR_BEAM_ART.main + 1;
+  for (const b of courseBlocks(widthArt, BEAM_STONE_ART.soffit, 500)) {
+    a(b.x, soffitY, b.w, FLOOR_BEAM_ART.soffit, s.faces[(b.tone + 1) % 3]);
+    a(b.x, soffitY + FLOOR_BEAM_ART.soffit - 1, b.w, 1, s.dark);
+  }
+}
+
+// ---- the cellar's earth -------------------------------------------------------------------
+// User, 2026-11-24: an open info box "is like looking into a cellar. Maybe
+// we can add a subtle dirt texture to the back of the selection for both
+// heroes and enemies". So the back of an open drawer is EARTH: the side
+// walls' own soil (drawPier), a great deal quieter, because the drawer's
+// text is written on it: clods in three low tones and bare ground, a small
+// stone in about one clod in eight. BARELY THERE (the user, watching the
+// first two strengths: "a bit harsh still, should be barely visible I
+// think"): the tones are now under half of the second try's. One tile, drawn once and repeated (the
+// page sets it as a CSS image: CutawayWall CutawayPiers, index.css
+// .wall-cellar).
+
+/** The earth tile's size (art px). */
+export const DIRT_TILE_ART = { w: 128, h: 72 } as const;
+/** A clod is one of three low tones over the ground, or the bare ground (tone 3). Rows of clods are this tall (art px). */
+const DIRT_ROW_ART = 3;
+const DIRT = {
+  soil: ['rgba(96, 64, 34, 0.03)', 'rgba(96, 64, 34, 0.06)', 'rgba(0, 0, 0, 0.07)'],
+  stone: 'rgba(196, 184, 166, 0.03)',
+  under: 'rgba(0, 0, 0, 0.1)',
+};
+
+export interface Clod { x: number; y: number; w: number; tone: number; stoneAt: number | null }
+
+/** The clods of the earth tile, row by row: every row is filled from edge to edge, so the tile repeats without a seam of its own. */
+export function dirtClods(): Clod[] {
+  const clods: Clod[] = [];
+  for (let row = 0; row * DIRT_ROW_ART < DIRT_TILE_ART.h; row++) {
+    let x = 0;
+    for (let i = 0; x < DIRT_TILE_ART.w; i++) {
+      const w = Math.min(DIRT_TILE_ART.w - x, 5 + Math.floor(hash(row * 41 + i * 7 + 900) * 8));
+      const stone = w >= 6 && hash(row * 29 + i * 11 + 902) < 0.13;
+      clods.push({
+        x, y: row * DIRT_ROW_ART, w,
+        tone: Math.floor(hash(row * 17 + i * 13 + 901) * 4) % 4,
+        stoneAt: stone ? x + 1 + Math.floor(hash(row * 23 + i * 19 + 903) * (w - 4)) : null,
+      });
+      x += w;
+    }
+  }
+  return clods;
+}
+
+/** Draw the earth tile into a canvas of DIRT_TILE_ART, ONE canvas px to the art px (the page scales it up, unsmoothed). */
+export function drawDirt(ctx: CanvasRenderingContext2D): void {
+  for (const c of dirtClods()) {
+    if (c.tone < 3) {
+      ctx.fillStyle = DIRT.soil[c.tone];
+      ctx.fillRect(c.x, c.y, c.w, DIRT_ROW_ART);
+    }
+    if (c.stoneAt !== null) {
+      ctx.fillStyle = DIRT.stone;
+      ctx.fillRect(c.stoneAt, c.y, 3, 2);
+      ctx.fillStyle = DIRT.under;
+      ctx.fillRect(c.stoneAt, c.y + 2, 3, 1);
+    }
   }
 }
 
@@ -919,7 +1041,17 @@ export function facingBlocks(heightArt: number, oldFrom: number, side: 'left' | 
 
 /**
  * Draw one pier into a canvas PIER_W wide and `h` CSS px tall. `oldFromY`
- * (CSS px from the pier's top) is where the older stone begins.
+ * (CSS px from the pier's top) is where the GROUND is: above it a tower
+ * seen from outside, below it earth behind a lining of the older stone.
+ * THE GROUND IS THE HERO HALL'S FLOOR (user, 2026-11-24: "get rid of the
+ * dirt in the bottom corners of the castle towers when nothing is selected,
+ * but have the sides match the dungeon parts (brick with dirt on the
+ * outside). Basically, the 'selection' is like looking into a cellar"). It
+ * was the top of the box that holds the rooms under the hero hall, which
+ * begins a few px ABOVE the enemies' beam: earth showed in the towers'
+ * feet. Now the tower runs to the floor exactly; with nothing selected the
+ * enemies' beam is there, and with a hero's info open the sides of that
+ * box are earth and lining, as every room's under it.
  *
  * A thick wall cut through: a face of dressed blocks towards the room, a
  * fill of rubble behind it, and a line where the cut meets the room. The

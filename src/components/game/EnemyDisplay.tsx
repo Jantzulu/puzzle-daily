@@ -325,7 +325,6 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
           slotCount={stripEnemyIds.length}
           width={stripWidth}
           below={enemyDrawerUp ? 'floor' : 'open'}
-          openIndex={enemyDrawerUp ? renderedStripIndex : -1}
           old
         />
       )}
@@ -504,6 +503,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
               index={renderedStripIndex}
               width={stripWidth}
               tone={isAllySide ? 'copper' : 'blood'}
+              cellar={wall}
             />
             {(hasActionSteps || hasAttributes) && (
               <div className={`flex mb-2 px-2 ${hasActionSteps && hasAttributes ? 'gap-0' : 'justify-center'}`}>
