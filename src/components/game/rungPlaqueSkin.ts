@@ -1,9 +1,17 @@
-import { type SkinPiece, nomH, Z, drawTiled, drawFixed } from './panelSkins';
+import skinJson from '../../assets/panels/rung-plaque-slices.json';
+import { type SkinPiece, buildSkin, nomH, Z, drawTiled, drawFixed } from './panelSkins';
 
 // The rung plaque's skin data and draws, moved out of RungPlaque.tsx
 // (2026-10-18 delint: a component file that also exports plain values
 // breaks React Fast Refresh). The forge preview (PortcullisLive) draws
 // through these too: the share-the-renderer law.
+
+/**
+ * The user's painted plaque, decoded once: the rail's two plaques wear it
+ * (RungPlaque.tsx) and so do the counts on the cutaway wall's beams
+ * (CutawayWall.tsx BeamSign).
+ */
+export const RUNG_PLAQUE_PIECES = buildSkin(skinJson, 'rung-plaque');
 
 /**
  * The plaque's draw, parameterized on the skin map — the forge's live

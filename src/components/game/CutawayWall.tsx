@@ -1,5 +1,6 @@
 import React from 'react';
-import { Z, prepCanvas, useCrispSnap } from './panelSkins';
+import { Z, prepCanvas, useCrispSnap, whenDecoded } from './panelSkins';
+import { RUNG_PLAQUE_PIECES, drawRungPlaque } from './rungPlaqueSkin';
 import {
   ARCH_H, ARCH_LIFT, DIRT_TILE_ART, drawDirt, FOUND_H, FOUND_STEP, PIER_STOP, PIER_TOP, PIER_W, PLATE_END_ART, PLATE_H, SLAB_H, WALL_TORCH_GAP, WALL_TORCH_HALF, drawArcade, drawFoundation,
   RAMPART_H, RAMPART_RISE_ART, WALL_HERO_Z, WALL_PLATE_Z, drawNiches, drawPier, drawPlate, drawPlateDark, drawRampart, drawRampartDark, drawSetting, drawSlab, settingBox,
@@ -427,6 +428,75 @@ export const WallDark: React.FC = () => <div aria-hidden className="wall-dark" /
 export const BeamTapHint: React.FC = () => (
   <span className="wall-tap-hint"><span>Tap for more info</span></span>
 );
+
+/**
+ * A BEAM'S SIGN: the count on a beam (0/3 PLACED, 5 REMAINING, 1 TYPE,
+ * 2 POSSIBLE) on a sign of the user's own painting, the plaque LIVES and
+ * TURNS hang on at the portcullis (user, 2026-11-25: "there are several
+ * instances of text on each of the horizontal beams ... I think these text
+ * lines should be inside signs like we used on the portcullis. Would we be
+ * able to reuse that art for them?"). It is that art, drawn by the same
+ * routine (rungPlaqueSkin.ts): painted ends, the middle tiled between.
+ *
+ * Wrap the count in it. It takes no room of its own: the sign reaches
+ * SIGN_PAD past the words each side (the pad is the black line and the
+ * rivets' three columns of a painted end: the words begin where the
+ * rivets end), and no title or torch is pushed. THE COUNT MOVES SIGN_OUT
+ * TO THE RIGHT, so the sign's end is 14px out over the side wall, where
+ * the beam runs on: without that the heroes' sign began under their
+ * torch's flame, and STATUS EFFECTS' under its title's plate (filmed at
+ * 375 and 390 wide). Its 13 art rows cannot be centred on the beam's 18, so
+ * it sits on the beam's art grid one row low of centre (SIGN_DROP), and
+ * the words go down that one px with it. With `on` false, or the plaque
+ * unpainted, the count is rendered bare.
+ */
+const SIGN_PAD = 4 * Z;
+const SIGN_H = 13 * Z;
+const SIGN_DROP = 1;
+const SIGN_OUT = 6;
+
+export const BeamSign: React.FC<{ on: boolean; children: React.ReactNode }> = ({ on, children }) =>
+  (on && RUNG_PLAQUE_PIECES.has('plaque-mid') ? <BeamSignOn>{children}</BeamSignOn> : <>{children}</>);
+
+const BeamSignOn: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const hostRef = React.useRef<HTMLSpanElement>(null);
+  const boxRef = React.useRef<HTMLSpanElement>(null);
+  const snapRef = useCrispSnap<HTMLSpanElement>(true);
+  const canvasRef = React.useRef<HTMLCanvasElement>(null);
+  React.useLayoutEffect(() => {
+    const host = hostRef.current;
+    const box = boxRef.current;
+    const canvas = canvasRef.current;
+    if (!host || !box || !canvas) return;
+    let cancelled = false;
+    const draw = () => {
+      const inner = host.offsetWidth;
+      if (!inner) return;
+      // A whole number of art px wide, so both painted ends land on the grid.
+      const w = Math.ceil((inner + 2 * SIGN_PAD) / Z) * Z;
+      box.style.width = `${w}px`;
+      const ctx = prepCanvas(canvas, w, SIGN_H, 0);
+      if (!ctx) return;
+      ctx.clearRect(0, 0, w, SIGN_H);
+      drawRungPlaque(ctx, w, SIGN_H, RUNG_PLAQUE_PIECES);
+    };
+    // Synchronous once the art is decoded: the skins' shared no-rAF rule.
+    whenDecoded([...RUNG_PLAQUE_PIECES.values()]).then(() => { if (!cancelled) draw(); });
+    const ro = new ResizeObserver(draw);
+    ro.observe(host);
+    return () => { cancelled = true; ro.disconnect(); };
+  }, []);
+  return (
+    <span ref={hostRef} className="relative inline-flex items-center" style={{ top: SIGN_DROP, marginRight: -SIGN_OUT }}>
+      <span ref={boxRef} aria-hidden className="absolute pointer-events-none" style={{ left: -SIGN_PAD, top: `calc(50% - ${SIGN_H / 2}px)`, height: SIGN_H }}>
+        <span ref={snapRef} className="relative block w-full h-full">
+          <canvas ref={canvasRef} style={{ position: 'absolute' }} />
+        </span>
+      </span>
+      <span className="relative inline-flex items-center">{children}</span>
+    </span>
+  );
+};
 
 /**
  * A BEAM'S TORCH (user call 2026-11-21: "a torch on each of the horizontal

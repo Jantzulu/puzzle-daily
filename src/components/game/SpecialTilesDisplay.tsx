@@ -3,7 +3,7 @@ import type { Puzzle, TileBehaviorConfig, CadenceConfig } from '../../types/game
 import { loadTileType, loadPuzzleSkin, type CustomTileType, type CustomSprite } from '../../utils/assetStorage';
 import { SpriteThumbnail } from '../editor/SpriteThumbnail';
 import { HelpButton } from './HelpOverlay';
-import { BeamTorch, CutawayPlate, CutawaySlab, WallDark, WallSetting } from './CutawayWall';
+import { BeamSign, BeamTorch, CutawayPlate, CutawaySlab, WallDark, WallSetting } from './CutawayWall';
 import { WALL_ABOVE_BEAM, WALL_ENTRY, WALL_HEADER_GAP, WALL_LIST, WALL_ON, WALL_OVER_PLATE, WALL_ROW } from './cutawayStone';
 
 interface SpecialTilesDisplayProps {
@@ -259,10 +259,12 @@ export const SpecialTilesDisplay: React.FC<SpecialTilesDisplayProps> = ({ puzzle
           {wall && <BeamTorch side="right" phase={500} />}
         </div>
         {/* Counter in the ramp's registers, like the hero/enemy panels. */}
-        <span className="flex items-baseline gap-1">
-          <span className="hud-num text-stone-400">{specialTiles.length}</span>
-          <span className="hud-label text-stone-400">type{specialTiles.length !== 1 ? 's' : ''}</span>
-        </span>
+        <BeamSign on={wall}>
+          <span className="flex items-baseline gap-1">
+            <span className="hud-num text-stone-400">{specialTiles.length}</span>
+            <span className="hud-label text-stone-400">type{specialTiles.length !== 1 ? 's' : ''}</span>
+          </span>
+        </BeamSign>
       </div>
 
       {/* Ledger rows, two columns when the width is there */}

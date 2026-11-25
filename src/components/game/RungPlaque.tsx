@@ -1,8 +1,7 @@
 import React from 'react';
-import skinJson from '../../assets/panels/rung-plaque-slices.json';
-import { Z, buildSkin, nomW, nomH, useCrispSnap, prepCanvas, drawFixed, drawTiled, whenDecoded, type SkinPiece } from './panelSkins';
+import { Z, nomW, nomH, useCrispSnap, prepCanvas, drawFixed, drawTiled, whenDecoded, type SkinPiece } from './panelSkins';
 import { pokeSign, useGateImpactWobble, type GateImpact } from '../shared/signWobble';
-import { plaqueHeaderStraddle, drawRungPlaque } from './rungPlaqueSkin';
+import { plaqueHeaderStraddle, drawRungPlaque, RUNG_PLAQUE_PIECES } from './rungPlaqueSkin';
 
 // ============================================================================
 // RUNG PLAQUE — one shared 3-slice worn by BOTH rail plaques
@@ -22,7 +21,7 @@ import { plaqueHeaderStraddle, drawRungPlaque } from './rungPlaqueSkin';
 // TURNS); its width is text-driven like the quest plate. Unpainted header
 // pieces = the label renders as an inline prefix chip inside the plaque.
 
-const PIECES = buildSkin(skinJson, 'rung-plaque');
+const PIECES = RUNG_PLAQUE_PIECES;
 
 const rungPlaqueActive = PIECES.has('plaque-mid');
 const plaqueHeaderActive = PIECES.has('header-mid');

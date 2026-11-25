@@ -23,7 +23,7 @@ import { SelectionStrip, SelectionDrawer } from './SelectionShape';
 import placedBannerIcon from '../../assets/icons/placed-banner.png';
 import { useElementWidth, artGridSlotStyle } from '../../hooks/useElementWidth';
 import { subscribeToImageLoads } from '../../utils/imageLoader';
-import { BeamTapHint, BeamTorch, CutawayPlate, CutawayRampart, CutawaySlab, WallColumns, WallDark } from './CutawayWall';
+import { BeamSign, BeamTapHint, BeamTorch, CutawayPlate, CutawayRampart, CutawaySlab, WallColumns, WallDark } from './CutawayWall';
 import { WALL_CARD, WALL_HEADER_GAP, WALL_HERO_Z, WALL_ON, WALL_OVER_SLAB, WALL_ROW, type WallBelow } from './cutawayStone';
 
 const MOVEMENT_TYPES = new Set([
@@ -490,8 +490,10 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
           {wall && <BeamTorch side="right" lightOn="entry" />}
           {wall && showHeroHint && <BeamTapHint />}
         </div>
-        {/* (In the wall the count and the clear button sit together (the
-            button keeps its own 4px of padding) and the button is 4px
+        {/* (In the wall the count and the clear button sit together on one
+            sign (the button has no padding on its right, where the sign's
+            own end is, and is 8px narrower); before the sign the button
+            kept its 4px of padding and was 4px
             narrower: once a hero is placed that pair reaches to 18px from
             the title on a 375px phone, and the torch needs 22. Measured
             with a hero placed: 7.8px clear at 375; at 360 it just touches the count, the
@@ -502,15 +504,24 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
               ticks), the word is furniture (hud-label, uppercase). The
               at-max copper highlight stays on the numbers, where the state
               actually lives. */}
+          {/* (The wall: the count and the clear button are on one SIGN, the
+              user's painted plaque: CutawayWall BeamSign. So that the sign
+              is one size always, the button is ALWAYS there in the wall,
+              dim and idle until a hero is placed; user, 2026-11-25: "it
+              should be always visible but dim if no heroes have been
+              placed, which would allow a sign to be properly sized to fit
+              it and not have to expand".) */}
+          <BeamSign on={wall}>
           <span className="flex items-baseline gap-1">
             <span className={`hud-num ${isAtMaxPlaced ? 'text-copper-400' : 'text-stone-400'}`}>
               {placedCharacterIds.length}/{effectiveMaxPlaceable}
             </span>
             <span className="hud-label text-stone-400">placed</span>
           </span>
-          {onClearAll && placedCharacterIds.length > 0 && !disabled && (
+          {onClearAll && (wall || (placedCharacterIds.length > 0 && !disabled)) && (
             <button
               onClick={onClearAll}
+              disabled={placedCharacterIds.length === 0 || disabled}
               // -my-1: the 28px hit box is taller than the row's natural
               // ~20px text height — negative margin keeps the touch target
               // without growing the row when the button appears (the panel
@@ -519,7 +530,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
               // 44px of target, still zero layout pixels. --hit-w caps the
               // horizontal slop so this destructive control (clear all placed
               // heroes) cannot reach sideways into a hero card.
-              className={`p-1 -my-1 text-stone-400 hover:text-blood-400 hover:bg-stone-700 rounded-pixel transition-colors ${wall ? 'min-w-[24px]' : 'min-w-[28px]'} min-h-[28px] flex items-center justify-center hit-44 [--hit-w:34px]`}
+              className={`p-1 -my-1 text-stone-400 hover:text-blood-400 rounded-pixel transition-colors ${wall ? '!pr-0 min-w-[20px] disabled:opacity-35 disabled:pointer-events-none' : 'hover:bg-stone-700 min-w-[28px]'} min-h-[28px] flex items-center justify-center hit-44 [--hit-w:34px]`}
               title="Remove all placed heroes"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -527,6 +538,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
               </svg>
             </button>
           )}
+          </BeamSign>
         </div>
       </div>
 
