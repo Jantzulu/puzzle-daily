@@ -75,14 +75,15 @@ export const CompassArrow: React.FC<{ direction: string; size?: number; classNam
  */
 export const COMPASS_ART_PX = 13;
 /**
- * A SMALLER COMPASS, a draft (src/assets/icons/compass-11.png, 11x11): on a
+ * A SMALLER COMPASS (src/assets/icons/compass-11.png, 11x11): on a
  * four-hero roster the 26px compass crowds its card, and the user's idea
  * (2026-11-24): "potentially redrawing it down to 11px instead of 13 would
  * free up some space once it is doubled" (22px; showing the 13px art at 1x
- * instead they judged too small to hit). The file is MY redraw of their
- * painting in its own colours, so the size can be judged on a phone: theirs
- * to repaint (overwrite the PNG, keep it 11x11). Used only on the hero cards
- * of the cutaway wall (`?wall=1`) for now, via `small`.
+ * instead they judged too small to hit). THE USER'S OWN PAINTING, as the
+ * 13px one is ("here's my take on the 11x11"; it replaced a draft of mine
+ * the same day). To repaint, overwrite the PNG and keep it 11x11. Used
+ * only on the hero cards of the cutaway wall (`?wall=1`) for now, via
+ * `small`.
  */
 export const COMPASS_SMALL_ART_PX = 11;
 
