@@ -18,7 +18,7 @@ import { SelectionStrip, SelectionDrawer } from './SelectionShape';
 import { useElementWidth, artGridSlotStyle } from '../../hooks/useElementWidth';
 import { subscribeToImageLoads } from '../../utils/imageLoader';
 import { playChromeSound } from '../../utils/chromeSounds';
-import { BeamSign, BeamTapHint, BeamTorch, CutawayPlate, CutawaySlab, WallColumns, WallDark } from './CutawayWall';
+import { BeamSign, BeamTapHint, CutawayPlate, CutawaySlab, WallColumns, WallDark } from './CutawayWall';
 import { WALL_ABOVE_BEAM, WALL_CARD, WALL_HEADER_GAP, WALL_ON, WALL_OVER_PLATE, WALL_ROW, type WallBelow } from './cutawayStone';
 
 // Every enemy/ally opens a drawer (its info panel always renders).
@@ -246,6 +246,16 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
   const enemyDrawerUp = !!renderedEnemyId && !!renderedEnemyData;
   const showEnemyHint = !isAllySide && !enemyHintSeen && uniqueEnemyIds.length > 0 && selectedEnemyId === null;
 
+  // Counter in the ramp's registers, matching the hero panel's "N/M
+  // placed": the count is a stat value (hud-num, tabular), the word is
+  // furniture (hud-label, uppercase).
+  const count = (
+    <span className="flex items-baseline gap-1">
+      <span className="hud-num text-stone-400">{totalLiving}</span>
+      <span className="hud-label text-stone-400">remaining</span>
+    </span>
+  );
+
   const content = (
     <>
       {divider}
@@ -299,18 +309,14 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
           <h3 className={`carved-header ${isAllySide ? 'carved-header-parchment' : 'carved-header-blood'} font-medieval text-lg lg:text-xl uppercase whitespace-nowrap`}>
             {isAllySide ? 'Allies' : 'Enemies'}
           </h3>
-          {wall && <BeamTorch side="left" phase={isAllySide ? 850 : 700} />}
           {wall && showEnemyHint && <BeamTapHint />}
+          {wall && <BeamSign torch={{ prefer: 'left', phase: isAllySide ? 850 : 700 }}>{count}</BeamSign>}
         </div>
         {/* Counter in the ramp's registers, matching the hero panel's
             "N/M placed": the count is a stat value (hud-num, tabular),
             the word is furniture (hud-label, uppercase). */}
-        <BeamSign on={wall}>
-          <span className="flex items-baseline gap-1">
-            <span className="hud-num text-stone-400">{totalLiving}</span>
-            <span className="hud-label text-stone-400">remaining</span>
-          </span>
-        </BeamSign>
+        {/* (In the wall the count is on a sign beside the title: BeamSign, above.) */}
+        {wall ? <span /> : count}
       </div>
 
       {/* Enemy strip — equal-width slots on the art grid. The selection

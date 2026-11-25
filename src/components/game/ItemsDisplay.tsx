@@ -7,7 +7,7 @@ import { loadCollectible, loadSpellAsset, type CustomSprite, type CustomCollecti
 import { SpriteThumbnail } from '../editor/SpriteThumbnail';
 import { HelpButton } from './HelpOverlay';
 import { hasDeliverySchedule, deliveryRepeat } from '../../utils/deliverySchedule';
-import { BeamSign, BeamTorch, CutawayPlate, CutawaySlab, WallDark, WallSetting } from './CutawayWall';
+import { BeamSign, CutawayPlate, CutawaySlab, WallDark, WallSetting } from './CutawayWall';
 import { WALL_ABOVE_BEAM, WALL_ENTRY, WALL_HEADER_GAP, WALL_LIST, WALL_ON, WALL_OVER_PLATE, WALL_ROW } from './cutawayStone';
 
 interface ItemsDisplayProps {
@@ -236,6 +236,13 @@ export const ItemsDisplay: React.FC<ItemsDisplayProps> = ({ puzzle, className = 
   const indent = wall ? 'pl-9' : 'pl-7';
   const divider = wall ? <div aria-hidden="true" className={WALL_ABOVE_BEAM} /> : noPanel ? <div className="dungeon-seam" /> : null;
 
+  const count = (
+    <span className="flex items-baseline gap-1">
+      <span className="hud-num text-stone-400">{itemsWithSources.length}</span>
+      <span className="hud-label text-stone-400">type{itemsWithSources.length !== 1 ? 's' : ''}</span>
+    </span>
+  );
+
   const content = (
     <>
       {divider}
@@ -248,15 +255,11 @@ export const ItemsDisplay: React.FC<ItemsDisplayProps> = ({ puzzle, className = 
             <HelpButton sectionId="items" className="!text-[#e8cc8a]" />
           </div>
           <h3 className="carved-header carved-header-parchment font-medieval text-lg lg:text-xl uppercase whitespace-nowrap">Items</h3>
-          {wall && <BeamTorch side="right" phase={350} />}
+          {wall && <BeamSign torch={{ prefer: 'right', phase: 350 }}>{count}</BeamSign>}
         </div>
         {/* Counter in the ramp's registers, like the hero/enemy panels. */}
-        <BeamSign on={wall}>
-          <span className="flex items-baseline gap-1">
-            <span className="hud-num text-stone-400">{itemsWithSources.length}</span>
-            <span className="hud-label text-stone-400">type{itemsWithSources.length !== 1 ? 's' : ''}</span>
-          </span>
-        </BeamSign>
+        {/* (In the wall the count is on a sign beside the title: BeamSign, above.) */}
+        {wall ? <span /> : count}
       </div>
 
       {/* Ledger rows, two columns when the width is there */}

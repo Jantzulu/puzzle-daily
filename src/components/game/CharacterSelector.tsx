@@ -23,8 +23,8 @@ import { SelectionStrip, SelectionDrawer } from './SelectionShape';
 import placedBannerIcon from '../../assets/icons/placed-banner.png';
 import { useElementWidth, artGridSlotStyle } from '../../hooks/useElementWidth';
 import { subscribeToImageLoads } from '../../utils/imageLoader';
-import { BeamSign, BeamTapHint, BeamTorch, CutawayPlate, CutawayRampart, CutawaySlab, WallColumns, WallDark } from './CutawayWall';
-import { WALL_CARD, WALL_HEADER_GAP, WALL_HERO_Z, WALL_ON, WALL_OVER_SLAB, WALL_ROW, type WallBelow } from './cutawayStone';
+import { BEAM_SPOT_W, BeamSign, BeamSpot, BeamTapHint, CutawayPlate, CutawayRampart, CutawaySlab, WallColumns, WallDark } from './CutawayWall';
+import { WALL_CARD, WALL_HEADER_GAP, WALL_HERO_Z, WALL_ON, WALL_OVER_SLAB, WALL_ROW, WALL_SPOT_CLEAR, type WallBelow } from './cutawayStone';
 
 const MOVEMENT_TYPES = new Set([
   'move_forward', 'move_backward', 'move_left', 'move_right',
@@ -415,6 +415,43 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
   // the wall is a line under the title, not a row under the cards.
   const heroDrawerUp = !!renderedCharId && !!renderedCharacter && hasDrawerContent(renderedCharacter);
   const showHeroHint = !disabled && !heroHintSeen && !(isAtMaxPlaced || (!!selectedCharacterId && !placedCharacterIds.includes(selectedCharacterId)));
+  // The count and the clear button: at the header's right end, or, in the
+  // wall, together on one sign beside the title (CutawayWall BeamSign).
+  // (The wall: so that the sign is one size always, the button is ALWAYS
+  // there, dim and idle until a hero is placed; user, 2026-11-25: "it
+  // should be always visible but dim if no heroes have been placed, which
+  // would allow a sign to be properly sized to fit it and not have to
+  // expand".)
+  const heroCount = (
+    <>
+    <span className="flex items-baseline gap-1">
+      <span className={`hud-num ${isAtMaxPlaced ? 'text-copper-400' : 'text-stone-400'}`}>
+        {placedCharacterIds.length}/{effectiveMaxPlaceable}
+      </span>
+      <span className="hud-label text-stone-400">placed</span>
+    </span>
+    {onClearAll && (wall || (placedCharacterIds.length > 0 && !disabled)) && (
+      <button
+        onClick={onClearAll}
+        disabled={placedCharacterIds.length === 0 || disabled}
+        // -my-1: the 28px hit box is taller than the row's natural
+        // ~20px text height — negative margin keeps the touch target
+        // without growing the row when the button appears (the panel
+        // below must not shift on hero placement)
+        // hit-44 finishes the job the -my-1 started: 28px of paint,
+        // 44px of target, still zero layout pixels. --hit-w caps the
+        // horizontal slop so this destructive control (clear all placed
+        // heroes) cannot reach sideways into a hero card.
+        className={`p-1 -my-1 text-stone-400 hover:text-blood-400 rounded-pixel transition-colors ${wall ? '!pr-0 min-w-[20px] disabled:opacity-35 disabled:pointer-events-none' : 'hover:bg-stone-700 min-w-[28px]'} min-h-[28px] flex items-center justify-center hit-44 [--hit-w:34px]`}
+        title="Remove all placed heroes"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+        </svg>
+      </button>
+    )}
+    </>
+  );
   const content = (
     <>
       {/* Header row. mb-3 with the quest slot (user ask 2026-10-14: the
@@ -425,7 +462,15 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
         {wall && <CutawaySlab z={WALL_HERO_Z} above />}
         {wall && <CutawayRampart />}
         {wall && <CutawayPlate kind="heroes" z={WALL_HERO_Z} />}
-        {questSlot && <span data-quest-slot aria-hidden="true" className="quest-mini-slot" style={{ width: questGap }} />}
+        {/* (The wall: the slot stops short of the torch that now stands
+            left of the title, and holds the scroll's SPOT, an empty sign
+            the rolled scroll rests on: CutawayWall BeamSpot. The float
+            parks the scroll on the slot's centre, so the two agree.) */}
+        {questSlot && (
+          <span data-quest-slot aria-hidden="true" className="quest-mini-slot" style={wall ? { width: Math.max(BEAM_SPOT_W, questGap - WALL_SPOT_CLEAR), zIndex: WALL_HERO_Z + 1 } : { width: questGap }}>
+            {wall && <BeamSpot />}
+          </span>
+        )}
         <div className={`flex items-center gap-2 min-w-[60px] ${wall ? WALL_OVER_SLAB : ''}`}>
           {onTest && !disabled && (
             themeAssets.actionButtonTestHeroesImage ? (
@@ -485,10 +530,14 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
               and the purple hero identity. carved-header already carries
               700 weight + 0.05em tracking; the transform is what changes. */}
           <h3 className="carved-header carved-header-arcane font-medieval text-lg lg:text-xl uppercase whitespace-nowrap">Heroes</h3>
-          {/* The wall's torch, on the RIGHT (user call 2026-11-21): the small
-              quest scroll parks on the left. */}
-          {wall && <BeamTorch side="right" lightOn="entry" />}
           {wall && showHeroHint && <BeamTapHint />}
+          {/* The wall's sign for the count, beside the title, and the
+              beam's torch with it: it would like the RIGHT, between the
+              title and the sign, and has it on a wide screen; on a phone
+              there is no room and it stands on the left, between the
+              scroll's spot and the (?) (the user: "If that means we need
+              to move the hero torch to the left, so be it"). */}
+          {wall && <BeamSign torch={{ prefer: 'right', lightOn: 'entry' }}>{heroCount}</BeamSign>}
         </div>
         {/* (In the wall the count and the clear button sit together on one
             sign (the button has no padding on its right, where the sign's
@@ -504,41 +553,8 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
               ticks), the word is furniture (hud-label, uppercase). The
               at-max copper highlight stays on the numbers, where the state
               actually lives. */}
-          {/* (The wall: the count and the clear button are on one SIGN, the
-              user's painted plaque: CutawayWall BeamSign. So that the sign
-              is one size always, the button is ALWAYS there in the wall,
-              dim and idle until a hero is placed; user, 2026-11-25: "it
-              should be always visible but dim if no heroes have been
-              placed, which would allow a sign to be properly sized to fit
-              it and not have to expand".) */}
-          <BeamSign on={wall}>
-          <span className="flex items-baseline gap-1">
-            <span className={`hud-num ${isAtMaxPlaced ? 'text-copper-400' : 'text-stone-400'}`}>
-              {placedCharacterIds.length}/{effectiveMaxPlaceable}
-            </span>
-            <span className="hud-label text-stone-400">placed</span>
-          </span>
-          {onClearAll && (wall || (placedCharacterIds.length > 0 && !disabled)) && (
-            <button
-              onClick={onClearAll}
-              disabled={placedCharacterIds.length === 0 || disabled}
-              // -my-1: the 28px hit box is taller than the row's natural
-              // ~20px text height — negative margin keeps the touch target
-              // without growing the row when the button appears (the panel
-              // below must not shift on hero placement)
-              // hit-44 finishes the job the -my-1 started: 28px of paint,
-              // 44px of target, still zero layout pixels. --hit-w caps the
-              // horizontal slop so this destructive control (clear all placed
-              // heroes) cannot reach sideways into a hero card.
-              className={`p-1 -my-1 text-stone-400 hover:text-blood-400 rounded-pixel transition-colors ${wall ? '!pr-0 min-w-[20px] disabled:opacity-35 disabled:pointer-events-none' : 'hover:bg-stone-700 min-w-[28px]'} min-h-[28px] flex items-center justify-center hit-44 [--hit-w:34px]`}
-              title="Remove all placed heroes"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
-            </button>
-          )}
-          </BeamSign>
+          {/* (In the wall they are on a sign beside the title: heroCount, above.) */}
+          {!wall && heroCount}
         </div>
       </div>
 

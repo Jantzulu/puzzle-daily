@@ -3,7 +3,7 @@ import type { Puzzle, TileBehaviorConfig, CadenceConfig } from '../../types/game
 import { loadTileType, loadPuzzleSkin, type CustomTileType, type CustomSprite } from '../../utils/assetStorage';
 import { SpriteThumbnail } from '../editor/SpriteThumbnail';
 import { HelpButton } from './HelpOverlay';
-import { BeamSign, BeamTorch, CutawayPlate, CutawaySlab, WallDark, WallSetting } from './CutawayWall';
+import { BeamSign, CutawayPlate, CutawaySlab, WallDark, WallSetting } from './CutawayWall';
 import { WALL_ABOVE_BEAM, WALL_ENTRY, WALL_HEADER_GAP, WALL_LIST, WALL_ON, WALL_OVER_PLATE, WALL_ROW } from './cutawayStone';
 
 interface SpecialTilesDisplayProps {
@@ -242,6 +242,13 @@ export const SpecialTilesDisplay: React.FC<SpecialTilesDisplayProps> = ({ puzzle
   const wall = WALL_ON && noPanel;
   const divider = wall ? <div aria-hidden="true" className={WALL_ABOVE_BEAM} /> : noPanel ? <div className="dungeon-seam" /> : null;
 
+  const count = (
+    <span className="flex items-baseline gap-1">
+      <span className="hud-num text-stone-400">{specialTiles.length}</span>
+      <span className="hud-label text-stone-400">type{specialTiles.length !== 1 ? 's' : ''}</span>
+    </span>
+  );
+
   const content = (
     <>
       {divider}
@@ -256,15 +263,11 @@ export const SpecialTilesDisplay: React.FC<SpecialTilesDisplayProps> = ({ puzzle
           {/* nowrap: see StatusEffectsDisplay — the centered-title box caps
               at half the row and this title is nearly as wide. */}
           <h3 className="carved-header carved-header-rust font-medieval text-lg lg:text-xl uppercase whitespace-nowrap">Dungeon Tiles</h3>
-          {wall && <BeamTorch side="right" phase={500} />}
+          {wall && <BeamSign torch={{ prefer: 'right', phase: 500 }}>{count}</BeamSign>}
         </div>
         {/* Counter in the ramp's registers, like the hero/enemy panels. */}
-        <BeamSign on={wall}>
-          <span className="flex items-baseline gap-1">
-            <span className="hud-num text-stone-400">{specialTiles.length}</span>
-            <span className="hud-label text-stone-400">type{specialTiles.length !== 1 ? 's' : ''}</span>
-          </span>
-        </BeamSign>
+        {/* (In the wall the count is on a sign beside the title: BeamSign, above.) */}
+        {wall ? <span /> : count}
       </div>
 
       {/* Ledger rows, two columns when the width is there */}

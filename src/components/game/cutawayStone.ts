@@ -143,6 +143,13 @@ export const WALL_ABOVE_BEAM = 'h-5 wall-above-beam';
  * the torch stands 4px clear of its tip).
  */
 export const WALL_TORCH_GAP = { left: 34, right: 10 };
+/**
+ * The heroes' beam, left of the title: how far short of the title group
+ * (its (?) mark included) the quest scroll's slot stops (CSS px), now that
+ * the torch stands there: the torch's 10px from the mark and the 22 of its
+ * 32px box that its flame and handle are within, and 2 to spare.
+ */
+export const WALL_SPOT_CLEAR = 34;
 /** Half a torch's height (CSS px), to centre it on the title's row. */
 export const WALL_TORCH_HALF = 16;
 /**

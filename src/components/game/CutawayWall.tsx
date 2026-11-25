@@ -431,50 +431,70 @@ export const BeamTapHint: React.FC = () => (
 
 /**
  * A BEAM'S SIGN: the count on a beam (0/3 PLACED, 5 REMAINING, 1 TYPE,
- * 2 POSSIBLE) on a sign of the user's own painting, the plaque LIVES and
+ * 2 TYPES) on a sign of the user's own painting, the plaque LIVES and
  * TURNS hang on at the portcullis (user, 2026-11-25: "there are several
  * instances of text on each of the horizontal beams ... I think these text
  * lines should be inside signs like we used on the portcullis. Would we be
  * able to reuse that art for them?"). It is that art, drawn by the same
  * routine (rungPlaqueSkin.ts): painted ends, the middle tiled between.
  *
- * Wrap the count in it. It takes no room of its own: the sign reaches
- * SIGN_PAD past the words each side (the pad is the black line and the
- * rivets' three columns of a painted end: the words begin where the
- * rivets end), and no title or torch is pushed. THE COUNT MOVES SIGN_OUT
- * TO THE RIGHT, so the sign's end is 14px out over the side wall, where
- * the beam runs on: without that the heroes' sign began under their
- * torch's flame, and STATUS EFFECTS' under its title's plate (filmed at
- * 375 and 390 wide). Its 13 art rows cannot be centred on the beam's 18, so
- * it sits on the beam's art grid one row low of centre (SIGN_DROP), and
- * the words go down that one px with it. With `on` false, or the plaque
- * unpainted, the count is rendered bare.
+ * IT HANGS BESIDE ITS TITLE'S PLATE, on the right, SIGN_GAP from the
+ * plate's tip (the first build kept the counts at the beam's right end and
+ * pushed them out over the side wall to clear the torches; the user, from
+ * their phone: "I think the signs are too far to the right on mobile ...
+ * I dont think the right side of the signs need to line up, they should
+ * naturally sit next to the title plate with some space"). So mount it
+ * inside a title's centred wrapper, after the title.
+ *
+ * IT PLACES THE BEAM'S TORCH TOO (`torch`), because the two share the
+ * title's right: a torch that would LIKE the right stands between the
+ * title and the sign when the screen has the room for all three, and goes
+ * to the title's left when it has not. (I first put every torch on the
+ * left, on "If that means we need to move the hero torch to the left, so
+ * be it"; the user, watching: "I do not necessarily want all the torches
+ * on the left ... if there IS space to the right for the torch to be
+ * reasonably placed between the title and the sign, then it could be on
+ * the right. Having variance is more interesting".) The sides they would
+ * like take turns down the page, as before the signs: HEROES right,
+ * ENEMIES left, ITEMS right, STATUS EFFECTS left, DUNGEON TILES right. On
+ * a phone only ITEMS has the room; on a wide screen all three do.
+ *
+ * The sign reaches SIGN_PAD past the words each side: the black line and
+ * the rivets' three columns of a painted end, so the words begin where the
+ * rivets end. Its 13 art rows cannot be centred on the beam's 18, so it
+ * sits on the beam's art grid one row low of centre (SIGN_DROP). With the
+ * plaque unpainted the words stand there bare.
  */
 const SIGN_PAD = 4 * Z;
 const SIGN_H = 13 * Z;
 const SIGN_DROP = 1;
-const SIGN_OUT = 6;
+/** From the tip of the title's plate to the sign's painted end (CSS px). */
+const SIGN_GAP = 6;
+/** How far past its letters a title's plate reaches (CSS px). */
+const PLATE_TIP = PLATE_END_ART * Z;
+/**
+ * With the torch between them: from the title's letters to the sign's
+ * painted end (CSS px). The torch's box begins WALL_TORCH_GAP.right from
+ * the letters and is 32 wide, its flame and handle in the middle 12 of it:
+ * 14px of beam between the plate's tip and the flame, 8 between the flame
+ * and the sign.
+ */
+const SIGN_PAST_TORCH = 40;
+/** A sign with a torch before it may end this far out over the side wall (CSS px) and still count as fitting. */
+const SIGN_OVER = 8;
 
-export const BeamSign: React.FC<{ on: boolean; children: React.ReactNode }> = ({ on, children }) =>
-  (on && RUNG_PLAQUE_PIECES.has('plaque-mid') ? <BeamSignOn>{children}</BeamSignOn> : <>{children}</>);
-
-const BeamSignOn: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const hostRef = React.useRef<HTMLSpanElement>(null);
-  const boxRef = React.useRef<HTMLSpanElement>(null);
+/** The plaque, drawn into a box of its own height that is as wide as its parent says (a whole number of art px). */
+const SignArt: React.FC<{ boxRef: React.RefObject<HTMLSpanElement | null>; style: React.CSSProperties }> = ({ boxRef, style }) => {
   const snapRef = useCrispSnap<HTMLSpanElement>(true);
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
   React.useLayoutEffect(() => {
-    const host = hostRef.current;
     const box = boxRef.current;
     const canvas = canvasRef.current;
-    if (!host || !box || !canvas) return;
+    if (!box || !canvas || !RUNG_PLAQUE_PIECES.has('plaque-mid')) return;
     let cancelled = false;
     const draw = () => {
-      const inner = host.offsetWidth;
-      if (!inner) return;
-      // A whole number of art px wide, so both painted ends land on the grid.
-      const w = Math.ceil((inner + 2 * SIGN_PAD) / Z) * Z;
-      box.style.width = `${w}px`;
+      const w = box.offsetWidth;
+      if (!w) return;
       const ctx = prepCanvas(canvas, w, SIGN_H, 0);
       if (!ctx) return;
       ctx.clearRect(0, 0, w, SIGN_H);
@@ -483,19 +503,80 @@ const BeamSignOn: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     // Synchronous once the art is decoded: the skins' shared no-rAF rule.
     whenDecoded([...RUNG_PLAQUE_PIECES.values()]).then(() => { if (!cancelled) draw(); });
     const ro = new ResizeObserver(draw);
-    ro.observe(host);
+    ro.observe(box);
     return () => { cancelled = true; ro.disconnect(); };
-  }, []);
+  }, [boxRef]);
   return (
-    <span ref={hostRef} className="relative inline-flex items-center" style={{ top: SIGN_DROP, marginRight: -SIGN_OUT }}>
-      <span ref={boxRef} aria-hidden className="absolute pointer-events-none" style={{ left: -SIGN_PAD, top: `calc(50% - ${SIGN_H / 2}px)`, height: SIGN_H }}>
-        <span ref={snapRef} className="relative block w-full h-full">
-          <canvas ref={canvasRef} style={{ position: 'absolute' }} />
-        </span>
+    <span ref={boxRef} aria-hidden className="absolute pointer-events-none" style={{ ...style, height: SIGN_H }}>
+      <span ref={snapRef} className="relative block w-full h-full">
+        <canvas ref={canvasRef} style={{ position: 'absolute' }} />
       </span>
-      <span className="relative inline-flex items-center">{children}</span>
     </span>
   );
+};
+
+export const BeamSign: React.FC<{
+  children: React.ReactNode;
+  /** The beam's torch: the side it would like, and what BeamTorch takes. */
+  torch?: { prefer: 'left' | 'right'; phase?: number; lightOn?: 'seen' | 'entry' };
+}> = ({ children, torch }) => {
+  const hostRef = React.useRef<HTMLSpanElement>(null);
+  const boxRef = React.useRef<HTMLSpanElement>(null);
+  const wantsRight = torch?.prefer === 'right';
+  const [torchRight, setTorchRight] = React.useState(false);
+  React.useLayoutEffect(() => {
+    const host = hostRef.current;
+    const box = boxRef.current;
+    const title = host?.parentElement;
+    const row = title?.parentElement;
+    if (!host || !box || !title || !row) return;
+    const measure = () => {
+      const words = host.offsetWidth;
+      // The sign is as wide as the words and its two pads, rounded up to a
+      // whole number of art px so both painted ends land on the grid.
+      box.style.width = `${Math.ceil((words + 2 * SIGN_PAD) / Z) * Z}px`;
+      // Is there room for the torch between the title and the sign? (None
+      // of this depends on where the sign now is, so it cannot flip-flop.)
+      if (wantsRight) setTorchRight(title.getBoundingClientRect().right + SIGN_PAST_TORCH + words + 2 * SIGN_PAD <= row.getBoundingClientRect().right + SIGN_OVER);
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(host);
+    ro.observe(row);
+    return () => ro.disconnect();
+  }, [wantsRight]);
+  const between = wantsRight && torchRight;
+  return (
+    <>
+      {torch && <BeamTorch side={between ? 'right' : 'left'} phase={torch.phase} lightOn={torch.lightOn} />}
+      <span
+        ref={hostRef}
+        className="absolute left-full flex items-center whitespace-nowrap"
+        style={{ marginLeft: (between ? SIGN_PAST_TORCH : PLATE_TIP + SIGN_GAP) + SIGN_PAD, top: `calc(50% - ${SIGN_H / 2 - SIGN_DROP}px)`, height: SIGN_H }}
+      >
+        <SignArt boxRef={boxRef} style={{ left: -SIGN_PAD, top: 0 }} />
+        <span className="relative flex items-center">{children}</span>
+      </span>
+    </>
+  );
+};
+
+/**
+ * THE SCROLL'S SPOT: an empty sign on the heroes' beam, the same painted
+ * plaque, where the rolled-up quest scroll rests when it is minimized
+ * (user, 2026-11-25: "it would be nice to add a spot--empty sign, plate,
+ * or otherwise--that the rolled up scroll would sit on when its
+ * minimized"). The scroll is about 39px wide and 31 tall at rest, so on a
+ * 26px sign its rollers stand a little proud top and bottom, as a scroll
+ * hung on a board would. Mount it inside the hero header's quest slot
+ * (CharacterSelector: [data-quest-slot], whose centre is where the float
+ * parks the scroll); it centres itself there.
+ */
+export const BEAM_SPOT_W = 26 * Z;
+
+export const BeamSpot: React.FC = () => {
+  const boxRef = React.useRef<HTMLSpanElement>(null);
+  return <SignArt boxRef={boxRef} style={{ left: `calc(50% - ${BEAM_SPOT_W / 2}px)`, top: `calc(50% - ${SIGN_H / 2 - SIGN_DROP}px)`, width: BEAM_SPOT_W }} />;
 };
 
 /**

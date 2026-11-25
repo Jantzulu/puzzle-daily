@@ -5,7 +5,7 @@ import { getEnemy, type EnemyWithSprite } from '../../data/enemies';
 import { loadSpellAsset, loadStatusEffectAsset, loadCollectible, type CustomSprite } from '../../utils/assetStorage';
 import { SpriteThumbnail } from '../editor/SpriteThumbnail';
 import { HelpButton } from './HelpOverlay';
-import { BeamSign, BeamTorch, CutawayPlate, CutawaySlab, WallDark, WallSetting } from './CutawayWall';
+import { BeamSign, CutawayPlate, CutawaySlab, WallDark, WallSetting } from './CutawayWall';
 import { WALL_ABOVE_BEAM, WALL_ENTRY, WALL_HEADER_GAP, WALL_LIST, WALL_ON, WALL_OVER_PLATE, WALL_ROW } from './cutawayStone';
 
 interface StatusEffectsDisplayProps {
@@ -245,6 +245,16 @@ export const StatusEffectsDisplay: React.FC<StatusEffectsDisplayProps> = ({ puzz
   const wall = WALL_ON && noPanel;
   const divider = wall ? <div aria-hidden="true" className={WALL_ABOVE_BEAM} /> : noPanel ? <div className="dungeon-seam" /> : null;
 
+  // (On the wall's sign: "types", as ITEMS and DUNGEON TILES say. This
+  // title is the widest on the page; user, 2026-11-25: "maybe we can
+  // rephrase '2 possible' to shrink the size".)
+  const count = (
+    <span className="flex items-baseline gap-1">
+      <span className="hud-num text-stone-400">{statusEffectsWithSources.length}</span>
+      <span className="hud-label text-stone-400">{wall ? `type${statusEffectsWithSources.length !== 1 ? 's' : ''}` : 'possible'}</span>
+    </span>
+  );
+
   const content = (
     <>
       {divider}
@@ -262,20 +272,11 @@ export const StatusEffectsDisplay: React.FC<StatusEffectsDisplayProps> = ({ puzz
               wraps and overflows onto the rows below — the uppercase pass
               pushed this one over the cap on phones. */}
           <h3 className="carved-header carved-header-mystic font-medieval text-lg lg:text-xl uppercase whitespace-nowrap">Status Effects</h3>
-          {wall && <BeamTorch side="left" phase={1050} />}
+          {wall && <BeamSign torch={{ prefer: 'left', phase: 1050 }}>{count}</BeamSign>}
         </div>
         {/* Counter in the ramp's registers, like the hero/enemy panels. */}
-        <BeamSign on={wall}>
-          <span className="flex items-baseline gap-1">
-            <span className="hud-num text-stone-400">{statusEffectsWithSources.length}</span>
-            {/* (On the wall's sign: "types", as ITEMS and DUNGEON TILES say.
-                This title is the widest on the page and "possible" put the
-                sign's end under its plate on a 375px phone; user,
-                2026-11-25: "maybe we can rephrase '2 possible' to shrink
-                the size".) */}
-            <span className="hud-label text-stone-400">{wall ? `type${statusEffectsWithSources.length !== 1 ? 's' : ''}` : 'possible'}</span>
-          </span>
-        </BeamSign>
+        {/* (In the wall the count is on a sign beside the title: BeamSign, above.) */}
+        {wall ? <span /> : count}
       </div>
 
       {/* Ledger rows, two columns when the width is there — the entry
