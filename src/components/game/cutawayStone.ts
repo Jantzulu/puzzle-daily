@@ -180,12 +180,17 @@ export const WALL_ROW = 'min-h-[20px]';
 // (mt-auto: a card stretched by a taller neighbour still has its sprite at its foot.)
 // THE ENEMIES' COUNT stays at the TOP of its card (user: "the enemy counter
 // looks best when above, would it always cut off?"): in the card's top
-// right corner, but 8px ABOVE the card's top, on the shoulder of its arch,
-// so it is over the line the names are written on and no name, however
-// long, runs under it (at the card's own top it lay over the end of any
-// name of seven letters or more on a four-card strip). `count` places it
+// right corner, but 6px ABOVE the card's top, on the shoulder of its arch
+// (first 8px up and 2px in; the user: "can the counter come down and to the
+// left slightly? (closer to the end of the name and slightly lower)": now
+// 6px up and 6px in, which a no-epithet name still clears at any length),
+// so it is over the line the names are written on (at the card's own top
+// it lay over the end of any name of seven letters or more on a four-card
+// strip). A long name WITH an epithet sits 6px higher in its box and can
+// still reach under the count's corner on a crowded strip: the price of
+// the lower seat, told to the user. `count` places it
 // against the CARD, so the enemies' sprite block must not be `relative`.
-export const WALL_CARD = { card: 'pb-1.5', sprite: 'order-last mt-auto pt-1', name: 'h-[34px]', count: '-top-2 right-0.5 z-[1]' } as const;
+export const WALL_CARD = { card: 'pb-1.5', sprite: 'order-last mt-auto pt-1', name: 'h-[34px]', count: '-top-1.5 right-1.5 z-[1]' } as const;
 /**
  * A list's two columns on a wide screen, in the wall (Tailwind classes): a
  * GRID, not the CSS columns the lists use otherwise. In CSS columns an
