@@ -251,6 +251,29 @@ export const hash = (i: number): number => {
 
 const pick = <T,>(list: readonly T[], seed: number): T => list[Math.floor(hash(seed) * list.length) % list.length];
 
+// ---- THE USER'S HAND: everything is outlined in black -------------------------------------
+// User, 2026-11-24: "I have personally used a different artstyle (look at
+// the portcullis as an example) where elements are outlined in black, can
+// you study that style and try to apply it to the new art we have made for
+// all of these panels?" Their painted kits (src/assets/panels: the
+// portcullis bars, the nav beam, the rail and its spikes, the plaques, the
+// quest box, the tap hint), read pixel by pixel, all do the same things:
+//   1. ONE ART PX OF PURE BLACK round every element's silhouette, and the
+//      pixel at each outer corner left out (a clipped corner).
+//   2. Inside the line, FLAT BANDS in two or three close tones, darker
+//      towards the line (the beam: #101010, #171717, then its #262626 face);
+//      an upright bar has its light stripe on the left. No texture.
+//   3. A piece on a piece keeps its own line; a framed piece is black, one
+//      line of its accent, then its fill (the tap hint, the QUEST plate).
+//   4. Rivets and joints are black too.
+// So in this file: every joint between stones is INK, every piece that has
+// a silhouette (beams, plates, merlons, towers, columns, floors, shelves,
+// tablets, frames, the footing) has the black line and cut corners, the
+// plates are black, a line of their room's colour, then their face. What
+// is BEHIND things is left as it was (the hero hall's far wall, the
+// passages, the earth): the line is for elements, not for the dark.
+const INK = '#000000';
+
 // ---- the slab ---------------------------------------------------------------------------
 
 export interface SlabBlock { x: number; w: number; tone: number }
@@ -296,8 +319,10 @@ export const slabBlocks = (widthArt: number): SlabBlock[] => courseBlocks(widthA
  *     as its towers are: a string course under the merlons, then two
  *     courses of small dressed blocks in running bond.
  */
-const FLOOR_BEAM_ART = { paving: 2, main: 10, soffit: 3 };
-const WALL_BEAM_ART = { string: 2, upper: 6, lower: 7 };
+// (In the user's hand: a row of INK over every course and under the last,
+// and one art px of it between two stones.)
+const FLOOR_BEAM_ART = { paving: 2, main: 9, soffit: 3 };
+const WALL_BEAM_ART = { string: 2, upper: 6, lower: 6 };
 /** About how long the stones of each course are (art px). */
 const BEAM_STONE_ART = { paving: 12, soffit: 21, string: 26, ashlar: 15 };
 
@@ -313,19 +338,20 @@ export function drawSlab(ctx: CanvasRenderingContext2D, w: number, old = false, 
   };
   const widthArt = Math.ceil(w / Z);
   const s = old ? OLD : KEPT;
-  a(0, 0, widthArt, SLAB_ART, s.mortar);
+  a(0, 0, widthArt, SLAB_ART, INK); // every joint, and the beam's own line top and bottom
 
   if (above) {
     // The string course: long stones, their top the brightest line on the wall.
     for (const b of courseBlocks(widthArt, BEAM_STONE_ART.string, 300)) {
-      a(b.x, 0, b.w, WALL_BEAM_ART.string, s.faces[2]);
-      a(b.x, 0, b.w, 1, s.cut);
+      a(b.x, 1, b.w, WALL_BEAM_ART.string, s.faces[2]);
+      a(b.x, 1, b.w, 1, s.cut);
     }
     // Two courses in running bond: the same joints, the lower course half a block along.
     const half = Math.floor(BEAM_STONE_ART.ashlar / 2);
+    const upperY = 1 + WALL_BEAM_ART.string + 1;
     const courses = [
-      { y: WALL_BEAM_ART.string + 1, h: WALL_BEAM_ART.upper, shift: 0 },
-      { y: WALL_BEAM_ART.string + 1 + WALL_BEAM_ART.upper + 1, h: WALL_BEAM_ART.lower, shift: half },
+      { y: upperY, h: WALL_BEAM_ART.upper, shift: 0 },
+      { y: upperY + WALL_BEAM_ART.upper + 1, h: WALL_BEAM_ART.lower, shift: half },
     ];
     for (const c of courses) {
       for (const b of courseBlocks(widthArt + 2 * half, BEAM_STONE_ART.ashlar, 340)) {
@@ -343,11 +369,11 @@ export function drawSlab(ctx: CanvasRenderingContext2D, w: number, old = false, 
   // The paving the room above stands on.
   for (const b of courseBlocks(widthArt, BEAM_STONE_ART.paving, 400)) {
     const sunk = old && hash(b.x * 7 + 5) < 0.15 ? 1 : 0;
-    a(b.x, sunk, b.w, FLOOR_BEAM_ART.paving - sunk, s.faces[b.tone]);
-    a(b.x, sunk, b.w, 1, sunk ? s.edgeLit : s.lit);
+    a(b.x, 1 + sunk, b.w, FLOOR_BEAM_ART.paving - sunk, s.faces[b.tone]);
+    a(b.x, 1 + sunk, b.w, 1, sunk ? s.edgeLit : s.lit);
   }
   // The blocks that carry it (the torch and the title are on these).
-  const mainY = FLOOR_BEAM_ART.paving + 1;
+  const mainY = 1 + FLOOR_BEAM_ART.paving + 1;
   for (const b of slabBlocks(widthArt)) {
     a(b.x, mainY, b.w, FLOOR_BEAM_ART.main, s.faces[b.tone]);
     a(b.x, mainY, b.w, 1, s.edgeLit);
@@ -546,18 +572,20 @@ export function drawPlate(ctx: CanvasRenderingContext2D, widthArt: number, kind:
     const c = cols[x];
     return !!c && y >= c.top && y <= c.bottom;
   };
+  // In the user's hand (their tap hint, their QUEST plate): the black line
+  // round the silhouette, one line of the room's colour inside it, then the
+  // face. (It had a rim lit on the top and left and dark on the others.)
+  const onRim = (x: number, y: number): boolean => has(x, y) && (!has(x - 1, y) || !has(x + 1, y) || !has(x, y - 1) || !has(x, y + 1));
   for (let x = 0; x < widthArt; x++) {
     for (let y = cols[x].top; y <= cols[x].bottom; y++) {
-      if (!has(x, y)) continue;
-      // The rim: lit where the plate's edge faces left or up, dark where it faces right or down.
-      const color = !has(x - 1, y) || !has(x, y - 1) ? s.lit : !has(x + 1, y) || !has(x, y + 1) ? s.dark : s.face;
-      a(x, y, 1, 1, color);
+      const trim = onRim(x - 1, y) || onRim(x + 1, y) || onRim(x, y - 1) || onRim(x, y + 1);
+      a(x, y, 1, 1, onRim(x, y) ? INK : trim ? s.lit : s.face);
     }
   }
   // A rivet in each pointed end.
   const mid = PLATE_RISE_ART + SLAB_ART / 2 - 1;
-  a(1, mid, 1, 2, s.lit);
-  a(widthArt - 2, mid, 1, 2, s.lit);
+  a(2, mid, 1, 2, INK);
+  a(widthArt - 3, mid, 1, 2, INK);
 }
 
 /**
@@ -791,8 +819,9 @@ export function drawNiches(ctx: CanvasRenderingContext2D, w: number, h: number, 
           const { depth, lit } = passageDepth(open, x, y, NICHE_REVEAL_ART);
           // The niche's reveal (the arcade's own thickness, its right-hand face lit); then
           // the room's back wall, and the loop cut in it.
-          px(x0 + x, y, depth < NICHE_REVEAL_ART
-            ? (lit ? s.edgeLit : depth === 0 ? s.dark : s.core[0])
+          // (Its first pixel is the black line of the stone it is cut in: the arch's, a column's, the side wall's.)
+          px(x0 + x, y, depth === 0 ? INK : depth < NICHE_REVEAL_ART
+            ? (lit ? s.edgeLit : s.core[0])
             : inLoop(HERO_LOOP, open, x, y) ? LOOP_DARK
               : inLoop(HERO_LOOP, open, x - 1, y) || inLoop(HERO_LOOP, open, x, y - 1) ? LOOP_EDGE
                 : backWallColor(x0 + x, y));
@@ -804,6 +833,8 @@ export function drawNiches(ctx: CanvasRenderingContext2D, w: number, h: number, 
         if (y > ARCH_BAND_ART + ARCH_RISE_ART + last && x > span[0] + last && x < span[1] - last - 1) { x = span[1] - last - 2; continue; }
         const { depth, lit } = passageDepth(open, x, y, last + 1);
         if (depth < 0 || depth > last) continue;
+        // The black line of the stone the mouth is cut in.
+        if (depth === 0) { px(x0 + x, y, INK); continue; }
         const k = PASSAGE_RIBS_ART.findIndex(rib => depth <= rib);
         const amount = (depth === PASSAGE_RIBS_ART[k] ? PASSAGE_RIB[k] : PASSAGE_WALL[k]) * (lit ? 1.3 : 0.85);
         px(x0 + x, y, mix(GROUND, stone, amount));
@@ -951,41 +982,47 @@ export function drawSetting(ctx: CanvasRenderingContext2D, kind: SettingKind, iw
   const atWall = gap !== null;
   const x0 = box.x;
   const x1 = box.x + box.w;
+  /** A corner pixel left out, as the user's pieces have. */
+  const cut = (ax: number, ay: number) => ctx.clearRect((ax - box.x) * Z, (ay - box.y) * Z, Z, Z);
 
   if (kind === 'shelf') {
     // The ledge, three art px thick: a top that catches the light (it is
     // the brightest stone in the room: it must read under a small icon),
-    // its face, and a shaded lip; its free end is cut square and lit.
+    // its face, and the black line under it and round its free end.
     a(x0, ih, box.w, 1, SHELF_TOP);
     a(x0, ih + 1, box.w, 1, s.faces[2]);
-    a(x0, ih + 2, box.w, 1, s.dark);
-    a(x1 - 1, ih, 1, 2, s.lit);
-    // The corbel under it: courses stepping back, against the wall or under the middle.
+    a(x0, ih + 2, box.w, 1, INK);
+    a(x1 - 1, ih, 1, 3, INK);
+    cut(x1 - 1, ih);
+    cut(x1 - 1, ih + 2);
+    if (!atWall) { a(x0, ih, 1, 3, INK); cut(x0, ih); cut(x0, ih + 2); }
+    // The corbel under it: courses stepping back, against the wall or under
+    // the middle; black wherever a stone ends or has nothing under it.
     const steps = [7, 7, 5, 3, 2];
+    const leftOf = (w: number) => (atWall ? x0 : Math.round(iw / 2 - w / 2));
     steps.forEach((w, k) => {
-      const cx = atWall ? x0 : Math.round(iw / 2 - w / 2);
-      const y = ih + 3 + k;
-      a(cx, y, w, 1, k === 0 ? s.faces[1] : s.faces[k % 3]);
-      a(cx + w - 1, y, 1, 1, s.dark);
-      if (!atWall) a(cx, y, 1, 1, s.dark);
+      const next = steps[k + 1] ?? 0;
+      for (let i = 0; i < w; i++) {
+        const x = leftOf(w) + i;
+        const edge = i === w - 1 || (!atWall && i === 0) || x < leftOf(next) || x >= leftOf(next) + next;
+        a(x, ih + 3 + k, 1, 1, edge ? INK : s.faces[k % 3]);
+      }
     });
     return;
   }
 
   if (kind === 'tablet') {
-    // The tablet: two art px of stone round the rune, its top corners knocked off.
+    // The tablet: two art px round the rune, the black line and one of
+    // stone, lit along the top and shaded along the foot; corners cut.
     const tx = -2;
     const ty = -2;
     const tw = iw + 4;
     const th = ih + 4;
-    a(tx, ty, tw, th, s.faces[1]);
-    a(tx, ty, tw, 1, s.lit);
-    a(tx, ty + 1, 1, th - 1, s.edgeLit);
-    a(tx + tw - 1, ty + 1, 1, th - 1, s.dark);
-    a(tx, ty + th - 1, tw, 1, s.dark);
-    a(tx + 1, ty + 1, tw - 2, th - 2, s.faces[0]); // the sunk field the rune sits in
-    a(tx + 1, ty + 1, tw - 2, 1, s.dark);
-    a(tx + 1, ty + 2, 1, th - 3, s.dark);
+    a(tx, ty, tw, th, INK);
+    a(tx + 1, ty + 1, tw - 2, th - 2, s.faces[2]);
+    a(tx + 1, ty + 1, tw - 2, 1, s.lit);
+    a(tx + 1, ty + th - 2, tw - 2, 1, s.dark);
+    for (const [cx, cy] of [[tx, ty], [tx + tw - 1, ty], [tx, ty + th - 1], [tx + tw - 1, ty + th - 1]]) cut(cx, cy);
     // The iron: a bar out of the wall (or a nail, standing alone), and two links down to the tablet.
     if (atWall) {
       a(x0, -5, box.w - 1, 1, IRON.lit);
@@ -998,18 +1035,17 @@ export function drawSetting(ctx: CanvasRenderingContext2D, kind: SettingKind, iw
     return;
   }
 
-  // The frame: two art px of wood round the tile, iron at its corners,
+  // The frame: two art px round the tile, the black line and one of wood,
+  // an iron stud at each of the wood's corners, the outer corners cut;
   // held off the wall on two iron pins (alone: just the frame).
-  a(-2, -2, iw + 4, ih + 4, WOOD.mid);
-  a(-2, -2, iw + 4, 1, WOOD.lit);
-  a(-2, -1, 1, ih + 3, WOOD.lit);
-  a(iw + 1, -1, 1, ih + 3, WOOD.dark);
-  a(-2, ih + 1, iw + 4, 1, WOOD.dark);
-  a(-1, -1, iw + 2, ih + 2, s.mortar); // the rebate the tile sits in
-  for (const [px, py] of [[-2, -2], [iw, -2], [-2, ih], [iw, ih]]) {
-    a(px, py, 2, 2, IRON.dark);
-    a(px, py, 1, 1, IRON.lit);
-  }
+  a(-2, -2, iw + 4, ih + 4, INK);
+  a(-1, -1, iw + 2, ih + 2, WOOD.mid);
+  a(-1, -1, iw + 2, 1, WOOD.lit);
+  a(-1, 0, 1, ih + 1, WOOD.lit);
+  a(iw, 0, 1, ih + 1, WOOD.dark);
+  a(-1, ih, iw + 2, 1, WOOD.dark);
+  for (const [px, py] of [[-1, -1], [iw, -1], [-1, ih], [iw, ih]]) a(px, py, 1, 1, IRON.lit);
+  for (const [px, py] of [[-2, -2], [iw + 1, -2], [-2, ih + 1], [iw + 1, ih + 1]]) cut(px, py);
   if (atWall) {
     for (const py of [1, ih - 2]) {
       a(x0, py, -2 - x0, 1, IRON.lit);
@@ -1092,11 +1128,11 @@ export function drawPier(ctx: CanvasRenderingContext2D, side: 'left' | 'right', 
     if (b.y + b.h <= ground) continue; // above ground: the tower, below
     const s = stoneAt(b.y);
     const x = CORE_W + 1;
-    a(CORE_W, b.y, 4, b.h + 1, s.mortar);
+    a(CORE_W, b.y, 4, b.h + 1, INK); // the black line behind the lining and between its blocks
     if (b.fallen) {
       // Fallen out: the rubble behind shows, and the cut line breaks.
       a(x, b.y, 2, Math.max(1, b.h - 1), pick(s.core, salt + b.y));
-      a(PIER_ART - 1, b.y, 1, b.h + 1, s.mortar);
+      a(PIER_ART - 1, b.y, 1, b.h + 1, INK);
       continue;
     }
     a(x, b.y, 3, b.h, s.faces[b.tone]);
@@ -1113,7 +1149,8 @@ export function drawPier(ctx: CanvasRenderingContext2D, side: 'left' | 'right', 
     ctx.fillRect(ax * Z, ay * Z, aw * Z, ah * Z);
   };
   if (ground > 0) {
-    towerShaft(raw, 0, 0, PIER_ART, ground, salt + 40);
+    // (No black line down its side towards the hall: the first niche's own line is there.)
+    towerShaft(raw, 0, 0, PIER_ART, ground, salt + 40, side === 'left' ? 'left' : 'right');
     // An arrow slit, a FIXED way down from the tower's top (it was at a
     // share of the tower's height, and went down the tower when a hero's
     // info opened: "expanding the hero panel moves the cross shaped window
@@ -1158,15 +1195,32 @@ export const RAMPART_RISE_ART = 7;
 export const RAMPART_H = RAMPART_RISE_ART * Z + SLAB_H;
 /** A tower's head is this much wider than its shaft, towards the wall (art px): it stands out on corbels. */
 const TOWER_FLARE_ART = 2;
-/** The wall's merlons: this tall, this wide, this far apart (art px). */
-const MERLON_ART = { h: 3, w: 4, gap: 3 };
+/** The wall's merlons: this tall, this wide (their black line included), this far apart (art px). */
+const MERLON_ART = { h: 3, w: 6, gap: 2 };
+/**
+ * A tower's head in the user's hand, row by row from its top, from the
+ * page's edge inwards (K the black line, M a merlon, P the parapet, C a
+ * corbel, . open): two merlons with their corners cut on a parapet that
+ * stands out past the shaft on a row of corbels.
+ */
+const TOWER_HEAD = [
+  '..KK....KK..',
+  '.KMMK..KMMK.',
+  'KKMMKKKKMMKK',
+  'KPPPPPPPPPPK',
+  'KCKCKCKCKCKK',
+] as const;
 
 type Fill = (ax: number, ay: number, aw: number, ah: number, color: string) => void;
 
-/** A tower's shaft seen from outside: courses of dressed stone, lit down its left side and in shade down its right (it is round). */
-function towerShaft(fill: Fill, x0: number, y0: number, w: number, rows: number, salt: number): void {
+/**
+ * A tower's shaft seen from outside: courses of dressed stone, lit down its
+ * left side and in shade down its right (it is round), with the black line
+ * between its stones and down its sides (`lines`: both, or only one).
+ */
+function towerShaft(fill: Fill, x0: number, y0: number, w: number, rows: number, salt: number, lines: 'both' | 'left' | 'right' = 'both'): void {
   const s = KEPT;
-  fill(x0, y0, w, rows, s.mortar);
+  fill(x0, y0, w, rows, INK);
   for (let c = 0, y = 0; y < rows; c++, y += 6) {
     const h = Math.min(5, rows - y);
     const shift = c % 2 ? 3 : 0; // running bond
@@ -1181,7 +1235,18 @@ function towerShaft(fill: Fill, x0: number, y0: number, w: number, rows: number,
   fill(x0, y0, 2, rows, 'rgba(255, 236, 205, 0.07)');
   fill(x0 + w - 3, y0, 3, rows, 'rgba(0, 0, 0, 0.3)');
   fill(x0 + w - 1, y0, 1, rows, 'rgba(0, 0, 0, 0.25)');
+  if (lines !== 'right') fill(x0, y0, 1, rows, INK);
+  if (lines !== 'left') fill(x0 + w - 1, y0, 1, rows, INK);
 }
+
+/** Where a column of the wall is in its merlon (0 to MERLON_ART.w - 1), or -1 in a gap. A merlon stands on the middle. */
+function merlonColumn(x: number, widthArt: number): number {
+  const c = Math.floor(Math.abs(x - (widthArt - 1) / 2));
+  const k = (c + MERLON_ART.w / 2) % (MERLON_ART.w + MERLON_ART.gap);
+  return k < MERLON_ART.w ? k : -1;
+}
+/** Is that column one of a merlon's two sides (where its black line runs down, and its corner is cut)? */
+const merlonSide = (k: number): boolean => k === 0 || k === MERLON_ART.w - 1;
 
 /**
  * The first row of stone in each column of the rampart, ABOVE the beam
@@ -1193,13 +1258,10 @@ export function rampartTops(widthArt: number): number[] {
   const head = PIER_ART + TOWER_FLARE_ART;
   return Array.from({ length: widthArt }, (_, x) => {
     const fromEnd = Math.min(x, widthArt - 1 - x);
-    if (fromEnd < head) {
-      // A tower's head: three merlons over a parapet.
-      const merlon = fromEnd < 3 || (fromEnd >= 5 && fromEnd < 7) || fromEnd >= head - 3;
-      return merlon ? 0 : 2;
-    }
-    const c = Math.floor(Math.abs(x - (widthArt - 1) / 2)); // columns from the middle: a merlon on the middle
-    return (c + 2) % (MERLON_ART.w + MERLON_ART.gap) < MERLON_ART.w ? RAMPART_RISE_ART - MERLON_ART.h : RAMPART_RISE_ART;
+    if (fromEnd < head) return TOWER_HEAD.findIndex(row => row[fromEnd] !== '.');
+    const k = merlonColumn(x, widthArt);
+    // (A merlon's two sides begin a row lower: its corners are cut.)
+    return k < 0 ? RAMPART_RISE_ART : RAMPART_RISE_ART - MERLON_ART.h + (merlonSide(k) ? 1 : 0);
   });
 }
 
@@ -1221,16 +1283,22 @@ export function drawRampart(ctx: CanvasRenderingContext2D, w: number): void {
   for (let x = 0; x < widthArt; x++) {
     const fromEnd = Math.min(x, widthArt - 1 - x);
     if (fromEnd < head) {
-      // A tower's head: merlons (rows 0-1), the parapet (2-3), and the corbels it stands out on (4).
-      if (tops[x] === 0) { fill(x, 0, 1, 2, s.faces[1]); fill(x, 0, 1, 1, s.lit); }
-      fill(x, 2, 1, 2, s.faces[2]);
-      fill(x, 2, 1, 1, s.lit);
-      fill(x, 4, 1, 1, fromEnd % 2 ? s.mortar : s.faces[0]);
+      // A tower's head, pixel for pixel.
+      TOWER_HEAD.forEach((row, y) => {
+        const c = row[fromEnd];
+        if (c === 'K') fill(x, y, 1, 1, INK);
+        else if (c === 'M') fill(x, y, 1, 1, y === 1 ? s.lit : s.faces[1]);
+        else if (c === 'P') fill(x, y, 1, 1, s.faces[2]);
+        else if (c === 'C') fill(x, y, 1, 1, s.faces[0]);
+      });
     } else if (tops[x] < RAMPART_RISE_ART) {
-      // A merlon of the wall: lit on top, in shade down its right side.
-      fill(x, tops[x], 1, MERLON_ART.h, s.faces[0]);
-      fill(x, tops[x], 1, 1, s.lit);
-      if (tops[x + 1] === RAMPART_RISE_ART) fill(x, tops[x] + 1, 1, MERLON_ART.h - 1, s.dark);
+      // A merlon of the wall: the black line over it and down its sides, lit under the line.
+      const top = RAMPART_RISE_ART - MERLON_ART.h;
+      fill(x, tops[x], 1, RAMPART_RISE_ART - tops[x], INK);
+      if (!merlonSide(merlonColumn(x, widthArt))) {
+        fill(x, top + 1, 1, MERLON_ART.h - 1, s.faces[0]);
+        fill(x, top + 1, 1, 1, s.lit);
+      }
     }
   }
 }
@@ -1307,7 +1375,7 @@ export function drawFoundation(ctx: CanvasRenderingContext2D, w: number): void {
   };
   const widthArt = Math.ceil(w / Z);
   const course = (x0: number, y0: number, width: number, height: number, about: number, salt: number) => {
-    a(x0, y0, width, height, s.mortar);
+    a(x0, y0, width, height, INK);
     for (const b of courseBlocks(width, about, salt)) {
       const x = x0 + b.x;
       const top = y0 + 1;
@@ -1321,8 +1389,8 @@ export function drawFoundation(ctx: CanvasRenderingContext2D, w: number): void {
       const chip = hash(salt + b.x * 7 + 5);
       if (chip > 0.5 && b.w > 8) {
         const right = chip > 0.75;
-        a(right ? x + b.w - 2 : x, top, 2, 1, s.mortar);
-        a(right ? x + b.w - 1 : x, top + 1, 1, 1, s.mortar);
+        a(right ? x + b.w - 2 : x, top, 2, 1, INK);
+        a(right ? x + b.w - 1 : x, top + 1, 1, 1, INK);
       }
     }
   };

@@ -4725,12 +4725,16 @@ button.dir-picker__tab:not(.dir-picker__tab--active) .dir-picker__tab-text {
 
 .wall-column::before,
 .wall-column::after {
-  /* Capital and base: 4 art px wide, 2 tall. */
+  /* Capital and base: 4 art px wide, 2 tall, with the black line round them
+     that everything of the user's has (cutawayStone.ts, THE USER'S HAND; a
+     hard ring, no blur). The shaft's own line is the first pixel of the
+     opening each side of it (drawNiches). */
   content: '';
   position: absolute;
   left: -2px;
   right: -2px;
   height: 4px;
+  box-shadow: 0 0 0 2px #000;
 }
 
 .wall-column::before {
@@ -4747,11 +4751,12 @@ button.dir-picker__tab:not(.dir-picker__tab--active) .dir-picker__tab-text {
 
 .wall-floor,
 .wall-columns--open[data-no-beam]::after {
-  /* The floor along the strip's foot: a lit top row over a shaded lip. */
+  /* The floor along the strip's foot: the black line over a row of lit
+     stone, as the top of the beam that takes its place has (drawSlab). */
   position: absolute;
   bottom: 0;
   height: 4px;
-  background: linear-gradient(var(--col-cap) 0 2px, var(--col-foot) 2px 4px);
+  background: linear-gradient(#000 0 2px, var(--col-cap) 2px 4px);
 }
 
 .wall-columns--open[data-no-beam]::after {

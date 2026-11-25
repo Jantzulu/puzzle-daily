@@ -219,7 +219,9 @@ describe('the cutaway wall', () => {
     expect(RAMPART_H).toBe(RAMPART_RISE_ART * 2 + SLAB_H);
     const tops = rampartTops(195);
     tops.forEach((top, x) => expect(top).toBe(tops[tops.length - 1 - x])); // the same both sides
-    expect(tops[0]).toBe(0); // a tower's merlon reaches the very top
+    expect(Math.min(...tops.slice(0, PIER_ART + 2))).toBe(0); // a tower's merlon reaches the very top
+    expect(tops[0]).toBeGreaterThan(0); // (not at the very edge: its corners are cut, as the user's pieces are)
+    expect(tops.slice(0, PIER_ART + 2)).toEqual(tops.slice(-(PIER_ART + 2)).reverse()); // and the two towers mirror each other
     const wall = tops.slice(PIER_ART + 2, tops.length - PIER_ART - 2);
     expect(Math.min(...wall)).toBeGreaterThan(0); // the wall's merlons stand lower than the towers
     expect(Math.min(...wall)).toBeLessThan(RAMPART_RISE_ART); // but there are merlons
