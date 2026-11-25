@@ -664,10 +664,14 @@ export function drawNiches(ctx: CanvasRenderingContext2D, w: number, h: number, 
       const span = nicheSpan(open, y);
       if (!span) continue;
       if (sky) {
+        const win = heroWindow(open, rows);
         for (let x = span[0]; x < span[1]; x++) {
           const { depth, lit } = passageDepth(open, x, y, WINDOW_REVEAL_ART);
-          // The reveal: the wall's thickness, its right-hand face lit; the sky past it.
-          px(x0 + x, y, depth < WINDOW_REVEAL_ART ? (lit ? s.edgeLit : depth === 0 ? s.dark : s.core[0]) : skyColor(x0 + x, y, rows, widthArt));
+          // The niche's reveal (the arcade's own thickness, its right-hand face lit); then
+          // the room's back wall, and the window in it.
+          px(x0 + x, y, depth < WINDOW_REVEAL_ART
+            ? (lit ? s.edgeLit : depth === 0 ? s.dark : s.core[0])
+            : windowColor(win, x, y, x0, widthArt) ?? backWallColor(x0 + x, y));
         }
         continue;
       }
@@ -684,19 +688,23 @@ export function drawNiches(ctx: CanvasRenderingContext2D, w: number, h: number, 
   }
 }
 
-// ---- the hero hall's windows: a dusk sky -------------------------------------------------
-// The hero hall is above ground (the rampart, below), so its arches are
-// WINDOWS (user, 2026-11-24, of my niche ideas: "id like to see the
-// windows, maybe lets do dusk!"). Through all of them there is ONE sky, as
-// one sky is seen through an arcade: deep blue at the top, where the names
-// are written, through purple to a warm line at the horizon, behind the
-// heroes' feet; a few stars; and two lines of far hills along the foot,
-// which is what says "outside" and keeps the bright horizon to the
-// valleys between them. Kept DARK: it is a page of dark rooms, and names
-// and numbers are read on it. (The heroes stand on the floor now, so a
-// sky behind them does not leave them hanging in it, as the brick wall
-// behind them did.) Each window has a narrow REVEAL: the thickness of the
-// wall it is cut through, lit on the right jamb.
+// ---- the hero hall: a back wall, and a window onto the dusk in it ------------------------
+// The hero hall is above ground (the rampart, below). User, 2026-11-24, of
+// my niche ideas: "id like to see the windows, maybe lets do dusk!" FIRST
+// BUILD, NOT TO BE REPEATED: the whole of each arch opened onto the sky.
+// The user: "as beautiful as that is, it doesnt really make that much
+// sense. Maybe if there were windows behind them with the sky seen through
+// the windows? They can once again appear to be in a building, maybe even
+// with brick now that they wont be floating". So behind each hero there is
+// the room's BACK WALL of stone courses (the brick wall of (96) made the
+// sprites float when they hung at the top of their cards; they stand on
+// the floor now), and in it one WINDOW: round-headed, with a stone
+// surround and sill and a cross of glazing bars, as wide as the card
+// allows, behind the name and reaching down to about the hero's head.
+// Through every window is the SAME sky (x is counted along the strip):
+// deep blue at the top through purple to a warm line at the horizon, a
+// few stars, and two lines of far hills along the window's foot. Kept
+// dark: names and numbers are read on it.
 
 /** The sky's bands, top to bottom: how far down the window each ends (a share of its height) and its colour. */
 const SKY_BANDS: ReadonlyArray<readonly [number, string]> = [
@@ -711,8 +719,66 @@ const SKY_BANDS: ReadonlyArray<readonly [number, string]> = [
 const SKY_STAR = ['#77749a', '#b9b5d6'];
 /** The far hills and the nearer, darker ones. */
 const SKY_HILLS = ['#2a1a33', '#150f1d'];
-/** How wide a window's reveal is (art px). */
+/** How wide a niche's reveal is (art px). */
 const WINDOW_REVEAL_ART = 2;
+/** The hero hall's back wall: far back, so dim, but a wall (the passages under ground have none). */
+// (A step darker than first built: the user, "the back wall could maybe be darkened more".)
+const BACK_WALL = { mortar: '#0a0807', faces: ['#15110e', '#17130f', '#130f0d'], lit: '#1b1612' };
+const BACK_COURSE_ART = 7;
+const BACK_BLOCK_ART = 15;
+/** A window's widest, the stone left each side of it at least, and how far its head is rounded in on its top rows (art px). */
+const WINDOW_MAX_W_ART = 22;
+const WINDOW_SIDE_ART = 7;
+const WINDOW_HEAD = [5, 3, 2, 1];
+
+/** The back wall's colour at an art pixel (x along the whole strip: one wall behind the arcade). */
+export function backWallColor(x: number, y: number): string {
+  const course = Math.floor(y / BACK_COURSE_ART);
+  const inCourse = y - course * BACK_COURSE_ART;
+  if (inCourse === BACK_COURSE_ART - 1) return BACK_WALL.mortar; // the bed joint
+  const along = x + (course % 2 ? Math.floor(BACK_BLOCK_ART / 2) : 0); // running bond
+  if (along % BACK_BLOCK_ART === BACK_BLOCK_ART - 1) return BACK_WALL.mortar; // the upright joint
+  if (inCourse === 0) return BACK_WALL.lit;
+  return BACK_WALL.faces[Math.floor(hash(Math.floor(along / BACK_BLOCK_ART) * 13 + course * 7) * 3) % 3];
+}
+
+/** A hero's window: its left and right columns (art px from the card's left edge) and its top and foot rows. */
+export interface HeroWindow { left: number; right: number; top: number; foot: number }
+
+/** Where the window is in a card's back wall, for a niche `rows` art px tall: centred, under the arch's crown. */
+export function heroWindow(open: { left: number; right: number }, rows: number): HeroWindow {
+  const width = Math.max(8, Math.min(WINDOW_MAX_W_ART, open.right - open.left - 2 * WINDOW_SIDE_ART));
+  const left = Math.round((open.left + open.right) / 2 - width / 2);
+  return { left, right: left + width, top: ARCH_BAND_ART + 4, foot: Math.floor(rows * 0.56) };
+}
+
+/** Is this art pixel glass (or a glazing bar): inside the window's round-headed opening? */
+function inWindow(win: HeroWindow, x: number, y: number): boolean {
+  if (y < win.top || y >= win.foot) return false;
+  const round = Math.min(WINDOW_HEAD[y - win.top] ?? 0, Math.floor((win.right - win.left) / 2) - 2);
+  return x >= win.left + round && x < win.right - round;
+}
+
+/**
+ * The colour of a hero's window at an art pixel of its card (x, y), or
+ * null where the wall is plain. `x0`: the card's left edge along the strip.
+ */
+function windowColor(win: HeroWindow, x: number, y: number, x0: number, widthArt: number): string | null {
+  // The sill: two rows under the opening, a pixel wider each side, its top lit.
+  if ((y === win.foot || y === win.foot + 1) && x >= win.left - 1 && x < win.right + 1) return y === win.foot ? KEPT.lit : KEPT.faces[0];
+  if (!inWindow(win, x, y)) {
+    // The surround: one art px of dressed stone round the opening.
+    const beside = inWindow(win, x - 1, y) || inWindow(win, x + 1, y) || inWindow(win, x, y + 1) || inWindow(win, x - 1, y + 1) || inWindow(win, x + 1, y + 1);
+    return beside ? KEPT.faces[2] : null;
+  }
+  // The glazing bars: an upright up the middle and a bar across, a little above half way.
+  const mid = Math.floor((win.left + win.right) / 2);
+  const bar = win.top + Math.round((win.foot - win.top) * 0.42);
+  if (x === mid || y === bar) return KEPT.dark;
+  // The wall's own shadow on the glass, along its head and its left side.
+  if (!inWindow(win, x - 1, y) || !inWindow(win, x, y - 1)) return '#0a0b1a';
+  return skyColor(x0 + x, y - win.top, win.foot - win.top, widthArt);
+}
 
 /** The sky's colour at an art pixel of a window `rows` tall (x counted along the whole strip: one sky). */
 export function skyColor(x: number, y: number, rows: number, widthArt: number): string {
