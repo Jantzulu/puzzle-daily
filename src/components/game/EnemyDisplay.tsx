@@ -409,7 +409,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
 
               {/* NAME + epithet — the hero cards' fixed 38px box, one
                   clamped line each, full text in `title`. */}
-              <div className="w-full h-[38px] flex flex-col items-center justify-center overflow-hidden leading-none">
+              <div className={`w-full ${wall ? WALL_CARD.name : 'h-[38px]'} flex flex-col items-center justify-center overflow-hidden leading-none`}>
                 <span
                   // Bounded to its (equal) slot so the clamp cuts one end,
                   // not both (the hero strip's "eflecto" fix).

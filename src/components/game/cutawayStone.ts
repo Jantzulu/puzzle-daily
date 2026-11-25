@@ -158,14 +158,27 @@ export const WALL_ROW = 'min-h-[20px]';
  * and sprites like you said, just to see"): in the wall a hero's or enemy's
  * card is turned over, the name and the stat line on top and the SPRITE
  * LAST, standing on the room's floor (the beam below, or the narrow floor
- * over an open drawer: both are 4px above the strip's foot, hence pb-1).
+ * over an open drawer: both are 4px above the strip's foot).
  * In every cross-section looked at, a figure stands on a floor; with the
  * sprite at the top of its card it hung in the air. Tailwind classes for
  * the card and for its sprite block. index.css moves the compass's tap
  * target down with the sprite (.wall-on .hero-aim).
  */
+// KEPT (user, from their phone, 2026-11-24: "I think the sprites below the
+// names are better than above"), with two corrections of theirs: "the feet
+// of the entities can be obscured by the plate of the panel below" and "the
+// sprites can come too close to the text above them ... at least one pixel
+// of space above the 'ground' and a little extra space between the max
+// height and the hp are needed". So the sprite stands ONE ART PX above the
+// floor (pb-1.5 = the floor's 4px + 2px: a title plate below stands 2px
+// proud of its beam at most, so the feet are clear of it too), and has 4px
+// of its own over its head (pt-1).
+// HEIGHT (user, the same hour: "we dont want to add too much height"):
+// those 6px are paid for with 4 from the name box, 38px otherwise and 34
+// here (a name and an epithet take 30), so a row of cards is 2px taller
+// than before the card was turned over.
 // (mt-auto: a card stretched by a taller neighbour still has its sprite at its foot.)
-export const WALL_CARD = { card: 'pb-1', sprite: 'order-last mt-auto' } as const;
+export const WALL_CARD = { card: 'pb-1.5', sprite: 'order-last mt-auto pt-1', name: 'h-[34px]' } as const;
 /**
  * A list's two columns on a wide screen, in the wall (Tailwind classes): a
  * GRID, not the CSS columns the lists use otherwise. In CSS columns an
@@ -844,23 +857,23 @@ export function drawPier(ctx: CanvasRenderingContext2D, side: 'left' | 'right', 
 
   // ABOVE GROUND the side wall is a TOWER seen from outside (the hero hall
   // is the part of the castle that stands above ground: cutawayStone's
-  // rampart, below), and the turf it stands in.
+  // rampart, below).
   const raw = (ax: number, ay: number, aw: number, ah: number, color: string) => {
     ctx.fillStyle = color;
     ctx.fillRect(ax * Z, ay * Z, aw * Z, ah * Z);
   };
   if (ground > 0) {
     towerShaft(raw, 0, 0, PIER_ART, ground, salt + 40);
-    // An arrow slit, where there is the height for one.
-    if (ground >= 24) {
-      const y = Math.floor(ground * 0.4);
-      raw(PIER_ART / 2 - 1, y, 2, 8, EARTH.slit);
-      raw(PIER_ART / 2 - 2, y + 3, 4, 1, EARTH.slit);
+    // An arrow slit, a FIXED way down from the tower's top (it was at a
+    // share of the tower's height, and went down the tower when a hero's
+    // info opened: "expanding the hero panel moves the cross shaped window
+    // down the castle towers which doesn't really make much sense").
+    if (ground >= TOWER_SLIT_ART + 12) {
+      raw(PIER_ART / 2 - 1, TOWER_SLIT_ART, 2, 8, EARTH.slit);
+      raw(PIER_ART / 2 - 2, TOWER_SLIT_ART + 3, 4, 1, EARTH.slit);
     }
-    if (ground < heightArt) {
-      a(0, ground, CORE_W + 1, 1, EARTH.turf[0]);
-      a(0, ground + 1, CORE_W + 1, 1, EARTH.turf[1]);
-    }
+    // (No turf at its foot: tried, two rows of green in the earth's top;
+    // the user: "I am not sure if I like the grass block on the hero panel".)
   }
 
   // (No fade at the foot: the wall stands on the foundation, drawn over its last stretch.)
@@ -881,13 +894,14 @@ export function drawPier(ctx: CanvasRenderingContext2D, side: 'left' | 'right', 
 // them. The towers run on down the page's sides to the ground (drawPier),
 // which is at the enemies' beam; from there down the sides are earth.
 
-/** Earth, turf, and the dark of an arrow slit. */
+/** Earth, and the dark of an arrow slit. */
 const EARTH = {
   soil: ['#1b140d', '#1f1710', '#17110b'],
   stone: ['#2a2622', '#24201c', '#2e2a25'],
-  turf: ['#2f3d1d', '#1f2a14'],
   slit: '#070605',
 };
+/** How far below the top of a side wall its tower's arrow slit is (art px): about the height of the heroes' names. */
+const TOWER_SLIT_ART = 22;
 
 /** How far the towers stand above the top of the heroes' beam (art px), and the rampart's height (CSS px). */
 export const RAMPART_RISE_ART = 7;

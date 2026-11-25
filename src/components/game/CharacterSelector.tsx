@@ -712,7 +712,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                   height whether its hero is 'Ru' or 'Bartholomew the
                   Unready', which retires the measured-min-height machinery
                   the old two-line block needed. */}
-              <div className="w-full h-[38px] flex flex-col items-center justify-center overflow-hidden leading-none">
+              <div className={`w-full ${wall ? WALL_CARD.name : 'h-[38px]'} flex flex-col items-center justify-center overflow-hidden leading-none`}>
                 <span
                   // Slots are equal by construction (min-w-0), so a name wider
                   // than its slot must be bounded to it for the clamp to
