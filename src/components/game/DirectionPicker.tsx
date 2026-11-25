@@ -5,6 +5,7 @@ import type { CustomSprite } from '../../utils/assetStorage';
 import { HubPreview, type RedirectTarget } from './HubPreview';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import compassIcon from '../../assets/icons/compass.png';
+import compassSmallIcon from '../../assets/icons/compass-11.png';
 import { navChromeIcon } from '../../assets/icons/navChrome';
 import { PaintedNavIcon } from '../shared/PaintedNavIcon';
 
@@ -73,10 +74,21 @@ export const CompassArrow: React.FC<{ direction: string; size?: number; classNam
  * any other size smears the pixels. To repaint, overwrite the PNG.
  */
 export const COMPASS_ART_PX = 13;
+/**
+ * A SMALLER COMPASS, a draft (src/assets/icons/compass-11.png, 11x11): on a
+ * four-hero roster the 26px compass crowds its card, and the user's idea
+ * (2026-11-24): "potentially redrawing it down to 11px instead of 13 would
+ * free up some space once it is doubled" (22px; showing the 13px art at 1x
+ * instead they judged too small to hit). The file is MY redraw of their
+ * painting in its own colours, so the size can be judged on a phone: theirs
+ * to repaint (overwrite the PNG, keep it 11x11). Used only on the hero cards
+ * of the cutaway wall (`?wall=1`) for now, via `small`.
+ */
+export const COMPASS_SMALL_ART_PX = 11;
 
-export const CompassGlyph: React.FC<{ size?: number; className?: string }> = ({ size = COMPASS_ART_PX, className = '' }) => (
+export const CompassGlyph: React.FC<{ size?: number; className?: string; small?: boolean }> = ({ size = COMPASS_ART_PX, className = '', small = false }) => (
   <img
-    src={compassIcon}
+    src={small ? compassSmallIcon : compassIcon}
     width={size}
     height={size}
     alt=""

@@ -14,7 +14,7 @@ import { HelpButton } from './HelpOverlay';
 import { TapHintChip } from './TapHintChip';
 import { isTapHintSeen, markTapHintSeen } from './tapHintSeen';
 import { MovementArrow } from './DirectionArrow';
-import { DirectionPicker, CompassArrow, CompassGlyph, COMPASS_ART_PX, type DirectionPickerEntry } from './DirectionPicker';
+import { DirectionPicker, CompassArrow, CompassGlyph, COMPASS_ART_PX, COMPASS_SMALL_ART_PX, type DirectionPickerEntry } from './DirectionPicker';
 import { BEARING_INITIALS } from './bearings';
 import type { ThemeAssets } from '../../utils/themeAssets';
 import { CARD_PIXEL_SCALE, computeCardSpriteAreaHeight } from './cardConstants';
@@ -701,7 +701,10 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                       <span className="hud-num">{owed.length}</span>
                     )}
                     <span className="hero-aim-icon">
-                      <CompassGlyph size={stripSize >= 5 ? COMPASS_ART_PX : COMPASS_ART_PX * 2} />
+                      {wall
+                        // The wall's draft: the 11px compass, doubled (22px), single on a crowded strip.
+                        ? <CompassGlyph small size={stripSize >= 5 ? COMPASS_SMALL_ART_PX : COMPASS_SMALL_ART_PX * 2} />
+                        : <CompassGlyph size={stripSize >= 5 ? COMPASS_ART_PX : COMPASS_ART_PX * 2} />}
                     </span>
                   </span>
                 )}
