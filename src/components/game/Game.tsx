@@ -29,6 +29,7 @@ import { QuestBoxFrame, QuestOrnaments, QuestPlate, QuestDivider } from './Quest
 import { questSkinFrameActive, questSkinOrnamentsActive, questSkinPlateActive, questSkinDividerActive, questFrameBorders, questPlateStraddle } from './questBoxSkinData';
 import { useCrispSnap } from './panelSkins';
 import { QUEST_FLIGHT_MS, QUEST_TOSS_AFTER_ROLL_MS, QUEST_SPAWN_DELAY_MS, QUEST_SPAWN_AFTER_ENTRY_MS, ENTRY_FADE_MS, QUEST_HINT_BEAT_MS, QUEST_LAND_AT_S, QUEST_SPARKLE_AT_S, QUEST_TOSS_LAND_LEAD_MS, useQuestFloatPlacement, useQuestPress } from './questFloat';
+import { useHugWrappedText } from './hugWrappedText';
 import { playChromeSound } from '../../utils/chromeSounds';
 import { EnterGate } from './EnterGate';
 import { ENTRY_GATE_AFTER_MS, startsEntered } from './enterGateState';
@@ -652,6 +653,8 @@ export const Game: React.FC<GameProps> = ({
     }
   };
   const questFloatStyle = useQuestFloatPlacement(questFloatOn && questBoxShown && questSpawned, questMini, questFloatRef);
+  // The scroll hugs its objective even when that wraps to a second line (hugWrappedText.ts).
+  const questObjectiveRef = useHugWrappedText<HTMLSpanElement>();
   // Opens on EVERY visit (user call, round 2): a fresh mount starts open;
   // switching puzzles in place reopens it too.
   const questPuzzleRef = useRef(currentPuzzle.id);
@@ -3475,7 +3478,7 @@ export const Game: React.FC<GameProps> = ({
                     {/* QUEST FLOAT (user round 2): one step smaller text with
                         1px tighter lines at every breakpoint — still integer
                         heights, and the 16px (?) box still fits each line. */}
-                    <span className={`quest-objective min-w-0 text-center ${questFloatOn ? 'leading-[17px] md:leading-[21px] lg:leading-[24px]' : 'leading-[18px] md:leading-[22px] lg:leading-[25px]'} [text-wrap:balance]`}>
+                    <span ref={questObjectiveRef} className={`quest-objective min-w-0 text-center ${questFloatOn ? 'leading-[17px] md:leading-[21px] lg:leading-[24px]' : 'leading-[18px] md:leading-[22px] lg:leading-[25px]'} [text-wrap:balance]`}>
                     {/* INK on parchment (user call): black (?) + objective
                         when the scroll art is live; the baseline dark box
                         keeps its light registers. !important beats the
