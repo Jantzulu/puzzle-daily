@@ -3494,14 +3494,15 @@ export const Game: React.FC<GameProps> = ({
                         are per-breakpoint INTEGERS putting the icon's
                         center on the measured cap-center (13px: baseline
                         −5 exactly; drift ~1px/breakpoint otherwise). */}
-                    {/* THE MARK IS THE BEAMS' OWN (?), IN THE ROLLER CAPS'
-                        RED, OPEN TO THE PAPER (user 2026-11-26, four tries:
-                        the story is at shared/PixelIcon helpOpen). The red
-                        is #6c0303, the caps' main tone, sampled from the
-                        quest kit; the side quests' bonus wears it too. 22px.
+                    {/* THE MARK IS A RING IN THE ROLLER CAPS' RED, LINED IN
+                        BLACK INSIDE AND OUT, OPEN TO THE PAPER (user
+                        2026-11-26, five tries: the story is at
+                        shared/PixelIcon helpOpen). The red is #6c0303, the
+                        caps' main tone, sampled from the quest kit; the
+                        side quests' bonus wears it too. 26px.
                         IT STANDS IN A HOLDER (.quest-mark-seat): an empty
                         span the size and place of the old 16px glyph's box
-                        (same aligns), with the 22px mark hung in it 3px
+                        (same aligns), with the 26px mark hung in it 5px
                         proud top and bottom. So the line is laid out
                         exactly as it always was, whatever the mark's size.
                         Not the button itself with negative margins: tried

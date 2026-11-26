@@ -48,27 +48,36 @@ const ICONS = {
     '..KXXXXXK..',
     '...KKKKK...',
   ],
-  // THE QUEST SCROLL'S MARK: the piece above with nothing in its centre, so
-  // the paper shows through (the same pixels: only the D's are left out).
-  // Settled with the user over four tries on 2026-11-26. Bare ink, with no
-  // outline: "instead of it being a color outlined in black, it's just
-  // black, making it feel thinner". A solid wax seal: "a bit too bold. Can
-  // you just make a red version of the (?) that are on the beams?" That,
-  // with its dark centre: "instead of black in the center, we just see
-  // through to the paper?" The colour is the mount's: on the scroll, the
-  // red of its roller caps ("match the color to the caps on the scroll").
+  // THE QUEST SCROLL'S MARK: a coloured ring with the black line on BOTH
+  // its edges, open to the paper in the middle, the glyph in the ring's
+  // colour. Settled with the user over five tries on 2026-11-26. Bare ink,
+  // with no outline: "instead of it being a color outlined in black, it's
+  // just black, making it feel thinner". A solid wax seal: "a bit too
+  // bold. Can you just make a red version of the (?) that are on the
+  // beams?" That, with its dark centre: "instead of black in the center,
+  // we just see through to the paper?" That, open: "Could we outline the
+  // red inside the seal in black?" (on paper the ring's inner edge has
+  // nothing dark to stand against, as it has on the beams).
+  // 13x13, ONE PIXEL BIGGER ALL ROUND than `help`: at 11 the inner line
+  // leaves the glyph a 5x5 room and it is crushed against the line top and
+  // bottom (drawn and looked at; so was outlining the glyph itself, which
+  // turns to mud). Here it has a clear pixel of paper every side. The inner
+  // line turns on diagonals like the others. The colour is the mount's: on
+  // the scroll, the red of its roller caps ("match the color to the caps").
   helpOpen: [
-    '...KKKKK...',
-    '..KXXXXXK..',
-    '.KX.....XK.',
-    'KX..XXX..XK',
-    'KX....X..XK',
-    'KX...X...XK',
-    'KX.......XK',
-    'KX...X...XK',
-    '.KX.....XK.',
-    '..KXXXXXK..',
-    '...KKKKK...',
+    '...KKKKKKK...',
+    '..KXXXXXXXK..',
+    '.KXKKKKKKKXK.',
+    'KXK.......KXK',
+    'KXK..XXX..KXK',
+    'KXK....X..KXK',
+    'KXK...X...KXK',
+    'KXK.......KXK',
+    'KXK...X...KXK',
+    'KXK.......KXK',
+    '.KXKKKKKKKXK.',
+    '..KXXXXXXXK..',
+    '...KKKKKKK...',
   ],
   // A lidded bin, outlined, its slats the black line again.
   trash: [
