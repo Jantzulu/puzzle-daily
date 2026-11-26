@@ -48,23 +48,27 @@ const ICONS = {
     '..KXXXXXK..',
     '...KKKKK...',
   ],
-  // THE SAME MARK WRITTEN IN INK, for the quest scroll (user, 2026-11-26:
-  // "lets do the pixel ?"). On paper there is no framed piece, only the pen:
-  // this is `help` with its black outline taken off and its dark fill left
-  // out, so the ring and the glyph are the very same pixels as the beams'
-  // marks and the paper shows through. One colour, the mount's own (black on
-  // the painted scroll). 9x9 = 18px: the ring is one pixel thick and turns
-  // only on diagonals, the same rule.
-  helpInk: [
-    '..XXXXX..',
-    '.X.....X.',
-    'X..XXX..X',
-    'X....X..X',
-    'X...X...X',
-    'X.......X',
-    'X...X...X',
-    '.X.....X.',
-    '..XXXXX..',
+  // THE QUEST SCROLL'S MARK: the piece above with nothing in its centre, so
+  // the paper shows through (the same pixels: only the D's are left out).
+  // Settled with the user over four tries on 2026-11-26. Bare ink, with no
+  // outline: "instead of it being a color outlined in black, it's just
+  // black, making it feel thinner". A solid wax seal: "a bit too bold. Can
+  // you just make a red version of the (?) that are on the beams?" That,
+  // with its dark centre: "instead of black in the center, we just see
+  // through to the paper?" The colour is the mount's: on the scroll, the
+  // red of its roller caps ("match the color to the caps on the scroll").
+  helpOpen: [
+    '...KKKKK...',
+    '..KXXXXXK..',
+    '.KX.....XK.',
+    'KX..XXX..XK',
+    'KX....X..XK',
+    'KX...X...XK',
+    'KX.......XK',
+    'KX...X...XK',
+    '.KX.....XK.',
+    '..KXXXXXK..',
+    '...KKKKK...',
   ],
   // A lidded bin, outlined, its slats the black line again.
   trash: [

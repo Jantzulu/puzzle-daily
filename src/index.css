@@ -826,6 +826,34 @@ html body.theme-font-active,
   -webkit-text-stroke: 0.75px currentColor;
 }
 
+/* THE MARK'S SEAT (Game.tsx): where a (?) stands in a line of the
+   scroll's text. The seat is the box the LINE sees, 16px tall as the old
+   line glyph's was, so no line height depends on the mark; the 22px mark
+   (shared/PixelIcon help) hangs in it, 3px proud above and below.
+   The button is placed, not flowed: !important because .hit-44 (its tap
+   slop) sets position itself, unlayered. */
+.quest-mark-seat {
+  position: relative;
+  display: inline-block;
+  width: 22px;
+  height: 16px;
+}
+
+.quest-mark-seat > button {
+  position: absolute !important;
+  left: 0;
+  top: -3px;
+}
+
+/* The SIDE QUESTS' ink (Game.tsx; user 2026-11-26: "they should
+   stylistically match the rest of the scroll"): the same thickening as
+   the objective's above, for the same reason (one real weight). A touch
+   less of it, 0.5px: the row is a size under the objective, and the
+   stroke closes tight counters sooner on smaller letters. */
+.quest-side-ink {
+  -webkit-text-stroke: 0.5px currentColor;
+}
+
 @keyframes shimmer-sweep-ink {
   /* Mirrors shimmer-sweep: fill transparent + shadow suppressed while
      the band races (a shadow over a transparent fill paints across the

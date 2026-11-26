@@ -194,12 +194,13 @@ interface HelpButtonProps {
   preamble?: { title: string; text: string };
   /**
    * The mark as a PIXEL piece in the user's outlined hand (shared/PixelIcon),
-   * 22px, for a section's title on a beam. 'ink': the same ring and glyph
-   * with no outline and no fill, 18px in one colour, for the quest scroll
-   * (pen on paper; the mount sets the colour and where it sits in the line).
+   * 22px, for a section's title on a beam. 'bare': the same piece with no
+   * centre (the paper shows through) and no padding of its own, for the
+   * quest scroll, where it is hung in a seat in a line of text (index.css
+   * .quest-mark-seat).
    * Without it: the 16px line glyph, which nothing on the Play page uses now.
    */
-  pixel?: boolean | 'ink';
+  pixel?: boolean | 'bare';
 }
 
 export const HelpButton: React.FC<HelpButtonProps> = ({ sectionId, className = '', preamble, pixel = false }) => {
@@ -212,11 +213,11 @@ export const HelpButton: React.FC<HelpButtonProps> = ({ sectionId, className = '
         // hit-44: the glyph is 16px in 8px of padding = a 24px target, and
         // this button appears on every information section in the game. The
         // slop is invisible and costs no layout, so the floor is free here.
-        className={`${pixel === 'ink' ? '' : pixel ? 'p-0.5 flex' : 'p-1 hover:bg-stone-700 rounded'} text-stone-400 hover:text-parchment-100 transition-colors hit-44 ${className}`}
+        className={`${pixel === 'bare' ? '' : pixel ? 'p-0.5 flex' : 'p-1 hover:bg-stone-700 rounded'} text-stone-400 hover:text-parchment-100 transition-colors hit-44 ${className}`}
         aria-label="Help"
         title="What's this?"
       >
-        {pixel === 'ink' ? <PixelIcon icon="helpInk" className="block" /> : pixel ? <PixelIcon icon="help" /> : (
+        {pixel === 'bare' ? <PixelIcon icon="helpOpen" className="block" /> : pixel ? <PixelIcon icon="help" /> : (
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path
             strokeLinecap="round"

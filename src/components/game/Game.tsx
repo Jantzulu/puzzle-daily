@@ -655,6 +655,7 @@ export const Game: React.FC<GameProps> = ({
   const questFloatStyle = useQuestFloatPlacement(questFloatOn && questBoxShown && questSpawned, questMini, questFloatRef);
   // The scroll hugs its objective even when that wraps to a second line (hugWrappedText.ts).
   const questObjectiveRef = useHugWrappedText<HTMLSpanElement>();
+  const sideQuestsRef = useHugWrappedText<HTMLDivElement>();
   // Opens on EVERY visit (user call, round 2): a fresh mount starts open;
   // switching puzzles in place reopens it too.
   const questPuzzleRef = useRef(currentPuzzle.id);
@@ -3493,24 +3494,32 @@ export const Game: React.FC<GameProps> = ({
                         are per-breakpoint INTEGERS putting the icon's
                         center on the measured cap-center (13px: baseline
                         −5 exactly; drift ~1px/breakpoint otherwise). */}
-                    {/* THE MARK IN INK (user 2026-11-26: "lets do the pixel
-                        ?"): the beams' (?) with no outline or fill, 18px.
-                        -my-px gives the line the old 16px box (the art runs
-                        1px past it top and bottom), so every line height
-                        stands as it was (measured: the scroll is the same
-                        height at 390 and 1100). The aligns are 1px lower
-                        than the line glyph's were: a box with no line of
-                        its own hangs from its bottom MARGIN edge, which
-                        -my-px lifted by one, and the mark measured 1px
-                        high against the words. */}
+                    {/* THE MARK IS THE BEAMS' OWN (?), IN THE ROLLER CAPS'
+                        RED, OPEN TO THE PAPER (user 2026-11-26, four tries:
+                        the story is at shared/PixelIcon helpOpen). The red
+                        is #6c0303, the caps' main tone, sampled from the
+                        quest kit; the side quests' bonus wears it too. 22px.
+                        IT STANDS IN A HOLDER (.quest-mark-seat): an empty
+                        span the size and place of the old 16px glyph's box
+                        (same aligns), with the 22px mark hung in it 3px
+                        proud top and bottom. So the line is laid out
+                        exactly as it always was, whatever the mark's size.
+                        Not the button itself with negative margins: tried
+                        first, it sat 2px high and made the line 1px taller;
+                        and where an empty BUTTON's baseline lies differs
+                        between Chrome and Safari (the beam torches' lesson,
+                        CutawayWall BeamTorch). An empty span has no such
+                        doubt: it hangs from its bottom edge everywhere. */}
+                    <span className="quest-mark-seat align-[-2px] lg:align-[-1px] mr-1">
                     <HelpButton
                       sectionId="game_general"
-                      pixel="ink"
-                      className={`inline-block align-[-3px] lg:align-[-2px] mr-1 -my-px ${questSkinFrameActive ? '!text-black hover:!text-stone-800' : ''}`}
+                      pixel="bare"
+                      className="!text-[#6c0303]"
                       preamble={gameState.puzzle.questDescription?.trim()
                         ? { title: 'About this Puzzle', text: gameState.puzzle.questDescription.trim() }
                         : undefined}
                     />
+                    </span>
                     <span key={shimmerKey} className={questSkinFrameActive ? 'shimmer-container shimmer-ink' : 'shimmer-container'}>
                       {/* 13px on phones (was text-sm/14): the user accepted a
                           slight size cut to buy quest line capacity. */}
@@ -3649,31 +3658,45 @@ export const Game: React.FC<GameProps> = ({
                         carries one — "the divider is the side-quests rule"
                         is the kit's own contract. */}
                     {questSkinDividerActive && <div className="mt-2"><QuestDivider /></div>}
-                    <div className={`flex items-center justify-center gap-1 md:gap-2 ${questSkinDividerActive ? 'mt-1' : 'mt-2 border-t border-stone-700'} pt-2 flex-wrap`}>
-                      {/* The same ink mark (m-[3px] = the old 24px box's
-                          footprint). On the painted scroll it is BLACK like
-                          the objective's: it was the theme's brass, which
-                          all but vanished on the paper (seen 2026-11-26,
-                          the first time this row was filmed on the scroll).
-                          The row's WORDS are still the dark box's purples:
-                          not inked yet, the user's call. */}
-                      <HelpButton sectionId="side_quests" pixel="ink" className={`m-[3px] ${questSkinFrameActive ? '!text-black hover:!text-stone-800' : ''}`} />
-                      <span className="text-sm md:text-base font-semibold text-arcane-400">Side Quests:</span>
-                      <span className="text-xs md:text-sm text-arcane-300">
-                        {gameState.puzzle.sideQuests.map((q, i) => {
-                          const isCompleted = completedQuestIds.includes(q.id);
-                          return (
-                            <span
-                              key={q.id}
-                              className={isCompleted ? 'text-moss-400' : ''}
-                            >
-                              {i > 0 && ', '}
-                              {isCompleted && '✓ '}
-                              {q.title} <span className={isCompleted ? 'text-moss-500' : 'text-arcane-500'}>(+{q.bonusPoints})</span>
+                    {/* THE SIDE QUESTS, WRITTEN LIKE THE OBJECTIVE (user,
+                        2026-11-26: "they should stylistically match the rest
+                        of the scroll"). This row had never been dressed for
+                        the painted scroll: pale purple words on the paper, a
+                        brass (?) that all but vanished, and a flex row that
+                        put the scroll back at full width. Now it is one run
+                        of text built as the objective is: the red mark in
+                        the line, black ink, the same integer line heights,
+                        balanced, and hugged by the same hook. One step under
+                        the objective in size; the bonus in the roller caps'
+                        dark red (sampled from the quest kit: #6c0303); a
+                        finished quest is ticked and struck off. font-medium,
+                        never bolder: these faces have one weight, so the ink
+                        is thickened by a stroke as the objective's is
+                        (.quest-side-ink). A line breaks BETWEEN quests, not
+                        inside one: the mark stays with its label, and a
+                        quest's words stay together unless it is too long to
+                        ask that of a phone (first filmed, it broke "No Hero /
+                        Falls"). The baseline dark box keeps its purples. */}
+                    <div
+                      ref={sideQuestsRef}
+                      className={`mx-auto ${questSkinDividerActive ? 'mt-1' : 'mt-2 border-t border-stone-700'} pt-2 text-center [text-wrap:balance] leading-[17px] md:leading-[21px] lg:leading-[24px] text-[13px] md:text-[14px] lg:text-[15px] font-medium ${questSkinFrameActive ? 'quest-side-ink text-black' : 'text-arcane-300'}`}
+                    >
+                      <span className="whitespace-nowrap">
+                        <span className="quest-mark-seat align-[-2px] lg:align-[-1px] mr-1"><HelpButton sectionId="side_quests" pixel="bare" className="!text-[#6c0303]" /></span>
+                        <span className={questSkinFrameActive ? '' : 'text-arcane-400'}>Side Quests:</span>
+                      </span>{' '}
+                      {gameState.puzzle.sideQuests.map((q, i) => {
+                        const isCompleted = completedQuestIds.includes(q.id);
+                        return (
+                          <React.Fragment key={q.id}>
+                            {i > 0 && ', '}
+                            <span className={`${`${q.title} (+${q.bonusPoints})`.length <= 32 ? 'whitespace-nowrap' : ''} ${isCompleted ? (questSkinFrameActive ? 'line-through' : 'text-moss-400') : ''}`}>
+                              {isCompleted && '✓\u00A0'}
+                              {q.title}{'\u00A0'}<span className={questSkinFrameActive ? 'text-[#6c0303]' : isCompleted ? 'text-moss-500' : 'text-arcane-500'}>(+{q.bonusPoints})</span>
                             </span>
-                          );
-                        })}
-                      </span>
+                          </React.Fragment>
+                        );
+                      })}
                     </div>
                     </>
                   );
