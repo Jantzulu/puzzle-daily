@@ -1,5 +1,6 @@
 import React from 'react';
 import { Direction } from '../../types/game';
+import { PixelIcon } from '../shared/PixelIcon';
 
 const directionRotation: Record<Direction, number> = {
   [Direction.NORTH]: -90,
@@ -10,6 +11,23 @@ const directionRotation: Record<Direction, number> = {
   [Direction.SOUTHWEST]: 135,
   [Direction.WEST]: 180,
   [Direction.NORTHWEST]: -135,
+};
+
+/**
+ * The arrow as a PIXEL glyph (shared/PixelIcon): a straight one drawn
+ * pointing east and a diagonal one drawn pointing north-east, each turned
+ * by whole quarter turns only, so its pixels stay square on the grid (a
+ * 45 degree turn of the east arrow, as the line icon had, would tilt them).
+ */
+const PIXEL_ARROW: Record<Direction, { icon: 'arrow' | 'arrowDiag'; turns: number }> = {
+  [Direction.EAST]: { icon: 'arrow', turns: 0 },
+  [Direction.SOUTH]: { icon: 'arrow', turns: 1 },
+  [Direction.WEST]: { icon: 'arrow', turns: 2 },
+  [Direction.NORTH]: { icon: 'arrow', turns: 3 },
+  [Direction.NORTHEAST]: { icon: 'arrowDiag', turns: 0 },
+  [Direction.SOUTHEAST]: { icon: 'arrowDiag', turns: 1 },
+  [Direction.SOUTHWEST]: { icon: 'arrowDiag', turns: 2 },
+  [Direction.NORTHWEST]: { icon: 'arrowDiag', turns: 3 },
 };
 
 interface DirectionArrowProps {
@@ -58,21 +76,14 @@ export function MovementArrow({ direction, className = '', size = 13 }: Directio
       className={`inline-flex ${className}`}
       style={{ transform: `rotate(${rotation}deg)` }}
     >
-      <svg
-        width={size}
-        height={size}
-        viewBox="0 0 12 12"
-        className="movement-arrow-anim"
-      >
-        <path
-          d="M2 6 L9 6 M6 3 L9 6 L6 9"
-          stroke="currentColor"
-          strokeWidth="1.6"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          fill="none"
-        />
-      </svg>
+      {/* (The glyph is drawn already turned to its heading; the wrapper's
+          rotation is only the heading the glide travels along. So the
+          glyph is turned back by it here, to stand as drawn.) */}
+      <span className="movement-arrow-anim inline-flex" style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+        <span className="inline-flex" style={{ transform: `rotate(${-rotation}deg)` }}>
+          <PixelIcon icon={PIXEL_ARROW[direction].icon} turns={PIXEL_ARROW[direction].turns} />
+        </span>
+      </span>
     </span>
   );
 }

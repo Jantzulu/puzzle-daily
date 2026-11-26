@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { PixelIcon } from '../shared/PixelIcon';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { getHelpSection, type HelpSectionId } from '../../utils/assetStorage';
@@ -191,9 +192,16 @@ interface HelpButtonProps {
   sectionId: HelpSectionId;
   className?: string;
   preamble?: { title: string; text: string };
+  /**
+   * The mark as a PIXEL piece in the user's outlined hand (shared/PixelIcon),
+   * 22px, for a section's title on a beam. Without it: the 16px line glyph,
+   * which the quest scroll's two marks keep (they sit inside a line of text,
+   * in a box tuned to its line heights).
+   */
+  pixel?: boolean;
 }
 
-export const HelpButton: React.FC<HelpButtonProps> = ({ sectionId, className = '', preamble }) => {
+export const HelpButton: React.FC<HelpButtonProps> = ({ sectionId, className = '', preamble, pixel = false }) => {
   const [isOpen, setIsOpen] = React.useState(false);
 
   return (
@@ -203,10 +211,11 @@ export const HelpButton: React.FC<HelpButtonProps> = ({ sectionId, className = '
         // hit-44: the glyph is 16px in 8px of padding = a 24px target, and
         // this button appears on every information section in the game. The
         // slop is invisible and costs no layout, so the floor is free here.
-        className={`p-1 text-stone-400 hover:text-parchment-100 hover:bg-stone-700 rounded transition-colors hit-44 ${className}`}
+        className={`${pixel ? 'p-0.5 flex' : 'p-1 hover:bg-stone-700 rounded'} text-stone-400 hover:text-parchment-100 transition-colors hit-44 ${className}`}
         aria-label="Help"
         title="What's this?"
       >
+        {pixel ? <PixelIcon icon="help" /> : (
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path
             strokeLinecap="round"
@@ -215,6 +224,7 @@ export const HelpButton: React.FC<HelpButtonProps> = ({ sectionId, className = '
             d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
           />
         </svg>
+        )}
       </button>
       <HelpOverlay sectionId={sectionId} isOpen={isOpen} onClose={() => setIsOpen(false)} preamble={preamble} />
     </>

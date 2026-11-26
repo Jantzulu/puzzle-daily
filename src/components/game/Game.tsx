@@ -3417,7 +3417,7 @@ export const Game: React.FC<GameProps> = ({
                 {/* Puzzle Number & Quest Row */}
                 {puzzleNumber && (
                   <div className="text-center mb-0.5">
-                    <span className="text-[10px] md:text-xs font-bold tracking-widest uppercase text-copper-400/70">
+                    <span className="text-[11px] md:text-xs font-bold tracking-widest uppercase text-copper-400/70">
                       Puzzle #{puzzleNumber}
                     </span>
                   </div>
@@ -3425,7 +3425,7 @@ export const Game: React.FC<GameProps> = ({
                 {/* Honest fallback notice — cloud unreachable, this is NOT a real daily */}
                 {dailyNotice && (
                   <div className="text-center mb-0.5">
-                    <span className="text-[10px] md:text-xs font-bold tracking-widest uppercase text-stone-500">
+                    <span className="text-[11px] md:text-xs font-bold tracking-widest uppercase text-stone-500">
                       Can't reach the realm — practice dungeon
                     </span>
                   </div>

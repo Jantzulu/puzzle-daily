@@ -227,7 +227,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
           {wall && <CutawayPlate kind="enemies" />}
           <div className={'relative flex items-center ' + (wall ? WALL_OVER_PLATE : '')}>
             <div className="absolute right-full mr-1">
-              <HelpButton sectionId="enemies" className="!text-[#c9564a]" />
+              <HelpButton sectionId="enemies" className="!text-[#c9564a]" pixel />
             </div>
             <h3 className="carved-header carved-header-blood font-medieval text-lg lg:text-xl uppercase whitespace-nowrap">Enemies</h3>
           </div>
@@ -301,7 +301,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
         </div>
         <div className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center ${wall ? WALL_OVER_PLATE : ''}`}>
           <div className="absolute right-full mr-1">
-            <HelpButton sectionId={isAllySide ? 'allies' : 'enemies'} className={isAllySide ? '!text-[#e8cc8a]' : '!text-[#c9564a]'} />
+            <HelpButton sectionId={isAllySide ? 'allies' : 'enemies'} className={isAllySide ? '!text-[#e8cc8a]' : '!text-[#c9564a]'} pixel />
           </div>
           {/* Same register pass as the HEROES title (2026-08-01): uppercase
               transform on the classic carve/face/size; each side keeps its
@@ -410,7 +410,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
                   // hero card's compass sits on the same spot. (In the wall
                   // the sprite is at the card's foot and the count stays at
                   // its top, on the arch's shoulder: WALL_CARD.count.)
-                  <span className={`absolute ${wall ? WALL_CARD.count : 'top-0.5 right-0'} text-xs bg-blood-900 text-blood-300 px-1 py-0.5 rounded-pixel min-w-[18px] text-center border border-blood-700 leading-none`}>
+                  <span className={`absolute ${wall ? WALL_CARD.count : 'top-0.5 right-0'} text-xs bg-blood-900 text-blood-300 px-1 py-0.5 pixel-chip min-w-[18px] text-center leading-none`}>
                     {totalCount}
                   </span>
                 )}
@@ -431,7 +431,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
                   // Epithet in the NAME's color (user call 2026-08-13),
                   // /90 subdued — shared by the ally side until allies
                   // get their own scheme (undecided).
-                  <span className="mt-0.5 text-[10px] italic text-blood-300/90 text-center line-clamp-1">
+                  <span className="mt-0.5 text-[11px] italic text-blood-300/90 text-center line-clamp-1">
                     {enemyData.title}
                   </span>
                 )}
@@ -463,7 +463,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
 
               {/* Scheduled visits (full-disclosure preview) */}
               {visitLabels.length > 0 && (
-                <div className="text-[9px] text-copper-300 leading-tight mt-0.5 text-center w-full">
+                <div className="text-[11px] text-copper-300 leading-tight mt-0.5 text-center w-full">
                   {visitLabels.join(' · ')}
                 </div>
               )}

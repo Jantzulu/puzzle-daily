@@ -264,7 +264,7 @@ export const StatusEffectsDisplay: React.FC<StatusEffectsDisplayProps> = ({ puzz
         <div className="min-w-[60px]" />
         <div className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center ${wall ? WALL_OVER_PLATE : ''}`}>
           <div className="absolute right-full mr-1">
-            <HelpButton sectionId="status_effects" className="!text-[#2dd4bf]" />
+            <HelpButton sectionId="status_effects" className="!text-[#2dd4bf]" pixel />
           </div>
           {/* whitespace-nowrap on ALL these centered section titles: the
               absolute wrapper's shrink-to-fit box caps at HALF the row
@@ -316,14 +316,14 @@ export const StatusEffectsDisplay: React.FC<StatusEffectsDisplayProps> = ({ puzz
                 // Chip wears the applicator's identity color: blood for
                 // enemies, arcane purple for heroes, parchment for items
                 const colorClass = source.sourceType === 'enemy'
-                  ? 'bg-blood-900/50 text-blood-300 border border-blood-700'
+                  ? 'bg-blood-900/50 text-blood-300'
                   : source.sourceType === 'item'
-                  ? 'bg-parchment-900/50 text-parchment-300 border border-parchment-700'
-                  : 'bg-arcane-900/50 text-arcane-300 border border-arcane-700';
+                  ? 'bg-parchment-900/50 text-parchment-300'
+                  : 'bg-arcane-900/50 text-arcane-300';
                 return (
                   <div
                     key={key}
-                    className={`flex items-center gap-1 px-1.5 py-0.5 rounded-pixel text-xs ${colorClass}`}
+                    className={`flex items-center gap-1 px-1.5 py-0.5 pixel-chip text-xs ${colorClass}`}
                     title={source.name}
                   >
                     {source.sprite && (

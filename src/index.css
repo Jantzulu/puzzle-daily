@@ -4038,10 +4038,17 @@ body:not(.menu-gate-lowered) .quest-panel-sticky[data-jostle] .control-rail {
 
      .hud-title  15/17 600            hero and enemy names on cards
      .hud-body   13/18 400            action and trait copy
-     .hud-label  11/13 600 UPPERCASE  furniture: 'HP', 'ACTIONS', chips
+     .hud-label  12/13 600 UPPERCASE  furniture: 'HP', 'ACTIONS', chips
      .hud-num    13/13 700 tabular    stat values (no reflow when HP ticks)
 
-   Small-but-uppercase is what makes 11px legitimate for labels: tracked
+   THE TEXT FLOOR (2026-11-25, from a measured review of the page; user:
+   "lets start with the text floor"): nothing a player reads is under
+   11px, and the label register is 12 (it was 11: a third of the page's
+   text was 11px or smaller, against phone guidance of 12 and up). Its
+   line stays 13px, so no row grew. The exceptions are the user's own
+   calls by eye and are left alone: LIVES / TURNS on the rail (10px, sized
+   to their painted header plate) and the two tap hints (8px).
+   Small-but-uppercase is what makes 12px legitimate for labels: tracked
    caps never carry content. Scoped under .theme-root like the rest of the
    type system.
    ============================================ */
@@ -4058,7 +4065,7 @@ body:not(.menu-gate-lowered) .quest-panel-sticky[data-jostle] .control-rail {
 }
 
 .theme-root .hud-label {
-  font-size: 11px;
+  font-size: 12px;
   line-height: 13px;
   font-weight: 600;
   letter-spacing: 0.06em;
@@ -4801,6 +4808,23 @@ button.dir-picker__tab:not(.dir-picker__tab--active) .dir-picker__tab-text {
   margin-bottom: 4px;
 }
 
+/* A CHIP IN THE USER'S HAND: the enemies' count on a card and the small
+   named chips in the list rooms ("Giant Bat", "Shielder") were web boxes,
+   a hairline border with rounded corners. Now: the black line with its
+   corners cut, one line of the chip's own colour inside it (its text
+   colour, dimmed), then the fill; as the title plates and the user's tap
+   hint are. The fill and the text colour stay the element's own classes. */
+.pixel-chip {
+  border: 2px solid #000;
+  border-radius: 0;
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, currentColor 42%, #000);
+  clip-path: polygon(
+    2px 0, calc(100% - 2px) 0, calc(100% - 2px) 2px, 100% 2px,
+    100% calc(100% - 2px), calc(100% - 2px) calc(100% - 2px), calc(100% - 2px) 100%,
+    2px 100%, 2px calc(100% - 2px), 0 calc(100% - 2px), 0 2px, 2px 2px
+  );
+}
+
 /* THE CELLAR'S EARTH (user, 2026-11-24: an open info box "is like looking
    into a cellar ... a subtle dirt texture to the back of the selection for
    both heroes and enemies"). A layer at the back of an open drawer, under
@@ -5340,7 +5364,7 @@ button.dir-picker__tab:not(.dir-picker__tab--active) .dir-picker__tab-text {
 .enter-gate-hint {
   /* = .theme-root .hud-label, spelled out: the dark hangs off <body>,
      outside .theme-root. */
-  font-size: 11px;
+  font-size: 12px;
   line-height: 13px;
   font-weight: 600;
   letter-spacing: 0.06em;

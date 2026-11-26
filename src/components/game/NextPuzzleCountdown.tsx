@@ -40,7 +40,7 @@ export function NextPuzzleCountdown({ className = '' }: { className?: string }) 
 
   return (
     <div className={`flex flex-col items-center gap-0.5 ${className}`}>
-      <span className="text-[10px] uppercase tracking-widest text-parchment-300/70">
+      <span className="text-[11px] uppercase tracking-widest text-parchment-300/70">
         Next puzzle in
       </span>
       <span className="font-medieval text-xl font-bold text-copper-300 tabular-nums">

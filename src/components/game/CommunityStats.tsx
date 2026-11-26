@@ -38,7 +38,7 @@ function BarComparison({ label, yours, avg, suffix, higherIsBetter = true }: {
       <div className="text-xs text-stone-400 mb-1">{label}</div>
       <div className="space-y-1">
         <div className="flex items-center gap-2">
-          <span className="text-[10px] text-copper-300 w-8 text-right">You</span>
+          <span className="text-[11px] text-copper-300 w-8 text-right">You</span>
           <div className="flex-1 h-3 bg-stone-800 rounded-pixel overflow-hidden">
             <div className="h-full bg-copper-500 rounded-pixel transition-all" style={{ width: `${yourPct}%` }} />
           </div>
@@ -47,7 +47,7 @@ function BarComparison({ label, yours, avg, suffix, higherIsBetter = true }: {
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-[10px] text-stone-500 w-8 text-right">Avg</span>
+          <span className="text-[11px] text-stone-500 w-8 text-right">Avg</span>
           <div className="flex-1 h-3 bg-stone-800 rounded-pixel overflow-hidden">
             <div className="h-full bg-stone-600 rounded-pixel transition-all" style={{ width: `${avgPct}%` }} />
           </div>
@@ -105,7 +105,7 @@ export const CommunityStats: React.FC<CommunityStatsProps> = ({
           <div className="text-xs text-stone-300">
             <span className="text-moss-300 font-bold">{stats.completionRate}%</span> of adventurers conquered this puzzle
           </div>
-          <div className="text-[10px] text-stone-600 mt-0.5">
+          <div className="text-[11px] text-stone-600 mt-0.5">
             {stats.totalPlayers} total attempts
           </div>
         </div>
@@ -141,7 +141,7 @@ export const CommunityStats: React.FC<CommunityStatsProps> = ({
 
                 return (
                   <div key={rank} className={`flex items-center gap-2 ${isYours ? 'bg-stone-700/50 -mx-1 px-1 rounded' : ''}`}>
-                    <span className="text-[10px] w-12 text-right" style={{
+                    <span className="text-[11px] w-12 text-right" style={{
                       color: rank === 'gold' ? '#EAB308' : rank === 'silver' ? '#9CA3AF' : '#B45309'
                     }}>
                       {rankLabels[rank]}{isYours ? ' ★' : ''}
@@ -149,7 +149,7 @@ export const CommunityStats: React.FC<CommunityStatsProps> = ({
                     <div className="flex-1 h-2.5 bg-stone-800 rounded-pixel overflow-hidden">
                       <div className={`h-full rounded-pixel ${rankColors[rank]}`} style={{ width: `${pct}%` }} />
                     </div>
-                    <span className="text-[10px] text-stone-500 w-8 text-right">{pct}%</span>
+                    <span className="text-[11px] text-stone-500 w-8 text-right">{pct}%</span>
                   </div>
                 );
               })}
@@ -170,7 +170,7 @@ export const CommunityStats: React.FC<CommunityStatsProps> = ({
                 return (
                   <div key={hero.characterId} className="flex items-center gap-1.5 bg-stone-800/80 rounded-pixel px-2 py-1 border border-stone-700/50">
                     <span className="text-xs text-copper-300 truncate max-w-[80px]">{name}</span>
-                    <span className="text-[10px] text-stone-500">{pct}%</span>
+                    <span className="text-[11px] text-stone-500">{pct}%</span>
                   </div>
                 );
               })}

@@ -252,7 +252,7 @@ export const ItemsDisplay: React.FC<ItemsDisplayProps> = ({ puzzle, className = 
         <div className="min-w-[60px]" />
         <div className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center ${wall ? WALL_OVER_PLATE : ''}`}>
           <div className="absolute right-full mr-1">
-            <HelpButton sectionId="items" className="!text-[#e8cc8a]" />
+            <HelpButton sectionId="items" className="!text-[#e8cc8a]" pixel />
           </div>
           <h3 className="carved-header carved-header-parchment font-medieval text-lg lg:text-xl uppercase whitespace-nowrap">Items</h3>
           {wall && <BeamSign torch={{ prefer: 'right', phase: 350 }}>{count}</BeamSign>}
@@ -319,10 +319,10 @@ export const ItemsDisplay: React.FC<ItemsDisplayProps> = ({ puzzle, className = 
                   {dropSources.map((source) => (
                     <div
                       key={source.id}
-                      className={`flex items-center gap-1 px-1.5 py-0.5 rounded-pixel text-xs ${
+                      className={`flex items-center gap-1 px-1.5 py-0.5 pixel-chip text-xs ${
                         source.isEnemy
-                          ? 'bg-blood-900/50 text-blood-300 border border-blood-700'
-                          : 'bg-arcane-900/50 text-arcane-300 border border-arcane-700'
+                          ? 'bg-blood-900/50 text-blood-300'
+                          : 'bg-arcane-900/50 text-arcane-300'
                       }`}
                       title={source.name}
                     >
@@ -343,10 +343,10 @@ export const ItemsDisplay: React.FC<ItemsDisplayProps> = ({ puzzle, className = 
                   {spellSources.map((source, idx) => (
                     <div
                       key={`${source.entityId}-${source.spellName}-${idx}`}
-                      className={`flex items-center gap-1 px-1.5 py-0.5 rounded-pixel text-xs ${
+                      className={`flex items-center gap-1 px-1.5 py-0.5 pixel-chip text-xs ${
                         source.isEnemy
-                          ? 'bg-blood-900/50 text-blood-300 border border-blood-700'
-                          : 'bg-arcane-900/50 text-arcane-300 border border-arcane-700'
+                          ? 'bg-blood-900/50 text-blood-300'
+                          : 'bg-arcane-900/50 text-arcane-300'
                       }`}
                       title={`${source.isThrow ? 'Thrown' : 'Placed'} by ${source.entityName}`}
                     >

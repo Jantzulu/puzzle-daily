@@ -258,7 +258,7 @@ export const SpecialTilesDisplay: React.FC<SpecialTilesDisplayProps> = ({ puzzle
         <div className="min-w-[60px]" />
         <div className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center ${wall ? WALL_OVER_PLATE : ''}`}>
           <div className="absolute right-full mr-1">
-            <HelpButton sectionId="special_tiles" className="!text-[#e68f6d]" />
+            <HelpButton sectionId="special_tiles" className="!text-[#e68f6d]" pixel />
           </div>
           {/* nowrap: see StatusEffectsDisplay — the centered-title box caps
               at half the row and this title is nearly as wide. */}
@@ -286,12 +286,12 @@ export const SpecialTilesDisplay: React.FC<SpecialTilesDisplayProps> = ({ puzzle
                   <div className="flex items-center gap-1">
                     <div className="relative">
                       <TileSprite info={info} size={26} isOffState={false} />
-                      <div className="absolute -bottom-1 -right-1 text-[8px] bg-moss-700 text-white px-0.5 rounded-pixel">ON</div>
+                      <div className="absolute -bottom-1 -right-1 text-[11px] leading-none bg-moss-700 text-white px-0.5 rounded-pixel">ON</div>
                     </div>
                     <span className="text-stone-500 text-xs">⇄</span>
                     <div className="relative">
                       <TileSprite info={info} size={26} isOffState={true} />
-                      <div className="absolute -bottom-1 -right-1 text-[8px] bg-stone-600 text-white px-0.5 rounded-pixel">OFF</div>
+                      <div className="absolute -bottom-1 -right-1 text-[11px] leading-none bg-stone-600 text-white px-0.5 rounded-pixel">OFF</div>
                     </div>
                   </div>
                 ) : (

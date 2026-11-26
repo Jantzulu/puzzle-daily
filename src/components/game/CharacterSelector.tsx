@@ -14,6 +14,7 @@ import { HelpButton } from './HelpOverlay';
 import { TapHintChip } from './TapHintChip';
 import { isTapHintSeen, markTapHintSeen } from './tapHintSeen';
 import { MovementArrow } from './DirectionArrow';
+import { PixelIcon } from '../shared/PixelIcon';
 import { DirectionPicker, CompassArrow, CompassGlyph, COMPASS_ART_PX, COMPASS_SMALL_ART_PX, type DirectionPickerEntry } from './DirectionPicker';
 import { BEARING_INITIALS } from './bearings';
 import type { ThemeAssets } from '../../utils/themeAssets';
@@ -445,9 +446,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
         className={`p-1 -my-1 text-stone-400 hover:text-blood-400 rounded-pixel transition-colors ${wall ? '!pr-0 min-w-[20px] disabled:opacity-35 disabled:pointer-events-none' : 'hover:bg-stone-700 min-w-[28px]'} min-h-[28px] flex items-center justify-center hit-44 [--hit-w:34px]`}
         title="Remove all placed heroes"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-        </svg>
+        <PixelIcon icon="trash" />
       </button>
     )}
     </>
@@ -522,7 +521,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
           <div className="absolute right-full mr-1">
             {/* (?) wears its section title's color (user call 2026-08-13);
               ! beats the button's own text-stone-400. */}
-          <HelpButton sectionId="characters" className="!text-[#c084fc]" />
+          <HelpButton sectionId="characters" className="!text-[#c084fc]" pixel />
           </div>
           {/* UPPERCASE by user call (2026-07-31): "making titles capital and
               more bold" — the ramp's register applied to the section title
@@ -758,7 +757,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                   // Epithet in the NAME's color (user call 2026-08-13:
                   // "Steve 'the Brave'" — name and title one hue), /90
                   // keeps it a half-step subdued under the solid name.
-                  <span className="mt-0.5 text-[10px] italic text-arcane-300/90 text-center line-clamp-1">
+                  <span className="mt-0.5 text-[11px] italic text-arcane-300/90 text-center line-clamp-1">
                     {character.title}
                   </span>
                 )}
