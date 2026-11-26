@@ -25,17 +25,27 @@ const DARK = '#15100b';
 
 const ICONS = {
   // A framed piece in their manner: black, one line of its colour, the fill, the glyph.
+  // NO FILLED CORNERS in the black line (the user, of this mark as first
+  // drawn: "I do not tend to outline full corners, meaning I would remove
+  // the extra black pixel in the 4 diagonal corners"): where their outline
+  // turns, its two runs meet only at a diagonal. Every bitmap here keeps to it.
+  // THE COLOURED RING INSIDE IT THE SAME (the user, next: "maybe even the
+  // internal circles could use without the zig zagging colored pixels, and
+  // instead be stylized like the plates themselves and my other art
+  // (generally only diagonal). I think this is contributing to the (?)
+  // looking very fat"): one pixel thick all the way round, never doubled
+  // at a turn.
   help: [
     '...KKKKK...',
-    '.KKXXXXXKK.',
-    '.KXXDDDXXK.',
-    'KXXDXXXDXXK',
+    '..KXXXXXK..',
+    '.KXDDDDDXK.',
+    'KXDDXXXDDXK',
     'KXDDDDXDDXK',
     'KXDDDXDDDXK',
     'KXDDDDDDDXK',
-    'KXXDDXDDXXK',
-    '.KXXDDDXXK.',
-    '.KKXXXXXKK.',
+    'KXDDDXDDDXK',
+    '.KXDDDDDXK.',
+    '..KXXXXXK..',
     '...KKKKK...',
   ],
   // A lidded bin, outlined, its slats the black line again.

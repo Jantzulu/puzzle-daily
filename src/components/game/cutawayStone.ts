@@ -266,7 +266,12 @@ const pick = <T,>(list: readonly T[], seed: number): T => list[Math.floor(hash(s
 // portcullis bars, the nav beam, the rail and its spikes, the plaques, the
 // quest box, the tap hint), read pixel by pixel, all do the same things:
 //   1. ONE ART PX OF PURE BLACK round every element's silhouette, and the
-//      pixel at each outer corner left out (a clipped corner).
+//      pixel at each outer corner left out (a clipped corner). In their
+//      words, on seeing a filled one: "I do not tend to outline full
+//      corners, meaning I would remove the extra black pixel in the 4
+//      diagonal corners". So where the line turns, its two runs meet only
+//      at a DIAGONAL: no pixel of a silhouette has open space on two
+//      sides that meet (cutCorners, below, for shapes worked out in code).
 //   2. Inside the line, FLAT BANDS in two or three close tones, darker
 //      towards the line (the beam: #101010, #171717, then its #262626 face);
 //      an upright bar has its light stripe on the left. No texture.
@@ -280,6 +285,23 @@ const pick = <T,>(list: readonly T[], seed: number): T => list[Math.floor(hash(s
 // is BEHIND things is left as it was (the hero hall's far wall, the
 // passages, the earth): the line is for elements, not for the dark.
 const INK = '#000000';
+
+/**
+ * A silhouette with its outer corners cut, the user's way: `has` says
+ * which art pixels a shape fills; the answer leaves out every pixel of it
+ * that has open space on two sides that meet (above and left, above and
+ * right, below and left, below and right).
+ */
+export function cutCorners(has: (x: number, y: number) => boolean): (x: number, y: number) => boolean {
+  return (x, y) => {
+    if (!has(x, y)) return false;
+    const up = has(x, y - 1);
+    const down = has(x, y + 1);
+    const left = has(x - 1, y);
+    const right = has(x + 1, y);
+    return !((!up || !down) && (!left || !right) && !(up && down) && !(left && right) && ((!up && !left) || (!up && !right) || (!down && !left) || (!down && !right)));
+  };
+}
 
 // ---- the slab ---------------------------------------------------------------------------
 
@@ -565,6 +587,15 @@ export function plateColumn(kind: PlateKind, x: number, widthArt: number): { top
   return { top: back, bottom: last - back };
 }
 
+/** The plate's silhouette, outer corners cut: is this art pixel (x from its left end, y from its top row) part of it? */
+export function plateMask(kind: PlateKind, widthArt: number): (x: number, y: number) => boolean {
+  const cols = Array.from({ length: widthArt }, (_, x) => plateColumn(kind, x, widthArt));
+  return cutCorners((x, y) => {
+    const c = cols[x];
+    return !!c && y >= c.top && y <= c.bottom;
+  });
+}
+
 /** Draw a title's plate into a canvas `widthArt` art px wide and PLATE_H tall. Lit from the top left. */
 export function drawPlate(ctx: CanvasRenderingContext2D, widthArt: number, kind: PlateKind): void {
   const s = PLATE_COLORS[kind];
@@ -574,17 +605,15 @@ export function drawPlate(ctx: CanvasRenderingContext2D, widthArt: number, kind:
     ctx.fillRect(ax * Z, ay * Z, aw * Z, ah * Z);
   };
   const cols = Array.from({ length: widthArt }, (_, x) => plateColumn(kind, x, widthArt));
-  /** Is this art pixel part of the plate? */
-  const has = (x: number, y: number): boolean => {
-    const c = cols[x];
-    return !!c && y >= c.top && y <= c.bottom;
-  };
+  /** Is this art pixel part of the plate? (Its outer corners are cut: no filled corners in the user's line.) */
+  const has = plateMask(kind, widthArt);
   // In the user's hand (their tap hint, their QUEST plate): the black line
   // round the silhouette, one line of the room's colour inside it, then the
   // face. (It had a rim lit on the top and left and dark on the others.)
   const onRim = (x: number, y: number): boolean => has(x, y) && (!has(x - 1, y) || !has(x + 1, y) || !has(x, y - 1) || !has(x, y + 1));
   for (let x = 0; x < widthArt; x++) {
     for (let y = cols[x].top; y <= cols[x].bottom; y++) {
+      if (!has(x, y)) continue;
       const trim = onRim(x - 1, y) || onRim(x + 1, y) || onRim(x, y - 1) || onRim(x, y + 1);
       a(x, y, 1, 1, onRim(x, y) ? INK : trim ? s.lit : s.face);
     }
@@ -603,9 +632,9 @@ export function drawPlate(ctx: CanvasRenderingContext2D, widthArt: number, kind:
  */
 export function drawPlateDark(ctx: CanvasRenderingContext2D, widthArt: number, kind: PlateKind): void {
   ctx.fillStyle = 'rgba(6, 5, 4, 0.68)';
+  const has = plateMask(kind, widthArt);
   for (let x = 0; x < widthArt; x++) {
-    const { top } = plateColumn(kind, x, widthArt);
-    if (top < PLATE_RISE_ART) ctx.fillRect(x * Z, top * Z, Z, (PLATE_RISE_ART - top) * Z);
+    for (let y = 0; y < PLATE_RISE_ART; y++) if (has(x, y)) ctx.fillRect(x * Z, y * Z, Z, Z);
   }
 }
 

@@ -4733,27 +4733,35 @@ button.dir-picker__tab:not(.dir-picker__tab--active) .dir-picker__tab-text {
 .wall-column::before,
 .wall-column::after {
   /* Capital and base: 4 art px wide, 2 tall, with the black line round them
-     that everything of the user's has (cutawayStone.ts, THE USER'S HAND; a
-     hard ring, no blur). The shaft's own line is the first pixel of the
-     opening each side of it (drawNiches). */
+     that everything of the user's has (cutawayStone.ts, THE USER'S HAND):
+     a 2px black border, its four corner pixels cut away (no filled corners
+     in their line). The shaft's own line is the first pixel of the opening
+     each side of it (drawNiches). */
   content: '';
   position: absolute;
-  left: -2px;
-  right: -2px;
-  height: 4px;
-  box-shadow: 0 0 0 2px #000;
+  left: -4px;
+  right: -4px;
+  height: 8px;
+  border: 2px solid #000;
+  background-clip: padding-box;
+  background-origin: padding-box;
+  clip-path: polygon(
+    2px 0, calc(100% - 2px) 0, calc(100% - 2px) 2px, 100% 2px,
+    100% calc(100% - 2px), calc(100% - 2px) calc(100% - 2px), calc(100% - 2px) 100%,
+    2px 100%, 2px calc(100% - 2px), 0 calc(100% - 2px), 0 2px, 2px 2px
+  );
 }
 
 .wall-column::before {
   /* The capital, under the stone between two arches. */
-  top: -4px;
-  background: linear-gradient(var(--col-cap) 0 2px, var(--col-face) 2px 4px);
+  top: -6px;
+  background-image: linear-gradient(var(--col-cap) 0 2px, var(--col-face) 2px 4px);
 }
 
 .wall-column::after {
   /* The base, at the column's foot. */
-  bottom: 0;
-  background: linear-gradient(var(--col-face) 0 2px, var(--col-foot) 2px 4px);
+  bottom: -2px;
+  background-image: linear-gradient(var(--col-face) 0 2px, var(--col-foot) 2px 4px);
 }
 
 .wall-floor,
