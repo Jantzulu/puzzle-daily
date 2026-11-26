@@ -4757,6 +4757,23 @@ button.dir-picker__tab:not(.dir-picker__tab--active) .dir-picker__tab-text {
   margin-bottom: 4px;
 }
 
+/* AN ITEM BOBS OVER ITS SHELF (ItemsDisplay ItemIcon), as items bob on the
+   board: one cycle a second (half a second each way), every item in step,
+   two pixels either side of where it rests. Transform only; it runs under
+   Reduce Motion too (minimal flavor, per the settled scope). The box it is
+   in does not move, so the shelf drawn under it stays put. */
+.shelf-bob {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: shelf-bob 0.5s ease-in-out infinite alternate;
+}
+
+@keyframes shelf-bob {
+  from { transform: translateY(2px); }
+  to { transform: translateY(-2px); }
+}
+
 /* THE CELLAR'S EARTH (user, 2026-11-24: an open info box "is like looking
    into a cellar ... a subtle dirt texture to the back of the selection for
    both heroes and enemies"). A layer at the back of an open drawer, under

@@ -202,23 +202,22 @@ function getPuzzleItemsWithSources(puzzle: Puzzle): ItemWithSources[] {
 }
 
 /**
- * Renders an item icon
+ * An item on its shelf: THE SPRITE ITSELF, no box behind it, bobbing over
+ * the shelf as it bobs on the board (user, 2026-11-25: "instead of the
+ * sprite on a background, can we just render the sprite with no background,
+ * and have it bob on the shelf like it would bob on the map?"). It was the
+ * sprite on the asset preview's dark square. The bob is index.css
+ * .shelf-bob: the board's own (AnimatedGameBoard: one cycle a second, all
+ * items in step), two pixels up and two down.
  */
-const ItemIcon: React.FC<{ collectible: CustomCollectible; size?: number }> = ({ collectible, size = 24 }) => {
-  if (collectible.customSprite) {
-    return <SpriteThumbnail sprite={collectible.customSprite} size={size} previewType="asset" />;
-  }
-
-  // Fallback - star icon for items without sprite
-  return (
-    <div
-      className="rounded-pixel bg-parchment-700 flex items-center justify-center"
-      style={{ width: size, height: size }}
-    >
-      <span className="text-parchment-300">⭐</span>
-    </div>
-  );
-};
+const ItemIcon: React.FC<{ collectible: CustomCollectible; size?: number }> = ({ collectible, size = 24 }) => (
+  <span className="shelf-bob" style={{ width: size, height: size }}>
+    {collectible.customSprite
+      ? <SpriteThumbnail sprite={collectible.customSprite} size={size} previewType="asset" noBackground />
+      // (No sprite: a star, as on the board.)
+      : <span className="text-parchment-300 leading-none">⭐</span>}
+  </span>
+);
 
 export const ItemsDisplay: React.FC<ItemsDisplayProps> = ({ puzzle, className = '' }) => {
   const itemsWithSources = useMemo(() => getPuzzleItemsWithSources(puzzle), [puzzle]);
@@ -270,7 +269,7 @@ export const ItemsDisplay: React.FC<ItemsDisplayProps> = ({ puzzle, className = 
             <div className="flex items-start gap-2">
               {/* Icon (in the wall: on a stone shelf) */}
               <div className={`flex-shrink-0 ${WALL_ENTRY.shelf.icon}`}>
-                <WallSetting on kind="shelf"><ItemIcon collectible={collectible} size={20} /></WallSetting>
+                <WallSetting on kind="shelf"><ItemIcon collectible={collectible} size={24} /></WallSetting>
               </div>
 
               {/* Name and effects */}
