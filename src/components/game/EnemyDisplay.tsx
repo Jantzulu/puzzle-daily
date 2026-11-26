@@ -14,7 +14,7 @@ import { SelectionStrip, SelectionDrawer } from './SelectionShape';
 import { useElementWidth, artGridSlotStyle } from '../../hooks/useElementWidth';
 import { subscribeToImageLoads } from '../../utils/imageLoader';
 import { playChromeSound } from '../../utils/chromeSounds';
-import { BeamSign, BeamTapHint, CountShield, CutawayPlate, CutawaySlab, WallColumns, WallDark } from './CutawayWall';
+import { BeamSign, BeamTapHint, CountShield, CutawayPlate, CutawaySlab, SignNumber, WallColumns, WallDark } from './CutawayWall';
 import { WALL_ABOVE_BEAM, WALL_CARD, WALL_HEADER_GAP, WALL_OVER_PLATE, WALL_ROW, type WallBelow } from './cutawayStone';
 
 // Every enemy/ally opens a drawer (its info panel always renders).
@@ -155,6 +155,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
   // 38px name band (ported here 2026-08-01) keeps every card the same
   // height by construction.
   const totalLiving = Array.from(enemyGroups.values()).reduce((sum, g) => sum + g.livingCount, 0);
+  const totalEver = Array.from(enemyGroups.values()).reduce((sum, g) => sum + g.totalCount, 0);
 
   // Rendered enemy info
   const renderedEnemyData = renderedEnemyId ? getEnemy(renderedEnemyId) : null;
@@ -213,7 +214,8 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
   // furniture (hud-label, uppercase).
   const count = (
     <span className="flex items-baseline gap-1">
-      <span className="hud-num text-stone-400">{totalLiving}</span>
+      {/* SignNumber: the sign keeps its size as the count falls. */}
+      <span className="hud-num text-stone-400"><SignNumber value={totalLiving} most={totalEver} /></span>
       <span className="hud-label text-stone-400">remaining</span>
     </span>
   );

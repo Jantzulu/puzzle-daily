@@ -24,7 +24,7 @@ import { SelectionStrip, SelectionDrawer } from './SelectionShape';
 import placedBannerIcon from '../../assets/icons/placed-banner.png';
 import { useElementWidth, artGridSlotStyle } from '../../hooks/useElementWidth';
 import { subscribeToImageLoads } from '../../utils/imageLoader';
-import { BEAM_SPOT_W, BeamSign, BeamSpot, BeamTapHint, CutawayPlate, CutawayRampart, CutawaySlab, WallColumns, WallDark } from './CutawayWall';
+import { BEAM_SPOT_W, BeamSign, BeamSpot, BeamTapHint, CutawayPlate, CutawayRampart, CutawaySlab, SignNumber, WallColumns, WallDark } from './CutawayWall';
 import { WALL_CARD, WALL_HEADER_GAP, WALL_HERO_Z, WALL_OVER_SLAB, WALL_ROW, WALL_SPOT_CLEAR, type WallBelow } from './cutawayStone';
 
 const MOVEMENT_TYPES = new Set([
@@ -436,7 +436,8 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
     <>
     <span className="flex items-baseline gap-1">
       <span className={`hud-num ${isAtMaxPlaced ? 'text-copper-400' : 'text-stone-400'}`}>
-        {placedCharacterIds.length}/{effectiveMaxPlaceable}
+        {/* SignNumber: the sign keeps its size as heroes are placed. */}
+        <SignNumber value={placedCharacterIds.length} most={effectiveMaxPlaceable} />/{effectiveMaxPlaceable}
       </span>
       <span className="hud-label text-stone-400">placed</span>
     </span>

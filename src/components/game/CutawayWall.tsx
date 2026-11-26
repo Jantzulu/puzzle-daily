@@ -617,6 +617,41 @@ const SignArt: React.FC<{
   );
 };
 
+/**
+ * A NUMBER ON A SIGN THAT DOES NOT MOVE THE SIGN (user, 2026-11-26: "the
+ * signs on the panels should not change size when the text inside them does
+ * they should be at their largest size and the text change inside of it if
+ * necessary (a metal/wooden sign would not be warping so much)").
+ *
+ * A sign is as wide as its words, and the words that change are numbers:
+ * heroes placed, enemies remaining. Two things moved it. Digits are not all
+ * one width in these faces, whatever `tabular-nums` asks (measured: a 1 is
+ * narrower than a 0), so "1/3" and "2/3" were different signs; and a count
+ * that drops from 10 to 9 loses a whole digit.
+ *
+ * So the number stands in a cell that is as wide as the WIDEST digit, times
+ * the digits of `most` (the largest value it will show), and sits centred in
+ * it. The cell is sized by the page itself: all ten digits, repeated to that
+ * length, are laid unseen in the same grid cell, and a grid cell is as wide
+ * as its widest item. No measuring, no font knowledge. The cell only ever
+ * grows (a summoned ally can raise a count past where it started), so the
+ * sign is at its largest the first time it is drawn and stays there.
+ */
+const DIGITS = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+
+export const SignNumber: React.FC<{ value: number; most?: number }> = ({ value, most = value }) => {
+  const need = Math.max(String(value).length, String(most).length);
+  const [held, setHeld] = React.useState(need);
+  if (need > held) setHeld(need);
+  const len = Math.max(need, held);
+  return (
+    <span className="inline-grid justify-items-center">
+      {DIGITS.map(d => <span key={d} aria-hidden className="invisible [grid-area:1/1]">{d.repeat(len)}</span>)}
+      <span className="[grid-area:1/1]">{value}</span>
+    </span>
+  );
+};
+
 export const BeamSign: React.FC<{
   children: React.ReactNode;
   /** The beam's torch: the side it would like, and what BeamTorch takes. */
