@@ -5,9 +5,9 @@ import React from 'react';
 // ============================================================================
 // A measured review of the Play page (2026-11-25) found the most visible
 // break from the user's painted style was not in the stone but in the small
-// web-style pieces riding on it: the (?) marks, the clear button's trash
-// can and the cards' facing arrows were thin vector line icons, smooth
-// where everything round them is pixels (user: "lets start with the text
+// web-style pieces riding on it: the (?) marks and the clear button's trash
+// can (and the cards' facing arrows: see below) were thin vector line icons,
+// smooth where everything round them is pixels (user: "lets start with the text
 // floor and the pixel icons").
 //
 // So each is a tiny bitmap, written out as rows of characters and drawn as
@@ -61,27 +61,11 @@ const ICONS = {
     '.KXXXXXK.',
     '..KKKKK..',
   ],
-  // The facing arrows are glyphs in a line of text, as letters are: no outline.
-  // East, and north-east; the other six are these turned by quarter turns.
-  // (The head's arms are three pixels long: at two, turned to point up, it read as a dagger.)
-  arrow: [
-    '...X...',
-    '....X..',
-    '.....X.',
-    'XXXXXXX',
-    '.....X.',
-    '....X..',
-    '...X...',
-  ],
-  arrowDiag: [
-    '...XXXX',
-    '.....XX',
-    '....X.X',
-    '...X..X',
-    '..X....',
-    '.X.....',
-    'X......',
-  ],
+  // (THE FACING ARROWS were pixel glyphs here too for a day, 7x7. The user:
+  // "the directional arrows are now too big as pixel art, can we revert them
+  // back?" A pixel on this grid is 2 CSS px, so an arrow that reads at all is
+  // 14px in a 13px line of text. They are the thin line arrows again:
+  // game/DirectionArrow.tsx. Not to be repeated at this size.)
 } as const;
 
 export type PixelIconName = keyof typeof ICONS;
@@ -109,9 +93,7 @@ function runs(rows: readonly string[]): { x: number; y: number; w: number; c: st
 export const PixelIcon: React.FC<{
   icon: PixelIconName;
   className?: string;
-  /** Quarter turns clockwise (the arrows). */
-  turns?: number;
-}> = ({ icon, className = '', turns = 0 }) => {
+}> = ({ icon, className = '' }) => {
   const rows = ICONS[icon];
   const w = rows[0].length;
   const h = rows.length;
@@ -123,7 +105,6 @@ export const PixelIcon: React.FC<{
       height={h * Z}
       viewBox={`0 0 ${w} ${h}`}
       shapeRendering="crispEdges"
-      style={turns ? { transform: `rotate(${turns * 90}deg)` } : undefined}
     >
       {runs(rows).map(r => (
         <rect key={`${r.x}-${r.y}`} x={r.x} y={r.y} width={r.w} height={1} fill={COLOR[r.c]} />
