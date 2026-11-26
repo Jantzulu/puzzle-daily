@@ -638,23 +638,24 @@ function paintPlate(
 // overall silhouette too much?"). The title plate is tall because its beam
 // is. A name plate has NAME_PLATE_SQUEEZE_ART rows taken out of its MIDDLE,
 // where every column of the plate is plain face, so its edge, the steps of
-// it and where they fall along the length are untouched; only its pointed
-// tip, four rows tall, is left as it is rather than losing all four. And
+// it and where they fall along the length are untouched (its pointed tip
+// is another matter: below). And
 // the empty row an entity's plate leaves above and below itself on its
 // beam is not carried over. So a hero's or an enemy's name plate is 28px
 // tall and an item's 32 (the full plate: 40).
 
 /** How many rows are taken out of the middle of a title's plate to make a name plate (art px). */
 export const NAME_PLATE_SQUEEZE_ART = 4;
-/**
- * The fewest rows a column of a name plate keeps: its tip, ALL FOUR of the
- * title's. (It kept two at first. Cutting the corners then took both, the
- * tip was gone, and the rivet stood where the line of colour runs behind
- * the tip: the user, at once: "there seem to be a gap in the red color in
- * these new shrunk plates". With four, two are left after the corners are
- * cut, and the end reads black, colour, rivet, as the title's does.)
- */
-const NAME_PLATE_TIP_ART = 4;
+// ITS ENDS ARE BLUNT: a name plate has no tip. The title's plate comes to a
+// point two pixels tall at each end; on the short plate that point stood
+// out too far. Two tries at it: keeping two of the tip's four rows lost the
+// tip altogether to the corner cutting and left the rivet standing in the
+// line of colour ("there seem to be a gap in the red color in these new
+// shrunk plates"); keeping all four made a true point again ("i think they
+// look a tad pointy, maybe just move those two pixels inward?"). So a name
+// plate is the title's plate WITHOUT ITS OUTERMOST COLUMN at each end: it
+// ends on the title's second column, four pixels of black line tall, then
+// the line of colour, then the rivet.
 
 /** The rows a name plate of this kind has (art px), and its height (CSS px). */
 export const namePlateRows = (kind: PlateKind): number => SLAB_ART + 2 * plateProud(kind) - NAME_PLATE_SQUEEZE_ART;
@@ -662,10 +663,11 @@ export const namePlateH = (kind: PlateKind): number => namePlateRows(kind) * Z;
 
 /** The first and last art row of a name plate at column `x` (0 = its own top row). */
 export function namePlateColumn(kind: PlateKind, x: number, widthArt: number): { top: number; bottom: number } {
-  const full = plateColumn(kind, x, widthArt);
+  // (The title's plate two columns wider, read from its second column: no tip.)
+  const full = plateColumn(kind, x + 1, widthArt + 2);
   const rows = namePlateRows(kind);
   // The column's own height, less the rows taken from the middle; it stays centred, as it was.
-  const n = Math.max(Math.min(NAME_PLATE_TIP_ART, full.bottom - full.top + 1), full.bottom - full.top + 1 - NAME_PLATE_SQUEEZE_ART);
+  const n = full.bottom - full.top + 1 - NAME_PLATE_SQUEEZE_ART;
   const top = (rows - n) / 2;
   return { top, bottom: top + n - 1 };
 }
@@ -683,7 +685,7 @@ export function drawNamePlate(ctx: CanvasRenderingContext2D, widthArt: number, k
   });
   const rows = namePlateRows(kind);
   paintPlate(a, has, widthArt, rows, PLATE_COLORS[kind]);
-  // A rivet in each pointed end, as the title's has.
+  // A rivet in each end, as the title's has.
   a(2, rows / 2 - 1, 1, 2, INK);
   a(widthArt - 3, rows / 2 - 1, 1, 2, INK);
 }

@@ -277,7 +277,8 @@ describe('the cutaway wall', () => {
     for (const kind of ['heroes', 'enemies', 'items'] as const) {
       for (const width of [40, 61, 90]) {
         const rows = namePlateRows(kind);
-        const full = Array.from({ length: width }, (_, x) => plateColumn(kind, x, width));
+        // (A name plate is the title's plate two columns wider, read from its second column: it has no tip.)
+        const full = Array.from({ length: width }, (_, x) => plateColumn(kind, x + 1, width + 2));
         const small = Array.from({ length: width }, (_, x) => namePlateColumn(kind, x, width));
         small.forEach((c, x) => {
           expect(c).toEqual(small[width - 1 - x]); // the same on both sides
@@ -286,12 +287,12 @@ describe('the cutaway wall', () => {
           expect(c.top + c.bottom).toBe(rows - 1); // the foot mirrors the top
           expect(Number.isInteger(c.top)).toBe(true);
         });
-        // Past the pointed ends, every column has lost exactly the squeeze: the edge's steps are the title's own.
-        for (let x = 3; x < width - 3; x++) {
+        // Every column has lost exactly the squeeze: the edge's steps are the title's own.
+        for (let x = 0; x < width; x++) {
           expect(small[x].bottom - small[x].top).toBe(full[x].bottom - full[x].top - NAME_PLATE_SQUEEZE_ART);
         }
-        // And the tip is still there, and still the shortest column.
-        expect(small[0].bottom - small[0].top + 1).toBe(4); // (two are left once its corners are cut, as on the title's)
+        // Its end is blunt: six rows (four once the corners are cut), and still the shortest column.
+        expect(small[0].bottom - small[0].top + 1).toBe(6);
         expect(small[0].bottom - small[0].top).toBeLessThan(small[1].bottom - small[1].top);
         // The plate reaches its own top row somewhere: no empty row is carried.
         expect(Math.min(...small.map(c => c.top))).toBe(0);
@@ -299,7 +300,7 @@ describe('the cutaway wall', () => {
     }
   });
 
-  it("a name plate's pointed end reads black, colour, rivet, as its title's does: no gap in the line of colour", () => {
+  it("a name plate's blunt end reads black, colour, rivet: no gap in the line of colour", () => {
     // What a plate paints, as one letter per art pixel: K the black line, then a letter per colour in the order first used.
     const painted = (draw: (ctx: CanvasRenderingContext2D) => void, w: number, h: number): string[] => {
       const grid = Array.from({ length: h }, () => Array.from({ length: w }, () => '.'));
@@ -320,10 +321,14 @@ describe('the cutaway wall', () => {
       const title = painted(ctx => drawPlate(ctx, w, kind), w, 20);
       const name = painted(ctx => drawNamePlate(ctx, w, kind), w, namePlateRows(kind));
       const ends = (rows: string[]) => rows.filter(r => r[0] === 'K').map(r => r.slice(0, 3) + ' ' + r.slice(-3));
-      // The rows that reach the very ends: the tip. The same on both plates, and never two blacks side by side.
-      expect(ends(name)).toEqual(ends(title));
-      expect(ends(name).length).toBe(2);
-      for (const e of ends(name)) expect(e).toMatch(/^K[a-f]K K[a-f]K$/);
+      // The title's end is a point two rows tall: black, colour, rivet.
+      expect(ends(title).length).toBe(2);
+      for (const e of ends(title)) expect(e).toMatch(/^K[a-f]K K[a-f]K$/);
+      // The name plate's is blunt, four rows tall, and the line of colour runs unbroken behind it:
+      // colour right inside the black on every one of them, the rivet on the middle two.
+      expect(ends(name).length).toBe(4);
+      for (const e of ends(name)) expect(e).toMatch(/^K[a-f]. .[a-f]K$/);
+      expect(ends(name).filter(e => /^K[a-f]K K[a-f]K$/.test(e)).length).toBe(2);
       // And every row of the name plate begins and ends on the black line.
       for (const r of name) {
         const inked = r.replace(/^\.+|\.+$/g, '');
