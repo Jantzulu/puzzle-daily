@@ -5,7 +5,7 @@ import { getEnemy, type EnemyWithSprite } from '../../data/enemies';
 import { loadSpellAsset, loadStatusEffectAsset, loadCollectible, type CustomSprite } from '../../utils/assetStorage';
 import { SpriteThumbnail } from '../editor/SpriteThumbnail';
 import { HelpButton } from './HelpOverlay';
-import { BeamSign, CutawayPlate, CutawaySlab, WallDark, WallSetting } from './CutawayWall';
+import { BeamSign, CutawayPlate, NamePlate, CutawaySlab, WallDark, WallSetting } from './CutawayWall';
 import { WALL_ABOVE_BEAM, WALL_ENTRY, WALL_HEADER_GAP, WALL_LIST, WALL_OVER_PLATE, WALL_ROW } from './cutawayStone';
 
 interface StatusEffectsDisplayProps {
@@ -311,24 +311,22 @@ export const StatusEffectsDisplay: React.FC<StatusEffectsDisplayProps> = ({ puzz
               const deathDrop = sources.filter(s => s.method === 'death_drop');
 
               const entityBadge = (source: EntitySource, key: string) => {
-                // Chip wears the applicator's identity color: blood for
-                // enemies, arcane purple for heroes, parchment for items
+                // The name is on a small plate of its own kind's title
+                // (CutawayWall NamePlate): the enemies' for an enemy, the
+                // heroes' for a hero, the items' for an item.
+                const kind = source.sourceType === 'enemy' ? 'enemies' : source.sourceType === 'item' ? 'items' : 'heroes';
                 const colorClass = source.sourceType === 'enemy'
-                  ? 'bg-blood-900/50 text-blood-300'
+                  ? 'text-blood-300'
                   : source.sourceType === 'item'
-                  ? 'bg-parchment-900/50 text-parchment-300'
-                  : 'bg-arcane-900/50 text-arcane-300';
+                  ? 'text-parchment-300'
+                  : 'text-arcane-300';
                 return (
-                  <div
-                    key={key}
-                    className={`flex items-center gap-1 px-1.5 py-0.5 pixel-chip text-xs ${colorClass}`}
-                    title={source.name}
-                  >
+                  <NamePlate key={key} kind={kind} className={`text-xs ${colorClass}`} title={source.name}>
                     {source.sprite && (
-                      <SpriteThumbnail sprite={source.sprite} size={16} previewType="entity" />
+                      <SpriteThumbnail sprite={source.sprite} size={14} previewType="entity" />
                     )}
                     <span className="max-w-[72px] truncate">{source.name}</span>
-                  </div>
+                  </NamePlate>
                 );
               };
 

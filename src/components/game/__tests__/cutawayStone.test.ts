@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   ARCH_BAND_ART, ARCH_H, ARCH_MAX_RX_ART, ARCH_RISE_ART, PIER_ART, PIER_TOP, SLAB_ART, SLAB_H, SLAB_RISE, WALL_TORCH_GAP, WALL_TORCH_HALF,
-  BEDROCK_ART, DIRT_TILE_ART, FOOTING_LOWER_ART, FOOTING_UPPER_ART, FOUND_H, archInset, archOutline, bedrock, courseBlocks, dirtClods, facingBlocks, slabBlocks,
+  BEDROCK_ART, DIRT_TILE_ART, FOOTING_LOWER_ART, FOOTING_UPPER_ART, FOUND_H, archInset, archOutline, bedrock, courseBlocks, cutCorners, dirtClods, facingBlocks, slabBlocks,
   PASSAGE_RIBS_ART, archOpening, nicheSpan, passageDepth,
   WALL_ENTRY, settingBox,
   PLATE_H, PLATE_RISE_ART, plateColumn, plateProud, plateRise,
@@ -245,5 +245,16 @@ describe('the cutaway wall', () => {
       expect(x).toBe(DIRT_TILE_ART.w);
     }
     expect(dirtClods()).toEqual(clods); // the same earth every time
+  });
+
+
+  it("cuts the outer corners of a silhouette and nothing else (no filled corners in the user's line)", () => {
+    const box = (x: number, y: number) => x >= 0 && x < 5 && y >= 0 && y < 4;
+    const cut = cutCorners(box);
+    for (const [x, y] of [[0, 0], [4, 0], [0, 3], [4, 3]]) expect(cut(x, y)).toBe(false);
+    let kept = 0;
+    for (let x = 0; x < 5; x++) for (let y = 0; y < 4; y++) if (cut(x, y)) kept++;
+    expect(kept).toBe(5 * 4 - 4);
+    expect(cut(9, 9)).toBe(false);
   });
 });

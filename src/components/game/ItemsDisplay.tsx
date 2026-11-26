@@ -7,7 +7,7 @@ import { loadCollectible, loadSpellAsset, type CustomSprite, type CustomCollecti
 import { SpriteThumbnail } from '../editor/SpriteThumbnail';
 import { HelpButton } from './HelpOverlay';
 import { hasDeliverySchedule, deliveryRepeat } from '../../utils/deliverySchedule';
-import { BeamSign, CutawayPlate, CutawaySlab, WallDark, WallSetting } from './CutawayWall';
+import { BeamSign, CutawayPlate, NamePlate, CutawaySlab, WallDark, WallSetting } from './CutawayWall';
 import { WALL_ABOVE_BEAM, WALL_ENTRY, WALL_HEADER_GAP, WALL_LIST, WALL_OVER_PLATE, WALL_ROW } from './cutawayStone';
 
 interface ItemsDisplayProps {
@@ -315,20 +315,17 @@ export const ItemsDisplay: React.FC<ItemsDisplayProps> = ({ puzzle, className = 
                 <div className="flex items-center gap-1 flex-wrap">
                   <span className="hud-label text-stone-500 mr-1">Dropped by:</span>
                   {dropSources.map((source) => (
-                    <div
+                    <NamePlate
                       key={source.id}
-                      className={`flex items-center gap-1 px-1.5 py-0.5 pixel-chip text-xs ${
-                        source.isEnemy
-                          ? 'bg-blood-900/50 text-blood-300'
-                          : 'bg-arcane-900/50 text-arcane-300'
-                      }`}
+                      kind={source.isEnemy ? 'enemies' : 'heroes'}
+                      className={`text-xs ${source.isEnemy ? 'text-blood-300' : 'text-arcane-300'}`}
                       title={source.name}
                     >
                       {source.sprite && (
-                        <SpriteThumbnail sprite={source.sprite} size={16} previewType="entity" />
+                        <SpriteThumbnail sprite={source.sprite} size={14} previewType="entity" />
                       )}
                       <span className="max-w-[60px] truncate">{source.name}</span>
-                    </div>
+                    </NamePlate>
                   ))}
                 </div>
               </div>
@@ -339,22 +336,19 @@ export const ItemsDisplay: React.FC<ItemsDisplayProps> = ({ puzzle, className = 
               <div className={`mt-1 ${indent}`}>
                 <div className="flex items-center gap-1 flex-wrap">
                   {spellSources.map((source, idx) => (
-                    <div
+                    <NamePlate
                       key={`${source.entityId}-${source.spellName}-${idx}`}
-                      className={`flex items-center gap-1 px-1.5 py-0.5 pixel-chip text-xs ${
-                        source.isEnemy
-                          ? 'bg-blood-900/50 text-blood-300'
-                          : 'bg-arcane-900/50 text-arcane-300'
-                      }`}
+                      kind={source.isEnemy ? 'enemies' : 'heroes'}
+                      className={`text-xs ${source.isEnemy ? 'text-blood-300' : 'text-arcane-300'}`}
                       title={`${source.isThrow ? 'Thrown' : 'Placed'} by ${source.entityName}`}
                     >
                       {source.entitySprite && (
-                        <SpriteThumbnail sprite={source.entitySprite} size={16} previewType="entity" />
+                        <SpriteThumbnail sprite={source.entitySprite} size={14} previewType="entity" />
                       )}
                       <span className="max-w-[80px] truncate">
                         {source.isThrow ? 'Thrown' : 'Placed'} by {source.entityName}
                       </span>
-                    </div>
+                    </NamePlate>
                   ))}
                 </div>
                 {/* Duration info */}

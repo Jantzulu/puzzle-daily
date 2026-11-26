@@ -3,7 +3,7 @@ import { Z, prepCanvas, useCrispSnap, whenDecoded } from './panelSkins';
 import { RUNG_PLAQUE_PIECES, drawRungPlaque } from './rungPlaqueSkin';
 import {
   ARCH_H, ARCH_LIFT, DIRT_TILE_ART, drawDirt, FOUND_H, FOUND_STEP, PIER_STOP, PIER_TOP, PIER_W, PLATE_END_ART, PLATE_H, SLAB_H, WALL_TORCH_GAP, WALL_TORCH_HALF, drawArcade, drawFoundation,
-  RAMPART_H, RAMPART_RISE_ART, WALL_HERO_Z, WALL_PLATE_Z, drawNiches, drawPier, drawPlate, drawPlateDark, drawRampart, drawRampartDark, drawSetting, drawSlab, settingBox,
+  NAME_PLATE_H, NAME_PLATE_ZOOM, RAMPART_H, RAMPART_RISE_ART, WALL_HERO_Z, WALL_PLATE_Z, drawNiches, drawPier, drawPlate, drawPlateDark, drawRampart, drawRampartDark, drawSetting, drawSlab, settingBox,
 } from './cutawayStone';
 import type { PlateKind, SettingKind } from './cutawayStone';
 import { slotBoundaries } from '../../hooks/useElementWidth';
@@ -429,6 +429,50 @@ export const WallDark: React.FC = () => <div aria-hidden className="wall-dark" /
 export const BeamTapHint: React.FC = () => (
   <span className="wall-tap-hint"><span>Tap for more info</span></span>
 );
+
+/**
+ * A NAME PLATE: a title's own plate, drawn at half size (cutawayStone.ts
+ * drawPlate at NAME_PLATE_ZOOM), behind a name in the list rooms, "Dropped
+ * by: [Giant Bat]". A hero's name on the HEROES plate, an enemy's on
+ * ENEMIES, an item's on ITEMS. It is as wide as what it holds and 20px
+ * tall; the art is redrawn when that changes size.
+ */
+export const NamePlate: React.FC<{ kind: PlateKind; className?: string; title?: string; children: React.ReactNode }> = ({ kind, className = '', title, children }) => {
+  const hostRef = React.useRef<HTMLSpanElement>(null);
+  const boxRef = React.useRef<HTMLSpanElement>(null);
+  const snapRef = useCrispSnap<HTMLSpanElement>(true);
+  const canvasRef = React.useRef<HTMLCanvasElement>(null);
+  React.useLayoutEffect(() => {
+    const host = hostRef.current;
+    const box = boxRef.current;
+    const canvas = canvasRef.current;
+    if (!host || !box || !canvas) return;
+    const draw = () => {
+      const widthArt = Math.ceil(host.offsetWidth / NAME_PLATE_ZOOM);
+      if (!widthArt) return;
+      const w = widthArt * NAME_PLATE_ZOOM;
+      box.style.width = `${w}px`;
+      const ctx = prepCanvas(canvas, w, NAME_PLATE_H, 0);
+      if (!ctx) return;
+      ctx.clearRect(0, 0, w, NAME_PLATE_H);
+      drawPlate(ctx, widthArt, kind, NAME_PLATE_ZOOM);
+    };
+    draw();
+    const ro = new ResizeObserver(draw);
+    ro.observe(host);
+    return () => ro.disconnect();
+  }, [kind]);
+  return (
+    <span ref={hostRef} title={title} className={`relative inline-flex items-center gap-1 px-2 ${className}`} style={{ height: NAME_PLATE_H }}>
+      <span ref={boxRef} aria-hidden className="absolute left-0 top-0 pointer-events-none" style={{ height: NAME_PLATE_H }}>
+        <span ref={snapRef} className="relative block w-full h-full">
+          <canvas ref={canvasRef} style={{ position: 'absolute' }} />
+        </span>
+      </span>
+      <span className="relative inline-flex items-center gap-1">{children}</span>
+    </span>
+  );
+};
 
 /**
  * A BEAM'S SIGN: the count on a beam (0/3 PLACED, 5 REMAINING, 1 TYPE,

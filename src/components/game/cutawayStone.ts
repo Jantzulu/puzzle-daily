@@ -591,28 +591,60 @@ export function plateMask(kind: PlateKind, widthArt: number): (x: number, y: num
   });
 }
 
-/** Draw a title's plate into a canvas `widthArt` art px wide and PLATE_H tall. Lit from the top left. */
-export function drawPlate(ctx: CanvasRenderingContext2D, widthArt: number, kind: PlateKind): void {
-  const s = PLATE_COLORS[kind];
-  const a = (ax: number, ay: number, aw: number, ah: number, color: string) => {
-    if (aw <= 0 || ah <= 0) return;
-    ctx.fillStyle = color;
-    ctx.fillRect(ax * Z, ay * Z, aw * Z, ah * Z);
-  };
-  const cols = Array.from({ length: widthArt }, (_, x) => plateColumn(kind, x, widthArt));
-  /** Is this art pixel part of the plate? (Its outer corners are cut: no filled corners in the user's line.) */
-  const has = plateMask(kind, widthArt);
-  // In the user's hand (their tap hint, their QUEST plate): the black line
-  // round the silhouette, one line of the room's colour inside it, then the
-  // face. (It had a rim lit on the top and left and dark on the others.)
+/**
+ * Paint a plate of any size from its silhouette, in the user's hand (their
+ * tap hint, their QUEST plate): the black line round it, one line of its
+ * colour inside that, then the face. (The title plates first had a rim lit
+ * on the top and left and dark on the others.)
+ */
+function paintPlate(
+  a: (ax: number, ay: number, aw: number, ah: number, color: string) => void,
+  has: (x: number, y: number) => boolean,
+  widthArt: number,
+  heightArt: number,
+  s: { face: string; lit: string },
+): void {
   const onRim = (x: number, y: number): boolean => has(x, y) && (!has(x - 1, y) || !has(x + 1, y) || !has(x, y - 1) || !has(x, y + 1));
   for (let x = 0; x < widthArt; x++) {
-    for (let y = cols[x].top; y <= cols[x].bottom; y++) {
+    for (let y = 0; y < heightArt; y++) {
       if (!has(x, y)) continue;
       const trim = onRim(x - 1, y) || onRim(x + 1, y) || onRim(x, y - 1) || onRim(x, y + 1);
       a(x, y, 1, 1, onRim(x, y) ? INK : trim ? s.lit : s.face);
     }
   }
+}
+
+// ---- name plates: the title's plate itself, drawn small -----------------------------------
+// User, 2026-11-25, of the small named boxes in the list rooms ("Dropped
+// by: [Giant Bat]", "Applied by: [Shielder]"): "the boxes for 'Dropped by:'
+// are outdated, any chance we could reuse the plates used for the titles
+// for the respective entities?" FIRST TRY, NOT TO BE REPEATED: a small
+// plate with a shape of its own, worked out for the box's size (a shallower
+// edge, shorter points). The user: "those plates dont really look right
+// ... would we be able to just force the new box to look more like the
+// actual resulting plate shape? Instead of mapping a shape to the new text
+// and contents". So a name is on THE TITLE'S OWN PLATE, the very drawing
+// (drawPlate), at half its size: one CSS px to the art px (NAME_PLATE_ZOOM)
+// where the wall is two. A hero's name on the HEROES plate, an enemy's on
+// ENEMIES, an item's on ITEMS.
+
+/** A name plate is its title's plate at this many CSS px to the art px, and this tall (CSS px). */
+export const NAME_PLATE_ZOOM = 1;
+export const NAME_PLATE_H = (SLAB_ART + 2 * PLATE_RISE_ART) * NAME_PLATE_ZOOM;
+
+/**
+ * Draw a title's plate into a canvas `widthArt` art px wide. Lit from the
+ * top left. `zoom`: CSS px to the art px (the wall's Z; a name plate's
+ * NAME_PLATE_ZOOM).
+ */
+export function drawPlate(ctx: CanvasRenderingContext2D, widthArt: number, kind: PlateKind, zoom = Z): void {
+  const s = PLATE_COLORS[kind];
+  const a = (ax: number, ay: number, aw: number, ah: number, color: string) => {
+    if (aw <= 0 || ah <= 0) return;
+    ctx.fillStyle = color;
+    ctx.fillRect(ax * zoom, ay * zoom, aw * zoom, ah * zoom);
+  };
+  paintPlate(a, plateMask(kind, widthArt), widthArt, SLAB_ART + 2 * PLATE_RISE_ART, s);
   // A rivet in each pointed end.
   const mid = PLATE_RISE_ART + SLAB_ART / 2 - 1;
   a(2, mid, 1, 2, INK);
