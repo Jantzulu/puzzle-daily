@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  ARCH_BAND_ART, ARCH_H, ARCH_MAX_RX_ART, ARCH_RISE_ART, PIER_ART, PIER_TOP, SLAB_ART, SLAB_H, SLAB_RISE, WALL_ON, WALL_TORCH_GAP, WALL_TORCH_HALF,
+  ARCH_BAND_ART, ARCH_H, ARCH_MAX_RX_ART, ARCH_RISE_ART, PIER_ART, PIER_TOP, SLAB_ART, SLAB_H, SLAB_RISE, WALL_TORCH_GAP, WALL_TORCH_HALF,
   BEDROCK_ART, DIRT_TILE_ART, FOOTING_LOWER_ART, FOOTING_UPPER_ART, FOUND_H, archInset, archOutline, bedrock, courseBlocks, dirtClods, facingBlocks, slabBlocks,
   PASSAGE_RIBS_ART, archOpening, nicheSpan, passageDepth,
   WALL_ENTRY, settingBox,
@@ -9,15 +9,11 @@ import {
 } from '../cutawayStone';
 import type { PlateKind } from '../cutawayStone';
 
-// The cutaway wall's placeholder stone (the `?wall=1` experiment). What can
-// be pinned without a canvas: the blocks are laid out the same every time,
-// fill their course exactly, and the switch is off unless asked for.
+// The cutaway wall's placeholder stone. What can be pinned without a
+// canvas: the blocks are laid out the same every time and fill their course
+// exactly.
 
 describe('the cutaway wall', () => {
-  it('is off unless the page is opened with ?wall=1', () => {
-    expect(WALL_ON).toBe(false); // (no window here: the same answer as a page without the switch)
-  });
-
   it('keeps its sizes on the art grid', () => {
     expect(SLAB_H).toBe(SLAB_ART * 2);
     expect(PIER_TOP).toBe(SLAB_H - SLAB_RISE); // the side walls begin where the slab ends

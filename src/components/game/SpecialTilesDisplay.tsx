@@ -4,12 +4,11 @@ import { loadTileType, loadPuzzleSkin, type CustomTileType, type CustomSprite } 
 import { SpriteThumbnail } from '../editor/SpriteThumbnail';
 import { HelpButton } from './HelpOverlay';
 import { BeamSign, CutawayPlate, CutawaySlab, WallDark, WallSetting } from './CutawayWall';
-import { WALL_ABOVE_BEAM, WALL_ENTRY, WALL_HEADER_GAP, WALL_LIST, WALL_ON, WALL_OVER_PLATE, WALL_ROW } from './cutawayStone';
+import { WALL_ABOVE_BEAM, WALL_ENTRY, WALL_HEADER_GAP, WALL_LIST, WALL_OVER_PLATE, WALL_ROW } from './cutawayStone';
 
 interface SpecialTilesDisplayProps {
   puzzle: Puzzle;
   className?: string;
-  noPanel?: boolean; // If true, renders without the dungeon-panel wrapper
 }
 
 // Information about a special tile to display
@@ -229,7 +228,7 @@ function getCadenceDescription(cadence: CadenceConfig): string {
   }
 }
 
-export const SpecialTilesDisplay: React.FC<SpecialTilesDisplayProps> = ({ puzzle, className = '', noPanel = false }) => {
+export const SpecialTilesDisplay: React.FC<SpecialTilesDisplayProps> = ({ puzzle, className = '' }) => {
   const specialTiles = useMemo(() => getSpecialTiles(puzzle), [puzzle]);
 
   // Don't render if no special tiles
@@ -238,9 +237,8 @@ export const SpecialTilesDisplay: React.FC<SpecialTilesDisplayProps> = ({ puzzle
   }
 
   // Chiseled seam between the dungeon's informational sections
-  // (The `?wall=1` experiment: a stone slab under the title takes the groove's place.)
-  const wall = WALL_ON && noPanel;
-  const divider = wall ? <div aria-hidden="true" className={WALL_ABOVE_BEAM} /> : noPanel ? <div className="dungeon-seam" /> : null;
+  // The room the beam needs above the title.
+  const divider = <div aria-hidden="true" className={WALL_ABOVE_BEAM} />;
 
   const count = (
     <span className="flex items-baseline gap-1">
@@ -252,35 +250,35 @@ export const SpecialTilesDisplay: React.FC<SpecialTilesDisplayProps> = ({ puzzle
   const content = (
     <>
       {divider}
-      <div className={`relative flex items-center justify-between ${wall ? `${WALL_HEADER_GAP} ${WALL_ROW}` : 'mb-1'}`}>
-        {wall && <CutawaySlab old />}
-        {wall && <CutawayPlate kind="tiles" />}
+      <div className={`relative flex items-center justify-between ${WALL_HEADER_GAP} ${WALL_ROW}`}>
+        <CutawaySlab old />
+        <CutawayPlate kind="tiles" />
         <div className="min-w-[60px]" />
-        <div className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center ${wall ? WALL_OVER_PLATE : ''}`}>
+        <div className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center ${WALL_OVER_PLATE}`}>
           <div className="absolute right-full mr-1">
             <HelpButton sectionId="special_tiles" className="!text-[#e68f6d]" pixel />
           </div>
           {/* nowrap: see StatusEffectsDisplay — the centered-title box caps
               at half the row and this title is nearly as wide. */}
           <h3 className="carved-header carved-header-rust font-medieval text-lg lg:text-xl uppercase whitespace-nowrap">Dungeon Tiles</h3>
-          {wall && <BeamSign torch={{ prefer: 'right', phase: 500 }}>{count}</BeamSign>}
+          <BeamSign torch={{ prefer: 'right', phase: 500 }}>{count}</BeamSign>
         </div>
         {/* Counter in the ramp's registers, like the hero/enemy panels. */}
-        {/* (In the wall the count is on a sign beside the title: BeamSign, above.) */}
-        {wall ? <span /> : count}
+        {/* (The count is on a sign beside the title: BeamSign, above.) */}
+        <span />
       </div>
 
       {/* Ledger rows, two columns when the width is there */}
-      <div className={wall ? WALL_LIST : 'md:columns-2 md:gap-x-5'}>
+      <div className={WALL_LIST}>
         {specialTiles.map((info) => (
           <div
             key={info.tileType.id}
-            className={`py-1.5 break-inside-avoid ${wall ? WALL_ENTRY.frame.row : ''}`}
+            className={`py-1.5 break-inside-avoid ${WALL_ENTRY.frame.row}`}
           >
             <div className="flex items-start gap-2">
               {/* Tile sprite(s) (in the wall: in a frame) */}
-              <div className={`flex-shrink-0 ${wall ? WALL_ENTRY.frame.icon : 'mt-0.5'}`}>
-                <WallSetting on={wall} kind="frame">
+              <div className={`flex-shrink-0 ${WALL_ENTRY.frame.icon}`}>
+                <WallSetting on kind="frame">
                 {info.hasCadence ? (
                   // Show both on and off sprites for cadenced tiles
                   <div className="flex items-center gap-1">
@@ -359,18 +357,10 @@ export const SpecialTilesDisplay: React.FC<SpecialTilesDisplayProps> = ({ puzzle
     </>
   );
 
-  if (noPanel) {
-    return (
-      <div className={className} data-wall-room={wall ? 'room' : undefined}>
-        {content}
-        {wall && <WallDark />}
-      </div>
-    );
-  }
-
   return (
-    <div className={`dungeon-panel p-2 lg:p-3 ${className}`}>
+    <div className={className} data-wall-room="room">
       {content}
+      <WallDark />
     </div>
   );
 };

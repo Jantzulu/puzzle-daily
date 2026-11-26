@@ -15,7 +15,6 @@ import { VictoryTally } from './VictoryTally';
 import { PortcullisMesh } from './PortcullisMesh';
 import { CharacterSelector } from './CharacterSelector';
 import { CutawayPiers } from './CutawayWall';
-import { WALL_ON } from './cutawayStone';
 import { EnemyDisplay } from './EnemyDisplay';
 import { StatusEffectsDisplay } from './StatusEffectsDisplay';
 import { SpecialTilesDisplay } from './SpecialTilesDisplay';
@@ -3724,16 +3723,19 @@ export const Game: React.FC<GameProps> = ({
               // mt-2: tuned so HEROES sits the same distance under the quest
               // box as ENEMIES sits under the Dungeon Details lintel
               // (measured h3-top to edge: 3px both, user call 2026-08-01).
-              // (The wall: 6px more, so the rampart's merlons, which stand
-              // 14px above the heroes' beam, do not brush the board's foot.)
-              <div className={`transition-opacity ${WALL_ON ? 'relative mt-3.5' : 'mt-2'} ${dimmedPanelClass} ${justExitedReplay ? 'animate-slide-up' : ''}`}>
-                {/* The `?wall=1` experiment (cutawayStone.ts): the side walls of the cutaway. */}
-                {WALL_ON && <CutawayPiers />}
+              // (mt-3.5 since the cutaway wall: 6px more than that, so the
+              // rampart's merlons, which stand 14px above the heroes' beam,
+              // do not brush the board's foot. `relative`: the side walls
+              // are placed against this box.)
+              <div className={`transition-opacity relative mt-3.5 ${dimmedPanelClass} ${justExitedReplay ? 'animate-slide-up' : ''}`}>
+                {/* The cutaway wall (cutawayStone.ts): its side walls, ground and foundation. */}
+                <CutawayPiers />
                 {/* Character Selector - always visible. After a win it stays
                     as a record: the heroes used are highlighted (showUsed). */}
                 {(
                   <CharacterSelector
                     questSlot={questFloatOn}
+                    wall
                     availableCharacterIds={gameState.puzzle.availableCharacters}
                     enemies={gameState.puzzle.enemies}
                     selectedCharacterId={testMode === 'none' && gameState.gameStatus === 'setup' ? selectedCharacterId : null}
@@ -3804,7 +3806,6 @@ export const Game: React.FC<GameProps> = ({
                   onTest={handleTestEnemiesWithScroll}
                   showTestButton={!hideTestButtons && !questFloatOn && gameState.gameStatus === 'setup' && testMode === 'none'}
                   themeAssets={themeAssets}
-                  noPanel
                 />
 
                 {/* Allies Display — hero-party units placed by the creator;
@@ -3813,17 +3814,16 @@ export const Game: React.FC<GameProps> = ({
                   side="ally"
                   enemies={gameState.puzzle.enemies}
                   themeAssets={themeAssets}
-                  noPanel
                 />
 
                 {/* Items Display - only shown if puzzle has items */}
-                <ItemsDisplay puzzle={gameState.puzzle} noPanel />
+                <ItemsDisplay puzzle={gameState.puzzle} />
 
                 {/* Status Effects Display - only shown if puzzle has status effects */}
-                <StatusEffectsDisplay puzzle={gameState.puzzle} noPanel />
+                <StatusEffectsDisplay puzzle={gameState.puzzle} />
 
                 {/* Special Tiles Display - only shown if puzzle has tiles with behaviors */}
-                <SpecialTilesDisplay puzzle={gameState.puzzle} noPanel />
+                <SpecialTilesDisplay puzzle={gameState.puzzle} />
                 </div>
               </div>
             )}

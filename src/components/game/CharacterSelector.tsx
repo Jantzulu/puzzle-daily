@@ -25,7 +25,7 @@ import placedBannerIcon from '../../assets/icons/placed-banner.png';
 import { useElementWidth, artGridSlotStyle } from '../../hooks/useElementWidth';
 import { subscribeToImageLoads } from '../../utils/imageLoader';
 import { BEAM_SPOT_W, BeamSign, BeamSpot, BeamTapHint, CutawayPlate, CutawayRampart, CutawaySlab, WallColumns, WallDark } from './CutawayWall';
-import { WALL_CARD, WALL_HEADER_GAP, WALL_HERO_Z, WALL_ON, WALL_OVER_SLAB, WALL_ROW, WALL_SPOT_CLEAR, type WallBelow } from './cutawayStone';
+import { WALL_CARD, WALL_HEADER_GAP, WALL_HERO_Z, WALL_OVER_SLAB, WALL_ROW, WALL_SPOT_CLEAR, type WallBelow } from './cutawayStone';
 
 const MOVEMENT_TYPES = new Set([
   'move_forward', 'move_backward', 'move_left', 'move_right',
@@ -117,6 +117,11 @@ interface CharacterSelectorProps {
    * wrapper.
    */
   questSlot?: boolean;
+  /**
+   * Lay the panel out as the hero hall of the cutaway wall (the Play page).
+   * Needs CutawayPiers mounted round it (Game.tsx) and `noPanel`.
+   */
+  wall?: boolean;
 }
 
 export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
@@ -141,6 +146,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
   onPlacementAimConfirm,
   onPlacementAimCancel,
   questSlot = false,
+  wall: wallLayout = false,
 }) => {
   const effectiveMaxPlaceable = maxPlaceable ?? availableCharacterIds.length;
   const isAtMaxPlaced = placedCharacterIds.length >= effectiveMaxPlaceable;
@@ -409,8 +415,11 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
     return () => ro.disconnect();
   }, [questSlot]);
 
-  /** The `?wall=1` experiment (cutawayStone.ts): a stone slab behind the title. */
-  const wall = WALL_ON && noPanel;
+  /**
+   * The cutaway wall (cutawayStone.ts): the Play page's layout. Without it
+   * this is the older panel, which only Training Grounds still mounts.
+   */
+  const wall = wallLayout && noPanel;
   // The info drawer, mounted for as long as it shows (through its closing):
   // the wall's columns stand on a floor over it. And the tap hint, which in
   // the wall is a line under the title, not a row under the cards.

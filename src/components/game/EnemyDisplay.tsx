@@ -5,21 +5,17 @@ import { SpriteThumbnail } from '../editor/SpriteThumbnail';
 import { RichTextRenderer } from '../editor/RichTextEditor';
 import { attributeText, attributeSubItems } from '../../utils/attributeShape';
 import { HelpButton } from './HelpOverlay';
-import { TapHintChip } from './TapHintChip';
 import { isTapHintSeen, markTapHintSeen } from './tapHintSeen';
 import { GemMesh } from './GemMesh';
-import { LintelMesh } from './LintelMesh';
-import { LintelTorch } from './LintelTorch';
 import { MovementArrow } from './DirectionArrow';
 import type { ThemeAssets } from '../../utils/themeAssets';
 import { CARD_PIXEL_SCALE, computeCardSpriteAreaHeight } from './cardConstants';
-import { StripDividers } from './StripDividers';
 import { SelectionStrip, SelectionDrawer } from './SelectionShape';
 import { useElementWidth, artGridSlotStyle } from '../../hooks/useElementWidth';
 import { subscribeToImageLoads } from '../../utils/imageLoader';
 import { playChromeSound } from '../../utils/chromeSounds';
 import { BeamSign, BeamTapHint, CutawayPlate, CutawaySlab, WallColumns, WallDark } from './CutawayWall';
-import { WALL_ABOVE_BEAM, WALL_CARD, WALL_HEADER_GAP, WALL_ON, WALL_OVER_PLATE, WALL_ROW, type WallBelow } from './cutawayStone';
+import { WALL_ABOVE_BEAM, WALL_CARD, WALL_HEADER_GAP, WALL_OVER_PLATE, WALL_ROW, type WallBelow } from './cutawayStone';
 
 // Every enemy/ally opens a drawer (its info panel always renders).
 const alwaysOpensDrawer = () => true;
@@ -41,7 +37,6 @@ interface EnemyDisplayProps {
   showTestButton?: boolean;
   themeAssets?: ThemeAssets;
   className?: string;
-  noPanel?: boolean;
   /**
    * Which party's units this instance tallies from puzzle.enemies.
    * 'enemy' (default) draws the Dungeon Details lintel and shows the
@@ -57,7 +52,6 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
   showTestButton = false,
   themeAssets = {},
   className = '',
-  noPanel = false,
   side = 'enemy',
 }) => {
   const isAllySide = side === 'ally';
@@ -177,43 +171,13 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
     ? 'drop-shadow(0 0 2px rgba(0,0,0,1)) drop-shadow(0 0 3px rgba(214,158,70,0.9)) drop-shadow(0 0 7px rgba(214,158,70,0.5))'
     : 'drop-shadow(0 0 2px rgba(0,0,0,1)) drop-shadow(0 0 3px rgba(180,50,50,0.9)) drop-shadow(0 0 7px rgba(180,50,50,0.5))';
 
-  // "Dungeon Details" threshold shown in noPanel mode — a course of hewn
-  // stone blocks (LintelMesh) marking the doorway between the heroes'
-  // panel and the dungeon, with the label engraved on the stone.
-  // Only the ENEMY instance draws it — it opens the whole section; the
-  // ally instance renders below it as a sibling box.
-  // THE `?wall=1` EXPERIMENT (cutawayStone.ts; user thought 2026-11-21:
-  // "I am almost wondering if 'Dungeon Details' should be removed as text
-  // and all the horizontal beams made of brick be standardized"): there the
-  // lintel and its words are gone, and ENEMIES is carved on a beam like
-  // every other title's, with one torch beside it (BeamTorch).
-  const wall = WALL_ON && noPanel;
-  const divider = wall ? (
-    // The room the beam needs above the title.
-    <div aria-hidden="true" className={WALL_ABOVE_BEAM} />
-  ) : noPanel && !isAllySide ? (
-    <div className="dungeon-lintel mt-2 mb-2">
-      <LintelMesh />
-      {/* uppercase: the register pass (2026-08-01) — same treatment as the
-          HEROES/ENEMIES titles. */}
-      {/* Center mark retired (user call 2026-08-13): plain DUNGEON
-          DETAILS; the words' gap is the container's own 8px. The
-          iconDungeonDetails theme slot went with it. */}
-      {/* A torch each side (user idea 2026-10-15; LintelTorch.tsx), their
-          flickers offset so the pair never burns in step. */}
-      <span className="dungeon-lintel-text font-medieval uppercase">
-        <LintelTorch />
-        <span>Dungeon</span>
-        <span>Details</span>
-        <LintelTorch phase={700} />
-      </span>
-    </div>
-  ) : noPanel ? (
-    // The ally instance opens with the same chiseled seam Items / Status
-    // Effects / Dungeon Tiles use — its title used to start flush against
-    // the enemy drawer's bottom edge with no separation at all.
-    <div className="dungeon-seam" />
-  ) : null;
+  // The room the beam needs above the title. (The "Dungeon Details" lintel
+  // that opened this section, and the chiseled seam over the allies, went
+  // when the cutaway wall became the page's layout, 2026-11-25: every title
+  // is on a beam of its own, with one torch beside it. User, 2026-11-21: "I
+  // am almost wondering if 'Dungeon Details' should be removed as text and
+  // all the horizontal beams made of brick be standardized".)
+  const divider = <div aria-hidden="true" className={WALL_ABOVE_BEAM} />;
 
   // Empty state. No allies is the NORM — the ally instance disappears
   // entirely rather than announcing an empty box.
@@ -222,10 +186,10 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
     const emptyContent = (
       <>
         {divider}
-        <div className={`flex items-center justify-center ${wall ? `relative ${WALL_HEADER_GAP}` : 'mb-2'}`}>
-          {wall && <CutawaySlab />}
-          {wall && <CutawayPlate kind="enemies" />}
-          <div className={'relative flex items-center ' + (wall ? WALL_OVER_PLATE : '')}>
+        <div className={`flex items-center justify-center relative ${WALL_HEADER_GAP}`}>
+          <CutawaySlab />
+          <CutawayPlate kind="enemies" />
+          <div className={'relative flex items-center ' + WALL_OVER_PLATE}>
             <div className="absolute right-full mr-1">
               <HelpButton sectionId="enemies" className="!text-[#c9564a]" pixel />
             </div>
@@ -235,9 +199,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
         <p className="text-sm lg:text-base text-stone-500 text-center">No enemies remaining</p>
       </>
     );
-    return noPanel
-      ? <div className={className}>{emptyContent}</div>
-      : <div className={`dungeon-panel p-2 lg:p-3 ${className}`}>{emptyContent}</div>;
+    return <div className={className}>{emptyContent}</div>;
   }
 
   // The info drawer, mounted for as long as it shows (through its closing):
@@ -261,9 +223,9 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
       {divider}
 
       {/* Header row */}
-      <div className={`relative flex items-center justify-between ${wall ? `${WALL_HEADER_GAP} ${WALL_ROW}` : 'mb-2'}`}>
-        {wall && <CutawaySlab old={isAllySide} />}
-        {wall && <CutawayPlate kind={isAllySide ? 'allies' : 'enemies'} />}
+      <div className={`relative flex items-center justify-between ${WALL_HEADER_GAP} ${WALL_ROW}`}>
+        <CutawaySlab old={isAllySide} />
+        <CutawayPlate kind={isAllySide ? 'allies' : 'enemies'} />
         <div className="flex items-center gap-2 min-w-[60px]">
           {showTestButton && onTest && (
             themeAssets.actionButtonTestEnemiesImage ? (
@@ -299,7 +261,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
             )
           )}
         </div>
-        <div className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center ${wall ? WALL_OVER_PLATE : ''}`}>
+        <div className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center ${WALL_OVER_PLATE}`}>
           <div className="absolute right-full mr-1">
             <HelpButton sectionId={isAllySide ? 'allies' : 'enemies'} className={isAllySide ? '!text-[#e8cc8a]' : '!text-[#c9564a]'} pixel />
           </div>
@@ -309,14 +271,14 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
           <h3 className={`carved-header ${isAllySide ? 'carved-header-parchment' : 'carved-header-blood'} font-medieval text-lg lg:text-xl uppercase whitespace-nowrap`}>
             {isAllySide ? 'Allies' : 'Enemies'}
           </h3>
-          {wall && showEnemyHint && <BeamTapHint />}
-          {wall && <BeamSign torch={{ prefer: 'left', phase: isAllySide ? 850 : 700 }}>{count}</BeamSign>}
+          {showEnemyHint && <BeamTapHint />}
+          <BeamSign torch={{ prefer: 'left', phase: isAllySide ? 850 : 700 }}>{count}</BeamSign>
         </div>
         {/* Counter in the ramp's registers, matching the hero panel's
             "N/M placed": the count is a stat value (hud-num, tabular),
             the word is furniture (hud-label, uppercase). */}
-        {/* (In the wall the count is on a sign beside the title: BeamSign, above.) */}
-        {wall ? <span /> : count}
+        {/* (The count is on a sign beside the title: BeamSign, above.) */}
+        <span />
       </div>
 
       {/* Enemy strip — equal-width slots on the art grid. The selection
@@ -325,19 +287,16 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
           its measured width and rendered BEFORE the card row so the cards
           paint over them. Slot math must index the same filtered list the
           cards render from. */}
-      <div ref={stripRef} className={wall ? 'relative z-[1]' : 'relative'}>
+      <div ref={stripRef} className="relative z-[1]">
       {/* The wall's columns go UNDER the selection, whose outline overlaps
           them (user call 2026-11-21); the posts they replace step aside. */}
-      {wall && (
-        <WallColumns
+              <WallColumns
           slotCount={stripEnemyIds.length}
           width={stripWidth}
           below={enemyDrawerUp ? 'floor' : 'open'}
           old
         />
-      )}
-      <SelectionStrip ids={stripEnemyIds} selectedIndex={selectedStripIndex} width={stripWidth} tone={isAllySide ? 'copper' : 'blood'} opensDrawer={alwaysOpensDrawer} arch={wall} />
-      {!wall && <StripDividers slotCount={stripEnemyIds.length} selectedIndex={selectedStripIndex} width={stripWidth} />}
+      <SelectionStrip ids={stripEnemyIds} selectedIndex={selectedStripIndex} width={stripWidth} tone={isAllySide ? 'copper' : 'blood'} opensDrawer={alwaysOpensDrawer} arch />
       <div className="flex">
         {stripEnemyIds.map((enemyId, slot) => {
           const enemyData = getEnemy(enemyId);
@@ -381,7 +340,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
               // min-w-0: a card can never be widened by its own content (a
               // long name, a visit line), so the slots stay equal and on the
               // boundaries the selection shape and the posts use.
-              className={`flex-1 min-w-0 flex flex-col items-center px-1 pt-0.5 ${wall ? WALL_CARD.card : 'pb-2'} relative transition-colors cursor-pointer ${
+              className={`flex-1 min-w-0 flex flex-col items-center px-1 pt-0.5 ${WALL_CARD.card} relative transition-colors cursor-pointer ${
                 isSelected
                   // No background of its own: the selected look is the
                   // selection shape laid under the row (SelectionShape) —
@@ -392,7 +351,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
               } ${allDead ? 'opacity-50' : scheduledOnly ? 'opacity-60' : ''}`}
             >
               {/* Sprite — takes full card width, uniform height across the row */}
-              <div className={`w-full ${wall ? WALL_CARD.sprite : 'relative'}`}>
+              <div className={`w-full ${WALL_CARD.sprite}`}>
                 <SpriteThumbnail
                   sprite={enemyData.customSprite}
                   size={cardSpriteHeight}
@@ -410,7 +369,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
                   // hero card's compass sits on the same spot. (In the wall
                   // the sprite is at the card's foot and the count stays at
                   // its top, on the arch's shoulder: WALL_CARD.count.)
-                  <span className={`absolute ${wall ? WALL_CARD.count : 'top-0.5 right-0'} text-xs bg-blood-900 text-blood-300 px-1 py-0.5 pixel-chip min-w-[18px] text-center leading-none`}>
+                  <span className={`absolute ${WALL_CARD.count} text-xs bg-blood-900 text-blood-300 px-1 py-0.5 pixel-chip min-w-[18px] text-center leading-none`}>
                     {totalCount}
                   </span>
                 )}
@@ -418,7 +377,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
 
               {/* NAME + epithet — the hero cards' fixed 38px box, one
                   clamped line each, full text in `title`. */}
-              <div className={`w-full ${wall ? WALL_CARD.name : 'h-[38px]'} flex flex-col items-center justify-center overflow-hidden leading-none`}>
+              <div className={`w-full ${WALL_CARD.name} flex flex-col items-center justify-center overflow-hidden leading-none`}>
                 <span
                   // Bounded to its (equal) slot so the clamp cuts one end,
                   // not both (the hero strip's "eflecto" fix).
@@ -511,7 +470,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
               index={renderedStripIndex}
               width={stripWidth}
               tone={isAllySide ? 'copper' : 'blood'}
-              cellar={wall}
+              cellar
             />
             {(hasActionSteps || hasAttributes) && (
               <div className={`flex mb-2 px-2 ${hasActionSteps && hasAttributes ? 'gap-0' : 'justify-center'}`}>
@@ -578,34 +537,15 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
         </div>
       )}
 
-      {/* Hint row — the hero strip's chip, mirrored (user call 2026-08-01):
-          boxed like the board's "Tap the dungeon" prompt, shown whenever no
-          card is open. The old one-time localStorage coach line retired with
-          it. Enemies side only — a twin under Allies on the same page would
-          double-announce. UNMOUNTS when hidden (second user call, mobile
-          test): the min-h reservation left a dead gap once a card opened. */}
-      {showEnemyHint && !wall && (
-        <div className="mt-1.5 text-center">
-          <TapHintChip>Tap an enemy for more info</TapHintChip>
-        </div>
-      )}
     </>
   );
 
-  if (noPanel) {
-    // (The wall: what is directly above the next panel's beam, so the page can place that beam.)
-    const wallBelow: WallBelow | undefined = wall ? (enemyDrawerUp ? 'drawer' : 'open') : undefined;
-    return (
-      <div className={className} data-wall-below={wallBelow} data-wall-room={wall ? 'room' : undefined}>
-        {content}
-        {wall && <WallDark />}
-      </div>
-    );
-  }
-
+  // What is directly above the next panel's beam, so the page can place that beam.
+  const wallBelow: WallBelow = enemyDrawerUp ? 'drawer' : 'open';
   return (
-    <div className={`dungeon-panel p-2 lg:p-3 ${className}`}>
+    <div className={className} data-wall-below={wallBelow} data-wall-room="room">
       {content}
+      <WallDark />
     </div>
   );
 };

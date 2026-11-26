@@ -1,5 +1,10 @@
 // ============================================================================
-// THE CUTAWAY WALL — an experiment behind `?wall=1` (2026-11-21)
+// THE CUTAWAY WALL — the Play page's layout under the board
+// (begun 2026-11-21 as an experiment behind `?wall=1`; THE STANDARD since
+// 2026-11-25, when the user: "lets make this the new standard, deleting the
+// old layout". The switch is gone. The old layout survives in one place:
+// Training Grounds mounts the hero panel without `wall`, and gets its own
+// pass.)
 // ============================================================================
 // Someone shown the app said the hero panel "and everything else below it
 // essentially not having a background made it look unfinished" next to the
@@ -67,16 +72,6 @@
 // same wall every time), so the layout of the blocks can be tested.
 
 import { Z } from './panelSkins';
-
-/** The switch: `?wall=1`, read once at load (the `?cardscale=` pattern). */
-function readWallSwitch(): boolean {
-  try {
-    return new URLSearchParams(window.location.search).get('wall') === '1';
-  } catch {
-    return false; // no window (tests) or a malformed URL
-  }
-}
-export const WALL_ON = readWallSwitch();
 
 // ---- sizes, in ART px (multiply by Z for CSS px) ------------------------------------
 
@@ -229,7 +224,7 @@ export type WallBelow = 'open' | 'drawer';
 
 // ---- stone ----------------------------------------------------------------------------
 
-/** The Dungeon Details lintel's stone (LintelMesh.tsx), so the wall is of a piece with it. */
+/** The stone of the Dungeon Details lintel the wall replaced (its mesh is gone; this is its palette). */
 const KEPT = {
   mortar: '#120e0b',
   faces: ['#262120', '#221e1c', '#2a2420'],

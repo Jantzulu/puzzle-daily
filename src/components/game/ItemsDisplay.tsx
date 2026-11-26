@@ -8,12 +8,11 @@ import { SpriteThumbnail } from '../editor/SpriteThumbnail';
 import { HelpButton } from './HelpOverlay';
 import { hasDeliverySchedule, deliveryRepeat } from '../../utils/deliverySchedule';
 import { BeamSign, CutawayPlate, CutawaySlab, WallDark, WallSetting } from './CutawayWall';
-import { WALL_ABOVE_BEAM, WALL_ENTRY, WALL_HEADER_GAP, WALL_LIST, WALL_ON, WALL_OVER_PLATE, WALL_ROW } from './cutawayStone';
+import { WALL_ABOVE_BEAM, WALL_ENTRY, WALL_HEADER_GAP, WALL_LIST, WALL_OVER_PLATE, WALL_ROW } from './cutawayStone';
 
 interface ItemsDisplayProps {
   puzzle: Puzzle;
   className?: string;
-  noPanel?: boolean; // If true, renders without the dungeon-panel wrapper
 }
 
 // Entity source info for an item drop
@@ -221,7 +220,7 @@ const ItemIcon: React.FC<{ collectible: CustomCollectible; size?: number }> = ({
   );
 };
 
-export const ItemsDisplay: React.FC<ItemsDisplayProps> = ({ puzzle, className = '', noPanel = false }) => {
+export const ItemsDisplay: React.FC<ItemsDisplayProps> = ({ puzzle, className = '' }) => {
   const itemsWithSources = useMemo(() => getPuzzleItemsWithSources(puzzle), [puzzle]);
 
   // Don't render if no items
@@ -230,11 +229,10 @@ export const ItemsDisplay: React.FC<ItemsDisplayProps> = ({ puzzle, className = 
   }
 
   // Chiseled seam between the dungeon's informational sections
-  // (The `?wall=1` experiment: a stone slab under the title takes the groove's place.)
-  const wall = WALL_ON && noPanel;
   // The lines under an entry start where its text does: further in when the icon has a shelf round it.
-  const indent = wall ? 'pl-9' : 'pl-7';
-  const divider = wall ? <div aria-hidden="true" className={WALL_ABOVE_BEAM} /> : noPanel ? <div className="dungeon-seam" /> : null;
+  const indent = 'pl-9';
+  // The room the beam needs above the title.
+  const divider = <div aria-hidden="true" className={WALL_ABOVE_BEAM} />;
 
   const count = (
     <span className="flex items-baseline gap-1">
@@ -246,33 +244,33 @@ export const ItemsDisplay: React.FC<ItemsDisplayProps> = ({ puzzle, className = 
   const content = (
     <>
       {divider}
-      <div className={`relative flex items-center justify-between ${wall ? `${WALL_HEADER_GAP} ${WALL_ROW}` : 'mb-1'}`}>
-        {wall && <CutawaySlab old />}
-        {wall && <CutawayPlate kind="items" />}
+      <div className={`relative flex items-center justify-between ${WALL_HEADER_GAP} ${WALL_ROW}`}>
+        <CutawaySlab old />
+        <CutawayPlate kind="items" />
         <div className="min-w-[60px]" />
-        <div className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center ${wall ? WALL_OVER_PLATE : ''}`}>
+        <div className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center ${WALL_OVER_PLATE}`}>
           <div className="absolute right-full mr-1">
             <HelpButton sectionId="items" className="!text-[#e8cc8a]" pixel />
           </div>
           <h3 className="carved-header carved-header-parchment font-medieval text-lg lg:text-xl uppercase whitespace-nowrap">Items</h3>
-          {wall && <BeamSign torch={{ prefer: 'right', phase: 350 }}>{count}</BeamSign>}
+          <BeamSign torch={{ prefer: 'right', phase: 350 }}>{count}</BeamSign>
         </div>
         {/* Counter in the ramp's registers, like the hero/enemy panels. */}
-        {/* (In the wall the count is on a sign beside the title: BeamSign, above.) */}
-        {wall ? <span /> : count}
+        {/* (The count is on a sign beside the title: BeamSign, above.) */}
+        <span />
       </div>
 
       {/* Ledger rows, two columns when the width is there */}
-      <div className={wall ? WALL_LIST : 'md:columns-2 md:gap-x-5'}>
+      <div className={WALL_LIST}>
         {itemsWithSources.map(({ collectible, onMap, dropSources, spellSources, deliveries }) => (
           <div
             key={collectible.id}
-            className={`py-1.5 break-inside-avoid ${wall ? WALL_ENTRY.shelf.row : ''}`}
+            className={`py-1.5 break-inside-avoid ${WALL_ENTRY.shelf.row}`}
           >
             <div className="flex items-start gap-2">
               {/* Icon (in the wall: on a stone shelf) */}
-              <div className={`flex-shrink-0 ${wall ? WALL_ENTRY.shelf.icon : 'mt-0.5'}`}>
-                <WallSetting on={wall} kind="shelf"><ItemIcon collectible={collectible} size={20} /></WallSetting>
+              <div className={`flex-shrink-0 ${WALL_ENTRY.shelf.icon}`}>
+                <WallSetting on kind="shelf"><ItemIcon collectible={collectible} size={20} /></WallSetting>
               </div>
 
               {/* Name and effects */}
@@ -386,18 +384,10 @@ export const ItemsDisplay: React.FC<ItemsDisplayProps> = ({ puzzle, className = 
     </>
   );
 
-  if (noPanel) {
-    return (
-      <div className={className} data-wall-room={wall ? 'room' : undefined}>
-        {content}
-        {wall && <WallDark />}
-      </div>
-    );
-  }
-
   return (
-    <div className={`dungeon-panel p-2 lg:p-3 ${className}`}>
+    <div className={className} data-wall-room="room">
       {content}
+      <WallDark />
     </div>
   );
 };

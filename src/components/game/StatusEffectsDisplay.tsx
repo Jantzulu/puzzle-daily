@@ -6,12 +6,11 @@ import { loadSpellAsset, loadStatusEffectAsset, loadCollectible, type CustomSpri
 import { SpriteThumbnail } from '../editor/SpriteThumbnail';
 import { HelpButton } from './HelpOverlay';
 import { BeamSign, CutawayPlate, CutawaySlab, WallDark, WallSetting } from './CutawayWall';
-import { WALL_ABOVE_BEAM, WALL_ENTRY, WALL_HEADER_GAP, WALL_LIST, WALL_ON, WALL_OVER_PLATE, WALL_ROW } from './cutawayStone';
+import { WALL_ABOVE_BEAM, WALL_ENTRY, WALL_HEADER_GAP, WALL_LIST, WALL_OVER_PLATE, WALL_ROW } from './cutawayStone';
 
 interface StatusEffectsDisplayProps {
   puzzle: Puzzle;
   className?: string;
-  noPanel?: boolean; // If true, renders without the dungeon-panel wrapper
 }
 
 // How the status effect reaches an entity
@@ -232,7 +231,7 @@ const StatusEffectIcon: React.FC<{ effect: StatusEffectAsset; size?: number }> =
   );
 };
 
-export const StatusEffectsDisplay: React.FC<StatusEffectsDisplayProps> = ({ puzzle, className = '', noPanel = false }) => {
+export const StatusEffectsDisplay: React.FC<StatusEffectsDisplayProps> = ({ puzzle, className = '' }) => {
   const statusEffectsWithSources = useMemo(() => getPuzzleStatusEffectsWithSources(puzzle), [puzzle]);
 
   // Don't render if no status effects
@@ -241,28 +240,27 @@ export const StatusEffectsDisplay: React.FC<StatusEffectsDisplayProps> = ({ puzz
   }
 
   // Chiseled seam between the dungeon's informational sections
-  // (The `?wall=1` experiment: a stone slab under the title takes the groove's place.)
-  const wall = WALL_ON && noPanel;
-  const divider = wall ? <div aria-hidden="true" className={WALL_ABOVE_BEAM} /> : noPanel ? <div className="dungeon-seam" /> : null;
+  // The room the beam needs above the title.
+  const divider = <div aria-hidden="true" className={WALL_ABOVE_BEAM} />;
 
-  // (On the wall's sign: "types", as ITEMS and DUNGEON TILES say. This
+  // ("types", as ITEMS and DUNGEON TILES say; it said "possible". This
   // title is the widest on the page; user, 2026-11-25: "maybe we can
   // rephrase '2 possible' to shrink the size".)
   const count = (
     <span className="flex items-baseline gap-1">
       <span className="hud-num text-stone-400">{statusEffectsWithSources.length}</span>
-      <span className="hud-label text-stone-400">{wall ? `type${statusEffectsWithSources.length !== 1 ? 's' : ''}` : 'possible'}</span>
+      <span className="hud-label text-stone-400">type{statusEffectsWithSources.length !== 1 ? 's' : ''}</span>
     </span>
   );
 
   const content = (
     <>
       {divider}
-      <div className={`relative flex items-center justify-between ${wall ? `${WALL_HEADER_GAP} ${WALL_ROW}` : 'mb-1'}`}>
-        {wall && <CutawaySlab old />}
-        {wall && <CutawayPlate kind="status" />}
+      <div className={`relative flex items-center justify-between ${WALL_HEADER_GAP} ${WALL_ROW}`}>
+        <CutawaySlab old />
+        <CutawayPlate kind="status" />
         <div className="min-w-[60px]" />
-        <div className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center ${wall ? WALL_OVER_PLATE : ''}`}>
+        <div className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center ${WALL_OVER_PLATE}`}>
           <div className="absolute right-full mr-1">
             <HelpButton sectionId="status_effects" className="!text-[#2dd4bf]" pixel />
           </div>
@@ -272,26 +270,26 @@ export const StatusEffectsDisplay: React.FC<StatusEffectsDisplayProps> = ({ puzz
               wraps and overflows onto the rows below — the uppercase pass
               pushed this one over the cap on phones. */}
           <h3 className="carved-header carved-header-mystic font-medieval text-lg lg:text-xl uppercase whitespace-nowrap">Status Effects</h3>
-          {wall && <BeamSign torch={{ prefer: 'left', phase: 1050 }}>{count}</BeamSign>}
+          <BeamSign torch={{ prefer: 'left', phase: 1050 }}>{count}</BeamSign>
         </div>
         {/* Counter in the ramp's registers, like the hero/enemy panels. */}
-        {/* (In the wall the count is on a sign beside the title: BeamSign, above.) */}
-        {wall ? <span /> : count}
+        {/* (The count is on a sign beside the title: BeamSign, above.) */}
+        <span />
       </div>
 
       {/* Ledger rows, two columns when the width is there — the entry
           boxes read as wasted air; a tight row per effect keeps every
           field (name, description, grouped sources) in less space */}
-      <div className={wall ? WALL_LIST : 'md:columns-2 md:gap-x-5'}>
+      <div className={WALL_LIST}>
         {statusEffectsWithSources.map(({ effect, sources }) => (
           <div
             key={effect.id}
-            className={`py-1.5 break-inside-avoid ${wall ? WALL_ENTRY.tablet.row : ''}`}
+            className={`py-1.5 break-inside-avoid ${WALL_ENTRY.tablet.row}`}
           >
             <div className="flex items-start gap-2">
               {/* Icon (in the wall: on a hanging stone tablet) */}
-              <div className={`flex-shrink-0 ${wall ? WALL_ENTRY.tablet.icon : 'mt-0.5'}`}>
-                <WallSetting on={wall} kind="tablet"><StatusEffectIcon effect={effect} size={20} /></WallSetting>
+              <div className={`flex-shrink-0 ${WALL_ENTRY.tablet.icon}`}>
+                <WallSetting on kind="tablet"><StatusEffectIcon effect={effect} size={20} /></WallSetting>
               </div>
 
               {/* Name and description flow inline */}
@@ -337,7 +335,7 @@ export const StatusEffectsDisplay: React.FC<StatusEffectsDisplayProps> = ({ puzz
               const allPickups = [...pickups, ...deathDrop];
 
               return (
-                <div className={`mt-1 ${wall ? 'pl-10' : 'pl-7'} space-y-0.5`}>
+                <div className={`mt-1 pl-10 space-y-0.5`}>
                   {/* Innate: entity starts with the effect */}
                   {innate.length > 0 && (
                     <div className="flex items-center gap-1 flex-wrap">
@@ -370,18 +368,10 @@ export const StatusEffectsDisplay: React.FC<StatusEffectsDisplayProps> = ({ puzz
     </>
   );
 
-  if (noPanel) {
-    return (
-      <div className={className} data-wall-room={wall ? 'room' : undefined}>
-        {content}
-        {wall && <WallDark />}
-      </div>
-    );
-  }
-
   return (
-    <div className={`dungeon-panel p-2 lg:p-3 ${className}`}>
+    <div className={className} data-wall-room="room">
       {content}
+      <WallDark />
     </div>
   );
 };

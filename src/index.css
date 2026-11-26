@@ -3783,50 +3783,13 @@ body:not(.menu-gate-lowered) .quest-panel-sticky[data-jostle] .control-rail {
   padding-bottom: 2px;
 }
 
-/* ============================================
-   DUNGEON THRESHOLD LINTEL
-   The "Dungeon Details" divider is a course of hewn stone blocks
-   (LintelMesh) — the lintel over the doorway between the heroes' panel
-   and the dungeon below, with the label engraved on the stone. The
-   stone itself lives in the mesh (per-block tones, lit tops, chipped
-   corners); the container keeps only the cast shadow. Deliberately the
-   ONLY new set-piece in the below-board region.
-   ============================================ */
-.dungeon-lintel {
-  position: relative;
-  height: 38px;
-  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.45);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
+/* (THE DUNGEON THRESHOLD LINTEL stood here: the "Dungeon Details" course of
+   stone between the heroes and the dungeon. It went on 2026-11-25, when the
+   cutaway wall became the Play page's layout: every title is on a beam of
+   its own. Its torches live on, on those beams.) */
 
-.dungeon-lintel-mesh {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 0;
-  pointer-events: none;
-}
-
-.dungeon-lintel-text {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 15px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  color: #e4b96a;
-  text-shadow:
-    0 -1px 0 rgba(0, 0, 0, 0.85),
-    0 1px 0 rgba(255, 235, 200, 0.12);
-}
-
-/* THE LINTEL TORCHES (LintelTorch.tsx, user idea 2026-10-15), one each side
-   of the lettering. The button is the torch's own art box (the crisp snap
+/* THE LINTEL TORCHES (LintelTorch.tsx, user idea 2026-10-15; first one each
+   side of the lintel's lettering, now one on every beam of the wall). The button is the torch's own art box (the crisp snap
    moves it with left/top); the strip of frames slides inside it. The light
    is a z:-1 layer in the lettering's stacking context, so it warms the
    stone BEHIND the letters and the torch, never over them. Two layers: the
@@ -3839,14 +3802,6 @@ body:not(.menu-gate-lowered) .quest-panel-sticky[data-jostle] .control-rail {
   border: 0;
   background: none;
   cursor: pointer;
-}
-
-.dungeon-lintel-text > .lintel-torch:first-child {
-  margin-right: 6px;
-}
-
-.dungeon-lintel-text > .lintel-torch:last-child {
-  margin-left: 6px;
 }
 
 .lintel-torch-frame {
@@ -4013,20 +3968,6 @@ body:not(.menu-gate-lowered) .quest-panel-sticky[data-jostle] .control-rail {
   .unit-card-glow:hover::before {
     opacity: 1;
   }
-}
-
-/* Chiseled seam between the dungeon's informational sections — a groove
-   cut into the dark ground, quieter than the lintel above it. Dark cut
-   on top, faint lit lip below: the same top-left light as everything. */
-.dungeon-seam {
-  height: 0;
-  border-top: 1px solid rgba(0, 0, 0, 0.6);
-  border-bottom: 1px solid rgba(255, 235, 200, 0.05);
-  margin: 6px 0;
-  /* The groove fades out with the feathered ground it is cut into
-     (.dungeon-below), instead of running on past it to a hard end. */
-  -webkit-mask-image: linear-gradient(to right, transparent, #000 var(--dungeon-feather, 0px), #000 calc(100% - var(--dungeon-feather, 0px)), transparent);
-  mask-image: linear-gradient(to right, transparent, #000 var(--dungeon-feather, 0px), #000 calc(100% - var(--dungeon-feather, 0px)), transparent);
 }
 
 /* ============================================
