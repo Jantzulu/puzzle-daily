@@ -14,7 +14,7 @@ import { SelectionStrip, SelectionDrawer } from './SelectionShape';
 import { useElementWidth, artGridSlotStyle } from '../../hooks/useElementWidth';
 import { subscribeToImageLoads } from '../../utils/imageLoader';
 import { playChromeSound } from '../../utils/chromeSounds';
-import { BeamSign, BeamTapHint, CutawayPlate, CutawaySlab, WallColumns, WallDark } from './CutawayWall';
+import { BeamSign, BeamTapHint, CountShield, CutawayPlate, CutawaySlab, WallColumns, WallDark } from './CutawayWall';
 import { WALL_ABOVE_BEAM, WALL_CARD, WALL_HEADER_GAP, WALL_OVER_PLATE, WALL_ROW, type WallBelow } from './cutawayStone';
 
 // Every enemy/ally opens a drawer (its info panel always renders).
@@ -369,9 +369,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
                   // hero card's compass sits on the same spot. (In the wall
                   // the sprite is at the card's foot and the count stays at
                   // its top, on the arch's shoulder: WALL_CARD.count.)
-                  <span className={`absolute ${WALL_CARD.count} text-xs bg-blood-900 text-blood-300 px-1 py-0.5 pixel-chip min-w-[18px] text-center leading-none`}>
-                    {totalCount}
-                  </span>
+                  <CountShield count={totalCount} className={`absolute ${WALL_CARD.count}`} />
                 )}
               </div>
 

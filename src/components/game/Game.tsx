@@ -3723,11 +3723,13 @@ export const Game: React.FC<GameProps> = ({
               // mt-2: tuned so HEROES sits the same distance under the quest
               // box as ENEMIES sits under the Dungeon Details lintel
               // (measured h3-top to edge: 3px both, user call 2026-08-01).
-              // (mt-3.5 since the cutaway wall: 6px more than that, so the
-              // rampart's merlons, which stand 14px above the heroes' beam,
-              // do not brush the board's foot. `relative`: the side walls
-              // are placed against this box.)
-              <div className={`transition-opacity relative mt-3.5 ${dimmedPanelClass} ${justExitedReplay ? 'animate-slide-up' : ''}`}>
+              // (22px since the cutaway wall: the rampart's merlons stand
+              // 14px above the heroes' beam and must not brush the board's
+              // foot. It was 8, then 14; the user, 2026-11-25: "would we be
+              // able to increase the distance between the puzzle and the
+              // hero panel even more?" `relative`: the side walls are
+              // placed against this box.)
+              <div className={`transition-opacity relative mt-[22px] ${dimmedPanelClass} ${justExitedReplay ? 'animate-slide-up' : ''}`}>
                 {/* The cutaway wall (cutawayStone.ts): its side walls, ground and foundation. */}
                 <CutawayPiers />
                 {/* Character Selector - always visible. After a win it stays

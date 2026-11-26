@@ -4757,23 +4757,6 @@ button.dir-picker__tab:not(.dir-picker__tab--active) .dir-picker__tab-text {
   margin-bottom: 4px;
 }
 
-/* A CHIP IN THE USER'S HAND: the enemies' count on a card and the small
-   named chips in the list rooms ("Giant Bat", "Shielder") were web boxes,
-   a hairline border with rounded corners. Now: the black line with its
-   corners cut, one line of the chip's own colour inside it (its text
-   colour, dimmed), then the fill; as the title plates and the user's tap
-   hint are. The fill and the text colour stay the element's own classes. */
-.pixel-chip {
-  border: 2px solid #000;
-  border-radius: 0;
-  box-shadow: inset 0 0 0 2px color-mix(in srgb, currentColor 42%, #000);
-  clip-path: polygon(
-    2px 0, calc(100% - 2px) 0, calc(100% - 2px) 2px, 100% 2px,
-    100% calc(100% - 2px), calc(100% - 2px) calc(100% - 2px), calc(100% - 2px) 100%,
-    2px 100%, 2px calc(100% - 2px), 0 calc(100% - 2px), 0 2px, 2px 2px
-  );
-}
-
 /* THE CELLAR'S EARTH (user, 2026-11-24: an open info box "is like looking
    into a cellar ... a subtle dirt texture to the back of the selection for
    both heroes and enemies"). A layer at the back of an open drawer, under

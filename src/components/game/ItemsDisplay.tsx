@@ -318,11 +318,11 @@ export const ItemsDisplay: React.FC<ItemsDisplayProps> = ({ puzzle, className = 
                     <NamePlate
                       key={source.id}
                       kind={source.isEnemy ? 'enemies' : 'heroes'}
-                      className={`text-xs ${source.isEnemy ? 'text-blood-300' : 'text-arcane-300'}`}
+                      className={`text-sm ${source.isEnemy ? 'text-blood-300' : 'text-arcane-300'}`}
                       title={source.name}
                     >
                       {source.sprite && (
-                        <SpriteThumbnail sprite={source.sprite} size={14} previewType="entity" />
+                        <SpriteThumbnail sprite={source.sprite} size={20} previewType="entity" />
                       )}
                       <span className="max-w-[60px] truncate">{source.name}</span>
                     </NamePlate>
@@ -339,11 +339,11 @@ export const ItemsDisplay: React.FC<ItemsDisplayProps> = ({ puzzle, className = 
                     <NamePlate
                       key={`${source.entityId}-${source.spellName}-${idx}`}
                       kind={source.isEnemy ? 'enemies' : 'heroes'}
-                      className={`text-xs ${source.isEnemy ? 'text-blood-300' : 'text-arcane-300'}`}
+                      className={`text-sm ${source.isEnemy ? 'text-blood-300' : 'text-arcane-300'}`}
                       title={`${source.isThrow ? 'Thrown' : 'Placed'} by ${source.entityName}`}
                     >
                       {source.entitySprite && (
-                        <SpriteThumbnail sprite={source.entitySprite} size={14} previewType="entity" />
+                        <SpriteThumbnail sprite={source.entitySprite} size={20} previewType="entity" />
                       )}
                       <span className="max-w-[80px] truncate">
                         {source.isThrow ? 'Thrown' : 'Placed'} by {source.entityName}

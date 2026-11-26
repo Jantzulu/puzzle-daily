@@ -624,12 +624,17 @@ function paintPlate(
 // ... would we be able to just force the new box to look more like the
 // actual resulting plate shape? Instead of mapping a shape to the new text
 // and contents". So a name is on THE TITLE'S OWN PLATE, the very drawing
-// (drawPlate), at half its size: one CSS px to the art px (NAME_PLATE_ZOOM)
-// where the wall is two. A hero's name on the HEROES plate, an enemy's on
+// (drawPlate). A hero's name on the HEROES plate, an enemy's on
 // ENEMIES, an item's on ITEMS.
 
+// (It was drawn at half size first, one CSS px to the art px, to keep the
+// rows short. The user: "The plates that we added for entities in the status
+// effect and item boxes are 1x, are we able to get the same shape at 2x?"
+// So it is the plate at the wall's own scale now, 40px tall: each row with
+// a name on it is 20px taller than it was.)
+
 /** A name plate is its title's plate at this many CSS px to the art px, and this tall (CSS px). */
-export const NAME_PLATE_ZOOM = 1;
+export const NAME_PLATE_ZOOM = Z;
 export const NAME_PLATE_H = (SLAB_ART + 2 * PLATE_RISE_ART) * NAME_PLATE_ZOOM;
 
 /**
@@ -663,6 +668,40 @@ export function drawPlateDark(ctx: CanvasRenderingContext2D, widthArt: number, k
   for (let x = 0; x < widthArt; x++) {
     for (let y = 0; y < PLATE_RISE_ART; y++) if (has(x, y)) ctx.fillRect(x * Z, y * Z, Z, Z);
   }
+}
+
+// ---- the enemies' count: a small shield -----------------------------------------------------
+// User, 2026-11-25: "Can we make the enemy counter boxes a little bit more
+// interesting in shape?" The count of an enemy type sat in a small box with
+// cut corners. It is a SHIELD now, in the ENEMIES plate's own colours and
+// painted the same way (the black line, a line of colour, the face): flat
+// across the top, its two top corners cut, straight sides, and a point at
+// the foot that comes in by even steps, so its line turns only by diagonals.
+
+/** The shield's height, and how many of its last rows come in to the point (art px). */
+export const COUNT_SHIELD_ART = { h: 11, point: 4 } as const;
+export const COUNT_SHIELD_H = COUNT_SHIELD_ART.h * Z;
+
+/** The shield's width for a count of so many digits (art px; odd, so the point is one pixel). */
+export const countShieldWidthArt = (digits: number): number => 5 + 4 * Math.max(1, digits);
+
+/** Is this art pixel part of a shield `widthArt` wide? */
+export function inCountShield(x: number, y: number, widthArt: number): boolean {
+  if (x < 0 || y < 0 || x >= widthArt || y >= COUNT_SHIELD_ART.h) return false;
+  if (y === 0 && (x === 0 || x === widthArt - 1)) return false; // the top corners, cut
+  const k = y - (COUNT_SHIELD_ART.h - 1 - COUNT_SHIELD_ART.point); // 1 .. point down the taper
+  if (k <= 0) return true;
+  const inset = Math.round((k * (widthArt - 1)) / 2 / COUNT_SHIELD_ART.point);
+  return x >= inset && x <= widthArt - 1 - inset;
+}
+
+/** Draw the shield into a canvas `widthArt` art px wide and COUNT_SHIELD_H tall. */
+export function drawCountShield(ctx: CanvasRenderingContext2D, widthArt: number): void {
+  const a = (ax: number, ay: number, aw: number, ah: number, color: string) => {
+    ctx.fillStyle = color;
+    ctx.fillRect(ax * Z, ay * Z, aw * Z, ah * Z);
+  };
+  paintPlate(a, (x, y) => inCountShield(x, y, widthArt), widthArt, COUNT_SHIELD_ART.h, PLATE_COLORS.enemies);
 }
 
 // ---- the arcade ---------------------------------------------------------------------------

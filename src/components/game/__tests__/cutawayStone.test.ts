@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   ARCH_BAND_ART, ARCH_H, ARCH_MAX_RX_ART, ARCH_RISE_ART, PIER_ART, PIER_TOP, SLAB_ART, SLAB_H, SLAB_RISE, WALL_TORCH_GAP, WALL_TORCH_HALF,
-  BEDROCK_ART, DIRT_TILE_ART, FOOTING_LOWER_ART, FOOTING_UPPER_ART, FOUND_H, archInset, archOutline, bedrock, courseBlocks, cutCorners, dirtClods, facingBlocks, slabBlocks,
+  BEDROCK_ART, DIRT_TILE_ART, FOOTING_LOWER_ART, FOOTING_UPPER_ART, FOUND_H, archInset, archOutline, bedrock, courseBlocks, COUNT_SHIELD_ART, countShieldWidthArt, cutCorners, dirtClods, facingBlocks, inCountShield, slabBlocks,
   PASSAGE_RIBS_ART, archOpening, nicheSpan, passageDepth,
   WALL_ENTRY, settingBox,
   PLATE_H, PLATE_RISE_ART, plateColumn, plateProud, plateRise,
@@ -256,5 +256,21 @@ describe('the cutaway wall', () => {
     for (let x = 0; x < 5; x++) for (let y = 0; y < 4; y++) if (cut(x, y)) kept++;
     expect(kept).toBe(5 * 4 - 4);
     expect(cut(9, 9)).toBe(false);
+  });
+  it("the enemies' count shield is the same on both sides, its top corners cut, and comes to a one-pixel point", () => {
+    for (const digits of [1, 2, 3]) {
+      const w = countShieldWidthArt(digits);
+      expect(w % 2).toBe(1);
+      for (let y = 0; y < COUNT_SHIELD_ART.h; y++) {
+        for (let x = 0; x < w; x++) expect(inCountShield(x, y, w)).toBe(inCountShield(w - 1 - x, y, w));
+      }
+      expect(inCountShield(0, 0, w)).toBe(false);
+      expect(inCountShield(1, 0, w)).toBe(true);
+      expect(inCountShield(0, 1, w)).toBe(true);
+      const widths = Array.from({ length: COUNT_SHIELD_ART.h }, (_, y) => Array.from({ length: w }, (_, x) => inCountShield(x, y, w)).filter(Boolean).length);
+      expect(widths[COUNT_SHIELD_ART.h - 1]).toBe(1);
+      // It only ever narrows going down, once past the cut top row.
+      for (let y = 2; y < COUNT_SHIELD_ART.h; y++) expect(widths[y]).toBeLessThanOrEqual(widths[y - 1]);
+    }
   });
 });

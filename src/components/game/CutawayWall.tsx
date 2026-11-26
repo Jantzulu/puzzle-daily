@@ -3,7 +3,7 @@ import { Z, prepCanvas, useCrispSnap, whenDecoded } from './panelSkins';
 import { RUNG_PLAQUE_PIECES, drawRungPlaque } from './rungPlaqueSkin';
 import {
   ARCH_H, ARCH_LIFT, DIRT_TILE_ART, drawDirt, FOUND_H, FOUND_STEP, PIER_STOP, PIER_TOP, PIER_W, PLATE_END_ART, PLATE_H, SLAB_H, WALL_TORCH_GAP, WALL_TORCH_HALF, drawArcade, drawFoundation,
-  NAME_PLATE_H, NAME_PLATE_ZOOM, RAMPART_H, RAMPART_RISE_ART, WALL_HERO_Z, WALL_PLATE_Z, drawNiches, drawPier, drawPlate, drawPlateDark, drawRampart, drawRampartDark, drawSetting, drawSlab, settingBox,
+  COUNT_SHIELD_H, NAME_PLATE_H, NAME_PLATE_ZOOM, RAMPART_H, countShieldWidthArt, drawCountShield, RAMPART_RISE_ART, WALL_HERO_Z, WALL_PLATE_Z, drawNiches, drawPier, drawPlate, drawPlateDark, drawRampart, drawRampartDark, drawSetting, drawSlab, settingBox,
 } from './cutawayStone';
 import type { PlateKind, SettingKind } from './cutawayStone';
 import { slotBoundaries } from '../../hooks/useElementWidth';
@@ -431,11 +431,11 @@ export const BeamTapHint: React.FC = () => (
 );
 
 /**
- * A NAME PLATE: a title's own plate, drawn at half size (cutawayStone.ts
- * drawPlate at NAME_PLATE_ZOOM), behind a name in the list rooms, "Dropped
+ * A NAME PLATE: a title's own plate (cutawayStone.ts drawPlate) behind a name in the list rooms, "Dropped
  * by: [Giant Bat]". A hero's name on the HEROES plate, an enemy's on
- * ENEMIES, an item's on ITEMS. It is as wide as what it holds and 20px
- * tall; the art is redrawn when that changes size.
+ * ENEMIES, an item's on ITEMS. It is as wide as what it holds and 40px
+ * tall, the title plate's own size; the art is redrawn when that changes
+ * size.
  */
 export const NamePlate: React.FC<{ kind: PlateKind; className?: string; title?: string; children: React.ReactNode }> = ({ kind, className = '', title, children }) => {
   const hostRef = React.useRef<HTMLSpanElement>(null);
@@ -463,13 +463,42 @@ export const NamePlate: React.FC<{ kind: PlateKind; className?: string; title?: 
     return () => ro.disconnect();
   }, [kind]);
   return (
-    <span ref={hostRef} title={title} className={`relative inline-flex items-center gap-1 px-2 ${className}`} style={{ height: NAME_PLATE_H }}>
+    <span ref={hostRef} title={title} className={`relative inline-flex items-center gap-1.5 px-3.5 ${className}`} style={{ height: NAME_PLATE_H }}>
       <span ref={boxRef} aria-hidden className="absolute left-0 top-0 pointer-events-none" style={{ height: NAME_PLATE_H }}>
         <span ref={snapRef} className="relative block w-full h-full">
           <canvas ref={canvasRef} style={{ position: 'absolute' }} />
         </span>
       </span>
-      <span className="relative inline-flex items-center gap-1">{children}</span>
+      <span className="relative inline-flex items-center gap-1.5">{children}</span>
+    </span>
+  );
+};
+
+/**
+ * THE ENEMIES' COUNT, on a small SHIELD (cutawayStone.ts drawCountShield):
+ * how many of an enemy type there are, at the top corner of its card. The
+ * shield is as wide as the number's digits need and 22px tall, its point
+ * hanging under the number. `className` places it (WALL_CARD.count).
+ */
+export const CountShield: React.FC<{ count: number; className?: string }> = ({ count, className = '' }) => {
+  const snapRef = useCrispSnap<HTMLSpanElement>(true);
+  const canvasRef = React.useRef<HTMLCanvasElement>(null);
+  const widthArt = countShieldWidthArt(String(count).length);
+  React.useLayoutEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = prepCanvas(canvas, widthArt * Z, COUNT_SHIELD_H, 0);
+    if (!ctx) return;
+    ctx.clearRect(0, 0, widthArt * Z, COUNT_SHIELD_H);
+    drawCountShield(ctx, widthArt);
+  }, [widthArt]);
+  return (
+    <span className={className} style={{ width: widthArt * Z, height: COUNT_SHIELD_H }}>
+      <span ref={snapRef} aria-hidden className="absolute inset-0 pointer-events-none">
+        <canvas ref={canvasRef} style={{ position: 'absolute' }} />
+      </span>
+      {/* (The number sits on the shield's face: 4px of line and colour above it, the point below.) */}
+      <span className="relative block text-center text-xs text-blood-300" style={{ lineHeight: '10px', paddingTop: 5 }}>{count}</span>
     </span>
   );
 };
