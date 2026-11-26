@@ -3,7 +3,7 @@ import { Z, prepCanvas, useCrispSnap, whenDecoded } from './panelSkins';
 import { RUNG_PLAQUE_PIECES, drawRungPlaque } from './rungPlaqueSkin';
 import {
   ARCH_H, ARCH_LIFT, DIRT_TILE_ART, drawDirt, FOUND_H, FOUND_STEP, PIER_STOP, PIER_TOP, PIER_W, PLATE_END_ART, PLATE_H, SLAB_H, WALL_TORCH_GAP, WALL_TORCH_HALF, drawArcade, drawFoundation,
-  COUNT_SHIELD_H, NAME_PLATE_H, NAME_PLATE_ZOOM, RAMPART_H, countShieldWidthArt, drawCountShield, RAMPART_RISE_ART, WALL_HERO_Z, WALL_PLATE_Z, drawNiches, drawPier, drawPlate, drawPlateDark, drawRampart, drawRampartDark, drawSetting, drawSlab, settingBox,
+  COUNT_SHIELD_H, RAMPART_H, countShieldWidthArt, drawCountShield, drawNamePlate, namePlateH, RAMPART_RISE_ART, WALL_HERO_Z, WALL_PLATE_Z, drawNiches, drawPier, drawPlate, drawPlateDark, drawRampart, drawRampartDark, drawSetting, drawSlab, settingBox,
 } from './cutawayStone';
 import type { PlateKind, SettingKind } from './cutawayStone';
 import { slotBoundaries } from '../../hooks/useElementWidth';
@@ -431,40 +431,42 @@ export const BeamTapHint: React.FC = () => (
 );
 
 /**
- * A NAME PLATE: a title's own plate (cutawayStone.ts drawPlate) behind a name in the list rooms, "Dropped
- * by: [Giant Bat]". A hero's name on the HEROES plate, an enemy's on
- * ENEMIES, an item's on ITEMS. It is as wide as what it holds and 40px
- * tall, the title plate's own size; the art is redrawn when that changes
- * size.
+ * A NAME PLATE: a title's own plate with a few rows taken out of its
+ * middle (cutawayStone.ts drawNamePlate), behind a name in the list rooms,
+ * "Dropped by: [Giant Bat]". A hero's name on the HEROES plate, an enemy's
+ * on ENEMIES, an item's on ITEMS. It is as wide as what it holds and 28px
+ * tall (an item's: 32); the art is redrawn when that changes size.
  */
 export const NamePlate: React.FC<{ kind: PlateKind; className?: string; title?: string; children: React.ReactNode }> = ({ kind, className = '', title, children }) => {
   const hostRef = React.useRef<HTMLSpanElement>(null);
   const boxRef = React.useRef<HTMLSpanElement>(null);
   const snapRef = useCrispSnap<HTMLSpanElement>(true);
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
+  const h = namePlateH(kind);
   React.useLayoutEffect(() => {
     const host = hostRef.current;
     const box = boxRef.current;
     const canvas = canvasRef.current;
     if (!host || !box || !canvas) return;
     const draw = () => {
-      const widthArt = Math.ceil(host.offsetWidth / NAME_PLATE_ZOOM);
+      // A whole number of art px wide, so both pointed ends land on the grid.
+      const widthArt = Math.ceil(host.offsetWidth / Z);
       if (!widthArt) return;
-      const w = widthArt * NAME_PLATE_ZOOM;
+      const w = widthArt * Z;
       box.style.width = `${w}px`;
-      const ctx = prepCanvas(canvas, w, NAME_PLATE_H, 0);
+      const ctx = prepCanvas(canvas, w, h, 0);
       if (!ctx) return;
-      ctx.clearRect(0, 0, w, NAME_PLATE_H);
-      drawPlate(ctx, widthArt, kind, NAME_PLATE_ZOOM);
+      ctx.clearRect(0, 0, w, h);
+      drawNamePlate(ctx, widthArt, kind);
     };
     draw();
     const ro = new ResizeObserver(draw);
     ro.observe(host);
     return () => ro.disconnect();
-  }, [kind]);
+  }, [kind, h]);
   return (
-    <span ref={hostRef} title={title} className={`relative inline-flex items-center gap-1.5 px-3.5 ${className}`} style={{ height: NAME_PLATE_H }}>
-      <span ref={boxRef} aria-hidden className="absolute left-0 top-0 pointer-events-none" style={{ height: NAME_PLATE_H }}>
+    <span ref={hostRef} title={title} className={`relative inline-flex items-center gap-1.5 px-3.5 ${className}`} style={{ height: h }}>
+      <span ref={boxRef} aria-hidden className="absolute left-0 top-0 pointer-events-none" style={{ height: h }}>
         <span ref={snapRef} className="relative block w-full h-full">
           <canvas ref={canvasRef} style={{ position: 'absolute' }} />
         </span>

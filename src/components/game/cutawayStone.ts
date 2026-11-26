@@ -614,7 +614,7 @@ function paintPlate(
   }
 }
 
-// ---- name plates: the title's plate itself, drawn small -----------------------------------
+// ---- name plates: the title's plate itself, less tall --------------------------------------
 // User, 2026-11-25, of the small named boxes in the list rooms ("Dropped
 // by: [Giant Bat]", "Applied by: [Shielder]"): "the boxes for 'Dropped by:'
 // are outdated, any chance we could reuse the plates used for the titles
@@ -630,24 +630,64 @@ function paintPlate(
 // (It was drawn at half size first, one CSS px to the art px, to keep the
 // rows short. The user: "The plates that we added for entities in the status
 // effect and item boxes are 1x, are we able to get the same shape at 2x?"
-// So it is the plate at the wall's own scale now, 40px tall: each row with
-// a name on it is 20px taller than it was.)
+// So it is the plate at the wall's own scale now.)
 
-/** A name plate is its title's plate at this many CSS px to the art px, and this tall (CSS px). */
-export const NAME_PLATE_ZOOM = Z;
-export const NAME_PLATE_H = (SLAB_ART + 2 * PLATE_RISE_ART) * NAME_PLATE_ZOOM;
+// LESS TALL, THE SAME SILHOUETTE (the user, of the 40px plate: "could the
+// plate shape be modified slightly to make it less tall? Like removing some
+// pixels that contribute to the height without deforming the curves or
+// overall silhouette too much?"). The title plate is tall because its beam
+// is. A name plate has NAME_PLATE_SQUEEZE_ART rows taken out of its MIDDLE,
+// where every column of the plate is plain face, so its edge, the steps of
+// it and where they fall along the length are untouched; only its pointed
+// tip, four rows tall, keeps two of them rather than losing all four. And
+// the empty row an entity's plate leaves above and below itself on its
+// beam is not carried over. So a hero's or an enemy's name plate is 28px
+// tall and an item's 32 (the full plate: 40).
 
-/**
- * Draw a title's plate into a canvas `widthArt` art px wide. Lit from the
- * top left. `zoom`: CSS px to the art px (the wall's Z; a name plate's
- * NAME_PLATE_ZOOM).
- */
-export function drawPlate(ctx: CanvasRenderingContext2D, widthArt: number, kind: PlateKind, zoom = Z): void {
+/** How many rows are taken out of the middle of a title's plate to make a name plate (art px). */
+export const NAME_PLATE_SQUEEZE_ART = 4;
+/** The fewest rows a column of a name plate keeps (its tip). */
+const NAME_PLATE_TIP_ART = 2;
+
+/** The rows a name plate of this kind has (art px), and its height (CSS px). */
+export const namePlateRows = (kind: PlateKind): number => SLAB_ART + 2 * plateProud(kind) - NAME_PLATE_SQUEEZE_ART;
+export const namePlateH = (kind: PlateKind): number => namePlateRows(kind) * Z;
+
+/** The first and last art row of a name plate at column `x` (0 = its own top row). */
+export function namePlateColumn(kind: PlateKind, x: number, widthArt: number): { top: number; bottom: number } {
+  const full = plateColumn(kind, x, widthArt);
+  const rows = namePlateRows(kind);
+  // The column's own height, less the rows taken from the middle; it stays centred, as it was.
+  const n = Math.max(Math.min(NAME_PLATE_TIP_ART, full.bottom - full.top + 1), full.bottom - full.top + 1 - NAME_PLATE_SQUEEZE_ART);
+  const top = (rows - n) / 2;
+  return { top, bottom: top + n - 1 };
+}
+
+/** Draw a name plate into a canvas `widthArt` art px wide and namePlateH(kind) tall. */
+export function drawNamePlate(ctx: CanvasRenderingContext2D, widthArt: number, kind: PlateKind): void {
+  const a = (ax: number, ay: number, aw: number, ah: number, color: string) => {
+    ctx.fillStyle = color;
+    ctx.fillRect(ax * Z, ay * Z, aw * Z, ah * Z);
+  };
+  const cols = Array.from({ length: widthArt }, (_, x) => namePlateColumn(kind, x, widthArt));
+  const has = cutCorners((x, y) => {
+    const c = cols[x];
+    return !!c && y >= c.top && y <= c.bottom;
+  });
+  const rows = namePlateRows(kind);
+  paintPlate(a, has, widthArt, rows, PLATE_COLORS[kind]);
+  // A rivet in each pointed end, as the title's has.
+  a(2, rows / 2 - 1, 1, 2, INK);
+  a(widthArt - 3, rows / 2 - 1, 1, 2, INK);
+}
+
+/** Draw a title's plate into a canvas `widthArt` art px wide and PLATE_H tall. Lit from the top left. */
+export function drawPlate(ctx: CanvasRenderingContext2D, widthArt: number, kind: PlateKind): void {
   const s = PLATE_COLORS[kind];
   const a = (ax: number, ay: number, aw: number, ah: number, color: string) => {
     if (aw <= 0 || ah <= 0) return;
     ctx.fillStyle = color;
-    ctx.fillRect(ax * zoom, ay * zoom, aw * zoom, ah * zoom);
+    ctx.fillRect(ax * Z, ay * Z, aw * Z, ah * Z);
   };
   paintPlate(a, plateMask(kind, widthArt), widthArt, SLAB_ART + 2 * PLATE_RISE_ART, s);
   // A rivet in each pointed end.

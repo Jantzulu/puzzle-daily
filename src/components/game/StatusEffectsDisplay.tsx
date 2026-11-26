@@ -321,11 +321,11 @@ export const StatusEffectsDisplay: React.FC<StatusEffectsDisplayProps> = ({ puzz
                   ? 'text-parchment-300'
                   : 'text-arcane-300';
                 return (
-                  <NamePlate key={key} kind={kind} className={`text-sm ${colorClass}`} title={source.name}>
+                  <NamePlate key={key} kind={kind} className={`text-[13px] leading-none ${colorClass}`} title={source.name}>
                     {source.sprite && (
-                      <SpriteThumbnail sprite={source.sprite} size={20} previewType="entity" />
+                      <SpriteThumbnail sprite={source.sprite} size={16} previewType="entity" />
                     )}
-                    <span className="max-w-[72px] truncate">{source.name}</span>
+                    <span className="max-w-[96px] truncate">{source.name}</span>
                   </NamePlate>
                 );
               };

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   ARCH_BAND_ART, ARCH_H, ARCH_MAX_RX_ART, ARCH_RISE_ART, PIER_ART, PIER_TOP, SLAB_ART, SLAB_H, SLAB_RISE, WALL_TORCH_GAP, WALL_TORCH_HALF,
-  BEDROCK_ART, DIRT_TILE_ART, FOOTING_LOWER_ART, FOOTING_UPPER_ART, FOUND_H, archInset, archOutline, bedrock, courseBlocks, COUNT_SHIELD_ART, countShieldWidthArt, cutCorners, dirtClods, facingBlocks, inCountShield, slabBlocks,
+  BEDROCK_ART, DIRT_TILE_ART, FOOTING_LOWER_ART, FOOTING_UPPER_ART, FOUND_H, archInset, archOutline, bedrock, courseBlocks, COUNT_SHIELD_ART, countShieldWidthArt, cutCorners, namePlateColumn, namePlateRows, NAME_PLATE_SQUEEZE_ART, dirtClods, facingBlocks, inCountShield, slabBlocks,
   PASSAGE_RIBS_ART, archOpening, nicheSpan, passageDepth,
   WALL_ENTRY, settingBox,
   PLATE_H, PLATE_RISE_ART, plateColumn, plateProud, plateRise,
@@ -271,6 +271,31 @@ describe('the cutaway wall', () => {
       expect(widths[COUNT_SHIELD_ART.h - 1]).toBe(1);
       // It only ever narrows going down, once past the cut top row.
       for (let y = 2; y < COUNT_SHIELD_ART.h; y++) expect(widths[y]).toBeLessThanOrEqual(widths[y - 1]);
+    }
+  });
+  it('a name plate is its title plate with rows out of the middle: the same edge all the way along, a tip kept', () => {
+    for (const kind of ['heroes', 'enemies', 'items'] as const) {
+      for (const width of [40, 61, 90]) {
+        const rows = namePlateRows(kind);
+        const full = Array.from({ length: width }, (_, x) => plateColumn(kind, x, width));
+        const small = Array.from({ length: width }, (_, x) => namePlateColumn(kind, x, width));
+        small.forEach((c, x) => {
+          expect(c).toEqual(small[width - 1 - x]); // the same on both sides
+          expect(c.top).toBeGreaterThanOrEqual(0);
+          expect(c.bottom).toBeLessThan(rows);
+          expect(c.top + c.bottom).toBe(rows - 1); // the foot mirrors the top
+          expect(Number.isInteger(c.top)).toBe(true);
+        });
+        // Past the pointed ends, every column has lost exactly the squeeze: the edge's steps are the title's own.
+        for (let x = 3; x < width - 3; x++) {
+          expect(small[x].bottom - small[x].top).toBe(full[x].bottom - full[x].top - NAME_PLATE_SQUEEZE_ART);
+        }
+        // And the tip is still there, and still the shortest column.
+        expect(small[0].bottom - small[0].top + 1).toBe(2);
+        expect(small[0].bottom - small[0].top).toBeLessThan(small[1].bottom - small[1].top);
+        // The plate reaches its own top row somewhere: no empty row is carried.
+        expect(Math.min(...small.map(c => c.top))).toBe(0);
+      }
     }
   });
 });
