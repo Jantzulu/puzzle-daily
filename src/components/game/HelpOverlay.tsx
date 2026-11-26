@@ -194,10 +194,10 @@ interface HelpButtonProps {
   preamble?: { title: string; text: string };
   /**
    * The mark as a PIXEL piece in the user's outlined hand (shared/PixelIcon),
-   * 22px, for a section's title on a beam. 'bare': the quest scroll's
-   * mark (PixelIcon helpOpen: the ring lined in black inside and out, the
-   * paper showing through, 26px) with no padding of its own, hung in a
-   * seat in a line of text (index.css .quest-mark-seat).
+   * 22px, for a section's title on a beam. 'bare': the same piece with no
+   * centre (the paper shows through) and no padding of its own, for the
+   * quest scroll, where it is hung in a seat in a line of text (index.css
+   * .quest-mark-seat).
    * Without it: the 16px line glyph, which nothing on the Play page uses now.
    */
   pixel?: boolean | 'bare';
