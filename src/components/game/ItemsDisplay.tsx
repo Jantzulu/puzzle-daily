@@ -207,8 +207,8 @@ function getPuzzleItemsWithSources(puzzle: Puzzle): ItemWithSources[] {
  * sprite on a background, can we just render the sprite with no background,
  * and have it bob on the shelf like it would bob on the map?"). It was the
  * sprite on the asset preview's dark square. The bob is index.css
- * .shelf-bob: the board's own (AnimatedGameBoard: one cycle a second, all
- * items in step), two pixels up and two down.
+ * .shelf-bob: the board's own (AnimatedGameBoard: all items in step), two
+ * pixels up and two down, at half the board's pace (a cycle in two seconds).
  */
 const ItemIcon: React.FC<{ collectible: CustomCollectible; size?: number }> = ({ collectible, size = 24 }) => (
   <span className="shelf-bob" style={{ width: size, height: size }}>

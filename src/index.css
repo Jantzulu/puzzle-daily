@@ -4758,15 +4758,17 @@ button.dir-picker__tab:not(.dir-picker__tab--active) .dir-picker__tab-text {
 }
 
 /* AN ITEM BOBS OVER ITS SHELF (ItemsDisplay ItemIcon), as items bob on the
-   board: one cycle a second (half a second each way), every item in step,
-   two pixels either side of where it rests. Transform only; it runs under
+   board, every item in step, two pixels either side of where it rests; but
+   at HALF the board's pace: one cycle in two seconds (a second each way).
+   It began at the board's own one a second; the user: "I think the items on
+   the shelves could be bobbing slower". Transform only; it runs under
    Reduce Motion too (minimal flavor, per the settled scope). The box it is
    in does not move, so the shelf drawn under it stays put. */
 .shelf-bob {
   display: flex;
   align-items: center;
   justify-content: center;
-  animation: shelf-bob 0.5s ease-in-out infinite alternate;
+  animation: shelf-bob 1s ease-in-out infinite alternate;
 }
 
 @keyframes shelf-bob {
