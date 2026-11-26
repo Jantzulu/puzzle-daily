@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   ARCH_BAND_ART, ARCH_H, ARCH_MAX_RX_ART, ARCH_RISE_ART, PIER_ART, PIER_TOP, SLAB_ART, SLAB_H, SLAB_RISE, WALL_TORCH_GAP, WALL_TORCH_HALF,
-  BEDROCK_ART, DIRT_TILE_ART, FOOTING_LOWER_ART, FOOTING_UPPER_ART, FOUND_H, archInset, archOutline, bedrock, courseBlocks, COUNT_SHIELD_ART, countShieldWidthArt, cutCorners, namePlateColumn, namePlateRows, NAME_PLATE_SQUEEZE_ART, dirtClods, facingBlocks, inCountShield, slabBlocks,
+  BEDROCK_ART, DIRT_TILE_ART, FOOTING_LOWER_ART, FOOTING_UPPER_ART, FOUND_H, archInset, archOutline, bedrock, courseBlocks, COUNT_SHIELD_ART, countShieldWidthArt, cutCorners, drawNamePlate, drawPlate, namePlateColumn, namePlateRows, NAME_PLATE_SQUEEZE_ART, dirtClods, facingBlocks, inCountShield, slabBlocks,
   PASSAGE_RIBS_ART, archOpening, nicheSpan, passageDepth,
   WALL_ENTRY, settingBox,
   PLATE_H, PLATE_RISE_ART, plateColumn, plateProud, plateRise,
@@ -291,10 +291,44 @@ describe('the cutaway wall', () => {
           expect(small[x].bottom - small[x].top).toBe(full[x].bottom - full[x].top - NAME_PLATE_SQUEEZE_ART);
         }
         // And the tip is still there, and still the shortest column.
-        expect(small[0].bottom - small[0].top + 1).toBe(2);
+        expect(small[0].bottom - small[0].top + 1).toBe(4); // (two are left once its corners are cut, as on the title's)
         expect(small[0].bottom - small[0].top).toBeLessThan(small[1].bottom - small[1].top);
         // The plate reaches its own top row somewhere: no empty row is carried.
         expect(Math.min(...small.map(c => c.top))).toBe(0);
+      }
+    }
+  });
+
+  it("a name plate's pointed end reads black, colour, rivet, as its title's does: no gap in the line of colour", () => {
+    // What a plate paints, as one letter per art pixel: K the black line, then a letter per colour in the order first used.
+    const painted = (draw: (ctx: CanvasRenderingContext2D) => void, w: number, h: number): string[] => {
+      const grid = Array.from({ length: h }, () => Array.from({ length: w }, () => '.'));
+      const names = new Map<string, string>();
+      const ctx: { fillStyle: string; fillRect: (x: number, y: number, fw: number, fh: number) => void } = {
+        fillStyle: '',
+        fillRect: (x, y, fw, fh) => {
+          const c = ctx.fillStyle;
+          if (!names.has(c)) names.set(c, c === '#000000' ? 'K' : 'abcdef'[names.size]);
+          for (let yy = y / 2; yy < (y + fh) / 2; yy++) for (let xx = x / 2; xx < (x + fw) / 2; xx++) if (grid[yy]?.[xx] !== undefined) grid[yy][xx] = names.get(c)!;
+        },
+      };
+      draw(ctx as unknown as CanvasRenderingContext2D);
+      return grid.map(row => row.join(''));
+    };
+    for (const kind of ['heroes', 'enemies', 'items'] as const) {
+      const w = 44;
+      const title = painted(ctx => drawPlate(ctx, w, kind), w, 20);
+      const name = painted(ctx => drawNamePlate(ctx, w, kind), w, namePlateRows(kind));
+      const ends = (rows: string[]) => rows.filter(r => r[0] === 'K').map(r => r.slice(0, 3) + ' ' + r.slice(-3));
+      // The rows that reach the very ends: the tip. The same on both plates, and never two blacks side by side.
+      expect(ends(name)).toEqual(ends(title));
+      expect(ends(name).length).toBe(2);
+      for (const e of ends(name)) expect(e).toMatch(/^K[a-f]K K[a-f]K$/);
+      // And every row of the name plate begins and ends on the black line.
+      for (const r of name) {
+        const inked = r.replace(/^\.+|\.+$/g, '');
+        expect(inked[0]).toBe('K');
+        expect(inked[inked.length - 1]).toBe('K');
       }
     }
   });

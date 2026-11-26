@@ -639,15 +639,22 @@ function paintPlate(
 // is. A name plate has NAME_PLATE_SQUEEZE_ART rows taken out of its MIDDLE,
 // where every column of the plate is plain face, so its edge, the steps of
 // it and where they fall along the length are untouched; only its pointed
-// tip, four rows tall, keeps two of them rather than losing all four. And
+// tip, four rows tall, is left as it is rather than losing all four. And
 // the empty row an entity's plate leaves above and below itself on its
 // beam is not carried over. So a hero's or an enemy's name plate is 28px
 // tall and an item's 32 (the full plate: 40).
 
 /** How many rows are taken out of the middle of a title's plate to make a name plate (art px). */
 export const NAME_PLATE_SQUEEZE_ART = 4;
-/** The fewest rows a column of a name plate keeps (its tip). */
-const NAME_PLATE_TIP_ART = 2;
+/**
+ * The fewest rows a column of a name plate keeps: its tip, ALL FOUR of the
+ * title's. (It kept two at first. Cutting the corners then took both, the
+ * tip was gone, and the rivet stood where the line of colour runs behind
+ * the tip: the user, at once: "there seem to be a gap in the red color in
+ * these new shrunk plates". With four, two are left after the corners are
+ * cut, and the end reads black, colour, rivet, as the title's does.)
+ */
+const NAME_PLATE_TIP_ART = 4;
 
 /** The rows a name plate of this kind has (art px), and its height (CSS px). */
 export const namePlateRows = (kind: PlateKind): number => SLAB_ART + 2 * plateProud(kind) - NAME_PLATE_SQUEEZE_ART;
