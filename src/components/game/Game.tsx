@@ -3493,9 +3493,20 @@ export const Game: React.FC<GameProps> = ({
                         are per-breakpoint INTEGERS putting the icon's
                         center on the measured cap-center (13px: baseline
                         −5 exactly; drift ~1px/breakpoint otherwise). */}
+                    {/* THE MARK IN INK (user 2026-11-26: "lets do the pixel
+                        ?"): the beams' (?) with no outline or fill, 18px.
+                        -my-px gives the line the old 16px box (the art runs
+                        1px past it top and bottom), so every line height
+                        stands as it was (measured: the scroll is the same
+                        height at 390 and 1100). The aligns are 1px lower
+                        than the line glyph's were: a box with no line of
+                        its own hangs from its bottom MARGIN edge, which
+                        -my-px lifted by one, and the mark measured 1px
+                        high against the words. */}
                     <HelpButton
                       sectionId="game_general"
-                      className={`inline-block align-[-2px] lg:align-[-1px] mr-1 !p-0 ${questSkinFrameActive ? '!text-black hover:!text-stone-800 hover:!bg-black/10' : ''}`}
+                      pixel="ink"
+                      className={`inline-block align-[-3px] lg:align-[-2px] mr-1 -my-px ${questSkinFrameActive ? '!text-black hover:!text-stone-800' : ''}`}
                       preamble={gameState.puzzle.questDescription?.trim()
                         ? { title: 'About this Puzzle', text: gameState.puzzle.questDescription.trim() }
                         : undefined}
@@ -3639,7 +3650,14 @@ export const Game: React.FC<GameProps> = ({
                         is the kit's own contract. */}
                     {questSkinDividerActive && <div className="mt-2"><QuestDivider /></div>}
                     <div className={`flex items-center justify-center gap-1 md:gap-2 ${questSkinDividerActive ? 'mt-1' : 'mt-2 border-t border-stone-700'} pt-2 flex-wrap`}>
-                      <HelpButton sectionId="side_quests" />
+                      {/* The same ink mark (m-[3px] = the old 24px box's
+                          footprint). On the painted scroll it is BLACK like
+                          the objective's: it was the theme's brass, which
+                          all but vanished on the paper (seen 2026-11-26,
+                          the first time this row was filmed on the scroll).
+                          The row's WORDS are still the dark box's purples:
+                          not inked yet, the user's call. */}
+                      <HelpButton sectionId="side_quests" pixel="ink" className={`m-[3px] ${questSkinFrameActive ? '!text-black hover:!text-stone-800' : ''}`} />
                       <span className="text-sm md:text-base font-semibold text-arcane-400">Side Quests:</span>
                       <span className="text-xs md:text-sm text-arcane-300">
                         {gameState.puzzle.sideQuests.map((q, i) => {

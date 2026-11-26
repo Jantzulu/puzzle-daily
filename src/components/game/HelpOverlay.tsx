@@ -194,11 +194,12 @@ interface HelpButtonProps {
   preamble?: { title: string; text: string };
   /**
    * The mark as a PIXEL piece in the user's outlined hand (shared/PixelIcon),
-   * 22px, for a section's title on a beam. Without it: the 16px line glyph,
-   * which the quest scroll's two marks keep (they sit inside a line of text,
-   * in a box tuned to its line heights).
+   * 22px, for a section's title on a beam. 'ink': the same ring and glyph
+   * with no outline and no fill, 18px in one colour, for the quest scroll
+   * (pen on paper; the mount sets the colour and where it sits in the line).
+   * Without it: the 16px line glyph, which nothing on the Play page uses now.
    */
-  pixel?: boolean;
+  pixel?: boolean | 'ink';
 }
 
 export const HelpButton: React.FC<HelpButtonProps> = ({ sectionId, className = '', preamble, pixel = false }) => {
@@ -211,11 +212,11 @@ export const HelpButton: React.FC<HelpButtonProps> = ({ sectionId, className = '
         // hit-44: the glyph is 16px in 8px of padding = a 24px target, and
         // this button appears on every information section in the game. The
         // slop is invisible and costs no layout, so the floor is free here.
-        className={`${pixel ? 'p-0.5 flex' : 'p-1 hover:bg-stone-700 rounded'} text-stone-400 hover:text-parchment-100 transition-colors hit-44 ${className}`}
+        className={`${pixel === 'ink' ? '' : pixel ? 'p-0.5 flex' : 'p-1 hover:bg-stone-700 rounded'} text-stone-400 hover:text-parchment-100 transition-colors hit-44 ${className}`}
         aria-label="Help"
         title="What's this?"
       >
-        {pixel ? <PixelIcon icon="help" /> : (
+        {pixel === 'ink' ? <PixelIcon icon="helpInk" className="block" /> : pixel ? <PixelIcon icon="help" /> : (
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path
             strokeLinecap="round"

@@ -48,6 +48,24 @@ const ICONS = {
     '..KXXXXXK..',
     '...KKKKK...',
   ],
+  // THE SAME MARK WRITTEN IN INK, for the quest scroll (user, 2026-11-26:
+  // "lets do the pixel ?"). On paper there is no framed piece, only the pen:
+  // this is `help` with its black outline taken off and its dark fill left
+  // out, so the ring and the glyph are the very same pixels as the beams'
+  // marks and the paper shows through. One colour, the mount's own (black on
+  // the painted scroll). 9x9 = 18px: the ring is one pixel thick and turns
+  // only on diagonals, the same rule.
+  helpInk: [
+    '..XXXXX..',
+    '.X.....X.',
+    'X..XXX..X',
+    'X....X..X',
+    'X...X...X',
+    'X.......X',
+    'X...X...X',
+    '.X.....X.',
+    '..XXXXX..',
+  ],
   // A lidded bin, outlined, its slats the black line again.
   trash: [
     '...KKK...',
