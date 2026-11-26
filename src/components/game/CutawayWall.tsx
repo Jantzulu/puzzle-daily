@@ -8,6 +8,7 @@ import {
 import type { PlateKind, SettingKind } from './cutawayStone';
 import { slotBoundaries } from '../../hooks/useElementWidth';
 import { LintelTorch } from './LintelTorch';
+import { pokeSign } from '../shared/signWobble';
 
 // The cutaway wall's two pieces on the page (the `?wall=1` experiment: see
 // cutawayStone.ts for the idea and the drawing). Both are canvases on the art
@@ -483,8 +484,34 @@ const SIGN_PAST_TORCH = 40;
 /** A sign with a torch before it may end this far out over the side wall (CSS px) and still count as fitting. */
 const SIGN_OVER = 8;
 
-/** The plaque, drawn into a box of its own height that is as wide as its parent says (a whole number of art px). */
-const SignArt: React.FC<{ boxRef: React.RefObject<HTMLSpanElement | null>; style: React.CSSProperties }> = ({ boxRef, style }) => {
+/**
+ * THE LOOSE SIGN, here too (user, 2026-11-25: "would we be able to add the
+ * same ability to shake the signs to the new ones like the ones that are
+ * on the portcullis?"). A press on a beam's sign rocks it on its bolt, the
+ * pressed half dipping first, and it creaks: the rail plaques' own routine
+ * (shared/signWobble.ts pokeSign). Not when the press is on a live button
+ * on the sign (the heroes' clear button has its own job; while it is dim
+ * and idle the press falls through to the sign).
+ */
+const pokeBeamSign = (e: React.PointerEvent<HTMLElement>) => {
+  if (e.button !== 0) return;
+  if ((e.target as Element).closest('button:not(:disabled)')) return;
+  const el = e.currentTarget;
+  const r = el.getBoundingClientRect();
+  pokeSign(el, e.clientX < r.left + r.width / 2 ? -1 : 1);
+};
+
+/**
+ * The plaque, drawn into a box of its own height that is as wide as its
+ * parent says (a whole number of art px). `solid`: it takes presses (they
+ * rise to a sign that rocks as a whole); `onPoke`: it rocks by itself.
+ */
+const SignArt: React.FC<{
+  boxRef: React.RefObject<HTMLSpanElement | null>;
+  style: React.CSSProperties;
+  solid?: boolean;
+  onPoke?: (e: React.PointerEvent<HTMLElement>) => void;
+}> = ({ boxRef, style, solid = false, onPoke }) => {
   const snapRef = useCrispSnap<HTMLSpanElement>(true);
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
   React.useLayoutEffect(() => {
@@ -507,7 +534,7 @@ const SignArt: React.FC<{ boxRef: React.RefObject<HTMLSpanElement | null>; style
     return () => { cancelled = true; ro.disconnect(); };
   }, [boxRef]);
   return (
-    <span ref={boxRef} aria-hidden className="absolute pointer-events-none" style={{ ...style, height: SIGN_H }}>
+    <span ref={boxRef} aria-hidden className={`absolute ${solid || onPoke ? 'pointer-events-auto select-none' : 'pointer-events-none'}`} style={{ ...style, height: SIGN_H }} data-wall-sign={onPoke ? '' : undefined} onPointerDown={onPoke}>
       <span ref={snapRef} className="relative block w-full h-full">
         <canvas ref={canvasRef} style={{ position: 'absolute' }} />
       </span>
@@ -551,10 +578,12 @@ export const BeamSign: React.FC<{
       {torch && <BeamTorch side={between ? 'right' : 'left'} phase={torch.phase} lightOn={torch.lightOn} />}
       <span
         ref={hostRef}
-        className="absolute left-full flex items-center whitespace-nowrap"
+        className="absolute left-full flex items-center whitespace-nowrap select-none"
         style={{ marginLeft: (between ? SIGN_PAST_TORCH : PLATE_TIP + SIGN_GAP) + SIGN_PAD, top: `calc(50% - ${SIGN_H / 2 - SIGN_DROP}px)`, height: SIGN_H }}
+        data-wall-sign
+        onPointerDown={pokeBeamSign}
       >
-        <SignArt boxRef={boxRef} style={{ left: -SIGN_PAD, top: 0 }} />
+        <SignArt boxRef={boxRef} solid style={{ left: -SIGN_PAD, top: 0 }} />
         <span className="relative flex items-center">{children}</span>
       </span>
     </>
@@ -576,7 +605,9 @@ export const BEAM_SPOT_W = 26 * Z;
 
 export const BeamSpot: React.FC = () => {
   const boxRef = React.useRef<HTMLSpanElement>(null);
-  return <SignArt boxRef={boxRef} style={{ left: `calc(50% - ${BEAM_SPOT_W / 2}px)`, top: `calc(50% - ${SIGN_H / 2 - SIGN_DROP}px)`, width: BEAM_SPOT_W }} />;
+  // (It rocks when pressed, as every sign does. With the scroll parked on
+  // it the scroll is over it and takes the press: that opens the scroll.)
+  return <SignArt boxRef={boxRef} onPoke={pokeBeamSign} style={{ left: `calc(50% - ${BEAM_SPOT_W / 2}px)`, top: `calc(50% - ${SIGN_H / 2 - SIGN_DROP}px)`, width: BEAM_SPOT_W }} />;
 };
 
 /**
