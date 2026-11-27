@@ -1,5 +1,7 @@
 # Session Handoff — 2026-07-02 (Visual Reskin Marathon)
 
+> **A snapshot of 2026-07-02, kept for history.** Much of this look has been replaced since, and some files named here are gone (for one, `components/shared/WallMesh.tsx`). Current state: `CLAUDE_HANDOFF.md`.
+
 **State: everything committed and pushed to `main` (through `7b95fe0`). Both Netlify sites deploy from main. Working tree clean. No pending work in flight.**
 
 ## What this session was

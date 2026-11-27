@@ -1,5 +1,7 @@
 # Test Session Checklist — everything shipped 2026-07-16
 
+> **Superseded 2026-07-25.** This list is a record of what had not been exercised, not a queue to clear. See "Testing Philosophy" in `CLAUDE_HANDOFF.md`.
+
 24 commits (`06882ee` → `7a3361f`), all pushed to main, 565 tests green.
 Both sites deploy from main. Work through this top to bottom; anything
 broken, note it and we fix next session.
