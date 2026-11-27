@@ -4900,6 +4900,51 @@ button.dir-picker__tab:not(.dir-picker__tab--active) .dir-picker__tab-text {
   z-index: 13;
 }
 
+/* THE RUN'S DIM (Game.tsx, CharacterSelector.tsx; user report 2026-11-27:
+   "when game is being played, the puzzle's Z layering goes above the hero
+   panel"). While a run or a test is going the hero hall and the rooms
+   under it are dimmed. That was opacity on their boxes, which made the
+   wall see-through and dropped it under the board, so the board's exit
+   corridor showed across the hall's rampart. It is a veil now, like the
+   rooms' dark above: the wall stays solid and stays over the board (the
+   page's wrapper takes z-11 for the run, so these sit over everything in
+   it, the title's 46 included).
+   IN THE PAGE'S OWN COLOUR at the old strengths, which is the same sum as
+   opacity was wherever the page is behind: content x 0.5 + page x 0.5.
+   Two of them, as there were two opacities: one over the whole wall (0.5)
+   and one more over the hero hall (0.4, the old opacity-60), 0.3 together.
+   From the rampart's top (22px over the box: the wrapper's margin) and out
+   over the side walls. It comes on with a fade and goes at once: with the
+   run over the wrapper is no layer of its own, and a veil fading out
+   there would stand at 60 over the rail and the gate. */
+.wall-run-veil {
+  position: absolute;
+  left: -20px;
+  right: -20px;
+  top: -22px;
+  bottom: 0;
+  z-index: 60;
+  background: var(--theme-bg-primary, #0a0805);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+
+.wall-run-veil--on {
+  visibility: visible;
+  opacity: 0.5;
+}
+
+/* The hero hall's own: down to the enemies' beam, as its dark is. */
+[data-wall-room='hero'] > .wall-run-veil {
+  bottom: 4px;
+}
+
+[data-wall-room='hero'] > .wall-run-veil--on {
+  opacity: 0.4;
+}
+
 [data-wall-room]:has(.lintel-torch--out) > .wall-dark {
   opacity: 1;
   transition: opacity 0.3s ease-in;

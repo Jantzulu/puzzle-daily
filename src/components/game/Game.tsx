@@ -3773,9 +3773,23 @@ export const Game: React.FC<GameProps> = ({
               // able to increase the distance between the puzzle and the
               // hero panel even more?" `relative`: the side walls are
               // placed against this box.)
-              <div className={`transition-opacity relative mt-[22px] ${dimmedPanelClass} ${justExitedReplay ? 'animate-slide-up' : ''}`}>
+              // THE DIM IS A VEIL, NOT TRANSPARENCY (user report 2026-11-27:
+              // "when game is being played, the puzzle's Z layering goes
+              // above the hero panel"). This box used to take opacity-50
+              // during a run. Opacity makes a box its own layer, which
+              // trapped the hero hall's beam (z-11, there to stand over the
+              // board's exit corridor) under the board; and a see-through
+              // wall would show the corridor behind it wherever it stood.
+              // So during a run the box is lifted to the beam's layer as a
+              // whole (z-[11]) and a veil in the page's own colour is laid
+              // over it (.wall-run-veil, index.css): the same picture as
+              // opacity against the page, with the stone still solid. Only
+              // while running or testing: an outcome screen lives in the
+              // board's layer and must stay over this box.
+              <div className={`relative mt-[22px] ${isPanelsDimmed ? 'z-[11] pointer-events-none' : ''} ${justExitedReplay ? 'animate-slide-up' : ''}`}>
                 {/* The cutaway wall (cutawayStone.ts): its side walls, ground and foundation. */}
                 <CutawayPiers />
+                <div aria-hidden="true" className={`wall-run-veil ${isPanelsDimmed ? 'wall-run-veil--on' : ''}`} />
                 {/* Character Selector - always visible. After a win it stays
                     as a record: the heroes used are highlighted (showUsed). */}
                 {(
@@ -3795,6 +3809,7 @@ export const Game: React.FC<GameProps> = ({
                     themeAssets={themeAssets}
                     disabled={gameState.gameStatus !== 'setup' || testMode !== 'none'}
                     showUsed={gameState.gameStatus === 'victory' && testMode === 'none'}
+                    runDim={isPanelsDimmed}
                     noPanel
                     placedCharacters={gameState.placedCharacters}
                     pendingSpellDirectionOverrides={pendingSpellDirectionOverrides}

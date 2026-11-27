@@ -122,6 +122,12 @@ interface CharacterSelectorProps {
    * Needs CutawayPiers mounted round it (Game.tsx) and `noPanel`.
    */
   wall?: boolean;
+  /**
+   * The wall, while a run or a test is going (Game.tsx): the page has
+   * lifted the whole wall to the beam's layer and dims it with veils, so
+   * this panel lays its own veil instead of going see-through.
+   */
+  runDim?: boolean;
 }
 
 export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
@@ -147,6 +153,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
   onPlacementAimCancel,
   questSlot = false,
   wall: wallLayout = false,
+  runDim = false,
 }) => {
   const effectiveMaxPlaceable = maxPlaceable ?? availableCharacterIds.length;
   const isAtMaxPlaced = placedCharacterIds.length >= effectiveMaxPlaceable;
@@ -441,10 +448,15 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
       </span>
       <span className="hud-label text-stone-400">placed</span>
     </span>
-    {onClearAll && (wall || (placedCharacterIds.length > 0 && !disabled)) && (
+    {/* In the wall the button is there ALWAYS, with or without something
+        to call: during a run the page passes no onClearAll, the button
+        used to vanish, the sign shrank and its torch jumped to the other
+        side of the title (seen on film 2026-11-27; the user's rule the
+        day before: a sign does not change size). */}
+    {(wall || (onClearAll && placedCharacterIds.length > 0 && !disabled)) && (
       <button
         onClick={onClearAll}
-        disabled={placedCharacterIds.length === 0 || disabled}
+        disabled={!onClearAll || placedCharacterIds.length === 0 || disabled}
         // -my-1: the 28px hit box is taller than the row's natural
         // ~20px text height — negative margin keeps the touch target
         // without growing the row when the button appears (the panel
@@ -453,7 +465,13 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
         // 44px of target, still zero layout pixels. --hit-w caps the
         // horizontal slop so this destructive control (clear all placed
         // heroes) cannot reach sideways into a hero card.
-        className={`p-1 -my-1 text-stone-400 hover:text-blood-400 rounded-pixel transition-colors ${wall ? '!pr-0 min-w-[20px] disabled:opacity-35 disabled:pointer-events-none' : 'hover:bg-stone-700 min-w-[28px]'} min-h-[28px] flex items-center justify-center hit-44 [--hit-w:34px]`}
+        // enabled:hover (user report 2026-11-27: "After using the trash
+        // can icon to recall heroes, the icon goes red instead of the
+        // original dim color"): a phone keeps :hover on the last thing
+        // tapped, and the tap that empties the board is the one that
+        // disables this button, so it sat there dim AND red. The red is
+        // for a button that can be pressed.
+        className={`p-1 -my-1 text-stone-400 enabled:hover:text-blood-400 rounded-pixel transition-colors ${wall ? '!pr-0 min-w-[20px] disabled:opacity-35 disabled:pointer-events-none' : 'hover:bg-stone-700 min-w-[28px]'} min-h-[28px] flex items-center justify-center hit-44 [--hit-w:34px]`}
         title="Remove all placed heroes"
       >
         <PixelIcon icon="trash" />
@@ -1059,7 +1077,12 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
 
   // showUsed does its own per-card dimming; dimming the whole panel on top
   // would mute the heroes it is there to highlight.
-  const panelDim = disabled && !showUsed ? 'opacity-60' : '';
+  const wantsDim = disabled && !showUsed;
+  // (The wall, during a run: the dim is a veil over the room, not opacity on
+  // it. Opacity would make this box its own layer and trap the hall's beam
+  // under the board. See the page's wrapper in Game.tsx and .wall-run-veil.)
+  const veiled = wall && runDim;
+  const panelDim = wantsDim && !veiled ? 'opacity-60' : '';
   if (noPanel) {
     // (The wall: what is directly above the enemies' beam, so the page can place that beam.)
     const wallBelow: WallBelow | undefined = wall ? (heroDrawerUp ? 'drawer' : 'open') : undefined;
@@ -1067,6 +1090,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
       <div className={panelDim} data-wall-below={wallBelow} data-wall-room={wall ? 'hero' : undefined}>
         {content}
         {wall && <WallDark />}
+        {wall && <div aria-hidden="true" className={`wall-run-veil ${wantsDim && veiled ? 'wall-run-veil--on' : ''}`} />}
       </div>
     );
   }
