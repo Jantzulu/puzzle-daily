@@ -2,7 +2,7 @@ import React from 'react';
 import { LINTEL_TORCH_SHEET as SHEET } from '../../assets/ui-kits/lintelTorch';
 import { useCrispSnap } from './panelSkins';
 import { playChromeSound } from '../../utils/chromeSounds';
-import { entryIsDark, onEntryDark } from './enterGateState';
+import { onWallMayLight, wallMayLight } from './enterGateState';
 
 /** The second torch of a pair follows the first by this much (ms). */
 const FOLLOW_MS = 220;
@@ -30,6 +30,23 @@ const SEEN_LINE = 0.67;
  * short page; a tall desktop window that shows the whole wall), being wholly
  * on screen is enough: no room may be left dark for good.
  */
+/** Wholly on the screen, wherever on it. */
+function wholeOnScreen(el: Element): boolean {
+  const rect = el.getBoundingClientRect();
+  return rect.top >= 0 && rect.bottom <= window.innerHeight;
+}
+
+/**
+ * A desktop-sized window. There, at the moment the wall first lights, every
+ * torch on the screen catches, not only the ones brought two thirds up it
+ * (user, 2026-11-27: the hero panel lights once the scroll unfurls, "or for
+ * desktop, any that are on the screen"). A phone keeps the two-thirds rule:
+ * a beam peeping in at the foot of the screen waits to be scrolled to.
+ */
+function wideScreen(): boolean {
+  return typeof window.matchMedia === 'function' && window.matchMedia('(min-width: 768px)').matches;
+}
+
 function broughtIntoView(el: Element): boolean {
   const rect = el.getBoundingClientRect();
   const screen = window.innerHeight;
@@ -49,7 +66,7 @@ function broughtIntoView(el: Element): boolean {
  * (seen in the first film: DUNGEON TILES before STATUS EFFECTS). When one
  * catches, the rest look again.
  */
-const waiting = new Set<{ el: Element; look: () => void }>();
+const waiting = new Set<{ el: Element; look: (first?: unknown) => void }>();
 
 function nextCatchDelay(): number {
   const now = performance.now();
@@ -71,15 +88,21 @@ const Z = 2;
  * run put the torches out and the retry relit them; the user removed it:
  * on a phone the torches are off screen when a run ends, so their sounds
  * played "for a not obvious reason". Do not bring it back.
- * A torch with a `phase` follows its partner a beat later when the dark
- * entry lights them (EnterGate.tsx).
+ * A torch with a `phase` follows its partner a beat later when the wall
+ * first lights.
+ *
+ * `lightOn="opened"` (the hero hall's torch): out until THE WALL MAY LIGHT
+ * (enterGateState.ts: after the dark entry, once the quest scroll has
+ * unfurled), then it catches, wherever it stands. It was the tap itself
+ * until 2026-11-27.
  *
  * `lightOn="seen"` (the cutaway wall's torches, one on each beam; user,
  * 2026-11-21: torches that catch as you scroll down, "especially if the
  * panels appear darker and become more visible with the torch lighting"):
- * such a torch stays OUT until the page has been entered AND it has been
+ * such a torch stays OUT until the wall may light AND it has been
  * brought two thirds of the way up the screen (SEEN_LINE; or simply onto
- * the screen, where the page cannot scroll that far), then catches, once.
+ * the screen, where the page cannot scroll that far, and on a desktop-sized
+ * window at the moment the wall first lights), then catches, once.
  * This is not the run-reaction
  * that was removed: it lights because the player has just scrolled to it,
  * so it is always on screen when it sounds. Its room is dark until it does
@@ -92,10 +115,10 @@ const Z = 2;
  * minimal, in a project full of it). `phase` (ms) offsets this torch's
  * loops so a pair never burns in step.
  */
-export const LintelTorch: React.FC<{ phase?: number; lightOn?: 'entry' | 'seen' }> = ({ phase = 0, lightOn = 'entry' }) => {
-  // Out while the page waits in the dark for its first tap (EnterGate.tsx);
-  // a torch that lights when seen starts out whatever the page is doing.
-  const [lit, setLit] = React.useState(() => lightOn === 'entry' && !entryIsDark());
+export const LintelTorch: React.FC<{ phase?: number; lightOn?: 'opened' | 'seen' }> = ({ phase = 0, lightOn = 'opened' }) => {
+  // Out until the wall may light (the dark entry, then the quest scroll's
+  // unfurl); a torch that lights when seen starts out whatever the page is doing.
+  const [lit, setLit] = React.useState(() => lightOn === 'opened' && wallMayLight());
   // Whole-px placement: the lettering's flex centring can land it on a
   // half pixel, which would blur the art.
   const snapRef = useCrispSnap<HTMLButtonElement>(true);
@@ -149,29 +172,32 @@ export const LintelTorch: React.FC<{ phase?: number; lightOn?: 'entry' | 'seen' 
     wasLit.current = lit;
   }, [lit, phase]);
 
-  // THE DARK ENTRY: the tap that enters the page lights the torches, the
-  // second a beat after the first, each with its sound.
+  // THE WALL'S FIRST LIGHT: when the quest scroll has opened after the dark
+  // entry, this torch catches (a second of a pair a beat after the first),
+  // with its sound.
   React.useEffect(() => {
-    if (lightOn !== 'entry') return;
+    if (lightOn !== 'opened') return;
     let timer: ReturnType<typeof setTimeout> | undefined;
-    const off = onEntryDark(dark => {
+    const off = onWallMayLight(() => {
       clearTimeout(timer);
       // (It takes its turn among the torches that light when seen: they follow it.)
-      if (!dark) timer = setTimeout(() => { lastCatchAt = Math.max(lastCatchAt, performance.now()); setLit(true); }, phase ? FOLLOW_MS : 0);
+      timer = setTimeout(() => { lastCatchAt = Math.max(lastCatchAt, performance.now()); setLit(true); }, phase ? FOLLOW_MS : 0);
     });
     return () => { off(); clearTimeout(timer); };
   }, [phase, lightOn]);
 
-  // LIT WHEN SEEN: once the page has been entered and the torch has been
-  // brought far enough up the screen (broughtIntoView), it catches, in its
-  // turn. Once only: after that it is the player's to put out and relight.
+  // LIT WHEN SEEN: once the wall may light and the torch has been brought
+  // far enough up the screen (broughtIntoView), it catches, in its turn.
+  // At the wall's FIRST light on a desktop-sized window, being on the
+  // screen is enough (look(true)); the torches after it are told the same.
+  // Once only: after that it is the player's to put out and relight.
   // Looked at on every scroll and resize, and whenever the page changes
   // height, until it has caught; then nothing is listening.
   React.useEffect(() => {
     if (lightOn !== 'seen') return;
     const el = snapRef.current;
     if (!el) return;
-    let entered = !entryIsDark();
+    let allowed = wallMayLight();
     let done = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
     let ro: ResizeObserver | undefined;
@@ -182,18 +208,22 @@ export const LintelTorch: React.FC<{ phase?: number; lightOn?: 'entry' | 'seen' 
       ro?.disconnect();
       waiting.delete(me);
     };
-    function look() {
-      if (done || !entered || !el || !broughtIntoView(el)) return;
+    // (`first` is true only when called for the wall's first light: a scroll
+    // or resize passes its event here, which is not `true`.)
+    function look(first?: unknown) {
+      if (done || !allowed || !el) return;
+      const onScreenIsEnough = first === true && wideScreen();
+      if (!(onScreenIsEnough ? wholeOnScreen(el) : broughtIntoView(el))) return;
       // Not before a torch above it that is still waiting.
       const top = el.getBoundingClientRect().top;
       for (const other of waiting) if (other !== me && other.el.getBoundingClientRect().top < top - 1) return;
       done = true;
       stop();
       timer = setTimeout(() => setLit(true), nextCatchDelay());
-      for (const other of [...waiting]) other.look(); // the next one down may go now
+      for (const other of [...waiting]) other.look(first); // the next one down may go now
     }
     waiting.add(me);
-    const off = onEntryDark(dark => { entered = !dark; look(); });
+    const off = onWallMayLight(() => { allowed = true; look(true); });
     window.addEventListener('scroll', look, { passive: true });
     window.addEventListener('resize', look);
     if (typeof ResizeObserver !== 'undefined') {

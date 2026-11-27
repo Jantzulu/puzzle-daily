@@ -564,7 +564,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
               there is no room and it stands on the left, between the
               scroll's spot and the (?) (the user: "If that means we need
               to move the hero torch to the left, so be it"). */}
-          {wall && <BeamSign torch={{ prefer: 'right', lightOn: 'entry' }}>{heroCount}</BeamSign>}
+          {wall && <BeamSign torch={{ prefer: 'right', lightOn: 'opened' }}>{heroCount}</BeamSign>}
         </div>
         {/* (In the wall the count and the clear button sit together on one
             sign (the button has no padding on its right, where the sign's

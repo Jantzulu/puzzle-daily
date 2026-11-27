@@ -4950,22 +4950,39 @@ button.dir-picker__tab:not(.dir-picker__tab--active) .dir-picker__tab-text {
   transition: opacity 0.3s ease-in;
 }
 
-/* The heroes' title, torch and tap hint ride above everything (z-46), so
-   the veil cannot reach them: they dim by their own opacity, to what the
-   veil leaves of the rest (1 - 0.68). The menu-gate and victory rules
-   above still decide the z-index; they do not touch opacity, except the
-   instant dismissal, which rightly snaps. */
-.wall-on .heroes-title-layer {
-  transition: z-index 0s 1.25s, opacity 0.9s ease-out;
+/* The heroes' title, torch, sign and tap hint ride above everything (z-46),
+   so the veil cannot reach them: they dim themselves, to what the veil
+   leaves of the rest (1 - 0.68).
+   EACH PIECE BY ITSELF, AND THE SIGN'S BOARD NOT BY OPACITY (user,
+   2026-11-27: "some of the signs become semi transparent when their
+   respective floor is dimmed"). The whole layer used to take opacity
+   0.32, and the sign's painted board went see-through with it: the beam's
+   masonry showed through the board, where every other room's sign, under
+   its room's veil, stayed solid. Lettering, the (?), the torch and the
+   hint still fade (nothing shows through a letter); the board keeps its
+   pixels and wears its own dark over them (.wall-sign-dark, a twin canvas
+   in CutawayWall SignArt, the room's dark on the board's pixels only).
+   The hint's own box has an opacity animation that would win, so its
+   inner line fades. The z-index rules above are untouched. */
+.wall-on .heroes-title-layer > *,
+.wall-on .heroes-title-layer > .wall-tap-hint > span,
+.wall-on .heroes-title-layer .wall-sign-words,
+.wall-sign-dark {
+  transition: opacity 0.9s ease-out;
 }
 
-.wall-on body.menu-gate-lowered .heroes-title-layer,
-.wall-on body.victory-overlay-up .heroes-title-layer {
-  transition: z-index 0s 0s, opacity 0.9s ease-out;
+.wall-sign-dark {
+  opacity: 0;
 }
 
-.wall-on [data-wall-room='hero']:has(.lintel-torch--out) .heroes-title-layer {
+.wall-on [data-wall-room='hero']:has(.lintel-torch--out) .heroes-title-layer > :not([data-wall-sign]):not(.wall-tap-hint),
+.wall-on [data-wall-room='hero']:has(.lintel-torch--out) .heroes-title-layer > .wall-tap-hint > span,
+.wall-on [data-wall-room='hero']:has(.lintel-torch--out) .heroes-title-layer .wall-sign-words {
   opacity: 0.32;
+}
+
+.wall-on [data-wall-room='hero']:has(.lintel-torch--out) .heroes-title-layer .wall-sign-dark {
+  opacity: 1;
 }
 
 /* THE GROUND. Without the wall, only the panels under the hero hall have

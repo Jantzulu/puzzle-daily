@@ -32,7 +32,7 @@ import { QUEST_FLIGHT_MS, QUEST_TOSS_AFTER_ROLL_MS, QUEST_SPAWN_DELAY_MS, QUEST_
 import { useHugWrappedText } from './hugWrappedText';
 import { playChromeSound } from '../../utils/chromeSounds';
 import { EnterGate } from './EnterGate';
-import { ENTRY_GATE_AFTER_MS, startsEntered } from './enterGateState';
+import { ENTRY_GATE_AFTER_MS, WALL_LIGHT_LATEST_MS, letWallLight, startsEntered } from './enterGateState';
 import { playGameSound, playVictoryMusic, playDefeatMusic, playBackgroundMusic, stopMusic } from '../../utils/gameSounds';
 import { loadThemeAssets, subscribeToThemeAssets, type ThemeAssets } from '../../utils/themeAssets';
 import { WarningModal } from '../shared/WarningModal';
@@ -605,11 +605,19 @@ export const Game: React.FC<GameProps> = ({
         setQuestMini(true);
         setQuestScroll('closed');
         setQuestBoxHeight(questCollapsedH);
+        letWallLight(); // no unfurl to wait for
       }
       setQuestSpawnedFor(id);
+      // The wall waits for the unfurl's end (onQuestUnfurlEnd). If that is
+      // never heard (the scroll rolled up before it opened), it lights anyway.
+      window.setTimeout(letWallLight, WALL_LIGHT_LATEST_MS);
     }, slowEntry ? QUEST_SPAWN_AFTER_ENTRY_MS : QUEST_SPAWN_DELAY_MS);
     return () => window.clearTimeout(spawn);
   }, [questFloatOn, spritesReady, currentPuzzle.id, questCollapsedH, slowEntry]);
+  // (Without the scroll's art there is no scroll to wait for.)
+  useEffect(() => {
+    if (entered && !questFloatOn) letWallLight();
+  }, [entered, questFloatOn]);
   const questSpawned = spritesReady && questSpawnedFor === currentPuzzle.id;
   const questHintReady = questHintFor === currentPuzzle.id;
   // Pixel-snaps the skinned quest box (flex centering can land it on
@@ -625,7 +633,9 @@ export const Game: React.FC<GameProps> = ({
   // a minimize, expand or puzzle reset clears it, and the next reopen's
   // unfurl (same keyframes) arms it again.
   const onQuestUnfurlEnd = (e: React.AnimationEvent<HTMLDivElement>) => {
-    if (e.target !== e.currentTarget || e.animationName !== 'quest-scroll-content' || questHintReady) return;
+    if (e.target !== e.currentTarget || e.animationName !== 'quest-scroll-content') return;
+    letWallLight(); // the scroll has opened: the hall's torch may catch (enterGateState.ts)
+    if (questHintReady) return;
     const id = currentPuzzle.id;
     questScrollTimers.current.push(window.setTimeout(() => setQuestHintFor(id), QUEST_HINT_BEAT_MS));
   };

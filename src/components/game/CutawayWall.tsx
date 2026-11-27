@@ -589,9 +589,11 @@ const SignArt: React.FC<{
 }> = ({ boxRef, style, solid = false, onPoke }) => {
   const snapRef = useCrispSnap<HTMLSpanElement>(true);
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
+  const darkRef = React.useRef<HTMLCanvasElement>(null);
   React.useLayoutEffect(() => {
     const box = boxRef.current;
     const canvas = canvasRef.current;
+    const dark = darkRef.current;
     if (!box || !canvas || !RUNG_PLAQUE_PIECES.has('plaque-mid')) return;
     let cancelled = false;
     const draw = () => {
@@ -601,6 +603,21 @@ const SignArt: React.FC<{
       if (!ctx) return;
       ctx.clearRect(0, 0, w, SIGN_H);
       drawRungPlaque(ctx, w, SIGN_H, RUNG_PLAQUE_PIECES);
+      // ITS OWN DARK: the same plaque with the room's dark laid over its
+      // pixels and nowhere else (index.css .wall-sign-dark shows it). The
+      // hero hall's sign rides above its room's dark with the title, and
+      // used to dim by going see-through: the beam's masonry showed
+      // through the board (user, 2026-11-27: "some of the signs become
+      // semi transparent when their respective floor is dimmed").
+      const dctx = dark ? prepCanvas(dark, w, SIGN_H, 0) : null;
+      if (dctx) {
+        dctx.clearRect(0, 0, w, SIGN_H);
+        drawRungPlaque(dctx, w, SIGN_H, RUNG_PLAQUE_PIECES);
+        dctx.globalCompositeOperation = 'source-atop';
+        dctx.fillStyle = WALL_DARK_COLOR;
+        dctx.fillRect(0, 0, w, SIGN_H);
+        dctx.globalCompositeOperation = 'source-over';
+      }
     };
     // Synchronous once the art is decoded: the skins' shared no-rAF rule.
     whenDecoded([...RUNG_PLAQUE_PIECES.values()]).then(() => { if (!cancelled) draw(); });
@@ -612,10 +629,14 @@ const SignArt: React.FC<{
     <span ref={boxRef} aria-hidden className={`absolute ${solid || onPoke ? 'pointer-events-auto select-none' : 'pointer-events-none'}`} style={{ ...style, height: SIGN_H }} data-wall-sign={onPoke ? '' : undefined} onPointerDown={onPoke}>
       <span ref={snapRef} className="relative block w-full h-full">
         <canvas ref={canvasRef} style={{ position: 'absolute' }} />
+        <canvas ref={darkRef} className="wall-sign-dark" style={{ position: 'absolute' }} />
       </span>
     </span>
   );
 };
+
+/** The room's dark (index.css .wall-dark's background), for a piece that carries its own. */
+const WALL_DARK_COLOR = 'rgba(6, 5, 4, 0.68)';
 
 /**
  * A NUMBER ON A SIGN THAT DOES NOT MOVE THE SIGN (user, 2026-11-26: "the
@@ -655,7 +676,7 @@ export const SignNumber: React.FC<{ value: number; most?: number }> = ({ value, 
 export const BeamSign: React.FC<{
   children: React.ReactNode;
   /** The beam's torch: the side it would like, and what BeamTorch takes. */
-  torch?: { prefer: 'left' | 'right'; phase?: number; lightOn?: 'seen' | 'entry' };
+  torch?: { prefer: 'left' | 'right'; phase?: number; lightOn?: 'seen' | 'opened' };
 }> = ({ children, torch }) => {
   const hostRef = React.useRef<HTMLSpanElement>(null);
   const boxRef = React.useRef<HTMLSpanElement>(null);
@@ -694,7 +715,7 @@ export const BeamSign: React.FC<{
         onPointerDown={pokeBeamSign}
       >
         <SignArt boxRef={boxRef} solid style={{ left: -SIGN_PAD, top: 0 }} />
-        <span className="relative flex items-center">{children}</span>
+        <span className="wall-sign-words relative flex items-center">{children}</span>
       </span>
     </>
   );
@@ -730,7 +751,9 @@ export const BeamSpot: React.FC = () => {
  * a transform, so the art stays on whole pixels. It is the lintel's own
  * torch, and a tap puts it out; but it LIGHTS WHEN SEEN (LintelTorch
  * lightOn="seen"): each catches when the player has scrolled it two thirds
- * of the way up the screen. The heroes' is lit by the page's first tap.
+ * of the way up the screen. The heroes' catches when the quest scroll has
+ * opened after the dark entry (lightOn="opened"; it was the page's first tap
+ * until 2026-11-27).
  */
 export const BeamTorch: React.FC<{
   side: 'left' | 'right';
@@ -738,11 +761,11 @@ export const BeamTorch: React.FC<{
   phase?: number;
   /**
    * When it lights: when it has been brought up the screen (the default), or
-   * with the page's first tap wherever it stands. The heroes' torch takes
-   * the second: theirs is the first room, and on a short phone its beam is
-   * low on the screen when the page opens.
+   * as soon as the wall may light, wherever it stands. The heroes' torch
+   * takes the second: theirs is the first room, and on a short phone its
+   * beam is low on the screen when the page opens.
    */
-  lightOn?: 'seen' | 'entry';
+  lightOn?: 'seen' | 'opened';
 }> = ({ side, phase = 0, lightOn = 'seen' }) => (
   // `flex`: the torch is a <button>, an inline-block, and in a plain box it
   // sits on a line of TEXT (measured: the box came out 41px tall around a

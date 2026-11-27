@@ -48,6 +48,37 @@ export function onEntryDark(listener: (dark: boolean) => void): () => void {
   return () => { darkListeners.delete(listener); };
 }
 
+// ---- the wall's light -------------------------------------------------------------
+// THE WALL LIGHTS WHEN THE QUEST SCROLL HAS OPENED (user, 2026-11-27: "maybe we
+// can have the hero panel illuminate (or for desktop, any that are on the
+// screen), once the scroll unfurls?"). It used to light on the tap itself, a
+// second and a half before the scroll appeared. Now the order is: the tap,
+// the dark lifts, the scroll lands and unfurls, and THEN the hall's torch
+// catches and its room comes up out of the dark. The wall's torches
+// (LintelTorch.tsx) wait here; Game.tsx says when (the end of the scroll's
+// first unfurl, or a little after it should have ended if there is none to
+// wait for). Once said it stays said: later puzzles on the same page have
+// no dark entry and nothing to wait for.
+
+/** If the scroll's unfurl is never heard from, the wall lights this long after the scroll was due (ms). The unfurl ends 1450 after it. */
+export const WALL_LIGHT_LATEST_MS = 2500;
+
+let wallLit = false;
+const wallListeners = new Set<() => void>();
+
+export const wallMayLight = (): boolean => wallLit;
+
+export function letWallLight(): void {
+  if (wallLit) return;
+  wallLit = true;
+  wallListeners.forEach(listener => listener());
+}
+
+export function onWallMayLight(listener: () => void): () => void {
+  wallListeners.add(listener);
+  return () => { wallListeners.delete(listener); };
+}
+
 /**
  * Game asks this ONCE, as it first renders: has the page been entered
  * already? If not, the page starts dark, and it is dark before anything
@@ -56,6 +87,7 @@ export function onEntryDark(listener: (dark: boolean) => void): () => void {
 export function startsEntered(): boolean {
   const entered = pageAlreadyEntered();
   if (!entered) dark = true;
+  else wallLit = true; // no dark entry: nothing for the wall to wait for
   return entered;
 }
 
